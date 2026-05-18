@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+
+# Environment variables (NEVER commit these)
+.env.local
+.env.*.local
+.env
+
+# Supabase
+.supabase/
+
+# Capacitor
+apps/mobile-cap/ios/
+apps/mobile-cap/android/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Vercel
+.vercel
