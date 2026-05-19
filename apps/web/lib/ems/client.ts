@@ -47,10 +47,6 @@ function checkError(xml: string) {
 
 const FETCH_TIMEOUT_MS = 10_000;
 
-function isMockMode() {
-  return (process.env.EMS_MOCK ?? '').trim().toLowerCase() === 'true';
-}
-
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
@@ -124,34 +120,6 @@ export interface QuoteResult {
   totalFee: number;   // 총 배송예상비용(KRW)
 }
 
-/** 국가·서비스·중량별 예상 단가표 (Mock 전용, 실제 API 대체용) */
-function mockQuoteFee(p: QuoteParams): number {
-  const w = p.totweight;
-  if (p.premiumcd === '14') {
-    // K-Packet: 300g 기준 약 5,000원, 100g당 약 1,000원 추가
-    return Math.round(5000 + Math.max(0, w - 300) / 100 * 1000);
-  }
-  if (p.premiumcd === '32') {
-    // EMS 프리미엄: EMS 대비 약 15% 할증
-    const base = mockEmsBaseFee(p.countrycd, w);
-    return Math.round(base * 1.15);
-  }
-  // EMS 비서류/서류
-  return mockEmsBaseFee(p.countrycd, w);
-}
-
-function mockEmsBaseFee(countrycd: string, weightG: number): number {
-  // 지역 구분 (대략)
-  const zone1 = ['JP', 'CN', 'TW', 'HK', 'MO'];
-  const zone2 = ['US', 'CA', 'AU', 'NZ', 'SG', 'TH', 'VN', 'MY', 'PH'];
-  const isZ1 = zone1.includes(countrycd);
-  const isZ2 = zone2.includes(countrycd);
-  const base  = isZ1 ? 14000 : isZ2 ? 22000 : 28000;
-  const per500 = isZ1 ? 3500  : isZ2 ? 5500  : 7500;
-  const steps = Math.ceil(Math.max(0, weightG - 500) / 500);
-  return base + steps * per500;
-}
-
 export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
   // 중량 상한 체크
   const maxG = p.premiumcd === '14' ? 2000 : 30000;
@@ -159,11 +127,6 @@ export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
     throw new EmsApiError(
       `중량 초과: ${p.premiumcd === '14' ? 'K-Packet' : 'EMS'} 최대 ${maxG / 1000}kg (입력: ${(p.totweight / 1000).toFixed(1)}kg)`,
     );
-  }
-
-  // Mock 모드: 실제 API 대신 단가표 사용
-  if (isMockMode()) {
-    return { totalFee: mockQuoteFee(p) };
   }
 
   const params: Record<string, string> = {
