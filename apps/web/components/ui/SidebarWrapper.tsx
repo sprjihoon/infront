@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import SidebarCalculator from "./SidebarCalculator";
-import SidebarRateTable from "./SidebarRateTable";
+import SidebarCustomsInfo from "./SidebarCustomsInfo";
 
 export default function SidebarWrapper() {
   const pathname = usePathname();
@@ -10,7 +10,7 @@ export default function SidebarWrapper() {
   if (pathname === "/shipping-calc") {
     return (
       <div className="hidden lg:block pt-4">
-        <SidebarRateTable />
+        <SidebarCustomsInfo />
       </div>
     );
   }

@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Calculator, Globe, Weight,
   ChevronDown, ChevronUp, Info, Loader2, RotateCcw, CheckCircle2, XCircle,
+  ShieldAlert, Zap,
 } from "lucide-react";
+import { getCustomsInfo } from "@/lib/customs-data";
 
 const SERVICES = [
   {
@@ -347,6 +349,70 @@ export default function ShippingCalcPage() {
             {inputError}
           </div>
         )}
+
+        {/* 통관 정보 */}
+        {(() => {
+          const info = getCustomsInfo(countryCode);
+          if (!info) return null;
+          return (
+            <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <div className="bg-gradient-to-r from-orange-500 to-rose-500 px-4 py-3 flex items-center gap-2">
+                <ShieldAlert size={15} className="text-white" />
+                <span className="text-white font-semibold text-sm">
+                  {country.flag} {country.name} 통관 정보
+                </span>
+              </div>
+              <div className="p-4 space-y-3">
+                {/* 면세한도 */}
+                <div className="bg-blue-50 rounded-xl px-3 py-2.5 border border-blue-100">
+                  <p className="text-[10px] font-bold text-blue-700 mb-1">💰 면세한도</p>
+                  <p className="text-sm font-bold text-blue-900">{info.dutyFree}</p>
+                  {info.dutyFreeNote && (
+                    <p className="text-[10px] text-blue-600 mt-0.5">{info.dutyFreeNote}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {/* 금지품목 */}
+                  <div className="bg-red-50 rounded-xl px-3 py-2.5 border border-red-100">
+                    <p className="text-[10px] font-bold text-red-700 mb-1.5">🚫 절대 금지</p>
+                    <ul className="space-y-0.5">
+                      {info.prohibited.map(item => (
+                        <li key={item} className="text-[10px] text-red-700 flex items-start gap-1">
+                          <span className="shrink-0">•</span><span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {/* 제한품목 */}
+                  <div className="bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-100">
+                    <p className="text-[10px] font-bold text-amber-700 mb-1.5">⚠️ 제한·주의</p>
+                    <ul className="space-y-0.5">
+                      {info.restricted.map(item => (
+                        <li key={item} className="text-[10px] text-amber-700 flex items-start gap-1">
+                          <span className="shrink-0">•</span><span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* 배터리 + 유의사항 */}
+                <div className="flex items-start gap-2 bg-violet-50 rounded-xl px-3 py-2.5 border border-violet-100">
+                  <Zap size={12} className="text-violet-600 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-violet-700">
+                    <span className="font-bold">리튬배터리</span> {info.batteryLimit}
+                  </p>
+                </div>
+                {info.customsNote && (
+                  <div className="bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
+                    <p className="text-[10px] text-gray-500 leading-relaxed">📌 {info.customsNote}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* 결과 비교표 */}
         {results && (
