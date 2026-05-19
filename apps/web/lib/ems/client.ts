@@ -18,10 +18,11 @@ export class EmsApiError extends Error {
   }
 }
 
-function getKey()  { return process.env.EMS_API_KEY  ?? ''; }
-function getSec()  { return process.env.EMS_SECURITY_KEY ?? ''; }
-function getCust() { return process.env.EMS_CUSTOMER_NO  ?? ''; }
-function getAppr() { return process.env.EMS_APPROVAL_NO  ?? ''; }
+function clean(v: string | undefined) { return (v ?? '').replace(/[\r\n\s]/g, ''); }
+function getKey()  { return clean(process.env.EMS_API_KEY); }
+function getSec()  { return clean(process.env.EMS_SECURITY_KEY); }
+function getCust() { return clean(process.env.EMS_CUSTOMER_NO); }
+function getAppr() { return clean(process.env.EMS_APPROVAL_NO); }
 
 function parseXml(xml: string, tag: string): string | null {
   const re = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i');
@@ -177,9 +178,9 @@ export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
   if (p.boxwidth)  params.boxwidth  = String(p.boxwidth);
   if (p.boxheight) params.boxheight = String(p.boxheight);
 
-  // apprno: 정확히 10자리일 때만 전달 (Quote API는 없어도 동작)
-  const apprno = p.apprno ?? getAppr();
-  if (apprno && apprno.length === 10) params.apprno = apprno;
+  // apprno: 계약 승인번호 (env var에 \r\n 포함될 수 있으므로 clean 처리됨)
+  const apprno = clean(p.apprno) || getAppr();
+  if (apprno) params.apprno = apprno;
 
   const xml = await getQuery('api.EmsTotProcCmd.ems', params);
   const fee = parseXml(xml, 'emsTotProc');
