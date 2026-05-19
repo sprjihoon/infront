@@ -129,7 +129,7 @@ export async function POST(req: NextRequest) {
     let epostResult;
     if (isTest) {
       console.log('[PICKUP] 테스트 모드로 실행 (실제 API 미호출)');
-      epostResult = mockInsertOrder(epostParams);
+      epostResult = mockInsertOrder();
     } else {
       epostResult = await insertOrder(epostParams);
     }

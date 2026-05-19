@@ -156,6 +156,7 @@ function GetB2(A: number) { return 0x000000ff & (A >>> 16); }
 function GetB3(A: number) { return 0x000000ff & (A >>> 24); }
 function ConvertInt(v: number) { return v | 0; }
 function ConvertByte(v: number) { return ((v + 128) % 256) - 128; }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function EndianChange(d: number) {
   return (d >>> 24) | (d << 24) | ((d << 8) & 0x00ff0000) | ((d >>> 8) & 0x0000ff00);
 }
@@ -231,10 +232,10 @@ function SeedRoundKey(pdwRoundKey: number[], pbUserKey: Uint8Array): number[] {
   const K: number[] = [0, 0];
   let n = 2;
 
-  let AV = (pbUserKey[0]<<24)^(pbUserKey[1]<<16)^(pbUserKey[2]<<8)^pbUserKey[3];
-  let BV = (pbUserKey[4]<<24)^(pbUserKey[5]<<16)^(pbUserKey[6]<<8)^pbUserKey[7];
-  let CV = (pbUserKey[8]<<24)^(pbUserKey[9]<<16)^(pbUserKey[10]<<8)^pbUserKey[11];
-  let DV = (pbUserKey[12]<<24)^(pbUserKey[13]<<16)^(pbUserKey[14]<<8)^pbUserKey[15];
+  const AV = (pbUserKey[0]<<24)^(pbUserKey[1]<<16)^(pbUserKey[2]<<8)^pbUserKey[3];
+  const BV = (pbUserKey[4]<<24)^(pbUserKey[5]<<16)^(pbUserKey[6]<<8)^pbUserKey[7];
+  const CV = (pbUserKey[8]<<24)^(pbUserKey[9]<<16)^(pbUserKey[10]<<8)^pbUserKey[11];
+  const DV = (pbUserKey[12]<<24)^(pbUserKey[13]<<16)^(pbUserKey[14]<<8)^pbUserKey[15];
 
   const A={value:AV}, B={value:BV}, C={value:CV}, D={value:DV};
   const T0 = ConvertInt(A.value + C.value - KC[0]);

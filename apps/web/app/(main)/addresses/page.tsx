@@ -115,6 +115,7 @@ export default function AddressesPage() {
     setLoading(false);
   }, [supabase, router]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const filtered = addresses.filter(a => a.type === tab);

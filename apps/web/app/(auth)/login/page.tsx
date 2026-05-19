@@ -1,27 +1,24 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const SAVED_EMAIL_KEY = "infront_saved_email";
 
+function getSavedEmail() {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(SAVED_EMAIL_KEY) ?? "";
+}
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(getSavedEmail);
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => !!getSavedEmail());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    const savedEmail = localStorage.getItem(SAVED_EMAIL_KEY);
-    if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
-    }
-  }, []);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();

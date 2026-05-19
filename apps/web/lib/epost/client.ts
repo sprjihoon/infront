@@ -104,7 +104,7 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
   return result;
 }
 
-export function mockInsertOrder(_params: InsertOrderParams): InsertOrderResponse {
+export function mockInsertOrder(): InsertOrderResponse {
   const now = new Date();
   const ymd = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
   return {
