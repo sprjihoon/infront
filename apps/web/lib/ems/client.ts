@@ -76,19 +76,27 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
-/** GET 요청 (조회 API — 암호화 없음) */
-async function getQuery(endpoint: string, params: Record<string, string>) {
+/** GET 요청 (조회 API — 암호화 없음, 네트워크 오류 시 1회 재시도) */
+async function getQuery(endpoint: string, params: Record<string, string>, attempt = 0): Promise<string> {
   const url = new URL(`${BASE}/${endpoint}`);
   url.searchParams.set('regkey', getKey());
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
 
-  const res = await fetchWithTimeout(url.toString(), {
-    headers: { 'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)' },
-  });
-  if (!res.ok) throw new EmsApiError(`EMS HTTP ${res.status}`);
-  const xml = await res.text();
-  checkError(xml);
-  return xml;
+  try {
+    const res = await fetchWithTimeout(url.toString(), {
+      headers: { 'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)' },
+    });
+    if (!res.ok) throw new EmsApiError(`EMS HTTP ${res.status}`);
+    const xml = await res.text();
+    checkError(xml);
+    return xml;
+  } catch (e) {
+    if (attempt === 0 && e instanceof EmsApiError && e.message.includes('네트워크 오류')) {
+      await new Promise(r => setTimeout(r, 1500));
+      return getQuery(endpoint, params, 1);
+    }
+    throw e;
+  }
 }
 
 /** POST 요청 (신청 API — SEED128 암호화) */
