@@ -94,7 +94,7 @@ export default function HomeClient() {
       </div>
 
       {/* 빠른 서비스 */}
-      <div className="grid grid-cols-2 gap-3 [&>*:last-child:nth-child(odd)]:col-span-2">
+      <div className="grid grid-cols-2 gap-3">
         <Link
           href="/pickup"
           className="bg-blue-600 rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform"
