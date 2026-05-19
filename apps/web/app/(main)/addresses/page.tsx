@@ -96,23 +96,28 @@ export default function AddressesPage() {
   // ── 데이터 로드 ──────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { router.push("/login"); return; }
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { router.push("/login"); return; }
 
-    const { data: cust } = await supabase
-      .from("customers").select("id").eq("auth_user_id", user.id).single();
-    if (!cust) return;
-    setCustomerId(cust.id);
+      const { data: cust } = await supabase
+        .from("customers").select("id").eq("auth_user_id", user.id).single();
+      if (!cust) return;
+      setCustomerId(cust.id);
 
-    const { data } = await supabase
-      .from("customer_addresses")
-      .select("*")
-      .eq("customer_id", cust.id)
-      .order("is_default", { ascending: false })
-      .order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("customer_addresses")
+        .select("*")
+        .eq("customer_id", cust.id)
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: false });
 
-    setAddresses(data ?? []);
-    setLoading(false);
+      setAddresses(data ?? []);
+    } catch {
+      setAddresses([]);
+    } finally {
+      setLoading(false);
+    }
   }, [supabase, router]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -218,17 +223,30 @@ export default function AddressesPage() {
             <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center py-16 text-center">
-            {tab === "pickup"
-              ? <MapPin size={40} className="text-gray-200 mb-3" />
-              : <Globe size={40} className="text-gray-200 mb-3" />}
-            <p className="text-sm text-gray-400">저장된 주소가 없습니다</p>
+          <div className="flex flex-col items-center py-12 text-center px-4">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
+              tab === "pickup" ? "bg-blue-50" : "bg-violet-50"
+            }`}>
+              {tab === "pickup"
+                ? <MapPin size={28} className="text-blue-300" />
+                : <Globe size={28} className="text-violet-300" />}
+            </div>
+            <p className="text-base font-semibold text-gray-700 mb-1">
+              {tab === "pickup" ? "저장된 수거지가 없어요" : "저장된 해외 배송지가 없어요"}
+            </p>
+            <p className="text-xs text-gray-400 mb-6 leading-relaxed">
+              {tab === "pickup"
+                ? "자주 쓰는 수거지를 저장해두면\n수거 신청 시 빠르게 입력할 수 있어요."
+                : "자주 발송하는 해외 수취인 주소를\n저장해두면 발송 시 바로 선택할 수 있어요."}
+            </p>
             <button
               onClick={openAdd}
-              className="mt-4 flex items-center gap-1.5 bg-blue-600 text-white text-sm font-semibold px-4 py-2.5 rounded-xl"
+              className={`flex items-center gap-2 text-white text-sm font-semibold px-6 py-3 rounded-2xl shadow-sm ${
+                tab === "pickup" ? "bg-blue-600" : "bg-violet-600"
+              }`}
             >
-              <Plus size={15} />
-              {tab === "pickup" ? "수거지 추가" : "해외 배송지 추가"}
+              <Plus size={16} />
+              {tab === "pickup" ? "수거지 추가하기" : "해외 배송지 추가하기"}
             </button>
           </div>
         ) : (
