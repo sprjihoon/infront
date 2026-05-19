@@ -5,17 +5,17 @@ import { applyEms, mockApplyEms, type EmsApplyParams } from '@/lib/ems/client';
 
 const USE_MOCK = process.env.EMS_MOCK === 'true';
 
-// 스프링박스 발송인 정보
+// 인프론트 발송인 정보
 const SENDER = {
-  name:    process.env.SPRINGBOX_SENDER_NAME     ?? 'SpringBox',
-  zipcode: process.env.SPRINGBOX_SENDER_ZIPCODE  ?? '',
-  addr1:   process.env.SPRINGBOX_SENDER_ADDR1    ?? '',
-  addr2:   process.env.SPRINGBOX_SENDER_ADDR2    ?? '',
-  addr3:   process.env.SPRINGBOX_SENDER_ADDR3    ?? '',
-  tel1:    process.env.SPRINGBOX_SENDER_TEL1     ?? '82',
-  tel2:    process.env.SPRINGBOX_SENDER_TEL2     ?? '',
-  tel3:    process.env.SPRINGBOX_SENDER_TEL3     ?? '',
-  tel4:    process.env.SPRINGBOX_SENDER_TEL4     ?? '',
+  name:    process.env.INFRONT_SENDER_NAME     ?? 'Infront',
+  zipcode: process.env.INFRONT_SENDER_ZIPCODE  ?? '',
+  addr1:   process.env.INFRONT_SENDER_ADDR1    ?? '',
+  addr2:   process.env.INFRONT_SENDER_ADDR2    ?? '',
+  addr3:   process.env.INFRONT_SENDER_ADDR3    ?? '',
+  tel1:    process.env.INFRONT_SENDER_TEL1     ?? '82',
+  tel2:    process.env.INFRONT_SENDER_TEL2     ?? '',
+  tel3:    process.env.INFRONT_SENDER_TEL3     ?? '',
+  tel4:    process.env.INFRONT_SENDER_TEL4     ?? '',
 };
 
 /**
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `필수 항목 누락: ${missing.join(', ')}` }, { status: 400 });
     }
 
-    // 발송인 정보 주입 (스프링박스 창고)
+    // 발송인 정보 주입 (인프론트 창고)
     const applyParams: EmsApplyParams = {
       ...(rest as EmsApplyParams),
       sender:        SENDER.name,

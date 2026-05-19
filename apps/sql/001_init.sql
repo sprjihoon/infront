@@ -1,5 +1,5 @@
 -- =============================================
--- 스프링박스 (SpringBox) 초기 스키마
+-- 인프론트 (Infront) 초기 스키마
 -- =============================================
 
 -- 고객 테이블
@@ -199,7 +199,7 @@ BEGIN
     NEW.id,
     NEW.email,
     generate_customer_code(),
-    '경기도 OO시 OO동 스프링박스 물류센터 (' || generate_customer_code() || ')'
+    '대구광역시 동구 동촌로 1 인프론트 (동대구우체국 소포실) (' || generate_customer_code() || ')'
   );
   RETURN NEW;
 END;

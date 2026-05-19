@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
-const SAVED_EMAIL_KEY = "springbox_saved_email";
+const SAVED_EMAIL_KEY = "infront_saved_email";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -54,7 +54,7 @@ export default function LoginPage() {
         <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
           <span className="text-white text-2xl font-bold">S</span>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">스프링박스</h1>
+        <h1 className="text-2xl font-bold text-gray-900">인프론트</h1>
         <p className="text-gray-500 text-sm mt-1">해외배송 대행 서비스</p>
       </div>
 

@@ -188,7 +188,7 @@ export interface EmsApplyParams {
   boxwidth:  number;   // 세로(cm)
   boxheight: number;   // 높이(cm)
 
-  // 발송인 (스프링박스 창고)
+  // 발송인 (인프론트 창고)
   sender:         string;  // 발송인명
   senderzipcode:  string;  // 우편번호 (6자리)
   senderaddr1:    string;  // 상세

@@ -2,13 +2,13 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "스프링박스",
+  title: "인프론트",
   description: "해외배송 대행 서비스",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "스프링박스",
+    title: "인프론트",
   },
 };
 

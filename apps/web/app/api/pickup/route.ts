@@ -3,12 +3,12 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { insertOrder, mockInsertOrder } from '@/lib/epost/client';
 
-// 스프링박스 물류센터 정보 (환경변수 우선)
-const CENTER_NAME    = process.env.SPRINGBOX_CENTER_NAME    ?? '스프링박스';
-const CENTER_ZIPCODE = process.env.SPRINGBOX_CENTER_ZIPCODE ?? '';
-const CENTER_ADDR1   = process.env.SPRINGBOX_CENTER_ADDR1   ?? '';
-const CENTER_ADDR2   = process.env.SPRINGBOX_CENTER_ADDR2   ?? '';
-const CENTER_PHONE   = (process.env.SPRINGBOX_CENTER_PHONE  ?? '').replace(/-/g, '');
+// 인프론트 물류센터 정보 (환경변수 우선)
+const CENTER_NAME    = process.env.INFRONT_CENTER_NAME    ?? '인프론트';
+const CENTER_ZIPCODE = process.env.INFRONT_CENTER_ZIPCODE ?? '';
+const CENTER_ADDR1   = process.env.INFRONT_CENTER_ADDR1   ?? '';
+const CENTER_ADDR2   = process.env.INFRONT_CENTER_ADDR2   ?? '';
+const CENTER_PHONE   = (process.env.INFRONT_CENTER_PHONE  ?? '').replace(/-/g, '');
 const OFFICE_SER     = '260537802'; // 공급지코드 (인프론트)
 
 export async function POST(req: NextRequest) {
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
     const isTest = test_mode || !hasSecurityKey || !custNo;
 
     // 우체국 소포 신청 파라미터
-    // 수거(반품소포): rec* = 고객(수거지), ord* = 스프링박스 센터(도착지)
+    // 수거(반품소포): rec* = 고객(수거지), ord* = 인프론트 센터(도착지)
     const epostParams = {
       custNo: custNo || 'TEST',
       apprNo: apprNo || '0000000000',
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
       reqType: '2' as const,    // 반품소포 (고객→센터)
       officeSer: OFFICE_SER,
       orderNo,
-      // 도착지: 스프링박스 물류센터
+      // 도착지: 인프론트 물류센터
       ordCompNm: CENTER_NAME,
       ordNm: CENTER_NAME,
       ordZip: CENTER_ZIPCODE,

@@ -210,7 +210,7 @@ export default function PickupPage() {
             <p className="text-sm font-bold text-blue-800">우체국 방문 수거 서비스</p>
             <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
               우체국 집배원이 고객님 주소로 직접 방문하여 물품을 수거합니다.
-              수거비는 스프링박스가 부담합니다.
+              수거비는 인프론트가 부담합니다.
             </p>
           </div>
         </div>
@@ -331,7 +331,7 @@ export default function PickupPage() {
           </div>
           <ul className="space-y-1.5">
             {[
-              "수거 후 물품이 스프링박스 물류센터로 입고됩니다.",
+              "수거 후 물품이 인프론트 물류센터로 입고됩니다.",
               "입고 후 검수(사진·영상)를 진행하고 결과를 알려드립니다.",
               "국제 배송비는 실측 무게 확인 후 견적을 안내해드립니다.",
               "발송 불가 물품(위험물, 반출금지 등)은 입고 거절될 수 있습니다.",

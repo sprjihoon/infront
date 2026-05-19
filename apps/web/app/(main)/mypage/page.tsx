@@ -116,7 +116,7 @@ export default function MyPage() {
       </button>
 
       <p className="text-center text-xs text-gray-300 pb-2">
-        스프링박스 v1.0.0
+        인프론트 v1.0.0
       </p>
     </div>
   );
