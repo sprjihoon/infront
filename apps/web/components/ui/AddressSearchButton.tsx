@@ -70,7 +70,7 @@ export function AddressSearchButton({
                 </button>
               </div>
               <iframe
-                src="/postcode"
+                src="/postcode.html"
                 className="flex-1 border-0"
                 title="주소 검색"
               />
