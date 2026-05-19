@@ -24,24 +24,36 @@ function getSec()  { return clean(process.env.EMS_SECURITY_KEY); }
 function getCust() { return clean(process.env.EMS_CUSTOMER_NO); }
 function getAppr() { return clean(process.env.EMS_APPROVAL_NO); }
 
+/** CDATA 마커 제거: <![CDATA[value]]> → value */
+function stripCdata(raw: string): string {
+  const m = raw.match(/^<!\[CDATA\[([\s\S]*?)\]\]>$/);
+  return m ? m[1].trim() : raw;
+}
+
 function parseXml(xml: string, tag: string): string | null {
   const re = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'i');
-  return xml.match(re)?.[1]?.trim() ?? null;
+  const raw = xml.match(re)?.[1]?.trim() ?? null;
+  return raw !== null ? stripCdata(raw) : null;
 }
 
 function parseAll(xml: string, tag: string): string[] {
   const re = new RegExp(`<${tag}>([\\s\\S]*?)<\\/${tag}>`, 'gi');
   const out: string[] = [];
   let m: RegExpExecArray | null;
-  while ((m = re.exec(xml)) !== null) out.push(m[1].trim());
+  while ((m = re.exec(xml)) !== null) out.push(stripCdata(m[1].trim()));
   return out;
 }
 
 function checkError(xml: string) {
+  // HTML 응답 = 지원하지 않는 국가/서비스
+  if (xml.trimStart().startsWith('<!') || xml.trimStart().startsWith('<html')) {
+    throw new EmsApiError('해당 국가 또는 서비스는 지원되지 않습니다.');
+  }
+  // CDATA 안에 ERR- 포함 여부 확인
   if (xml.includes('<error>') || xml.includes('ERR-')) {
-    const code = parseXml(xml, 'error_code') ?? 'ERR-UNKNOWN';
-    const msg  = parseXml(xml, 'message') ?? xml.substring(0, 300);
-    throw new EmsApiError(`EMS API ${code}: ${msg}`);
+    const code = parseXml(xml, 'error_code') ?? parseXml(xml, 'resultcd') ?? 'ERR';
+    const msg  = parseXml(xml, 'message')    ?? parseXml(xml, 'resultmsg') ?? xml.substring(0, 200);
+    throw new EmsApiError(`${code}: ${msg}`);
   }
 }
 
