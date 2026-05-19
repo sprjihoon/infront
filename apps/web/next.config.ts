@@ -9,6 +9,29 @@ const nextConfig: NextConfig = {
     images: { unoptimized: true },
     trailingSlash: true,
   }),
+  async headers() {
+    return [
+      {
+        // 우편번호 검색 페이지 — Daum CDN 스크립트 허용
+        source: "/postcode.html",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://t1.daumcdn.net https://*.daumcdn.net https://*.kakao.com;",
+          },
+        ],
+      },
+      {
+        source: "/postcode",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://t1.daumcdn.net https://*.daumcdn.net https://*.kakao.com;",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
