@@ -27,6 +27,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" className="h-full">
+      <head>
+        {/* 카카오 주소 검색 API */}
+        <script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js" async />
+      </head>
       <body className="h-full bg-gray-50 antialiased">{children}</body>
     </html>
   );

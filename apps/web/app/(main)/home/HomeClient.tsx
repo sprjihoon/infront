@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Bell, Copy } from "lucide-react";
+import { Package, ChevronRight, Bell, Copy, Truck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Customer {
@@ -95,6 +95,16 @@ export default function HomeClient() {
 
       {/* 빠른 서비스 */}
       <div className="grid grid-cols-2 gap-3">
+        <Link
+          href="/pickup"
+          className="bg-blue-600 rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform"
+        >
+          <Truck size={24} className="text-white" />
+          <div>
+            <p className="text-sm font-semibold text-white">수거 신청</p>
+            <p className="text-xs text-blue-200">우체국 방문수거</p>
+          </div>
+        </Link>
         <Link
           href="/warehouse"
           className="bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform"
