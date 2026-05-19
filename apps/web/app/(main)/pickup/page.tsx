@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   MapPin, Calendar, Phone, Package,
   CheckCircle, Info, Truck, ArrowLeft,
 } from "lucide-react";
+import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 
 // 한국 공휴일 (2026)
 const KR_HOLIDAYS = new Set([
@@ -34,33 +35,6 @@ function getMaxDate(): string {
   return d.toISOString().split("T")[0];
 }
 
-interface AddressResult {
-  zipcode: string;
-  address: string;
-}
-
-declare global {
-  interface Window {
-    daum?: {
-      Postcode: new (opts: {
-        oncomplete: (data: { zonecode: string; roadAddress: string; jibunAddress: string }) => void;
-      }) => { open: () => void };
-    };
-  }
-}
-
-function openAddressSearch(onSelect: (r: AddressResult) => void) {
-  if (typeof window === "undefined") return;
-  if (!window.daum?.Postcode) {
-    alert("주소 검색 기능을 불러오는 중입니다. 잠시 후 다시 시도해주세요.");
-    return;
-  }
-  new window.daum.Postcode({
-    oncomplete(data) {
-      onSelect({ zipcode: data.zonecode, address: data.roadAddress || data.jibunAddress });
-    },
-  }).open();
-}
 
 export default function PickupPage() {
   const router = useRouter();
@@ -90,13 +64,11 @@ export default function PickupPage() {
     return d;
   }).filter(isUnavailable).map((d) => d.toISOString().split("T")[0]);
 
-  const handleAddressSearch = useCallback(() => {
-    openAddressSearch(({ zipcode: z, address: a }) => {
-      setZipcode(z);
-      setAddress(a);
-      setAddressDetail("");
-    });
-  }, []);
+  function handleAddressSelect(z: string, a: string) {
+    setZipcode(z);
+    setAddress(a);
+    setAddressDetail("");
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -229,13 +201,7 @@ export default function PickupPage() {
               placeholder="주소 검색 후 선택"
               className="flex-1 px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 outline-none"
             />
-            <button
-              type="button"
-              onClick={handleAddressSearch}
-              className="px-4 py-3.5 bg-blue-600 text-white text-sm font-bold rounded-xl active:opacity-80 whitespace-nowrap"
-            >
-              검색
-            </button>
+            <AddressSearchButton onSelect={handleAddressSelect} label="검색" />
           </div>
           {zipcode && (
             <p className="text-xs text-blue-600 mb-2">[{zipcode}] {address}</p>
