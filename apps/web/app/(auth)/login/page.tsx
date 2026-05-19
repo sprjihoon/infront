@@ -83,28 +83,22 @@ export default function LoginPage() {
         </div>
 
         {/* 아이디 저장 */}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setRememberMe((v) => !v)}
-            className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
-              rememberMe
-                ? "bg-blue-600 border-blue-600"
-                : "bg-white border-gray-300"
-            }`}
-          >
-            {rememberMe && (
-              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </button>
-          <span
-            className="text-sm text-gray-600 cursor-pointer select-none"
-            onClick={() => setRememberMe((v) => !v)}
-          >
-            아이디 저장
-          </span>
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+            <div
+              onClick={() => setRememberMe((v) => !v)}
+              className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${
+                rememberMe ? "bg-blue-600 border-blue-600" : "bg-white border-gray-300"
+              }`}
+            >
+              {rememberMe && (
+                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            <span className="text-sm text-gray-600">아이디 저장</span>
+          </label>
         </div>
 
         {error && (
