@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Bell, Copy, Truck } from "lucide-react";
+import { Package, ChevronRight, Bell, Copy, Truck, Calculator } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Customer {
@@ -94,7 +94,7 @@ export default function HomeClient() {
       </div>
 
       {/* 빠른 서비스 */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 [&>*:last-child:nth-child(odd)]:col-span-2">
         <Link
           href="/pickup"
           className="bg-blue-600 rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform"
@@ -123,6 +123,16 @@ export default function HomeClient() {
           <div>
             <p className="text-sm font-semibold text-gray-900">배송현황</p>
             <p className="text-xs text-gray-500">해외배송 추적</p>
+          </div>
+        </Link>
+        <Link
+          href="/shipping-calc"
+          className="bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform"
+        >
+          <Calculator size={24} className="text-violet-600" />
+          <div>
+            <p className="text-sm font-semibold text-gray-900">요금 계산기</p>
+            <p className="text-xs text-gray-500">EMS · K-Packet</p>
           </div>
         </Link>
       </div>
