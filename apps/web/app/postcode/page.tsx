@@ -39,8 +39,8 @@ export default function PostcodePage() {
             window.parent.postMessage(message, "*");
           }
         },
-        width: "100%",
-        height: "100%",
+        width: String(window.innerWidth),
+        height: String(window.innerHeight),
       }).embed(el);
     };
     document.head.appendChild(script);
@@ -49,7 +49,7 @@ export default function PostcodePage() {
   return (
     <div
       id="postcode-wrap"
-      style={{ width: "100%", height: "100%", minHeight: "100dvh", overflow: "hidden" }}
+      style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, overflow: "hidden" }}
     />
   );
 }
