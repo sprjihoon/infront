@@ -10,6 +10,14 @@ import { seed128Encrypt, buildEpostParams } from '../epost/seed128';
 
 const BASE = 'https://eship.epost.go.kr';
 
+/** EMS OpenAPI 가 비즈니스 레벨 오류를 반환할 때 사용하는 에러 (HTTP 400 처리용) */
+export class EmsApiError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'EmsApiError';
+  }
+}
+
 function getKey()  { return process.env.EMS_API_KEY  ?? ''; }
 function getSec()  { return process.env.EMS_SECURITY_KEY ?? ''; }
 function getCust() { return process.env.EMS_CUSTOMER_NO  ?? ''; }
@@ -32,7 +40,7 @@ function checkError(xml: string) {
   if (xml.includes('<error>') || xml.includes('ERR-')) {
     const code = parseXml(xml, 'error_code') ?? 'ERR-UNKNOWN';
     const msg  = parseXml(xml, 'message') ?? xml.substring(0, 300);
-    throw new Error(`EMS API ${code}: ${msg}`);
+    throw new EmsApiError(`EMS API ${code}: ${msg}`);
   }
 }
 
@@ -108,7 +116,7 @@ export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
 
   const xml = await getQuery('api.EmsTotProcCmd.ems', params);
   const fee = parseXml(xml, 'emsTotProc');
-  if (!fee) throw new Error('배송비 조회 결과가 없습니다.');
+  if (!fee) throw new EmsApiError('해당 국가 또는 서비스는 지원되지 않습니다.');
   return { totalFee: parseInt(fee, 10) };
 }
 

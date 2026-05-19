@@ -154,7 +154,10 @@ export default function ShippingCalcPage() {
       });
       const res = await fetch(`/api/ems/quote?${params}`);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "견적 조회 실패");
+      if (!res.ok) {
+        if (res.status === 400) throw new Error("선택 국가에서 해당 서비스를 지원하지 않습니다.");
+        throw new Error(data.error ?? "견적 조회 실패");
+      }
       setResult({
         totalFee:      data.totalFee,
         realWeight,

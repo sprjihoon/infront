@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getShippingQuote, type QuoteParams } from '@/lib/ems/client';
+import { getShippingQuote, type QuoteParams, EmsApiError } from '@/lib/ems/client';
 
 /**
  * POST /api/ems/quote
@@ -30,8 +30,11 @@ export async function POST(req: NextRequest) {
     const result = await getShippingQuote(body as QuoteParams);
     return NextResponse.json(result);
   } catch (e: unknown) {
+    if (e instanceof EmsApiError) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
     const msg = e instanceof Error ? e.message : String(e);
-    console.error('[EMS Quote]', msg);
+    console.error('[EMS Quote POST]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
@@ -59,7 +62,11 @@ export async function GET(req: NextRequest) {
     const result = await getShippingQuote(params);
     return NextResponse.json(result);
   } catch (e: unknown) {
+    if (e instanceof EmsApiError) {
+      return NextResponse.json({ error: e.message }, { status: 400 });
+    }
     const msg = e instanceof Error ? e.message : String(e);
+    console.error('[EMS Quote GET]', msg);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

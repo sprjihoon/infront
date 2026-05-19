@@ -41,7 +41,7 @@ export default function HomeClient() {
         .from("customers")
         .select("name, customer_code, personal_address")
         .eq("id", user.id)
-        .single()
+        .maybeSingle()
         .then(({ data }) => setCustomer(data));
 
       supabase
