@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, LogOut, User, MapPin, ChevronRight } from "lucide-react";
+import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Customer {
@@ -86,6 +86,25 @@ export default function MyPage() {
         <p className="text-xs text-gray-400 mt-3">
           💡 이 주소로 국내 쇼핑몰에서 주문하시면 자동으로 입고됩니다
         </p>
+      </div>
+
+      {/* 주소록 */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <button
+          onClick={() => router.push("/addresses")}
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <BookOpen size={15} className="text-blue-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-800">주소록 관리</p>
+              <p className="text-xs text-gray-400">수거지 · 해외배송지 저장</p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-gray-300" />
+        </button>
       </div>
 
       {/* 메뉴 */}

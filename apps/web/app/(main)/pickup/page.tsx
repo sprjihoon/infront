@@ -1,12 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   MapPin, Calendar, Phone, Package,
-  CheckCircle, Info, Truck, ArrowLeft,
+  CheckCircle, Info, Truck, ArrowLeft, BookOpen, X, Star,
 } from "lucide-react";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
+import { createClient } from "@/lib/supabase/client";
+
+interface SavedAddress {
+  id: string;
+  label: string;
+  name: string;
+  phone: string | null;
+  zipcode: string | null;
+  address: string | null;
+  address_detail: string | null;
+  is_default: boolean;
+}
 
 // 한국 공휴일 (2026)
 const KR_HOLIDAYS = new Set([
@@ -45,6 +57,26 @@ export default function PickupPage() {
   const [addressDetail, setAddressDetail] = useState("");
   const [zipcode, setZipcode]           = useState("");
   const [phone, setPhone]               = useState("");
+
+  // 저장 주소
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [addrModalOpen, setAddrModalOpen]   = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data: cust } = await supabase.from("customers").select("id").eq("auth_user_id", user.id).single();
+      if (!cust) return;
+      const { data } = await supabase
+        .from("customer_addresses")
+        .select("id, label, name, phone, zipcode, address, address_detail, is_default")
+        .eq("customer_id", cust.id).eq("type", "pickup")
+        .order("is_default", { ascending: false })
+        .order("created_at", { ascending: false });
+      setSavedAddresses(data ?? []);
+    });
+  }, []);
   const [pickupDate, setPickupDate]     = useState(minDate);
   const [goodsName, setGoodsName]       = useState("");
   const [notes, setNotes]               = useState("");
@@ -189,10 +221,21 @@ export default function PickupPage() {
 
         {/* 수거 주소 */}
         <div>
-          <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
-            <MapPin className="w-4 h-4 text-blue-600" />
-            수거 주소 <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-2">
+            <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
+              <MapPin className="w-4 h-4 text-blue-600" />
+              수거 주소 <span className="text-red-500">*</span>
+            </label>
+            {savedAddresses.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setAddrModalOpen(true)}
+                className="flex items-center gap-1 text-xs text-blue-600 font-semibold bg-blue-50 px-2.5 py-1.5 rounded-lg"
+              >
+                <BookOpen size={12} /> 저장된 주소
+              </button>
+            )}
+          </div>
           <div className="flex gap-2 mb-2">
             <input
               type="text"
@@ -337,6 +380,48 @@ export default function PickupPage() {
           </div>
         )}
       </form>
+
+      {/* 저장된 주소 선택 모달 */}
+      {addrModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
+          <div className="w-full max-w-[430px] bg-white rounded-t-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <p className="text-sm font-bold text-gray-800">저장된 수거지 선택</p>
+              <button onClick={() => setAddrModalOpen(false)} className="p-1.5 rounded-full hover:bg-gray-100">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="max-h-80 overflow-y-auto p-4 space-y-2">
+              {savedAddresses.map(a => (
+                <button
+                  key={a.id}
+                  type="button"
+                  onClick={() => {
+                    setAddress(a.address ?? "");
+                    setAddressDetail(a.address_detail ?? "");
+                    setZipcode(a.zipcode ?? "");
+                    setPhone(a.phone ?? "");
+                    setAddrModalOpen(false);
+                  }}
+                  className="w-full text-left bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 hover:border-blue-300 hover:bg-blue-50 transition-all"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{a.label}</span>
+                    {a.is_default && (
+                      <span className="flex items-center gap-0.5 text-[10px] text-amber-600">
+                        <Star size={9} fill="currentColor" /> 기본
+                      </span>
+                    )}
+                    <span className="text-sm font-semibold text-gray-800 ml-1">{a.name}</span>
+                  </div>
+                  <p className="text-xs text-gray-500">[{a.zipcode}] {a.address} {a.address_detail}</p>
+                  {a.phone && <p className="text-xs text-gray-400 mt-0.5">{a.phone}</p>}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3">
