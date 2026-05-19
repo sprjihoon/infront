@@ -222,7 +222,7 @@ export default function SidebarCalculator() {
             <p className="text-2xl font-bold text-gray-900">
               {result.toLocaleString()}<span className="text-sm font-medium text-gray-500 ml-1">원</span>
             </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">예상 배송비 · 실제 접수 시 변동 가능</p>
+            <p className="text-[10px] text-gray-400 mt-0.5">가견적 · 실제 접수 시 우체국 요금 기준으로 확정</p>
           </div>
         )}
       </div>
