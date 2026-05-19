@@ -44,10 +44,11 @@ function checkError(xml: string) {
   }
 }
 
-const MOCK_MODE = process.env.EMS_MOCK === 'true';
 const FETCH_TIMEOUT_MS = 10_000;
 
-function isMockMode() { return MOCK_MODE; }
+function isMockMode() {
+  return (process.env.EMS_MOCK ?? '').trim().toLowerCase() === 'true';
+}
 
 async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
   const controller = new AbortController();
