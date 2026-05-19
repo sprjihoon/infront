@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getShippingQuote, type QuoteParams, EmsApiError } from '@/lib/ems/client';
 
+export const preferredRegion = 'icn1'; // 우체국 API 접근을 위해 서울 리전 고정
+
 /**
  * POST /api/ems/quote
  * EMS / K-Packet 배송비 예상 견적 조회

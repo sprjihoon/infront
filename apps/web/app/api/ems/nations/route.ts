@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAvailableNations } from '@/lib/ems/client';
 
+export const preferredRegion = 'icn1'; // 우체국 API 접근을 위해 서울 리전 고정
+
 /**
  * GET /api/ems/nations?premiumcd=31
  * 발송 가능한 국가 목록 조회

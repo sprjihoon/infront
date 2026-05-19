@@ -162,13 +162,10 @@ export default function ShippingCalcPage() {
 
     setLoading(true);
     try {
-      const fetches = await Promise.all(
-        SERVICES.map(svc =>
-          fetchService(svc, appliedWeight, countryCode, length, width, height)
-        )
-      );
       const services: Record<string, ServiceResult> = {};
-      SERVICES.forEach((svc, i) => { services[svc.id] = fetches[i]; });
+      for (const svc of SERVICES) {
+        services[svc.id] = await fetchService(svc, appliedWeight, countryCode, length, width, height);
+      }
       setResults({ countryCode, appliedWeight, services });
     } finally {
       setLoading(false);

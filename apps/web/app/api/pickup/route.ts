@@ -3,6 +3,8 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { insertOrder, mockInsertOrder } from '@/lib/epost/client';
 
+export const preferredRegion = 'icn1'; // 우체국 API 접근을 위해 서울 리전 고정
+
 // 인프론트 물류센터 정보 (환경변수 우선)
 const CENTER_NAME    = process.env.INFRONT_CENTER_NAME    ?? '인프론트';
 const CENTER_ZIPCODE = process.env.INFRONT_CENTER_ZIPCODE ?? '';
