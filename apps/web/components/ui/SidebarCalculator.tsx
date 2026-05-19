@@ -67,9 +67,7 @@ export default function SidebarCalculator() {
       const res  = await fetch(`/api/ems/quote?${p}`);
       const data = await res.json();
       if (!res.ok) {
-        const msg = data.error ?? "조회 실패";
-        if (res.status === 400) throw new Error("선택 국가에서 지원하지 않는 서비스입니다.");
-        throw new Error(msg);
+        throw new Error(data.error ?? "조회 실패");
       }
       setResult(data.totalFee);
     } catch (e: unknown) {
