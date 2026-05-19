@@ -49,7 +49,7 @@ export default function PostcodePage() {
   return (
     <div
       id="postcode-wrap"
-      style={{ width: "100%", height: "100dvh", overflow: "hidden" }}
+      style={{ width: "100%", height: "100%", minHeight: "100dvh", overflow: "hidden" }}
     />
   );
 }

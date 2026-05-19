@@ -15,58 +15,31 @@ export function AddressSearchButton({
   label = "주소 검색",
 }: AddressSearchButtonProps) {
   const onSelectRef = useRef(onSelect);
-  const [fallbackOpen, setFallbackOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
 
-  // 팝업 차단 시 폴백: 인라인 iframe 모달에서 postMessage 수신
+  // iframe 모달에서 postMessage 수신
   useEffect(() => {
-    if (!fallbackOpen) return;
+    if (!open) return;
 
     function handler(e: MessageEvent) {
       if (e.data?.type === "ADDRESS_SELECTED") {
         onSelectRef.current(e.data.zipcode, e.data.address);
-        setFallbackOpen(false);
+        setOpen(false);
       }
     }
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [fallbackOpen]);
-
-  function openSearch() {
-    const width = 500;
-    const height = 600;
-    const left = Math.round(window.screenX + (window.outerWidth - width) / 2);
-    const top = Math.round(window.screenY + (window.outerHeight - height) / 2);
-
-    const popup = window.open(
-      "/postcode",
-      "kakao-postcode",
-      `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`,
-    );
-
-    if (!popup) {
-      // 팝업 차단 → 인라인 iframe 모달로 대체
-      setFallbackOpen(true);
-      return;
-    }
-
-    function handler(e: MessageEvent) {
-      if (e.data?.type === "ADDRESS_SELECTED") {
-        onSelectRef.current(e.data.zipcode, e.data.address);
-        window.removeEventListener("message", handler);
-      }
-    }
-    window.addEventListener("message", handler);
-  }
+  }, [open]);
 
   return (
     <>
       <button
         type="button"
-        onClick={openSearch}
+        onClick={() => setOpen(true)}
         className={
           className ??
           "px-4 py-3.5 bg-blue-600 text-white text-sm font-bold rounded-xl active:opacity-80 whitespace-nowrap"
@@ -78,8 +51,8 @@ export function AddressSearchButton({
         </span>
       </button>
 
-      {/* 팝업 차단 시 폴백: 인라인 iframe 모달 */}
-      {fallbackOpen && (
+      {/* 인라인 iframe 모달 */}
+      {open && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/50">
           <div className="flex-1 flex items-end justify-center sm:items-center">
             <div
@@ -90,7 +63,7 @@ export function AddressSearchButton({
                 <p className="text-sm font-bold text-gray-800">주소 검색</p>
                 <button
                   type="button"
-                  onClick={() => setFallbackOpen(false)}
+                  onClick={() => setOpen(false)}
                   className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
                 >
                   <X className="w-5 h-5 text-gray-500" />
