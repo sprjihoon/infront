@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "인프론트",
   description: "해외배송 대행 서비스",
-  manifest: "/manifest.json",
+  manifest: "/manifest.json?v=3",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

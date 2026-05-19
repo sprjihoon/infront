@@ -49,6 +49,12 @@ export default function SidebarCalculator() {
     setResult(null);
     if (!weight || parseFloat(weight) <= 0) { setError("무게를 입력해주세요."); return; }
 
+    const maxG = service.id === "k-packet" ? 2000 : 30000;
+    if (applied > maxG) {
+      setError(`중량 초과: ${service.label} 최대 ${maxG / 1000}kg (입력 ${(applied / 1000).toFixed(1)}kg)`);
+      return;
+    }
+
     setLoading(true);
     try {
       const p = new URLSearchParams({

@@ -101,6 +101,14 @@ export interface QuoteResult {
 }
 
 export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
+  // 중량 상한 체크
+  const maxG = p.premiumcd === '14' ? 2000 : 30000;
+  if (p.totweight > maxG) {
+    throw new EmsApiError(
+      `중량 초과: ${p.premiumcd === '14' ? 'K-Packet' : 'EMS'} 최대 ${maxG / 1000}kg (입력: ${(p.totweight / 1000).toFixed(1)}kg)`,
+    );
+  }
+
   const params: Record<string, string> = {
     premiumcd: p.premiumcd,
     em_ee:     p.em_ee,
@@ -112,7 +120,10 @@ export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
   if (p.boxlength) params.boxlength = String(p.boxlength);
   if (p.boxwidth)  params.boxwidth  = String(p.boxwidth);
   if (p.boxheight) params.boxheight = String(p.boxheight);
-  if (p.apprno || getAppr()) params.apprno = p.apprno ?? getAppr();
+
+  // apprno: 정확히 10자리일 때만 전달 (Quote API는 없어도 동작)
+  const apprno = p.apprno ?? getAppr();
+  if (apprno && apprno.length === 10) params.apprno = apprno;
 
   const xml = await getQuery('api.EmsTotProcCmd.ems', params);
   const fee = parseXml(xml, 'emsTotProc');
