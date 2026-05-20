@@ -114,6 +114,16 @@ export default function WarehousePage() {
     eligibleInFiltered.length > 0 &&
     eligibleInFiltered.every((p) => selectedIds.has(p.id));
 
+  function handleParcelClick(parcel: Parcel) {
+    const isSelectable = SHIPPABLE_STATUSES.has(parcel.status) && parcel.is_shippable !== false;
+    // 선택 중인 항목이 있으면 선택 토글, 없으면 상세 페이지로
+    if (selectedIds.size > 0 && isSelectable) {
+      toggleSelect(parcel.id, isSelectable);
+    } else {
+      router.push(`/warehouse/${parcel.id}`);
+    }
+  }
+
   return (
     <div className="px-4 py-6 pb-36">
       {/* 헤더 */}
@@ -191,10 +201,8 @@ export default function WarehousePage() {
             return (
               <div
                 key={parcel.id}
-                onClick={() => toggleSelect(parcel.id, isSelectable)}
-                className={`bg-white rounded-2xl p-4 shadow-sm transition-all ${
-                  isSelectable ? "cursor-pointer" : ""
-                } ${
+                onClick={() => handleParcelClick(parcel)}
+                className={`bg-white rounded-2xl p-4 shadow-sm transition-all cursor-pointer ${
                   isSelected
                     ? "ring-2 ring-blue-500 shadow-blue-100"
                     : isSelectable

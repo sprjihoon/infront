@@ -175,9 +175,10 @@ export default function HomeClient() {
                 color: "text-gray-600 bg-gray-100",
               };
               return (
-                <div
+                <Link
                   key={parcel.id}
-                  className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between"
+                  href={`/warehouse/${parcel.id}`}
+                  className="bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:scale-[0.98] transition-transform"
                 >
                   <div>
                     <p className="text-sm font-medium text-gray-900">
@@ -190,7 +191,7 @@ export default function HomeClient() {
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.color}`}>
                     {s.label}
                   </span>
-                </div>
+                </Link>
               );
             })}
           </div>
