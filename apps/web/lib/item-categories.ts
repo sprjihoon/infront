@@ -90,7 +90,6 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
   // ── 기타 ──
   { id: "musical_instrument", name_ko: "악기",                    name_en: "Musical Instrument",      hs_code: "920599", group: "기타" },
   { id: "art_supplies",       name_ko: "미술용품·화구",            name_en: "Art Supplies",            hs_code: "321310", group: "기타" },
-  { id: "personal_effects",   name_ko: "개인 소지품 (유학생 짐)",  name_en: "Personal Effects",        hs_code: "630900", group: "기타" },
   { id: "other",              name_ko: "기타",                    name_en: "Other Goods",             hs_code: "",       group: "기타" },
 ];
 

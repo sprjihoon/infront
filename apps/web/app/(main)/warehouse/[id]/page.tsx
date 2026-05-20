@@ -7,9 +7,12 @@ import {
   ArrowLeft, Package, Truck, MapPin, Weight, Ruler,
   AlertTriangle, CheckCircle, Clock, Play, Image as ImageIcon,
   RotateCcw, Send, ChevronRight, FileText, Navigation, RefreshCw,
+  Edit3, X, Check, Plus, Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TRACKING_STATUS } from "@/lib/tracking/client";
+import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
+import type { ItemCategory } from "@/lib/item-categories";
 
 interface Parcel {
   id: string;
@@ -53,6 +56,11 @@ interface InvoiceItem {
   unit_price_usd: number;
   origin_country: string;
   hs_code?: string;
+  _isCustom?: boolean;
+}
+
+function newInvoiceItem(): InvoiceItem {
+  return { name_en: "", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "" };
 }
 
 interface ParcelMedia {
@@ -121,6 +129,20 @@ export default function ParcelDetailPage() {
   const [syncing, setSyncing] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<ParcelMedia | null>(null);
 
+  // 편집 모드
+  const [editingItems, setEditingItems] = useState(false);
+  const [editingTracking, setEditingTracking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editError, setEditError] = useState("");
+
+  // 물품 편집 임시 상태
+  const [editCondition, setEditCondition] = useState<"NEW" | "USED">("NEW");
+  const [editItems, setEditItems] = useState<InvoiceItem[]>([]);
+
+  // 송장번호 편집 임시 상태
+  const [editTracking, setEditTracking] = useState("");
+  const [editCourier, setEditCourier] = useState("");
+
   const loadData = useCallback(async () => {
     if (!parcelId) return;
     const supabase = createClient();
@@ -163,6 +185,61 @@ export default function ParcelDetailPage() {
     setSyncing(false);
   }
 
+  function openEditItems(p: Parcel) {
+    setEditCondition((p.item_condition as "NEW" | "USED") ?? "NEW");
+    setEditItems(
+      (p.pre_invoice_items ?? []).length > 0
+        ? p.pre_invoice_items!.map(i => ({ ...i }))
+        : [newInvoiceItem()]
+    );
+    setEditError("");
+    setEditingItems(true);
+  }
+
+  function openEditTracking(p: Parcel) {
+    setEditTracking(p.tracking_no ?? "");
+    setEditCourier(p.courier ?? "");
+    setEditError("");
+    setEditingTracking(true);
+  }
+
+  async function saveItems() {
+    if (!parcel) return;
+    const items = editItems.filter(i => i.name_en.trim());
+    if (items.length === 0) { setEditError("품목명을 입력해주세요"); return; }
+    setSaving(true); setEditError("");
+    const res = await fetch(`/api/parcels/${parcel.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        item_condition: editCondition,
+        pre_invoice_items: items.map(({ _isCustom: _, ...rest }) => rest),
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) { const j = await res.json(); setEditError(j.error ?? "오류가 발생했습니다"); return; }
+    setEditingItems(false);
+    loadData();
+  }
+
+  async function saveTracking() {
+    if (!parcel) return;
+    if (!editTracking.trim()) { setEditError("송장번호를 입력해주세요"); return; }
+    setSaving(true); setEditError("");
+    const res = await fetch(`/api/parcels/${parcel.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tracking_no: editTracking.trim(),
+        courier: editCourier.trim() || null,
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) { const j = await res.json(); setEditError(j.error ?? "오류가 발생했습니다"); return; }
+    setEditingTracking(false);
+    loadData();
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -176,6 +253,7 @@ export default function ParcelDetailPage() {
   const statusCfg = STATUS_CONFIG[parcel.status] ?? { label: parcel.status, color: "text-gray-700", bg: "bg-gray-50 border-gray-200", step: 0 };
   const canShip = SHIPPABLE_STATUSES.has(parcel.status) && parcel.is_shippable !== false;
   const canReturn = RETURNABLE_STATUSES.has(parcel.status);
+  const canEdit = ["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"].includes(parcel.status);
 
   const mediaByStage = media.reduce<Record<string, ParcelMedia[]>>((acc, m) => {
     (acc[m.stage] = acc[m.stage] ?? []).push(m);
@@ -305,54 +383,232 @@ export default function ParcelDetailPage() {
       )}
 
       {/* 등록 물품 내역 (PRE_REGISTERED) */}
-      {parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 && (
+      {(parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 || canEdit) && (
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-          <h2 className="text-sm font-semibold text-gray-900">등록 물품 내역</h2>
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${parcel.item_condition === "USED" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
-              {parcel.item_condition === "USED" ? "중고품" : "새 제품"}
-            </span>
-            <span className="text-xs text-gray-400">총 {parcel.pre_invoice_items.length}종</span>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900">등록 물품 내역</h2>
+            {canEdit && !editingItems && (
+              <button
+                onClick={() => openEditItems(parcel)}
+                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <Edit3 size={12} /> 수정
+              </button>
+            )}
           </div>
-          <div className="space-y-2">
-            {parcel.pre_invoice_items.map((item, idx) => (
-              <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
-                <div>
-                  <p className="text-sm text-gray-800 font-medium">{item.name_en}</p>
-                  <p className="text-xs text-gray-400">수량 {item.quantity} · 원산지 {item.origin_country}</p>
-                </div>
-                <p className="text-sm font-semibold text-gray-700">$ {item.unit_price_usd}</p>
+
+          {/* ─── 읽기 모드 ─── */}
+          {!editingItems && (
+            <>
+              {parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${parcel.item_condition === "USED" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
+                      {parcel.item_condition === "USED" ? "중고품" : "새 제품"}
+                    </span>
+                    <span className="text-xs text-gray-400">총 {parcel.pre_invoice_items.length}종</span>
+                  </div>
+                  <div className="space-y-2">
+                    {parcel.pre_invoice_items.map((item, idx) => (
+                      <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <div>
+                          <p className="text-sm text-gray-800 font-medium">{item.name_en}</p>
+                          <p className="text-xs text-gray-400">수량 {item.quantity} · 원산지 {item.origin_country}</p>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-700">$ {item.unit_price_usd}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex justify-between text-sm pt-1">
+                    <span className="text-gray-500">총 신고금액</span>
+                    <span className="font-bold text-gray-900">
+                      USD {parcel.pre_invoice_items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0).toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-3">등록된 물품 내역이 없습니다.</p>
+              )}
+            </>
+          )}
+
+          {/* ─── 편집 모드 ─── */}
+          {editingItems && (
+            <div className="space-y-3">
+              {/* 신품/중고 */}
+              <div className="grid grid-cols-2 gap-2">
+                {([["NEW", "새 제품", "신품·미사용"], ["USED", "중고품", "사용품·유학생 짐"]] as const).map(([v, l, s]) => (
+                  <button key={v} type="button" onClick={() => setEditCondition(v)}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${editCondition === v ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"}`}>
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${editCondition === v ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
+                      {editCondition === v && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className={`text-xs font-semibold ${editCondition === v ? "text-blue-700" : "text-gray-800"}`}>{l}</p>
+                      <p className="text-[10px] text-gray-400">{s}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-          <div className="flex justify-between text-sm pt-1">
-            <span className="text-gray-500">총 신고금액</span>
-            <span className="font-bold text-gray-900">
-              USD {parcel.pre_invoice_items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0).toFixed(2)}
-            </span>
-          </div>
+
+              {/* 품목 목록 */}
+              <div className="space-y-3">
+                {editItems.map((item, idx) => (
+                  <div key={idx} className="bg-gray-50 rounded-xl p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500">품목 {idx + 1}</span>
+                      {editItems.length > 1 && (
+                        <button type="button" onClick={() => setEditItems(p => p.filter((_, i) => i !== idx))}
+                          className="p-1 text-gray-300 hover:text-red-400"><Trash2 size={13} /></button>
+                      )}
+                    </div>
+                    <ItemCategoryPicker
+                      value={item._isCustom ? "Other Goods" : item.name_en}
+                      onChange={(cat: ItemCategory) => setEditItems(p => p.map((it, i) =>
+                        i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "", _isCustom: cat.id === "other" } : it
+                      ))}
+                    />
+                    {item._isCustom && (
+                      <input value={item.name_en}
+                        onChange={e => setEditItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
+                        placeholder="품목명 직접 입력 (영문)"
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                    )}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold">수량</label>
+                        <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden">
+                          <button type="button" onClick={() => setEditItems(p => p.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
+                            className="px-3 py-2 text-gray-500 font-bold">−</button>
+                          <span className="flex-1 text-center text-sm font-semibold">{item.quantity}</span>
+                          <button type="button" onClick={() => setEditItems(p => p.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}
+                            className="px-3 py-2 text-gray-500 font-bold">+</button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold">단가 (USD)</label>
+                        <div className="flex items-center bg-white border border-gray-200 rounded-xl px-3 py-2">
+                          <span className="text-gray-400 text-xs mr-1">$</span>
+                          <input type="number" min={0} step={0.01} value={item.unit_price_usd || ""}
+                            onChange={e => setEditItems(p => p.map((it, i) => i === idx ? { ...it, unit_price_usd: parseFloat(e.target.value) || 0 } : it))}
+                            placeholder="0.00"
+                            className="flex-1 bg-transparent text-sm focus:outline-none min-w-0" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <button type="button"
+                onClick={() => setEditItems(p => [...p, newInvoiceItem()])}
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors">
+                <Plus size={12} /> 품목 추가
+              </button>
+
+              {editError && <p className="text-xs text-red-500">{editError}</p>}
+
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setEditingItems(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium flex items-center justify-center gap-1">
+                  <X size={14} /> 취소
+                </button>
+                <button type="button" onClick={saveItems} disabled={saving}
+                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1 disabled:opacity-50">
+                  {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={14} /> 저장</>}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* 기본 정보 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">기본 정보</h2>
-        <div className="space-y-2">
-          <InfoRow icon={<Package size={15} className="text-gray-400" />} label="운송장" value={parcel.tracking_no ?? "미등록"} />
-          {parcel.pickup_tracking_no && (
-            <InfoRow icon={<Truck size={15} className="text-gray-400" />} label="수거 운송장" value={parcel.pickup_tracking_no} />
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">기본 정보</h2>
+          {canEdit && !editingTracking && (
+            <button
+              onClick={() => openEditTracking(parcel)}
+              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+            >
+              <Edit3 size={12} /> 송장 수정
+            </button>
           )}
-          {parcel.sender_name && (
-            <InfoRow icon={<MapPin size={15} className="text-gray-400" />} label="발송인" value={parcel.sender_name} />
-          )}
-          {parcel.sender_address && (
-            <InfoRow icon={<MapPin size={15} className="text-gray-400" />} label="발송지" value={parcel.sender_address} />
-          )}
-          {parcel.inbound_at && (
-            <InfoRow icon={<Clock size={15} className="text-gray-400" />} label="입고일" value={new Date(parcel.inbound_at).toLocaleDateString("ko-KR")} />
-          )}
-          <InfoRow icon={<Clock size={15} className="text-gray-400" />} label="접수일" value={new Date(parcel.created_at).toLocaleDateString("ko-KR")} />
         </div>
+
+        {/* 읽기 모드 */}
+        {!editingTracking && (
+          <div className="space-y-2">
+            <InfoRow icon={<Package size={15} className="text-gray-400" />} label="운송장" value={parcel.tracking_no ?? "미등록"} />
+            {parcel.courier && (
+              <InfoRow icon={<Truck size={15} className="text-gray-400" />} label="택배사" value={parcel.courier} />
+            )}
+            {parcel.pickup_tracking_no && (
+              <InfoRow icon={<Truck size={15} className="text-gray-400" />} label="수거 운송장" value={parcel.pickup_tracking_no} />
+            )}
+            {parcel.sender_name && (
+              <InfoRow icon={<MapPin size={15} className="text-gray-400" />} label="발송인" value={parcel.sender_name} />
+            )}
+            {parcel.sender_address && (
+              <InfoRow icon={<MapPin size={15} className="text-gray-400" />} label="발송지" value={parcel.sender_address} />
+            )}
+            {parcel.inbound_at && (
+              <InfoRow icon={<Clock size={15} className="text-gray-400" />} label="입고일" value={new Date(parcel.inbound_at).toLocaleDateString("ko-KR")} />
+            )}
+            <InfoRow icon={<Clock size={15} className="text-gray-400" />} label="접수일" value={new Date(parcel.created_at).toLocaleDateString("ko-KR")} />
+          </div>
+        )}
+
+        {/* 송장번호 편집 모드 */}
+        {editingTracking && (
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                국내 운송장 번호 <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={editTracking}
+                onChange={e => setEditTracking(e.target.value)}
+                placeholder="운송장 번호 입력"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                택배사 <span className="text-gray-400 font-normal">(선택)</span>
+              </label>
+              <select
+                value={editCourier}
+                onChange={e => setEditCourier(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+              >
+                <option value="">택배사 선택</option>
+                <option value="kr.cjlogistics">CJ대한통운</option>
+                <option value="kr.lotte">롯데택배</option>
+                <option value="kr.logen">로젠택배</option>
+                <option value="kr.hanjin">한진택배</option>
+                <option value="kr.epost">우체국택배</option>
+                <option value="kr.cupost">CU편의점택배</option>
+                <option value="kr.gs25">GS25편의점택배</option>
+                <option value="kr.kdexp">경동택배</option>
+              </select>
+            </div>
+
+            {editError && <p className="text-xs text-red-500">{editError}</p>}
+
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setEditingTracking(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium flex items-center justify-center gap-1">
+                <X size={14} /> 취소
+              </button>
+              <button type="button" onClick={saveTracking} disabled={saving}
+                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1 disabled:opacity-50">
+                {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={14} /> 저장</>}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 실측 정보 */}
