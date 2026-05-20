@@ -204,10 +204,10 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
 
       {sheet && (
         <div
-          className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center"
+          className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center px-4"
           onClick={(e) => { if (e.target === e.currentTarget) { setSheet(false); resetNewForm(); } }}
         >
-          <div className="w-full max-w-[600px] bg-white rounded-t-3xl overflow-hidden flex flex-col max-h-[85vh]">
+          <div className="w-full max-w-[560px] bg-white rounded-3xl overflow-hidden flex flex-col max-h-[80vh] shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <p className="text-sm font-bold text-gray-900">
                 {mode === "list" ? "수거지 선택" : "새 수거지 등록"}
@@ -452,4 +452,5 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
     </>
   );
 }
+
 
