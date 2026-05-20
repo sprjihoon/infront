@@ -52,6 +52,13 @@ interface InvoiceItem {
   origin_country: string;
 }
 
+// 박스별 구성 (Step 0.5)
+interface BoxSetup {
+  id: number;
+  address: OverseasAddressValue | null;
+  itemKeys: string[];
+}
+
 // ── 상수 ────────────────────────────────────────────────────
 const SHIPPING_METHODS = [
   { code: "EMS",         name: "EMS",         desc: "일반 국제우편 · 3-7일",  premiumcd: "31", em_ee: "em", badge: "bg-blue-600" },
@@ -82,21 +89,27 @@ function ShippingRequestContent() {
 
   // Step 0: 내품 선택 (URL에 parcels 없을 때)
   const [step0Done, setStep0Done] = useState(urlParcelIds.length > 0);
-  // selectedItemKeys: Set of `${parcelId}__${itemIndex}` keys
   const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set());
   const [shippableParcels, setShippableParcels] = useState<Parcel[]>([]);
   const [step0Loading, setStep0Loading] = useState(false);
+
+  // Step 0.5: 박스 구성
+  const [step05Active, setStep05Active] = useState(false);
+  const [boxes, setBoxes] = useState<BoxSetup[]>([{ id: 1, address: null, itemKeys: [] }]);
+  const [expandedBoxAddress, setExpandedBoxAddress] = useState<number | null>(null);
 
   // URL로 들어온 경우 parcelIds 직접 사용, Step 0 거친 경우 선택된 아이템의 parcelId 집합
   const parcelIds = useMemo(() => {
     if (urlParcelIds.length > 0) return urlParcelIds;
     if (!step0Done) return [];
     const ids = new Set<string>();
-    for (const key of selectedItemKeys) {
-      ids.add(key.split("__")[0]);
+    for (const b of boxes) {
+      for (const key of b.itemKeys) {
+        ids.add(key.split("__")[0]);
+      }
     }
     return Array.from(ids);
-  }, [urlParcelIds, step0Done, selectedItemKeys]);
+  }, [urlParcelIds, step0Done, boxes]);
 
   const [step, setStep] = useState(1);
   const [parcels, setParcels] = useState<Parcel[]>([]);
@@ -178,10 +191,51 @@ function ShippingRequestContent() {
     return result;
   }, [shippableParcels]);
 
-  // Step 0 완료 시 선택된 내품으로 인보이스 초기화
+  // Step 0 → Step 0.5: 선택된 아이템을 박스 1로 초기화 후 박스 구성 화면으로
   const handleStep0Confirm = useCallback(() => {
+    const keys = Array.from(selectedItemKeys);
+    setBoxes([{ id: 1, address: null, itemKeys: keys }]);
+    setStep05Active(true);
+  }, [selectedItemKeys]);
+
+  // Step 0.5: 박스 개수 변경
+  const handleBoxCountChange = useCallback((count: number) => {
+    setBoxes((prev) => {
+      const allKeys = prev.flatMap((b) => b.itemKeys);
+      const newBoxes: BoxSetup[] = Array.from({ length: count }, (_, i) => ({
+        id: i + 1,
+        address: prev[i]?.address ?? null,
+        itemKeys: prev[i]?.itemKeys ?? [],
+      }));
+      // 줄어든 박스의 아이템을 박스 1로 이동
+      if (count < prev.length) {
+        const keepKeys = new Set(newBoxes.flatMap((b) => b.itemKeys));
+        const overflow = allKeys.filter((k) => !keepKeys.has(k));
+        newBoxes[0].itemKeys = [...newBoxes[0].itemKeys, ...overflow];
+      }
+      return newBoxes;
+    });
+  }, []);
+
+  // Step 0.5: 아이템을 다른 박스로 이동
+  const moveItemToBox = useCallback((itemKey: string, targetBoxId: number) => {
+    setBoxes((prev) =>
+      prev.map((b) => ({
+        ...b,
+        itemKeys:
+          b.id === targetBoxId
+            ? b.itemKeys.includes(itemKey) ? b.itemKeys : [...b.itemKeys, itemKey]
+            : b.itemKeys.filter((k) => k !== itemKey),
+      }))
+    );
+  }, []);
+
+  // Step 0.5 완료 → 실제 Step 1 시작
+  const handleStep05Confirm = useCallback(() => {
+    // 인보이스 초기화: 박스 1의 아이템 기준 (다중 박스는 각자 처리)
+    const allSelectedKeys = boxes.flatMap((b) => b.itemKeys);
     const preItems = selectableItems
-      .filter((it) => selectedItemKeys.has(it.key))
+      .filter((it) => allSelectedKeys.includes(it.key))
       .map((it) => ({
         key: it.key,
         name_en: it.name_en,
@@ -191,8 +245,11 @@ function ShippingRequestContent() {
         origin_country: it.origin_country,
       }));
     if (preItems.length > 0) setItems(preItems);
+    // Step 3 주소를 박스 1 주소로 초기화
+    if (boxes[0]?.address) setOverseasAddress(boxes[0].address);
+    setStep05Active(false);
     setStep0Done(true);
-  }, [selectableItems, selectedItemKeys]);
+  }, [boxes, selectableItems]);
 
   // 물품 로드 (Step 0 완료 후)
   useEffect(() => {
@@ -299,6 +356,140 @@ function ShippingRequestContent() {
     }
   }
 
+  // ── Step 0.5: 박스 구성 ───────────────────────────────────────
+  if (step05Active) {
+    const allSelectedItems = selectableItems.filter((it) =>
+      boxes.some((b) => b.itemKeys.includes(it.key))
+    );
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-40">
+        <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+          <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
+            <button onClick={() => setStep05Active(false)} className="p-1 -ml-1">
+              <ArrowLeft size={22} className="text-gray-700" />
+            </button>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-gray-900">{"\ubc15\uc2a4 \uad6c\uc131"}</p>
+              <p className="text-xs text-gray-400">{"\uba87 \ubc15\uc2a4\ub85c \ub098\ub220\uc11c \ubcf4\ub0bc\uc9c0 \uc124\uc815\ud558\uc138\uc694"}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-5 pb-40">
+          {/* 박스 개수 선택 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">
+            <p className="text-sm font-bold text-gray-900 mb-3">{"\ubc15\uc2a4 \uac1c\uc218"}</p>
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => handleBoxCountChange(n)}
+                  className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
+                    boxes.length === n
+                      ? "border-blue-500 bg-blue-50 text-blue-700"
+                      : "border-gray-100 bg-white text-gray-500"
+                  }`}
+                >
+                  {n}{"\ubc15\uc2a4"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 박스별 설정 */}
+          {boxes.map((box) => {
+            const boxItems = allSelectedItems.filter((it) => box.itemKeys.includes(it.key));
+            const otherBoxIds = boxes.filter((b) => b.id !== box.id).map((b) => b.id);
+            const isAddressOpen = expandedBoxAddress === box.id;
+
+            return (
+              <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                {/* 박스 헤더 */}
+                <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
+                  <div className="flex items-center gap-2">
+                    <Package size={16} className="text-white" />
+                    <p className="text-sm font-bold text-white">{box.id}{"\ubc88 \ubc15\uc2a4"}</p>
+                    <span className="text-xs text-blue-200">{boxItems.length}{"\uac1c \ub0b4\ud488"}</span>
+                  </div>
+                  <button
+                    onClick={() => setExpandedBoxAddress(isAddressOpen ? null : box.id)}
+                    className="flex items-center gap-1 text-xs text-white/80 bg-white/20 px-2.5 py-1 rounded-full"
+                  >
+                    <Globe size={11} />
+                    {box.address ? box.address.name : "\ubc30\uc1a1\uc9c0 \uc124\uc815"}
+                  </button>
+                </div>
+
+                {/* 주소 피커 (펼침) */}
+                {isAddressOpen && (
+                  <div className="px-4 py-4 bg-blue-50 border-b border-blue-100">
+                    <OverseasAddressPicker
+                      value={box.address}
+                      onChange={(addr) =>
+                        setBoxes((prev) =>
+                          prev.map((b) => b.id === box.id ? { ...b, address: addr } : b)
+                        )
+                      }
+                      customerId={customerId}
+                    />
+                  </div>
+                )}
+
+                {/* 내품 목록 */}
+                <div className="divide-y divide-gray-50">
+                  {boxItems.length === 0 ? (
+                    <p className="text-xs text-gray-400 text-center py-5">{"\uc774 \ubc15\uc2a4\uc5d0 \ubc30\uc815\ub41c \ub0b4\ud488\uc774 \uc5c6\uc5b4\uc694"}</p>
+                  ) : (
+                    boxItems.map((item) => (
+                      <div key={item.key} className="flex items-center gap-3 px-4 py-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
+                          <p className="text-xs text-gray-400">
+                            {item.quantity}{"\uac1c"}
+                            {item.unit_price_usd > 0 ? ` \u00b7 $${item.unit_price_usd}` : ""}
+                          </p>
+                        </div>
+                        {/* 다른 박스로 이동 */}
+                        {otherBoxIds.length > 0 && (
+                          <div className="flex gap-1 shrink-0">
+                            {otherBoxIds.map((bid) => (
+                              <button
+                                key={bid}
+                                onClick={() => moveItemToBox(item.key, bid)}
+                                className="text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-1 rounded-lg"
+                              >
+                                {"\u2192"}{bid}{"\ubc15\uc2a4"}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* 확인 버튼 */}
+        <div className="fixed bottom-20 left-0 right-0 px-4 z-40">
+          <div className="max-w-[600px] mx-auto">
+            <button
+              onClick={handleStep05Confirm}
+              disabled={boxes.every((b) => b.itemKeys.length === 0)}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
+            >
+              <CheckCircle size={16} />
+              {boxes.length}{"\ubc15\uc2a4 \uad6c\uc131 \uc644\ub8cc"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Step 0: 내품 선택 ─────────────────────────────────────────
   if (!step0Done) {
     // parcel별로 아이템 그룹화 (표시용)
@@ -308,6 +499,8 @@ function ShippingRequestContent() {
     }));
 
     const totalSelected = selectedItemKeys.size;
+    const allKeys = selectableItems.map((it) => it.key);
+    const allSelected = allKeys.length > 0 && allKeys.every((k) => selectedItemKeys.has(k));
 
     return (
       <div className="min-h-screen bg-gray-50 pb-32">
@@ -321,9 +514,25 @@ function ShippingRequestContent() {
               <p className="text-sm font-bold text-gray-900">{"\ucd9c\uace0\uc2e0\uccad"}</p>
               <p className="text-xs text-gray-400">{"\ud574\uc678\ub85c \ubcf4\ub0bc \ub0b4\ud488\uc744 \uc120\ud0dd\ud574\uc8fc\uc138\uc694"}</p>
             </div>
+            {selectableItems.length > 0 && (
+              <button
+                onClick={() =>
+                  setSelectedItemKeys(
+                    allSelected ? new Set() : new Set(allKeys)
+                  )
+                }
+                className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-all ${
+                  allSelected
+                    ? "text-blue-600 bg-blue-50 border-blue-300"
+                    : "text-gray-500 bg-white border-gray-200"
+                }`}
+              >
+                {allSelected ? "\uc120\ud0dd\ud574\uc81c" : "\uc804\uccb4\uc120\ud0dd"}
+              </button>
+            )}
             {totalSelected > 0 && (
               <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
-                {totalSelected}{"\uac1c \uc120\ud0dd"}
+                {totalSelected}{"\uac1c"}
               </span>
             )}
           </div>
