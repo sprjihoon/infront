@@ -66,16 +66,38 @@ export async function POST(req: NextRequest) {
     if (item.unit_price_usd < 0) return NextResponse.json({ error: "단가는 0 이상이어야 합니다" }, { status: 400 });
   }
 
-  // 동일 운송장 중복 등록 방지
-  const { data: dup } = await supabase
+  // 동일 운송장 존재 시 → 물품 목록 병합 (추가 등록)
+  const { data: existing } = await supabase
     .from("parcels")
-    .select("id")
+    .select("id, pre_invoice_items")
     .eq("tracking_no", tracking_no.trim())
     .eq("customer_id", user.id)
     .maybeSingle();
 
-  if (dup) {
-    return NextResponse.json({ error: "이미 등록된 운송장 번호입니다" }, { status: 409 });
+  if (existing) {
+    const merged = [
+      ...((existing.pre_invoice_items as InvoiceItem[]) ?? []),
+      ...pre_invoice_items,
+    ];
+    const { data: updated, error: updateError } = await supabase
+      .from("parcels")
+      .update({
+        pre_invoice_items: merged,
+        item_condition: item_condition ?? "NEW",
+        ...(courier?.trim() && { courier: courier.trim() }),
+        ...(sender_name?.trim() && { sender_name: sender_name.trim() }),
+        ...(sender_phone?.trim() && { sender_phone: sender_phone.trim() }),
+        ...(sender_address?.trim() && { sender_address: sender_address.trim() }),
+        ...(notes?.trim() && { notes: notes.trim() }),
+      })
+      .eq("id", existing.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+    return NextResponse.json({ data: updated, merged: true }, { status: 200 });
   }
 
   const { data: parcel, error } = await supabase

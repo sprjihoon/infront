@@ -60,6 +60,7 @@ export default function RegisterParcelPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [wasMerged, setWasMerged] = useState(false);
 
   const totalUSD = items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
 
@@ -101,6 +102,7 @@ export default function RegisterParcelPage() {
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? "오류가 발생했습니다"); return; }
+      setWasMerged(json.merged === true);
       setDone(true);
     } finally {
       setSubmitting(false);
@@ -114,10 +116,11 @@ export default function RegisterParcelPage() {
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-5">
           <CheckCircle size={32} className="text-green-600" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">물품 등록 완료!</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          {wasMerged ? "물품 추가 완료!" : "물품 등록 완료!"}
+        </h2>
         <p className="text-gray-500 text-sm leading-relaxed mb-1">
-          운송장 <span className="font-semibold text-gray-800">{trackingNo}</span>이<br />
-          마이창고에 등록되었습니다.
+          운송장 <span className="font-semibold text-gray-800">{trackingNo}</span>{wasMerged ? "에\n물품이 추가되었습니다." : "이\n마이창고에 등록되었습니다."}
         </p>
         <p className="text-xs text-gray-400 mb-8">
           센터에 도착하면 입고 처리 후 알려드릴게요.
@@ -472,8 +475,8 @@ export default function RegisterParcelPage() {
               <p className="font-semibold mb-1">📋 인보이스 안내</p>
               <ul className="space-y-0.5 list-disc list-inside">
                 <li>실제 구매 가격을 정확히 기재해주세요</li>
-                <li>중고품은 중고 시세 기준으로 기재하시면 됩니다</li>
-                <li>수출입 신고 기준: 물품 가격이 USD 150 초과 시 관세 대상일 수 있습니다</li>
+                <li>중고품은 현재 중고 시세 기준으로 기재하시면 됩니다</li>
+                <li>품목명은 세관 심사에 사용되므로 영문으로 입력해주세요</li>
               </ul>
             </div>
 
