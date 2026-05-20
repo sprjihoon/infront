@@ -10,7 +10,7 @@ import {
 const TRACKABLE_STATUSES = new Set(["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"]);
 
 export async function POST(_req: NextRequest) {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
