@@ -326,27 +326,28 @@ export default function RegisterParcelPage() {
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { value: "NEW",  label: "새 제품",  sub: "신품 · 미사용", icon: "✨" },
-                  { value: "USED", label: "중고품",   sub: "사용한 제품 · 유학생 짐 등", icon: "📦" },
+                  { value: "NEW",  label: "새 제품",  sub: "신품 · 미사용" },
+                  { value: "USED", label: "중고품",   sub: "사용품 · 유학생 짐" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
                     onClick={() => setCondition(opt.value as "NEW" | "USED")}
-                    className={`flex flex-col items-center p-4 rounded-2xl border-2 transition-all text-center ${
+                    className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border-2 transition-all text-left ${
                       condition === opt.value
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 bg-white hover:border-blue-200"
                     }`}
                   >
-                    <span className="text-2xl mb-1.5">{opt.icon}</span>
-                    <p className="text-sm font-bold text-gray-900">{opt.label}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 leading-snug">{opt.sub}</p>
-                    {condition === opt.value && (
-                      <div className="mt-2 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
-                        <CheckCircle size={13} className="text-white" />
-                      </div>
-                    )}
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                      condition === opt.value ? "border-blue-500 bg-blue-500" : "border-gray-300"
+                    }`}>
+                      {condition === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${condition === opt.value ? "text-blue-700" : "text-gray-800"}`}>{opt.label}</p>
+                      <p className="text-xs text-gray-400">{opt.sub}</p>
+                    </div>
                   </button>
                 ))}
               </div>
