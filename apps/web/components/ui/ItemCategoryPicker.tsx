@@ -17,7 +17,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
 
   const selected = ITEM_CATEGORIES.find((c) => c.name_en === value && c.id !== "other") ?? null;
 
-  // ?? ??? ?? ?? ?? ??
+  // 검색 중이면 모든 그룹 강제 펼침
   const isSearching = query.trim().length > 0;
 
   const filtered = isSearching
@@ -66,7 +66,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
 
   return (
     <>
-      {/* ??? */}
+      {/* 트리거 */}
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -83,7 +83,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
               )}
             </div>
           ) : (
-            <span className="text-gray-400">?? ??</span>
+            <span className="text-gray-400">품목 선택</span>
           )}
         </div>
         <ChevronDown size={14} className="text-gray-400 shrink-0 ml-2" />
@@ -102,7 +102,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3" />
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-bold text-gray-900">?? ??</h3>
+                <h3 className="text-base font-bold text-gray-900">품목 선택</h3>
                 <button
                   onClick={() => { setOpen(false); setQuery(""); }}
                   className="p-1.5 rounded-full hover:bg-gray-100"
@@ -117,7 +117,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="??? ?? HS?? ??"
+                  placeholder="품목명 또는 HS코드 검색"
                   className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 />
               </div>
@@ -126,7 +126,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
             {/* ?? */}
             <div className="overflow-y-auto flex-1">
               {Object.keys(grouped).length === 0 ? (
-                <div className="py-12 text-center text-sm text-gray-400">?? ??? ???</div>
+                <div className="py-12 text-center text-sm text-gray-400">검색 결과가 없어요</div>
               ) : (
                 Object.entries(grouped).map(([group, items]) => {
                   const isOpen = isGroupOpen(group);
