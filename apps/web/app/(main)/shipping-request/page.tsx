@@ -4,9 +4,10 @@ import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Globe, Shield, Box,
-  Plus, Trash2, ChevronDown, CheckCircle, Loader2, X,
+  Plus, Trash2, CheckCircle, Loader2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import OverseasAddressPicker, { OverseasAddressValue, COUNTRIES } from "@/components/ui/OverseasAddressPicker";
 
 // ── 타입 ────────────────────────────────────────────────────
 interface Parcel {
@@ -16,20 +17,6 @@ interface Parcel {
   status: string;
   weight_actual: number | null;
   notes: string | null;
-}
-
-interface OverseasAddress {
-  id: string;
-  label: string;
-  name: string;
-  phone: string | null;
-  country_code: string;
-  overseas_addr1: string | null;
-  overseas_addr2: string | null;
-  overseas_addr3: string | null;
-  overseas_zip: string | null;
-  email: string | null;
-  is_default: boolean;
 }
 
 interface InvoiceItem {
@@ -54,33 +41,6 @@ const PACKAGING_OPTS = [
   { code: "consolidate",name: "합포장",    desc: "선택 물품을 하나로 합치기", price: 2000 },
 ] as const;
 
-const COUNTRIES = [
-  { code: "JP", name: "일본",       flag: "🇯🇵" },
-  { code: "CN", name: "중국",       flag: "🇨🇳" },
-  { code: "US", name: "미국",       flag: "🇺🇸" },
-  { code: "AU", name: "호주",       flag: "🇦🇺" },
-  { code: "CA", name: "캐나다",     flag: "🇨🇦" },
-  { code: "GB", name: "영국",       flag: "🇬🇧" },
-  { code: "DE", name: "독일",       flag: "🇩🇪" },
-  { code: "FR", name: "프랑스",     flag: "🇫🇷" },
-  { code: "SG", name: "싱가포르",   flag: "🇸🇬" },
-  { code: "HK", name: "홍콩",       flag: "🇭🇰" },
-  { code: "TW", name: "대만",       flag: "🇹🇼" },
-  { code: "TH", name: "태국",       flag: "🇹🇭" },
-  { code: "VN", name: "베트남",     flag: "🇻🇳" },
-  { code: "PH", name: "필리핀",     flag: "🇵🇭" },
-  { code: "MY", name: "말레이시아", flag: "🇲🇾" },
-  { code: "ID", name: "인도네시아", flag: "🇮🇩" },
-  { code: "MO", name: "마카오",     flag: "🇲🇴" },
-  { code: "MN", name: "몽골",       flag: "🇲🇳" },
-  { code: "NZ", name: "뉴질랜드",   flag: "🇳🇿" },
-  { code: "IT", name: "이탈리아",   flag: "🇮🇹" },
-  { code: "ES", name: "스페인",     flag: "🇪🇸" },
-  { code: "RU", name: "러시아",     flag: "🇷🇺" },
-  { code: "AE", name: "아랍에미리트", flag: "🇦🇪" },
-  { code: "IN", name: "인도",       flag: "🇮🇳" },
-];
-
 const STEP_LABELS = ["물품 확인", "배송 옵션", "해외 배송지", "인보이스", "견적 확인"];
 
 function newItem(): InvoiceItem {
@@ -96,19 +56,15 @@ function ShippingRequestContent() {
   const [step, setStep] = useState(1);
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [loading, setLoading] = useState(true);
+  const [customerId, setCustomerId] = useState<string | null>(null);
 
   // Step 2
   const [shippingMethod, setShippingMethod] = useState<"EMS" | "EMS_PREMIUM" | "KPACKET">("EMS");
   const [packOpts, setPackOpts] = useState({ safe_pack: false, repack: false, consolidate: false });
   const [packNote, setPackNote] = useState("");
 
-  // Step 3
-  const [savedAddresses, setSavedAddresses] = useState<OverseasAddress[]>([]);
-  const [selectedAddrId, setSelectedAddrId] = useState<string | null>(null);
-  const [showNewAddr, setShowNewAddr] = useState(false);
-  const [newAddr, setNewAddr] = useState({ name: "", phone: "", country_code: "JP", overseas_addr1: "", overseas_addr2: "", overseas_addr3: "", overseas_zip: "", email: "" });
-  const [countryOpen, setCountryOpen] = useState(false);
-  const [addrLoading, setAddrLoading] = useState(true);
+  // Step 3 — OverseasAddressPicker
+  const [overseasAddress, setOverseasAddress] = useState<OverseasAddressValue | null>(null);
 
   // Step 4
   const [items, setItems] = useState<InvoiceItem[]>([newItem()]);
@@ -123,6 +79,9 @@ function ShippingRequestContent() {
   useEffect(() => {
     if (parcelIds.length === 0) { router.replace("/warehouse"); return; }
     const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCustomerId(user.id);
+    });
     supabase
       .from("parcels")
       .select("id, tracking_no, sender_name, status, weight_actual, notes")
@@ -133,33 +92,9 @@ function ShippingRequestContent() {
       });
   }, [parcelIds, router]);
 
-  // 해외 배송지 로드
-  const loadAddresses = useCallback(async () => {
-    setAddrLoading(true);
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("customer_addresses")
-      .select("*")
-      .eq("customer_id", user.id)
-      .eq("type", "overseas")
-      .order("is_default", { ascending: false })
-      .order("created_at", { ascending: false });
-    setSavedAddresses(data ?? []);
-    const def = data?.find((a) => a.is_default);
-    if (def && !selectedAddrId) setSelectedAddrId(def.id);
-    setAddrLoading(false);
-  }, [selectedAddrId]);
-
-  useEffect(() => { loadAddresses(); }, [loadAddresses]);
-
   // EMS 견적 조회
   const fetchQuote = useCallback(async () => {
-    const addr = selectedAddrId
-      ? savedAddresses.find((a) => a.id === selectedAddrId)
-      : null;
-    const countrycd = addr?.country_code ?? newAddr.country_code;
+    const countrycd = overseasAddress?.countryCode;
     if (!countrycd) return;
 
     const totalWeightG = parcels.reduce((sum, p) => sum + (p.weight_actual ?? 500), 0);
@@ -177,7 +112,7 @@ function ShippingRequestContent() {
     } finally {
       setQuoteLoading(false);
     }
-  }, [selectedAddrId, savedAddresses, newAddr.country_code, parcels, shippingMethod]);
+  }, [overseasAddress, parcels, shippingMethod]);
 
   useEffect(() => {
     if (step === 5) fetchQuote();
@@ -189,19 +124,14 @@ function ShippingRequestContent() {
   const customsValue = items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
   const totalWeightKg = parcels.reduce((s, p) => s + (p.weight_actual ?? 0), 0) / 1000;
 
-  // 현재 선택된 주소
-  const selectedAddress = selectedAddrId
-    ? savedAddresses.find((a) => a.id === selectedAddrId)
+  const country = overseasAddress
+    ? COUNTRIES.find((c) => c.code === overseasAddress.countryCode)
     : null;
-  const country = COUNTRIES.find((c) => c.code === (selectedAddress?.country_code ?? newAddr.country_code));
 
   // ── 유효성 검사 ───────────────────────────────────────────
   function canProceed(): boolean {
     if (step === 3) {
-      if (showNewAddr || !selectedAddrId) {
-        return !!(newAddr.name.trim() && newAddr.overseas_addr3.trim());
-      }
-      return !!selectedAddrId;
+      return !!(overseasAddress?.name?.trim() && overseasAddress?.addr3?.trim());
     }
     if (step === 4) {
       return items.every((i) => i.name_en.trim() && i.quantity > 0 && i.unit_price_usd >= 0);
@@ -209,52 +139,21 @@ function ShippingRequestContent() {
     return true;
   }
 
-  // ── 주소 저장 후 선택 ─────────────────────────────────────
-  async function saveAndSelectAddress() {
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: inserted } = await supabase
-      .from("customer_addresses")
-      .insert({
-        customer_id: user.id,
-        type: "overseas",
-        label: `${country?.name ?? newAddr.country_code} 배송지`,
-        name: newAddr.name,
-        phone: newAddr.phone || null,
-        country_code: newAddr.country_code,
-        overseas_addr1: newAddr.overseas_addr1 || null,
-        overseas_addr2: newAddr.overseas_addr2 || null,
-        overseas_addr3: newAddr.overseas_addr3,
-        overseas_zip: newAddr.overseas_zip || null,
-        email: newAddr.email || null,
-        is_default: savedAddresses.length === 0,
-      })
-      .select()
-      .single();
-
-    if (inserted) {
-      await loadAddresses();
-      setSelectedAddrId(inserted.id);
-      setShowNewAddr(false);
-    }
-  }
-
   // ── 주문 제출 ─────────────────────────────────────────────
   async function submit() {
+    if (!overseasAddress) return;
     setSubmitting(true);
     setError("");
     try {
-      const addr = selectedAddress ?? {
-        country_code: newAddr.country_code,
-        name: newAddr.name,
-        phone: newAddr.phone || undefined,
-        overseas_addr1: newAddr.overseas_addr1,
-        overseas_addr2: newAddr.overseas_addr2,
-        overseas_addr3: newAddr.overseas_addr3,
-        overseas_zip: newAddr.overseas_zip || undefined,
-        email: newAddr.email || undefined,
+      const addr = {
+        country_code: overseasAddress.countryCode,
+        name: overseasAddress.name,
+        phone: overseasAddress.phone || undefined,
+        overseas_addr1: overseasAddress.addr1,
+        overseas_addr2: overseasAddress.addr2,
+        overseas_addr3: overseasAddress.addr3,
+        overseas_zip: overseasAddress.zip || undefined,
+        email: overseasAddress.email || undefined,
       };
 
       const res = await fetch("/api/orders", {
@@ -271,9 +170,7 @@ function ShippingRequestContent() {
         }),
       });
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.error ?? "주문 생성 실패");
-
       router.push(`/orders?new=${data.order_no}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
@@ -426,141 +323,12 @@ function ShippingRequestContent() {
         {/* ── Step 3: 해외 배송지 ───────────────────────────── */}
         {step === 3 && (
           <>
-            {addrLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 size={24} className="animate-spin text-blue-400" />
-              </div>
-            ) : (
-              <>
-                {savedAddresses.length > 0 && !showNewAddr && (
-                  <>
-                    <p className="text-sm font-bold text-gray-800">저장된 배송지 선택</p>
-                    <div className="space-y-2">
-                      {savedAddresses.map((addr) => {
-                        const c = COUNTRIES.find((cc) => cc.code === addr.country_code);
-                        return (
-                          <button
-                            key={addr.id}
-                            onClick={() => setSelectedAddrId(addr.id)}
-                            className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
-                              selectedAddrId === addr.id
-                                ? "border-violet-500 bg-violet-50"
-                                : "border-gray-100 bg-white"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-bold text-violet-700 bg-violet-100 px-2 py-0.5 rounded-full">
-                                    {addr.label}
-                                  </span>
-                                  {addr.is_default && (
-                                    <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full font-semibold">기본</span>
-                                  )}
-                                </div>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {c?.flag} {addr.name}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                                  {addr.overseas_addr3}, {addr.overseas_addr2}
-                                  {addr.overseas_zip ? ` (${addr.overseas_zip})` : ""}
-                                </p>
-                              </div>
-                              {selectedAddrId === addr.id && (
-                                <CheckCircle size={18} className="text-violet-500 shrink-0 mt-0.5" />
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <button
-                      onClick={() => setShowNewAddr(true)}
-                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-violet-300 hover:text-violet-600 transition-colors"
-                    >
-                      <Plus size={15} /> 새 배송지 추가
-                    </button>
-                  </>
-                )}
-
-                {(savedAddresses.length === 0 || showNewAddr) && (
-                  <div className="space-y-4">
-                    {showNewAddr && (
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-bold text-gray-800">새 해외 배송지</p>
-                        <button onClick={() => setShowNewAddr(false)} className="p-1.5 rounded-full hover:bg-gray-100">
-                          <X size={16} className="text-gray-500" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* 국가 */}
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">국가 *</label>
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setCountryOpen((v) => !v)}
-                          className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm"
-                        >
-                          <span>
-                            {COUNTRIES.find((c) => c.code === newAddr.country_code)?.flag}{" "}
-                            {COUNTRIES.find((c) => c.code === newAddr.country_code)?.name}
-                          </span>
-                          <ChevronDown size={15} className="text-gray-400" />
-                        </button>
-                        {countryOpen && (
-                          <div className="absolute z-20 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-44 overflow-y-auto">
-                            {COUNTRIES.map((c) => (
-                              <button
-                                key={c.code}
-                                type="button"
-                                onClick={() => { setNewAddr((a) => ({ ...a, country_code: c.code })); setCountryOpen(false); }}
-                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-blue-50 text-left ${
-                                  newAddr.country_code === c.code ? "text-blue-600 font-semibold" : "text-gray-700"
-                                }`}
-                              >
-                                {c.flag} {c.name}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {[
-                      { key: "name",           label: "수취인 이름 *",    placeholder: "이름" },
-                      { key: "phone",          label: "연락처",           placeholder: "+81-90-0000-0000" },
-                      { key: "overseas_addr3", label: "상세주소 (Street) *", placeholder: "123 Main St" },
-                      { key: "overseas_addr2", label: "시 (City)",        placeholder: "Tokyo" },
-                      { key: "overseas_addr1", label: "주·도 (State)",    placeholder: "Tokyo-to" },
-                      { key: "overseas_zip",   label: "우편번호",          placeholder: "100-0001" },
-                      { key: "email",          label: "이메일",            placeholder: "recipient@example.com" },
-                    ].map(({ key, label, placeholder }) => (
-                      <div key={key}>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">{label}</label>
-                        <input
-                          value={newAddr[key as keyof typeof newAddr]}
-                          onChange={(e) => setNewAddr((a) => ({ ...a, [key]: e.target.value }))}
-                          placeholder={placeholder}
-                          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                    ))}
-
-                    {showNewAddr && (
-                      <button
-                        onClick={saveAndSelectAddress}
-                        disabled={!newAddr.name.trim() || !newAddr.overseas_addr3.trim()}
-                        className="w-full py-3 bg-violet-600 text-white text-sm font-bold rounded-2xl disabled:opacity-50"
-                      >
-                        이 주소로 선택
-                      </button>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
+            <p className="text-sm text-gray-500">수취인 주소를 선택하거나 새로 입력해주세요</p>
+            <OverseasAddressPicker
+              value={overseasAddress}
+              onChange={setOverseasAddress}
+              customerId={customerId}
+            />
           </>
         )}
 
@@ -685,10 +453,10 @@ function ShippingRequestContent() {
                 <span className="text-gray-500 shrink-0">수취인</span>
                 <div className="text-right">
                   <p className="font-semibold text-gray-800">
-                    {country?.flag} {selectedAddress?.name ?? newAddr.name}
+                    {country?.flag} {overseasAddress?.name}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {selectedAddress?.overseas_addr3 ?? newAddr.overseas_addr3}
+                    {overseasAddress?.addr3}
                   </p>
                 </div>
               </div>
