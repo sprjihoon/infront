@@ -8,8 +8,8 @@ const BOX_CATALOG = {
   BOX_L: { name: "대형 박스 (40×35×30 cm)", price: 5000 },
 };
 
-function makeSupabase() {
-  const cookieStore = cookies();
+async function makeSupabase() {
+  const cookieStore = await cookies();
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -23,7 +23,7 @@ function makeSupabase() {
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = makeSupabase();
+  const supabase = await makeSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const supabase = makeSupabase();
+  const supabase = await makeSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

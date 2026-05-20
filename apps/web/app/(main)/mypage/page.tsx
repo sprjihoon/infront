@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+// 인프론트 공용 입고주소 (쇼핑몰 배송지)
+const INFRONT_ADDRESS = "대구광역시 동구 동촌로 1 (동대구우체국 소포실) 인프론트";
+const INFRONT_ZIPCODE = "41068";
+
 interface Customer {
   name: string;
   email: string;
   customer_code: string;
-  personal_address: string;
   phone: string | null;
 }
 
@@ -24,7 +27,7 @@ export default function MyPage() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       const [{ data: cust }, { data: addrs }] = await Promise.all([
-        supabase.from("customers").select("name, email, customer_code, personal_address, phone").eq("id", user.id).single(),
+        supabase.from("customers").select("name, email, customer_code, phone").eq("id", user.id).single(),
         supabase.from("customer_addresses").select("type").eq("customer_id", user.id),
       ]);
       setCustomer(cust);
@@ -38,8 +41,8 @@ export default function MyPage() {
   }, []);
 
   function copyAddress() {
-    if (!customer?.personal_address) return;
-    navigator.clipboard.writeText(customer.personal_address);
+    const text = `[${INFRONT_ZIPCODE}] ${INFRONT_ADDRESS}\n수취인: 인프론트 ${customer?.customer_code ?? ""}`;
+    navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -73,24 +76,39 @@ export default function MyPage() {
         </div>
       </div>
 
-      {/* 개인 입고주소 */}
+      {/* 입고 주소 */}
       <div className="bg-white rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <MapPin size={16} className="text-blue-600" />
-          <p className="text-sm font-semibold text-gray-900">개인 입고주소</p>
+          <p className="text-sm font-semibold text-gray-900">입고 주소</p>
         </div>
-        <p className="text-sm text-gray-700 leading-relaxed mb-3">
-          {customer?.personal_address ?? "주소 로딩 중..."}
-        </p>
+
+        {/* 수취인 */}
+        <div className="bg-blue-50 rounded-xl px-4 py-3 mb-3">
+          <p className="text-[11px] text-blue-500 font-medium mb-0.5">수취인명 (반드시 기재)</p>
+          <p className="text-sm font-bold text-blue-800 tracking-wide">
+            인프론트 {customer?.customer_code ?? "—"}
+          </p>
+        </div>
+
+        {/* 주소 */}
+        <div className="mb-3">
+          <p className="text-[11px] text-gray-400 mb-0.5">배송지 주소</p>
+          <p className="text-sm text-gray-700 leading-relaxed">
+            [{INFRONT_ZIPCODE}] {INFRONT_ADDRESS}
+          </p>
+        </div>
+
         <button
           onClick={copyAddress}
           className="flex items-center gap-2 text-xs text-blue-600 font-medium bg-blue-50 px-3 py-2 rounded-lg active:bg-blue-100 transition-colors"
         >
           <Copy size={13} />
-          {copied ? "복사됨!" : "주소 복사하기"}
+          {copied ? "복사됨!" : "주소 + 수취인 복사"}
         </button>
-        <p className="text-xs text-gray-400 mt-3">
-          💡 이 주소로 국내 쇼핑몰에서 주문하시면 자동으로 입고됩니다
+        <p className="text-xs text-gray-400 mt-3 leading-relaxed">
+          💡 국내 쇼핑몰 주문 시 위 주소로 배송받으시면 자동 입고됩니다.
+          수취인명에 <span className="font-semibold text-gray-600">고객번호를 반드시</span> 함께 기재해주세요.
         </p>
       </div>
 

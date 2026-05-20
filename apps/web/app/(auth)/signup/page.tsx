@@ -45,7 +45,7 @@ export default function SignupPage() {
           <span className="text-white text-2xl font-bold">S</span>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">회원가입</h1>
-        <p className="text-gray-500 text-sm mt-1">가입 즉시 개인 입고주소가 발급됩니다</p>
+        <p className="text-gray-500 text-sm mt-1">가입 즉시 고객번호가 발급됩니다</p>
       </div>
 
       <form onSubmit={handleSignup} className="space-y-4">
