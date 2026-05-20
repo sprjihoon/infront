@@ -412,7 +412,13 @@ function ShippingRequestContent() {
       <div className="min-h-screen bg-gray-50 pb-[160px]">
         <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
-            <button onClick={() => setPhase("box_config")} className="p-1 -ml-1">
+            <button
+              onClick={() => {
+                setTempQty(new Map()); // 선택 취소 — 박스에 반영 안 됨
+                setPhase("box_config");
+              }}
+              className="p-1 -ml-1"
+            >
               <ArrowLeft size={22} className="text-gray-700" />
             </button>
             <div className="flex-1">
@@ -548,6 +554,18 @@ function ShippingRequestContent() {
               <p className="text-sm font-bold text-gray-900">{"\ucd9c\uace0\uc2e0\uccad"}</p>
               <p className="text-xs text-gray-400">{"\ubc15\uc2a4 \uac1c\uc218\ub97c \uc815\ud558\uace0 \ub0b4\ud488\uc744 \ub2f4\uc544\uc8fc\uc138\uc694"}</p>
             </div>
+            {totalAssigned > 0 && (
+              <button
+                onClick={() => {
+                  if (confirm("\ubc15\uc2a4 \uad6c\uc131\uc744 \ubaa8\ub450 \ucd08\uae30\ud654\ud560\uae4c\uc694?\n\uc120\ud0dd\ud55c \ub0b4\ud488\uc740 \uc790\ub3d9\uc73c\ub85c \uc6d0\ubcf5\ub429\ub2c8\ub2e4.")) {
+                    setBoxes(boxes.map((b) => ({ ...b, items: [] })));
+                  }
+                }}
+                className="text-xs text-gray-400 border border-gray-200 px-2.5 py-1 rounded-full hover:text-red-500 hover:border-red-200 transition-colors"
+              >
+                {"\ucd08\uae30\ud654"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -688,7 +706,20 @@ function ShippingRequestContent() {
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
-          <button onClick={() => (step === 1 ? router.back() : setStep(step - 1))} className="p-1 -ml-1">
+          <button
+            onClick={() => {
+              if (step === 1 && urlParcelIds.length === 0) {
+                // box_config로 복귀 (파슬 상태는 변경된 것 없음 — 재고 자동 원복)
+                setPhase("box_config");
+                setStep(1);
+              } else if (step === 1) {
+                router.back();
+              } else {
+                setStep(step - 1);
+              }
+            }}
+            className="p-1 -ml-1"
+          >
             <ArrowLeft size={22} className="text-gray-700" />
           </button>
           <div className="flex-1">
