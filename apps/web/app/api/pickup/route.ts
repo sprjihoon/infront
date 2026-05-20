@@ -27,6 +27,8 @@ export async function POST(req: NextRequest) {
       weight,
       volume,
       test_mode,
+      item_condition,
+      pre_invoice_items,
     } = body as {
       pickup_address: string;
       pickup_address_detail?: string;
@@ -38,6 +40,8 @@ export async function POST(req: NextRequest) {
       weight?: number;
       volume?: number;
       test_mode?: boolean;
+      item_condition?: string;
+      pre_invoice_items?: object[];
     };
 
     // 필수 검증
@@ -164,6 +168,10 @@ export async function POST(req: NextRequest) {
         epost_pickup_date: epostResult.resDate,
         epost_price: epostResult.price,
         notes: goods_name ?? null,
+        // 물품 내역 (선택 입력)
+        ...(item_condition && { item_condition }),
+        ...(pre_invoice_items?.length && { pre_invoice_items }),
+        registered_by: 'CUSTOMER',
       })
       .select()
       .single();

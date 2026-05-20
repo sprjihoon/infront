@@ -240,7 +240,8 @@ export async function GET(req: NextRequest) {
         recipient_name, recipient_country,
         customs_value, item_list, intl_tracking_no,
         created_at, updated_at,
-        order_parcels (parcel_id)
+        order_parcels (parcel_id),
+        shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
       `)
       .eq('customer_id', user.id)
       .order('created_at', { ascending: false })

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Package, Truck, MapPin, Weight, Ruler,
   AlertTriangle, CheckCircle, Clock, Play, Image as ImageIcon,
-  RotateCcw, Send, ChevronRight, FileText, Navigation,
+  RotateCcw, Send, ChevronRight, FileText, Navigation, RefreshCw,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TRACKING_STATUS } from "@/lib/tracking/client";
@@ -118,39 +118,50 @@ export default function ParcelDetailPage() {
   const [inspection, setInspection] = useState<InspectionResult | null>(null);
   const [linkedOrders, setLinkedOrders] = useState<LinkedOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<ParcelMedia | null>(null);
 
-  useEffect(() => {
+  const loadData = useCallback(async () => {
     if (!parcelId) return;
     const supabase = createClient();
 
-    async function load() {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { router.push("/login"); return; }
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { router.push("/login"); return; }
 
-      const [
-        { data: parcelData },
-        { data: mediaData },
-        { data: inspData },
-        { data: orderData },
-      ] = await Promise.all([
-        supabase.from("parcels").select("*").eq("id", parcelId).eq("customer_id", user.id).maybeSingle(),
-        supabase.from("parcel_media").select("*").eq("parcel_id", parcelId).order("created_at"),
-        supabase.from("inspection_results").select("*").eq("parcel_id", parcelId).order("inspected_at", { ascending: false }).limit(1).maybeSingle(),
-        supabase.from("order_parcels").select("order_id, orders(order_no, status, created_at)").eq("parcel_id", parcelId),
-      ]);
+    const [
+      { data: parcelData },
+      { data: mediaData },
+      { data: inspData },
+      { data: orderData },
+    ] = await Promise.all([
+      supabase.from("parcels").select("*").eq("id", parcelId).eq("customer_id", user.id).maybeSingle(),
+      supabase.from("parcel_media").select("*").eq("parcel_id", parcelId).order("created_at"),
+      supabase.from("inspection_results").select("*").eq("parcel_id", parcelId).order("inspected_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("order_parcels").select("order_id, orders(order_no, status, created_at)").eq("parcel_id", parcelId),
+    ]);
 
-      if (!parcelData) { router.push("/warehouse"); return; }
-      setParcel(parcelData);
-      setMedia(mediaData ?? []);
-      setInspection(inspData ?? null);
-      setLinkedOrders(orderData as unknown as LinkedOrder[] ?? []);
-      setLoading(false);
-    }
-
-    load();
+    if (!parcelData) { router.push("/warehouse"); return; }
+    setParcel(parcelData);
+    setMedia(mediaData ?? []);
+    setInspection(inspData ?? null);
+    setLinkedOrders(orderData as unknown as LinkedOrder[] ?? []);
+    setLoading(false);
   }, [parcelId, router]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  async function refreshTracking() {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await fetch("/api/parcels/sync-tracking", { method: "POST" });
+    } catch {}
+    await loadData();
+    setSyncing(false);
+  }
 
   if (loading) {
     return (
@@ -208,11 +219,21 @@ export default function ParcelDetailPage() {
               <Navigation size={15} className="text-blue-500" />
               국내 배송 추적
             </h2>
-            {parcel.tracking_synced_at && (
-              <span className="text-xs text-gray-400">
-                {new Date(parcel.tracking_synced_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 기준
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {parcel.tracking_synced_at && (
+                <span className="text-xs text-gray-400">
+                  {new Date(parcel.tracking_synced_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 기준
+                </span>
+              )}
+              <button
+                onClick={refreshTracking}
+                disabled={syncing}
+                className="p-1 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                title="추적 정보 새로고침"
+              >
+                <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
+              </button>
+            </div>
           </div>
 
           {/* 진행 단계 바 */}

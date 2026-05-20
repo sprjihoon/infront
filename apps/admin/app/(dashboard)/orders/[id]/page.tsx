@@ -5,7 +5,8 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Package, User, MapPin, Send, Truck,
-  CheckCircle, AlertCircle, ChevronDown, DollarSign,
+  CheckCircle, ChevronDown, DollarSign, Plus, Trash2,
+  Box, Weight, Edit3, X, Check,
 } from "lucide-react";
 
 interface Order {
@@ -30,7 +31,52 @@ interface Order {
 
 interface OrderParcel {
   parcel_id: string;
-  parcels: { tracking_no: string | null; weight_actual: number | null; vol_length: number | null; vol_width: number | null; vol_height: number | null } | null;
+  parcels: {
+    id: string;
+    tracking_no: string | null;
+    weight_actual: number | null;
+    vol_length: number | null;
+    vol_width: number | null;
+    vol_height: number | null;
+    pre_invoice_items: InvoiceItem[] | null;
+    item_condition: string | null;
+  } | null;
+}
+
+interface InvoiceItem {
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  origin_country: string;
+  hs_code?: string;
+}
+
+interface BoxItem {
+  id: string;
+  parcel_id: string;
+  item_index: number;
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  origin_country: string;
+  hs_code?: string;
+  item_condition?: string;
+}
+
+interface ShippingBox {
+  id: string;
+  box_seq: number;
+  weight_kg: number | null;
+  length_cm: number | null;
+  width_cm: number | null;
+  height_cm: number | null;
+  intl_tracking_no: string | null;
+  carrier: string | null;
+  shipped_at: string | null;
+  status: string;
+  shipping_fee: number | null;
+  admin_notes: string | null;
+  box_items: BoxItem[];
 }
 
 interface OrderService {
@@ -40,27 +86,27 @@ interface OrderService {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  DRAFT:         "초안",
-  PENDING_QUOTE: "견적 대기",
-  QUOTE_SENT:    "견적 발송",
-  PAYMENT_WAIT:  "결제 대기",
-  PAID:          "결제 완료",
-  PACKING:       "포장 중",
-  IN_TRANSIT:    "배송 중",
-  DELIVERED:     "배송 완료",
-  CANCELLED:     "취소",
+  DRAFT: "초안", PENDING_QUOTE: "견적 대기", QUOTE_SENT: "견적 발송",
+  PAYMENT_WAIT: "결제 대기", PAID: "결제 완료", PACKING: "포장 중",
+  IN_TRANSIT: "배송 중", DELIVERED: "배송 완료", CANCELLED: "취소",
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  DRAFT:         "bg-gray-100 text-gray-700",
-  PENDING_QUOTE: "bg-yellow-100 text-yellow-700",
-  QUOTE_SENT:    "bg-blue-100 text-blue-700",
-  PAYMENT_WAIT:  "bg-amber-100 text-amber-700",
-  PAID:          "bg-green-100 text-green-700",
-  PACKING:       "bg-orange-100 text-orange-700",
-  IN_TRANSIT:    "bg-blue-200 text-blue-800",
-  DELIVERED:     "bg-gray-200 text-gray-700",
-  CANCELLED:     "bg-red-100 text-red-700",
+  DRAFT: "bg-gray-100 text-gray-700", PENDING_QUOTE: "bg-yellow-100 text-yellow-700",
+  QUOTE_SENT: "bg-blue-100 text-blue-700", PAYMENT_WAIT: "bg-amber-100 text-amber-700",
+  PAID: "bg-green-100 text-green-700", PACKING: "bg-orange-100 text-orange-700",
+  IN_TRANSIT: "bg-blue-200 text-blue-800", DELIVERED: "bg-gray-200 text-gray-700",
+  CANCELLED: "bg-red-100 text-red-700",
+};
+
+const BOX_STATUS_COLOR: Record<string, string> = {
+  PREPARING: "bg-yellow-100 text-yellow-700",
+  PACKED: "bg-blue-100 text-blue-700",
+  SHIPPED: "bg-green-100 text-green-700",
+  DELIVERED: "bg-gray-200 text-gray-700",
+};
+const BOX_STATUS_LABEL: Record<string, string> = {
+  PREPARING: "준비중", PACKED: "포장완료", SHIPPED: "발송됨", DELIVERED: "배달완료",
 };
 
 export default function OrderDetailPage() {
@@ -70,19 +116,22 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [orderParcels, setOrderParcels] = useState<OrderParcel[]>([]);
   const [orderServices, setOrderServices] = useState<OrderService[]>([]);
+  const [shippingBoxes, setShippingBoxes] = useState<ShippingBox[]>([]);
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState(false);
   const [msg, setMsg] = useState("");
 
-  // 견적 확정 폼
+  // 견적 폼
   const [finalFee, setFinalFee] = useState("");
   const [quoteNote, setQuoteNote] = useState("");
   const [showQuoteForm, setShowQuoteForm] = useState(false);
 
-  // 발송 처리 폼
-  const [trackingNo, setTrackingNo] = useState("");
-  const [carrier, setCarrier] = useState("EMS");
-  const [showShipForm, setShowShipForm] = useState(false);
+  // 박스 편집 상태 (box.id → 편집 중 데이터)
+  const [editingBox, setEditingBox] = useState<string | null>(null);
+  const [boxEdits, setBoxEdits] = useState<Record<string, Partial<ShippingBox>>>({});
+
+  // 품목 배정 패널 (box.id → 열림 여부)
+  const [itemPanels, setItemPanels] = useState<Record<string, boolean>>({});
 
   useEffect(() => { loadOrder(); }, [id]);
 
@@ -93,39 +142,73 @@ export default function OrderDetailPage() {
     setOrder(json.order);
     setOrderParcels(json.orderParcels);
     setOrderServices(json.orderServices);
+    setShippingBoxes(json.shippingBoxes);
     if (json.order.est_shipping_fee) setFinalFee(String(json.order.est_shipping_fee));
     setLoading(false);
   }
 
-  async function handleQuote() {
+  async function callApi(body: object) {
     setActioning(true);
-    const res = await fetch(`/api/admin/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "confirm_quote", final_shipping_fee: finalFee, note: quoteNote }),
-    });
-    setActioning(false);
-    if (res.ok) {
-      setMsg("견적이 고객에게 발송되었습니다");
-      setShowQuoteForm(false);
-      loadOrder();
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const j = await res.json();
+        setMsg(`오류: ${j.error}`);
+        return false;
+      }
+      return true;
+    } finally {
+      setActioning(false);
     }
   }
 
-  async function handleShip() {
-    if (!trackingNo) return;
-    setActioning(true);
-    const res = await fetch(`/api/admin/orders/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "ship", tracking_no: trackingNo, carrier }),
-    });
-    setActioning(false);
-    if (res.ok) {
-      setMsg("발송 처리 완료");
-      setShowShipForm(false);
-      loadOrder();
+  async function handleQuote() {
+    const ok = await callApi({ action: "confirm_quote", final_shipping_fee: finalFee, note: quoteNote });
+    if (ok) { setMsg("견적이 고객에게 발송되었습니다"); setShowQuoteForm(false); loadOrder(); }
+  }
+
+  async function handleAddBox() {
+    const ok = await callApi({ action: "add_box" });
+    if (ok) loadOrder();
+  }
+
+  async function handleSaveBox(boxId: string) {
+    const edits = boxEdits[boxId] ?? {};
+    const ok = await callApi({ action: "update_box", box_id: boxId, ...edits });
+    if (ok) { setEditingBox(null); loadOrder(); }
+  }
+
+  async function handleDeleteBox(boxId: string) {
+    if (!confirm("박스를 삭제하시겠습니까?")) return;
+    const ok = await callApi({ action: "delete_box", box_id: boxId });
+    if (ok) loadOrder();
+  }
+
+  async function handleShipAll() {
+    const hasTracking = shippingBoxes.some(b => b.intl_tracking_no);
+    if (!hasTracking) { setMsg("운송장 번호가 입력된 박스가 없습니다"); return; }
+    if (!confirm("전체 발송 처리하시겠습니까?")) return;
+    const ok = await callApi({ action: "ship_all" });
+    if (ok) { setMsg("발송 처리 완료"); loadOrder(); }
+  }
+
+  async function toggleItemAssign(box: ShippingBox, parcelId: string, itemIdx: number, item: InvoiceItem, parcelCondition: string | null) {
+    const assigned = box.box_items.some(bi => bi.parcel_id === parcelId && bi.item_index === itemIdx);
+    if (assigned) {
+      await callApi({ action: "unassign_item", box_id: box.id, parcel_id: parcelId, item_index: itemIdx });
+    } else {
+      await callApi({
+        action: "assign_item", box_id: box.id, parcel_id: parcelId, item_index: itemIdx,
+        name_en: item.name_en, quantity: item.quantity, unit_price_usd: item.unit_price_usd,
+        origin_country: item.origin_country, hs_code: item.hs_code ?? "",
+        item_condition: parcelCondition ?? "NEW",
+      });
     }
+    loadOrder();
   }
 
   if (loading || !order) {
@@ -134,7 +217,17 @@ export default function OrderDetailPage() {
 
   const customer = order.customers;
   const canQuote = ["PENDING_QUOTE", "DRAFT"].includes(order.status);
-  const canShip  = ["PAID", "PACKING"].includes(order.status);
+  const canManageBoxes = ["PAID", "PACKING", "QUOTE_SENT"].includes(order.status);
+
+  // 전체 품목 목록 (parcel_id + index → item)
+  const allItems: Array<{ parcelId: string; parcelTracking: string; idx: number; item: InvoiceItem; condition: string | null }> = [];
+  orderParcels.forEach(op => {
+    const p = op.parcels;
+    if (!p?.pre_invoice_items?.length) return;
+    p.pre_invoice_items.forEach((item, idx) => {
+      allItems.push({ parcelId: p.id, parcelTracking: p.tracking_no ?? op.parcel_id, idx, item, condition: p.item_condition });
+    });
+  });
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -212,39 +305,50 @@ export default function OrderDetailPage() {
               <span className="text-gray-900">총 결제 금액</span>
               <span className="text-gray-900">{order.total_amount.toLocaleString()}원</span>
             </div>
-            {order.tracking_no && (
-              <div className="flex justify-between text-sm pt-1">
-                <span className="text-gray-500">운송장 ({order.carrier ?? ""})</span>
-                <span className="font-mono text-xs">{order.tracking_no}</span>
-              </div>
-            )}
           </div>
         </div>
       </div>
 
-      {/* 물품 목록 */}
+      {/* 포함 물품 (parcel 목록) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
         <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
-          <Package size={15} className="text-gray-400" /> 포함 물품
+          <Package size={15} className="text-gray-400" /> 포함 소포 ({orderParcels.length}개)
         </h2>
         <div className="space-y-2">
-          {orderParcels.map((op) => (
-            <div key={op.parcel_id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
-              <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Package size={14} className="text-gray-400" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{op.parcels?.tracking_no ?? "미등록"}</p>
-                {op.parcels?.weight_actual && (
-                  <p className="text-xs text-gray-400">{op.parcels.weight_actual}g</p>
+          {orderParcels.map((op) => {
+            const p = op.parcels;
+            return (
+              <div key={op.parcel_id} className="rounded-xl border border-gray-100 p-3">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-7 h-7 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <Package size={13} className="text-gray-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{p?.tracking_no ?? "미등록"}</p>
+                    {p?.weight_actual && <p className="text-xs text-gray-400">{p.weight_actual}g</p>}
+                  </div>
+                  {p?.item_condition && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.item_condition === "NEW" ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"}`}>
+                      {p.item_condition === "NEW" ? "신품" : "중고"}
+                    </span>
+                  )}
+                </div>
+                {p?.pre_invoice_items && p.pre_invoice_items.length > 0 && (
+                  <div className="ml-10 space-y-0.5">
+                    {p.pre_invoice_items.map((item, idx) => (
+                      <p key={idx} className="text-xs text-gray-500">
+                        • {item.name_en} × {item.quantity} · ${item.unit_price_usd}
+                      </p>
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
-      {/* 인보이스 */}
+      {/* 인보이스 품목 */}
       {order.item_list && order.item_list.length > 0 && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h2 className="font-semibold text-gray-900 mb-3">인보이스 품목</h2>
@@ -271,98 +375,237 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      {/* 액션 버튼 */}
-      <div className="space-y-3">
-        {/* 견적 확정 */}
-        {canQuote && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <button
-              onClick={() => setShowQuoteForm(!showQuoteForm)}
-              className="w-full flex items-center justify-between text-sm font-semibold text-blue-600"
-            >
-              <span className="flex items-center gap-2"><Send size={15} /> 견적 확정 후 고객에게 발송</span>
-              <ChevronDown size={15} className={showQuoteForm ? "rotate-180" : ""} />
-            </button>
-
-            {showQuoteForm && (
-              <div className="mt-4 space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-500 block mb-1">실제 국제 배송비 (원)</label>
-                  <input
-                    type="number"
-                    value={finalFee}
-                    onChange={(e) => setFinalFee(e.target.value)}
-                    placeholder="예: 25000"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 block mb-1">메모 (선택)</label>
-                  <input
-                    value={quoteNote}
-                    onChange={(e) => setQuoteNote(e.target.value)}
-                    placeholder="예: 실측 무게 기준 2.1kg"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <button
-                  onClick={handleQuote}
-                  disabled={actioning || !finalFee}
-                  className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-60"
-                >
-                  {actioning ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send size={14} /> 견적 발송하기</>}
-                </button>
-              </div>
+      {/* ═══════════════════════════════════════════════
+          박스 관리 (Phase 1 + 2)
+      ═══════════════════════════════════════════════ */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
+            <Box size={15} className="text-gray-400" />
+            배송 박스 관리
+            {shippingBoxes.length > 0 && (
+              <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">{shippingBoxes.length}개</span>
             )}
+          </h2>
+          <button
+            onClick={handleAddBox}
+            disabled={actioning}
+            className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 disabled:opacity-40"
+          >
+            <Plus size={13} /> 박스 추가
+          </button>
+        </div>
+
+        {shippingBoxes.length === 0 ? (
+          <div className="px-4 py-8 text-center text-sm text-gray-400">
+            박스가 없습니다. &quot;박스 추가&quot; 버튼으로 추가하세요.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {shippingBoxes.map((box) => {
+              const isEditing = editingBox === box.id;
+              const edits = boxEdits[box.id] ?? {};
+              const edit = <K extends keyof ShippingBox>(k: K) => (edits[k] !== undefined ? edits[k] : box[k]) as string | number | null;
+              const setEdit = (k: keyof ShippingBox, v: unknown) =>
+                setBoxEdits(p => ({ ...p, [box.id]: { ...p[box.id], [k]: v } }));
+
+              const assignedItems = box.box_items ?? [];
+              const showItems = itemPanels[box.id] ?? false;
+
+              return (
+                <div key={box.id} className="px-4 py-3">
+                  {/* 박스 헤더 */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-sm font-bold text-gray-700">박스 {box.box_seq}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${BOX_STATUS_COLOR[box.status] ?? "bg-gray-100 text-gray-600"}`}>
+                      {BOX_STATUS_LABEL[box.status] ?? box.box_seq}
+                    </span>
+                    {assignedItems.length > 0 && (
+                      <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">
+                        {assignedItems.length}종 배정됨
+                      </span>
+                    )}
+                    <div className="flex-1" />
+                    {!isEditing ? (
+                      <>
+                        <button onClick={() => setEditingBox(box.id)} className="p-1 text-gray-400 hover:text-blue-500">
+                          <Edit3 size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteBox(box.id)} className="p-1 text-gray-400 hover:text-red-500">
+                          <Trash2 size={13} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => handleSaveBox(box.id)} disabled={actioning} className="p-1 text-green-500 hover:text-green-600">
+                          <Check size={14} />
+                        </button>
+                        <button onClick={() => setEditingBox(null)} className="p-1 text-gray-400 hover:text-red-500">
+                          <X size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* 박스 정보 */}
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">운송업체</label>
+                          <select value={(edit("carrier") as string) ?? "EMS"}
+                            onChange={e => setEdit("carrier", e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                            <option value="EMS">EMS</option>
+                            <option value="EMS_PREMIUM">EMS 프리미엄</option>
+                            <option value="K_PACKET">K-Packet</option>
+                            <option value="DHL">DHL</option>
+                            <option value="FEDEX">FedEx</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">운송장 번호</label>
+                          <input value={(edit("intl_tracking_no") as string) ?? ""}
+                            onChange={e => setEdit("intl_tracking_no", e.target.value || null)}
+                            placeholder="국제 운송장"
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[["weight_kg","무게(kg)"],["length_cm","가로"],["width_cm","세로"],["height_cm","높이"]] .map(([k,l]) => (
+                          <div key={k}>
+                            <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">{l}</label>
+                            <input type="number" min={0} step={0.1}
+                              value={(edit(k as keyof ShippingBox) as number) ?? ""}
+                              onChange={e => setEdit(k as keyof ShippingBox, e.target.value ? parseFloat(e.target.value) : null)}
+                              placeholder="-"
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">상태</label>
+                        <select value={(edit("status") as string) ?? "PREPARING"}
+                          onChange={e => setEdit("status", e.target.value)}
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
+                          <option value="PREPARING">준비중</option>
+                          <option value="PACKED">포장완료</option>
+                          <option value="SHIPPED">발송됨</option>
+                          <option value="DELIVERED">배달완료</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">메모</label>
+                        <input value={(edit("admin_notes") as string) ?? ""}
+                          onChange={e => setEdit("admin_notes", e.target.value || null)}
+                          placeholder="어드민 메모"
+                          className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500 space-y-0.5">
+                      <div className="flex gap-4">
+                        {box.intl_tracking_no && (
+                          <span className="font-mono font-medium text-gray-800">{box.carrier ? `[${box.carrier}] ` : ""}{box.intl_tracking_no}</span>
+                        )}
+                        {!box.intl_tracking_no && <span className="text-gray-300">운송장 미입력</span>}
+                      </div>
+                      {(box.weight_kg || box.length_cm) && (
+                        <div className="flex items-center gap-3 text-gray-400">
+                          {box.weight_kg && <span className="flex items-center gap-1"><Weight size={10} /> {box.weight_kg}kg</span>}
+                          {box.length_cm && <span>{box.length_cm}×{box.width_cm}×{box.height_cm} cm</span>}
+                        </div>
+                      )}
+                      {box.admin_notes && <p className="text-gray-400 italic">{box.admin_notes}</p>}
+                    </div>
+                  )}
+
+                  {/* 품목 배정 (Phase 2) */}
+                  {allItems.length > 0 && (
+                    <div className="mt-2">
+                      <button
+                        onClick={() => setItemPanels(p => ({ ...p, [box.id]: !showItems }))}
+                        className="flex items-center gap-1 text-[11px] text-indigo-500 hover:text-indigo-700"
+                      >
+                        <ChevronDown size={11} className={showItems ? "rotate-180" : ""} />
+                        품목 배정 ({assignedItems.length}/{allItems.length})
+                      </button>
+                      {showItems && (
+                        <div className="mt-1.5 space-y-1 bg-gray-50 rounded-xl p-2">
+                          {allItems.map(({ parcelId, parcelTracking, idx, item, condition }) => {
+                            const isAssigned = assignedItems.some(bi => bi.parcel_id === parcelId && bi.item_index === idx);
+                            return (
+                              <button key={`${parcelId}-${idx}`} type="button"
+                                onClick={() => toggleItemAssign(box, parcelId, idx, item, condition)}
+                                className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs text-left transition-colors ${
+                                  isAssigned ? "border-indigo-400 bg-indigo-50 text-indigo-800" : "border-gray-200 bg-white text-gray-600 hover:border-indigo-300"}`}>
+                                <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 ${isAssigned ? "border-indigo-500 bg-indigo-500" : "border-gray-300"}`}>
+                                  {isAssigned && <Check size={8} className="text-white" />}
+                                </div>
+                                <span className="font-medium">{item.name_en}</span>
+                                <span className="text-gray-400">×{item.quantity}</span>
+                                <span className="text-gray-400 ml-auto text-[10px]">{parcelTracking.slice(-6)}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
-        {/* 발송 처리 */}
-        {canShip && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
+        {/* 전체 발송 완료 버튼 */}
+        {shippingBoxes.length > 0 && canManageBoxes && (
+          <div className="px-4 py-3 border-t border-gray-100">
             <button
-              onClick={() => setShowShipForm(!showShipForm)}
-              className="w-full flex items-center justify-between text-sm font-semibold text-green-600"
+              onClick={handleShipAll}
+              disabled={actioning || !shippingBoxes.some(b => b.intl_tracking_no)}
+              className="w-full py-3 bg-green-600 text-white font-semibold rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <span className="flex items-center gap-2"><Truck size={15} /> 발송 처리 (운송장 등록)</span>
-              <ChevronDown size={15} className={showShipForm ? "rotate-180" : ""} />
+              {actioning
+                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <><Truck size={15} /> 전체 발송 완료 처리</>
+              }
             </button>
-
-            {showShipForm && (
-              <div className="mt-4 space-y-3">
-                <div>
-                  <label className="text-xs font-medium text-gray-500 block mb-1">운송업체</label>
-                  <select
-                    value={carrier}
-                    onChange={(e) => setCarrier(e.target.value)}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="EMS">EMS</option>
-                    <option value="EMS_PREMIUM">EMS 프리미엄</option>
-                    <option value="K_PACKET">K-Packet</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-gray-500 block mb-1">운송장 번호</label>
-                  <input
-                    value={trackingNo}
-                    onChange={(e) => setTrackingNo(e.target.value)}
-                    placeholder="국제 운송장 번호"
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <button
-                  onClick={handleShip}
-                  disabled={actioning || !trackingNo}
-                  className="w-full bg-green-600 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-60"
-                >
-                  {actioning ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Truck size={14} /> 발송 완료 처리</>}
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
+
+      {/* 견적 확정 */}
+      {canQuote && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <button
+            onClick={() => setShowQuoteForm(!showQuoteForm)}
+            className="w-full flex items-center justify-between text-sm font-semibold text-blue-600"
+          >
+            <span className="flex items-center gap-2"><Send size={15} /> 견적 확정 후 고객에게 발송</span>
+            <ChevronDown size={15} className={showQuoteForm ? "rotate-180" : ""} />
+          </button>
+          {showQuoteForm && (
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1">실제 국제 배송비 (원)</label>
+                <input type="number" value={finalFee} onChange={(e) => setFinalFee(e.target.value)}
+                  placeholder="예: 25000"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-500 block mb-1">메모 (선택)</label>
+                <input value={quoteNote} onChange={(e) => setQuoteNote(e.target.value)} placeholder="예: 실측 무게 기준 2.1kg"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </div>
+              <button onClick={handleQuote} disabled={actioning || !finalFee}
+                className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-60">
+                {actioning ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send size={14} /> 견적 발송하기</>}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

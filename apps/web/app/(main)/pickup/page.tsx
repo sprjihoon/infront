@@ -3,10 +3,26 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft,
+  MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, Plus, Trash2, ChevronDown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
+import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
+import type { ItemCategory } from "@/lib/item-categories";
+
+interface InvoiceItem {
+  key: string;
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  origin_country: string;
+  hs_code: string;
+  _isCustom?: boolean;
+}
+
+function newItem(): InvoiceItem {
+  return { key: Math.random().toString(36).slice(2), name_en: "", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "" };
+}
 
 // 한국 공휴일 (2026)
 const KR_HOLIDAYS = new Set([
@@ -48,6 +64,11 @@ export default function PickupPage() {
   const [immediateShip, setImmediateShip] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState("");
+
+  // 물품 내역
+  const [itemsOpen, setItemsOpen]       = useState(false);
+  const [itemCondition, setItemCondition] = useState<"NEW" | "USED">("NEW");
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([newItem()]);
   const [result, setResult]             = useState<{
     parcel_id: string;
     tracking_no: string;
@@ -94,6 +115,13 @@ export default function PickupPage() {
           pickup_phone: pickupAddress.phone,
           pickup_date: pickupDate,
           pickup_notes: notes.trim() || undefined,
+          // 품목 내역 (입력된 경우에만)
+          ...(itemsOpen && invoiceItems.some(i => i.name_en) && {
+            item_condition: itemCondition,
+            pre_invoice_items: invoiceItems
+              .filter(i => i.name_en.trim())
+              .map(({ key: _k, _isCustom: _c, ...rest }) => rest),
+          }),
         }),
       });
 
@@ -243,6 +271,104 @@ export default function PickupPage() {
             rows={3}
             className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors resize-none"
           />
+        </div>
+
+        {/* 물품 내역 (선택) */}
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setItemsOpen(!itemsOpen)}
+            className="w-full flex items-center justify-between px-4 py-3.5 bg-white text-left"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-gray-800">물품 내역 미리 등록</span>
+              <span className="text-xs text-gray-400 font-normal">(선택 · 해외배송 시 자동 반영)</span>
+              {itemsOpen && invoiceItems.some(i => i.name_en) && (
+                <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">
+                  {invoiceItems.filter(i => i.name_en).length}종
+                </span>
+              )}
+            </div>
+            <ChevronDown size={16} className={`text-gray-400 transition-transform ${itemsOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          {itemsOpen && (
+            <div className="border-t border-gray-100 px-4 py-4 space-y-4 bg-gray-50">
+              {/* 신품/중고 */}
+              <div className="grid grid-cols-2 gap-2">
+                {[{ v: "NEW", l: "새 제품", s: "신품·미사용" }, { v: "USED", l: "중고품", s: "사용품·유학생 짐" }].map(opt => (
+                  <button key={opt.v} type="button" onClick={() => setItemCondition(opt.v as "NEW" | "USED")}
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${
+                      itemCondition === opt.v ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"}`}>
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                      itemCondition === opt.v ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
+                      {itemCondition === opt.v && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className={`text-xs font-semibold ${itemCondition === opt.v ? "text-blue-700" : "text-gray-800"}`}>{opt.l}</p>
+                      <p className="text-[10px] text-gray-400">{opt.s}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* 품목 목록 */}
+              <div className="space-y-3">
+                {invoiceItems.map((item, idx) => (
+                  <div key={item.key} className="bg-white rounded-xl p-3 shadow-sm">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold text-gray-500">품목 {idx + 1}</span>
+                      {invoiceItems.length > 1 && (
+                        <button type="button" onClick={() => setInvoiceItems(p => p.filter((_, i) => i !== idx))}
+                          className="p-1 text-gray-300 hover:text-red-400"><Trash2 size={13} /></button>
+                      )}
+                    </div>
+                    <div className="mb-2">
+                      <ItemCategoryPicker
+                        value={item._isCustom ? "Other Goods" : item.name_en}
+                        onChange={(cat: ItemCategory) => setInvoiceItems(p => p.map((it, i) =>
+                          i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "", _isCustom: cat.id === "other" } : it
+                        ))}
+                      />
+                      {item._isCustom && (
+                        <input value={item.name_en}
+                          onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
+                          placeholder="품목명 직접 입력 (영문)"
+                          className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold">수량</label>
+                        <div className="flex items-center bg-gray-50 border border-gray-100 rounded-xl overflow-hidden">
+                          <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
+                            className="px-3 py-2 text-gray-500 font-bold">−</button>
+                          <span className="flex-1 text-center text-sm font-semibold">{item.quantity}</span>
+                          <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}
+                            className="px-3 py-2 text-gray-500 font-bold">+</button>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold">단가 (USD)</label>
+                        <div className="flex items-center bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                          <span className="text-gray-400 text-xs mr-1">$</span>
+                          <input type="number" min={0} step={0.01} value={item.unit_price_usd || ""}
+                            onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, unit_price_usd: parseFloat(e.target.value) || 0 } : it))}
+                            placeholder="0.00"
+                            className="flex-1 bg-transparent text-sm focus:outline-none min-w-0" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button type="button"
+                onClick={() => setInvoiceItems(p => [...p, newItem()])}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors">
+                <Plus size={14} /> 품목 추가
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 즉시 해외배송 옵션 */}

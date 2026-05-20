@@ -6,6 +6,15 @@ import { useRouter } from "next/navigation";
 import { FileText, Package, Globe, CreditCard, CheckCircle, Clock, Truck, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+interface ShippingBox {
+  id: string;
+  box_seq: number;
+  intl_tracking_no: string | null;
+  carrier: string | null;
+  status: string;
+  weight_kg: number | null;
+}
+
 interface Order {
   id: string;
   order_no: string;
@@ -23,6 +32,7 @@ interface Order {
   intl_tracking_no: string | null;
   created_at: string;
   order_parcels: Array<{ parcel_id: string }>;
+  shipping_boxes: ShippingBox[];
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string; icon: React.ReactNode }> = {
@@ -210,13 +220,46 @@ function OrdersContent() {
                 {/* 펼침 상세 */}
                 {isExpanded && (
                   <div className="border-t border-gray-100 px-4 py-4 space-y-3 bg-gray-50/50">
-                    {/* 운송장 */}
-                    {order.intl_tracking_no && (
+                    {/* 박스별 운송장 (shipping_boxes 우선) */}
+                    {order.shipping_boxes && order.shipping_boxes.length > 0 ? (
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
+                          <Truck size={12} /> 배송 박스별 운송장
+                        </p>
+                        <div className="space-y-1.5">
+                          {order.shipping_boxes.map((box) => (
+                            <div key={box.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-gray-100">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500">박스 {box.box_seq}</span>
+                                {box.weight_kg && <span className="text-xs text-gray-400">{box.weight_kg}kg</span>}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                {box.intl_tracking_no ? (
+                                  <>
+                                    <span className="text-xs text-gray-400">{box.carrier ?? ""}</span>
+                                    <span className="font-mono text-xs font-semibold text-gray-800">{box.intl_tracking_no}</span>
+                                  </>
+                                ) : (
+                                  <span className="text-xs text-gray-300">운송장 준비중</span>
+                                )}
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                                  box.status === "SHIPPED" || box.status === "DELIVERED"
+                                    ? "bg-green-100 text-green-600"
+                                    : "bg-gray-100 text-gray-500"
+                                }`}>
+                                  {box.status === "PREPARING" ? "준비중" : box.status === "PACKED" ? "포장완료" : box.status === "SHIPPED" ? "발송됨" : "배달완료"}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : order.intl_tracking_no ? (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500 flex items-center gap-1.5"><Truck size={13} /> 국제 운송장</span>
                         <span className="font-semibold text-gray-800 font-mono">{order.intl_tracking_no}</span>
                       </div>
-                    )}
+                    ) : null}
 
                     {/* 물품 목록 */}
                     {order.item_list?.length > 0 && (

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList } from "lucide-react";
+import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Parcel {
@@ -33,6 +33,8 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
 const FILTER_TABS = [
   { key: "ALL",            label: "전체" },
   { key: "PRE_REGISTERED", label: "등록완료" },
+  { key: "PENDING_PICKUP", label: "수거신청" },
+  { key: "PICKED_UP",      label: "수거완료" },
   { key: "INBOUND",        label: "입고완료" },
   { key: "INSPECTION",     label: "검품중" },
   { key: "HOLD",           label: "보류" },
@@ -48,23 +50,35 @@ export default function WarehousePage() {
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
+  const loadParcels = useCallback(async () => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase
-        .from("parcels")
-        .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event")
-        .eq("customer_id", user.id)
-        .order("created_at", { ascending: false })
-        .then(({ data }) => {
-          setParcels(data ?? []);
-          setLoading(false);
-        });
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase
+      .from("parcels")
+      .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event")
+      .eq("customer_id", user.id)
+      .order("created_at", { ascending: false });
+    setParcels(data ?? []);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    loadParcels();
+  }, [loadParcels]);
+
+  async function handleRefresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await fetch("/api/parcels/sync-tracking", { method: "POST" });
+    } catch {}
+    await loadParcels();
+    setRefreshing(false);
+  }
 
   const filtered = parcels.filter((p) => {
     const matchStatus = filter === "ALL" || p.status === filter;
@@ -134,6 +148,14 @@ export default function WarehousePage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-900">📦 마이창고</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="p-1.5 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+            title="추적 정보 새로고침"
+          >
+            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+          </button>
           <button
             onClick={() => router.push("/register-parcel")}
             className="flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-full shadow-sm shadow-blue-200"
@@ -291,6 +313,16 @@ export default function WarehousePage() {
                     ) : (
                       <p className="text-xs text-indigo-600">📬 센터 도착 대기 중 · 도착 후 입고 처리됩니다</p>
                     )}
+                  </div>
+                )}
+                {parcel.status === "PENDING_PICKUP" && (
+                  <div className="mt-2 bg-yellow-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-yellow-700">📦 우체국 수거 예약 완료 · 집배원 방문 예정</p>
+                  </div>
+                )}
+                {parcel.status === "PICKED_UP" && (
+                  <div className="mt-2 bg-blue-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-blue-700">🚛 수거 완료 · 센터로 이동 중</p>
                   </div>
                 )}
               </div>
