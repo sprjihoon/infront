@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft, ArrowRight, Package, Globe, Shield, Box,
+  ArrowLeft, ArrowRight, Package, Globe,
   Plus, Trash2, CheckCircle, Loader2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -73,7 +73,7 @@ const PACKAGING_OPTS = [
   { code: "consolidate",name: "합포장",    desc: "선택 물품을 하나로 합치기", price: 2000 },
 ] as const;
 
-const STEP_LABELS = ["물품 확인", "배송 옵션", "해외 배송지", "인보이스", "견적 확인"];
+const STEP_LABELS = ["물품 확인", "배송 옵션", "해외 배송지", "인보이스"];
 
 function newItem(): InvoiceItem {
   return { key: Math.random().toString(36).slice(2), name_en: "", quantity: 1, unit_price_usd: 0, hs_code: "", origin_country: "KR" };
@@ -131,8 +131,6 @@ function ShippingRequestContent() {
   const [items, setItems] = useState<InvoiceItem[]>([newItem()]);
 
   // Step 5
-  const [estimatedFee, setEstimatedFee] = useState<number | null>(null);
-  const [quoteLoading, setQuoteLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -313,35 +311,9 @@ function ShippingRequestContent() {
       });
   }, [phase, parcelIds]);
 
-  // EMS 견적 조회
-  const fetchQuote = useCallback(async () => {
-    const countrycd = overseasAddress?.countryCode;
-    if (!countrycd) return;
-
-    const totalWeightG = parcels.reduce((sum, p) => sum + (p.weight_actual ?? 500), 0);
-    const method = SHIPPING_METHODS.find((m) => m.code === shippingMethod)!;
-
-    setQuoteLoading(true);
-    try {
-      const res = await fetch(
-        `/api/ems/quote?premiumcd=${method.premiumcd}&em_ee=${method.em_ee}&countrycd=${countrycd}&totweight=${totalWeightG}`
-      );
-      const data = await res.json();
-      setEstimatedFee(data.fee ? parseInt(data.fee, 10) : null);
-    } catch {
-      setEstimatedFee(null);
-    } finally {
-      setQuoteLoading(false);
-    }
-  }, [overseasAddress, parcels, shippingMethod]);
-
-  useEffect(() => {
-    if (step === 5) fetchQuote();
-  }, [step, fetchQuote]);
 
   // ── 계산 ──────────────────────────────────────────────────
   const packagingFee = PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).reduce((s, o) => s + o.price, 0);
-  const totalAmount = (estimatedFee ?? 0) + packagingFee;
   const customsValue = items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
   const totalWeightKg = parcels.reduce((s, p) => s + (p.weight_actual ?? 0), 0) / 1000;
 
@@ -386,7 +358,7 @@ function ShippingRequestContent() {
           packaging_options: { ...packOpts, note: packNote },
           overseas_address: addr,
           item_list: items.map(({ key: _k, ...rest }) => rest),
-          estimated_shipping_fee: estimatedFee ?? 0,
+          estimated_shipping_fee: 0,
           packaging_fee: packagingFee,
         }),
       });
@@ -775,7 +747,7 @@ function ShippingRequestContent() {
             <div className="bg-amber-50 rounded-xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
                 실제 배송비는 물품 입고 후 실측 무게 기준으로 확정됩니다.
-                지금 입력하는 정보를 바탕으로 사전 견적을 안내해드립니다.
+                지금 입력하는 정보를 바탕으로 포장 완료 후 실제 비용을 안내해드립니다.
               </p>
             </div>
           </>
@@ -952,91 +924,6 @@ function ShippingRequestContent() {
               <span className="text-sm text-gray-600">총 신고 금액</span>
               <span className="text-sm font-bold text-gray-900">USD {customsValue.toFixed(2)}</span>
             </div>
-          </>
-        )}
-
-        {/* ── Step 5: 견적 확인 ─────────────────────────────── */}
-        {step === 5 && (
-          <>
-            <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
-              <p className="text-sm font-bold text-gray-800">주문 요약</p>
-
-              {/* 물품 */}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 flex items-center gap-1.5"><Package size={14} /> 물품</span>
-                <span className="font-semibold text-gray-800">{parcels.length}개</span>
-              </div>
-
-              {/* 배송 방법 */}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 flex items-center gap-1.5"><Globe size={14} /> 배송 방법</span>
-                <span className="font-semibold text-gray-800">
-                  {SHIPPING_METHODS.find((m) => m.code === shippingMethod)?.name}
-                </span>
-              </div>
-
-              {/* 배송지 */}
-              <div className="flex items-start justify-between text-sm gap-4">
-                <span className="text-gray-500 shrink-0">수취인</span>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-800">
-                    {country?.flag} {overseasAddress?.name}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {overseasAddress?.addr3}
-                  </p>
-                </div>
-              </div>
-
-              {/* 포장 옵션 */}
-              {Object.entries(packOpts).some(([, v]) => v) && (
-                <div className="flex items-start justify-between text-sm gap-4">
-                  <span className="text-gray-500 flex items-center gap-1.5 shrink-0"><Box size={14} /> 포장 옵션</span>
-                  <div className="text-right">
-                    {PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).map((o) => (
-                      <p key={o.code} className="text-xs text-gray-600">{o.name}</p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 인보이스 */}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 flex items-center gap-1.5"><Shield size={14} /> 세관 신고액</span>
-                <span className="font-semibold text-gray-800">USD {customsValue.toFixed(2)}</span>
-              </div>
-
-              <div className="border-t border-gray-100 pt-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">예상 배송비</span>
-                  {quoteLoading ? (
-                    <Loader2 size={14} className="animate-spin text-gray-400" />
-                  ) : (
-                    <span className="font-semibold text-gray-800">
-                      {estimatedFee != null ? `${estimatedFee.toLocaleString()}원` : "확인 중..."}
-                    </span>
-                  )}
-                </div>
-                {packagingFee > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">포장 서비스</span>
-                    <span className="font-semibold text-gray-800">+{packagingFee.toLocaleString()}원</span>
-                  </div>
-                )}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <span className="text-sm font-bold text-gray-900">예상 합계</span>
-                  <span className="text-base font-bold text-blue-600">
-                    {totalAmount > 0 ? `${totalAmount.toLocaleString()}원` : "—"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-amber-700 leading-relaxed">
-                실제 요금은 창고 입고 후 실측 무게 기준으로 확정되며, 견적 확인 후 결제하실 수 있습니다.
-              </p>
-            </div>
 
             {error && (
               <div className="bg-red-50 rounded-xl px-4 py-3">
@@ -1045,12 +932,13 @@ function ShippingRequestContent() {
             )}
           </>
         )}
+
       </div>
 
       {/* 하단 버튼 */}
       <div className="fixed left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px))" }}>
         <div className="max-w-[600px] mx-auto">
-          {step < 5 ? (
+          {step < 4 ? (
             <button
               onClick={() => setStep(step + 1)}
               disabled={!canProceed()}

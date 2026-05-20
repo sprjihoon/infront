@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
@@ -148,7 +148,7 @@ function OrdersContent() {
             <p className="text-sm font-bold text-green-800">해외배송 신청 완료!</p>
             <p className="text-xs text-green-600 mt-0.5">
               주문번호 {newOrderNo}가 접수되었습니다.<br />
-              물품 입고 후 견적을 안내해드립니다.
+              포장 완료 후 결제 안내를 드립니다.
             </p>
           </div>
         </div>
@@ -318,3 +318,4 @@ export default function OrdersPage() {
     </Suspense>
   );
 }
+
