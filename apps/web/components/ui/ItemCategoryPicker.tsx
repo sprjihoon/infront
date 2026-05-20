@@ -61,7 +61,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
 
       {/* 바텀 시트 */}
       {open && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+        <div className="fixed inset-0 z-50 flex flex-col justify-end items-center">
           {/* 딤 */}
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
@@ -69,7 +69,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
           />
 
           {/* 시트 */}
-          <div className="relative bg-white rounded-t-3xl max-h-[80vh] flex flex-col shadow-2xl">
+          <div className="relative w-full max-w-[430px] bg-white rounded-t-3xl max-h-[80vh] flex flex-col shadow-2xl">
             {/* 헤더 */}
             <div className="px-4 pt-4 pb-2">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
