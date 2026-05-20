@@ -393,7 +393,7 @@ function ShippingRequestContent() {
     );
 
     return (
-      <div className="min-h-screen bg-gray-50 pb-40">
+      <div className="min-h-screen bg-gray-50 pb-[160px]">
         <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
             <button onClick={() => setStep05Active(false)} className="p-1 -ml-1">
@@ -507,8 +507,11 @@ function ShippingRequestContent() {
           })}
         </div>
 
-        {/* 확인 버튼 */}
-        <div className="fixed bottom-20 left-0 right-0 px-4 z-40">
+        {/* 확인 버튼 — 탭바 위로 확실히 노출 */}
+        <div
+          className="fixed left-0 right-0 px-4 z-[60]"
+          style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}
+        >
           <div className="max-w-[600px] mx-auto">
             <button
               onClick={handleStep05Confirm}
@@ -516,7 +519,8 @@ function ShippingRequestContent() {
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               <CheckCircle size={16} />
-              {boxes.length}{"\ubc15\uc2a4 \uad6c\uc131 \uc644\ub8cc"}
+              {boxes.length}{"\ubc15\uc2a4 \uad6c\uc131 \uc644\ub8cc \u2014 \ubc30\uc1a1 \uc635\uc158 \uc124\uc815"}
+              <ArrowRight size={15} />
             </button>
           </div>
         </div>
@@ -537,7 +541,7 @@ function ShippingRequestContent() {
     const allSelected = allKeys.length > 0 && allKeys.every((k) => selectedItemKeys.has(k));
 
     return (
-      <div className="min-h-screen bg-gray-50 pb-32">
+      <div className="min-h-screen bg-gray-50 pb-[160px]">
         {/* 헤더 */}
         <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
@@ -683,16 +687,20 @@ function ShippingRequestContent() {
           )}
         </div>
 
-        {/* 하단 확인 버튼 */}
+        {/* 하단 확인 버튼 — 탭바 위로 확실히 노출 */}
         {totalSelected > 0 && (
-          <div className="fixed bottom-20 left-0 right-0 px-4 z-40">
+          <div
+            className="fixed left-0 right-0 px-4 z-[60]"
+            style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}
+          >
             <div className="max-w-[600px] mx-auto">
               <button
                 onClick={handleStep0Confirm}
                 className="w-full flex items-center justify-center gap-2.5 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-[0.98] transition-transform"
               >
                 <Globe size={16} />
-                {totalSelected}{"\uac1c \ub0b4\ud488 \ucd9c\uace0\uc2e0\uccad\ud558\uae30"}
+                {totalSelected}{"\uac1c \ub0b4\ud488 \u2014 \ub2e4\uc74c \ub2e8\uacc4"}
+                <ArrowRight size={15} />
               </button>
             </div>
           </div>
