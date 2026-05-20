@@ -47,15 +47,29 @@ function newItem(): InvoiceItem {
   return { key: Math.random().toString(36).slice(2), name_en: "", quantity: 1, unit_price_usd: 0, hs_code: "", origin_country: "KR" };
 }
 
+// 출고 가능 상태
+const SHIPPABLE_STATUSES = ["INBOUND", "INSPECTION"];
+
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
 function ShippingRequestContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const parcelIds = useMemo(() => searchParams.get("parcels")?.split(",").filter(Boolean) ?? [], [searchParams]);
+  const urlParcelIds = useMemo(() => searchParams.get("parcels")?.split(",").filter(Boolean) ?? [], [searchParams]);
+
+  // Step 0: parcel 선택 (URL에 parcels 없을 때)
+  const [step0Done, setStep0Done] = useState(urlParcelIds.length > 0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(urlParcelIds));
+  const [shippableParcels, setShippableParcels] = useState<Parcel[]>([]);
+  const [step0Loading, setStep0Loading] = useState(false);
+
+  const parcelIds = useMemo(
+    () => (step0Done ? Array.from(selectedIds) : []),
+    [step0Done, selectedIds]
+  );
 
   const [step, setStep] = useState(1);
   const [parcels, setParcels] = useState<Parcel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
 
   // Step 2
@@ -75,9 +89,29 @@ function ShippingRequestContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // 물품 로드
+  // Step 0: 출고 가능 물품 목록 로드
   useEffect(() => {
-    if (parcelIds.length === 0) { router.replace("/warehouse"); return; }
+    if (step0Done) return;
+    setStep0Loading(true);
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setCustomerId(user.id);
+      const { data } = await supabase
+        .from("parcels")
+        .select("id, tracking_no, sender_name, status, weight_actual, notes")
+        .eq("customer_id", user.id)
+        .in("status", SHIPPABLE_STATUSES)
+        .order("inbound_at", { ascending: false });
+      setShippableParcels(data ?? []);
+      setStep0Loading(false);
+    });
+  }, [step0Done]);
+
+  // 물품 로드 (Step 0 완료 후)
+  useEffect(() => {
+    if (!step0Done || parcelIds.length === 0) return;
+    setLoading(true);
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCustomerId(user.id);
@@ -90,7 +124,7 @@ function ShippingRequestContent() {
         setParcels(data ?? []);
         setLoading(false);
       });
-  }, [parcelIds, router]);
+  }, [step0Done, parcelIds]);
 
   // EMS 견적 조회
   const fetchQuote = useCallback(async () => {
@@ -177,6 +211,103 @@ function ShippingRequestContent() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // ── Step 0: 물품 선택 ─────────────────────────────────────────
+  if (!step0Done) {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-32">
+        <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+          <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
+            <button onClick={() => router.back()} className="p-1 -ml-1">
+              <ArrowLeft size={22} className="text-gray-700" />
+            </button>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-gray-900">{"\ucd9c\uace0\uc2e0\uccad"}</p>
+              <p className="text-xs text-gray-400">{"\ucd9c\uace0\ud560 \ubb3c\ud488\uc744 \uc120\ud0dd\ud574\uc8fc\uc138\uc694"}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-3">
+          {step0Loading ? (
+            <div className="flex justify-center py-16">
+              <Loader2 size={28} className="animate-spin text-blue-500" />
+            </div>
+          ) : shippableParcels.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
+              <Package size={36} className="text-gray-200 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-gray-500">{"\ucd9c\uace0 \uac00\ub2a5\ud55c \ubb3c\ud488\uc774 \uc5c6\uc2b5\ub2c8\ub2e4"}</p>
+              <p className="text-xs text-gray-400 mt-1">{"\uc785\uace0 \uc644\ub8cc\ub41c \ubb3c\ud488\uc774 \uc5c6\uc73c\uba74 \ucd9c\uace0\uc2e0\uccad\uc744 \ud560 \uc218 \uc5c6\uc5b4\uc694"}</p>
+              <button
+                onClick={() => router.push("/warehouse")}
+                className="mt-5 bg-blue-600 text-white text-sm font-bold px-6 py-3 rounded-2xl"
+              >
+                {"\ub9c8\uc774\ucc3d\uace0 \ubcf4\uae30"}
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs text-gray-500 px-1">{"\uc785\uace0 \uc644\ub8cc\ub41c \ubb3c\ud488 \u00b7 \ubcf5\uc218 \uc120\ud0dd \uac00\ub2a5"}</p>
+              {shippableParcels.map((p) => {
+                const checked = selectedIds.has(p.id);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() =>
+                      setSelectedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(p.id)) next.delete(p.id);
+                        else next.add(p.id);
+                        return next;
+                      })
+                    }
+                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
+                      checked ? "border-blue-500 bg-blue-50" : "border-gray-100 bg-white"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                      checked ? "bg-blue-600 border-blue-600" : "border-gray-300"
+                    }`}>
+                      {checked && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                    <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                      <Package size={18} className="text-blue-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {p.tracking_no ?? "\uc1a1\uc7a5\ubc88\ud638 \ubbf8\ub4f1\ub85d"}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {p.sender_name ?? "\ubc1c\uc1a1\uc778 \ubbf8\ud655\uc778"}
+                        {p.notes ? ` \u00b7 ${p.notes}` : ""}
+                      </p>
+                    </div>
+                    {p.weight_actual ? (
+                      <span className="text-xs text-gray-500 shrink-0">{(p.weight_actual / 1000).toFixed(2)}kg</span>
+                    ) : (
+                      <span className="text-xs text-gray-300 shrink-0">{"\ubbf8\uce21\uc815"}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          )}
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
+            <button
+              onClick={() => setStep0Done(true)}
+              className="flex items-center gap-2.5 bg-blue-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-95 transition-transform"
+            >
+              <Globe size={16} />
+              {selectedIds.size}{"\uac1c \ubb3c\ud488 \ucd9c\uace0\uc2e0\uccad"}
+            </button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   if (loading) {
