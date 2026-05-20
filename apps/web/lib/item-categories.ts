@@ -70,9 +70,19 @@ export const ITEM_CATEGORIES: ItemCategory[] = [
   { id: "home_cleaning",    name_ko: "청소·생활용품",              name_en: "Household Goods",         hs_code: "340290", group: "홈·생활" },
 
   // ── 건강·식품 ──
-  { id: "health_supplement", name_ko: "건강식품·영양제",           name_en: "Health Supplements / Vitamins", hs_code: "210690", group: "건강·식품" },
-  { id: "health_medicine",   name_ko: "의약품·의약외품",           name_en: "Medicine / Pharmaceutical", hs_code: "300490", group: "건강·식품" },
-  { id: "food_snacks",       name_ko: "식품·스낵·과자",            name_en: "Food / Snacks",           hs_code: "190590", group: "건강·식품" },
+  { id: "health_supplement", name_ko: "건강식품·영양제",              name_en: "Health Supplements / Vitamins", hs_code: "210690", group: "건강·식품" },
+  { id: "health_medicine",   name_ko: "의약품·의약외품",              name_en: "Medicine / Pharmaceutical",     hs_code: "300490", group: "건강·식품" },
+  { id: "food_kimchi",       name_ko: "김치",                        name_en: "Kimchi (Fermented Vegetables)",  hs_code: "200980", group: "건강·식품" },
+  { id: "food_ramen",        name_ko: "라면·인스턴트 식품",            name_en: "Ramen / Instant Noodles",       hs_code: "190230", group: "건강·식품" },
+  { id: "food_snacks",       name_ko: "과자·스낵",                   name_en: "Snacks / Crackers",             hs_code: "190590", group: "건강·식품" },
+  { id: "food_sauce",        name_ko: "소스·조미료·고추장·된장",       name_en: "Sauce / Seasoning / Paste",     hs_code: "210390", group: "건강·식품" },
+  { id: "food_rice",         name_ko: "쌀·잡곡·곡류",                name_en: "Rice / Grains / Cereals",       hs_code: "100630", group: "건강·식품" },
+  { id: "food_seaweed",      name_ko: "김·미역·해조류",               name_en: "Seaweed / Dried Kelp",          hs_code: "121221", group: "건강·식품" },
+  { id: "food_dried_seafood", name_ko: "건어물·건새우·오징어포",       name_en: "Dried Seafood",                 hs_code: "030559", group: "건강·식품" },
+  { id: "food_tea",          name_ko: "차·한방차·커피",               name_en: "Tea / Herbal Tea / Coffee",     hs_code: "090240", group: "건강·식품" },
+  { id: "food_candy",        name_ko: "사탕·초콜릿·젤리",             name_en: "Candy / Chocolate / Jelly",     hs_code: "170490", group: "건강·식품" },
+  { id: "food_bev",          name_ko: "음료·주스·이온음료",            name_en: "Beverages / Juice",             hs_code: "220290", group: "건강·식품" },
+  { id: "food_alcohol",      name_ko: "주류 (소주·막걸리·맥주)",       name_en: "Alcoholic Beverages (Soju/Beer)", hs_code: "220600", group: "건강·식품" },
 
   // ── 기타 ──
   { id: "musical_instrument", name_ko: "악기",                    name_en: "Musical Instrument",      hs_code: "920599", group: "기타" },
