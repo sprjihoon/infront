@@ -101,6 +101,8 @@ export default function RegisterParcelPage() {
       (it) => it.name_en.trim() && it.quantity >= 1 && it.unit_price_usd >= 0
     );
   }
+
+  async function handleSubmit() {
     setSubmitting(true);
     setError("");
     try {
