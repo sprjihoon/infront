@@ -17,17 +17,23 @@ export default function MyPage() {
   const router = useRouter();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [copied, setCopied] = useState(false);
+  const [addrCount, setAddrCount] = useState<{ pickup: number; overseas: number }>({ pickup: 0, overseas: 0 });
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      supabase
-        .from("customers")
-        .select("name, email, customer_code, personal_address, phone")
-        .eq("id", user.id)
-        .single()
-        .then(({ data }) => setCustomer(data));
+      const [{ data: cust }, { data: addrs }] = await Promise.all([
+        supabase.from("customers").select("name, email, customer_code, personal_address, phone").eq("id", user.id).single(),
+        supabase.from("customer_addresses").select("type").eq("customer_id", user.id),
+      ]);
+      setCustomer(cust);
+      if (addrs) {
+        setAddrCount({
+          pickup:   addrs.filter((a) => a.type === "pickup").length,
+          overseas: addrs.filter((a) => a.type === "overseas").length,
+        });
+      }
     });
   }, []);
 
@@ -100,7 +106,9 @@ export default function MyPage() {
             </div>
             <div className="text-left">
               <p className="text-sm font-semibold text-gray-800">주소록 관리</p>
-              <p className="text-xs text-gray-400">수거지 · 해외배송지 저장</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                수거지 {addrCount.pickup}개 · 해외배송지 {addrCount.overseas}개
+              </p>
             </div>
           </div>
           <ChevronRight size={16} className="text-gray-300" />

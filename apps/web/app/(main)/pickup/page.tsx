@@ -3,22 +3,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MapPin, Calendar, Phone,
-  CheckCircle, Info, Truck, ArrowLeft, BookOpen, X, Star,
+  MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft,
 } from "lucide-react";
-import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 import { createClient } from "@/lib/supabase/client";
-
-interface SavedAddress {
-  id: string;
-  label: string;
-  name: string;
-  phone: string | null;
-  zipcode: string | null;
-  address: string | null;
-  address_detail: string | null;
-  is_default: boolean;
-}
+import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
 
 // 한국 공휴일 (2026)
 const KR_HOLIDAYS = new Set([
@@ -47,36 +35,13 @@ function getMaxDate(): string {
   return d.toISOString().split("T")[0];
 }
 
-
 export default function PickupPage() {
   const router = useRouter();
   const minDate = getNextWeekday();
   const maxDate = getMaxDate();
 
-  const [address, setAddress]           = useState("");
-  const [addressDetail, setAddressDetail] = useState("");
-  const [zipcode, setZipcode]           = useState("");
-  const [phone, setPhone]               = useState("");
-
-  // 저장 주소
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
-  const [addrModalOpen, setAddrModalOpen]   = useState(false);
-
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
-      const { data: cust } = await supabase.from("customers").select("id").eq("id", user.id).single();
-      if (!cust) return;
-      const { data } = await supabase
-        .from("customer_addresses")
-        .select("id, label, name, phone, zipcode, address, address_detail, is_default")
-        .eq("customer_id", cust.id).eq("type", "pickup")
-        .order("is_default", { ascending: false })
-        .order("created_at", { ascending: false });
-      setSavedAddresses(data ?? []);
-    });
-  }, []);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [pickupAddress, setPickupAddress] = useState<PickupAddressValue | null>(null);
   const [pickupDate, setPickupDate]     = useState(minDate);
   const [notes, setNotes]               = useState("");
   const [agreed, setAgreed]             = useState(false);
@@ -91,26 +56,29 @@ export default function PickupPage() {
     is_test: boolean;
   } | null>(null);
 
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCustomerId(user.id);
+    });
+  }, []);
+
   const disabledDates = Array.from({ length: 21 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i + 1);
     return d;
   }).filter(isUnavailable).map((d) => d.toISOString().split("T")[0]);
 
-  function handleAddressSelect(z: string, a: string) {
-    setZipcode(z);
-    setAddress(a);
-    setAddressDetail("");
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (!address.trim())    { setError("수거 주소를 입력해주세요."); return; }
-    if (!zipcode.trim())    { setError("주소 검색을 통해 우편번호를 입력해주세요."); return; }
-    if (!phone.trim())      { setError("수거지 연락처를 입력해주세요."); return; }
-    if (!/^[0-9\-\s]{9,}$/.test(phone)) { setError("연락처 형식을 확인해주세요. (예: 010-1234-5678)"); return; }
+    if (!pickupAddress?.address) { setError("수거 주소를 선택해주세요."); return; }
+    if (!pickupAddress.zipcode)   { setError("주소 검색을 통해 우편번호를 확인해주세요."); return; }
+    if (!pickupAddress.phone)     { setError("수거지 연락처를 입력해주세요."); return; }
+    if (!/^[0-9\-\s]{9,}$/.test(pickupAddress.phone)) {
+      setError("연락처 형식을 확인해주세요. (예: 010-1234-5678)"); return;
+    }
     if (disabledDates.includes(pickupDate)) { setError("토·일요일 및 공휴일은 수거가 불가합니다."); return; }
     if (!agreed) { setError("서비스 안내에 동의해주세요."); return; }
 
@@ -120,10 +88,10 @@ export default function PickupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pickup_address: address.trim(),
-          pickup_address_detail: addressDetail.trim() || undefined,
-          pickup_zipcode: zipcode.trim(),
-          pickup_phone: phone.trim(),
+          pickup_address: pickupAddress.address,
+          pickup_address_detail: pickupAddress.addressDetail || undefined,
+          pickup_zipcode: pickupAddress.zipcode,
+          pickup_phone: pickupAddress.phone,
           pickup_date: pickupDate,
           pickup_notes: notes.trim() || undefined,
         }),
@@ -132,18 +100,17 @@ export default function PickupPage() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "수거 신청에 실패했습니다.");
 
-      const resultData = {
+      if (immediateShip && data.parcel_id) {
+        router.push(`/shipping-request?parcels=${data.parcel_id}`);
+        return;
+      }
+      setResult({
         parcel_id: data.parcel_id,
         tracking_no: data.tracking_no,
         pickup_date: data.pickup_date ?? "",
         post_office: data.post_office ?? "",
         is_test: data.is_test ?? false,
-      };
-      if (immediateShip && data.parcel_id) {
-        router.push(`/shipping-request?parcels=${data.parcel_id}`);
-        return;
-      }
-      setResult(resultData);
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "수거 신청 중 오류가 발생했습니다.");
     } finally {
@@ -219,66 +186,22 @@ export default function PickupPage() {
           <div>
             <p className="text-sm font-bold text-blue-800">우체국 방문 수거 서비스</p>
             <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
-              우체국 집배원이 고객님 주소로 직접 방문하여 물품을 수거합니다.
-              수거비는 인프론트가 부담합니다.
+              우체국 집배원이 고객님 주소로 직접 방문합니다. 수거비는 인프론트가 부담합니다.
             </p>
           </div>
         </div>
 
-        {/* 수거 주소 */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              수거 주소 <span className="text-red-500">*</span>
-            </label>
-            {savedAddresses.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setAddrModalOpen(true)}
-                className="flex items-center gap-1 text-xs text-blue-600 font-semibold bg-blue-50 px-2.5 py-1.5 rounded-lg"
-              >
-                <BookOpen size={12} /> 저장된 주소
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2 mb-2">
-            <input
-              type="text"
-              readOnly
-              value={address}
-              placeholder="주소 검색 후 선택"
-              className="flex-1 px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-700 outline-none"
-            />
-            <AddressSearchButton onSelect={handleAddressSelect} label="검색" />
-          </div>
-          {zipcode && (
-            <p className="text-xs text-blue-600 mb-2">[{zipcode}] {address}</p>
-          )}
-          <input
-            type="text"
-            placeholder="상세 주소 (동/호수 등)"
-            value={addressDetail}
-            onChange={(e) => setAddressDetail(e.target.value)}
-            className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
-          />
-        </div>
-
-        {/* 연락처 */}
+        {/* 수거 주소 — PickupAddressPicker */}
         <div>
           <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
-            <Phone className="w-4 h-4 text-blue-600" />
-            수거지 연락처 <span className="text-red-500">*</span>
+            <MapPin className="w-4 h-4 text-blue-600" />
+            수거 주소 <span className="text-red-500">*</span>
           </label>
-          <input
-            type="tel"
-            inputMode="tel"
-            placeholder="010-1234-5678"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+          <PickupAddressPicker
+            value={pickupAddress}
+            onChange={setPickupAddress}
+            customerId={customerId}
           />
-          <p className="text-xs text-gray-400 mt-1">우체국 집배원이 이 번호로 연락드립니다.</p>
         </div>
 
         {/* 수거 희망일 */}
@@ -311,7 +234,7 @@ export default function PickupPage() {
         {/* 요청사항 */}
         <div>
           <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
-            요청사항 (선택)
+            요청사항 <span className="text-gray-400 font-normal text-xs">(선택)</span>
           </label>
           <textarea
             placeholder={"예) 공용현관 비번: #1234*\n부재 시 경비실에 맡겨주세요"}
@@ -320,7 +243,6 @@ export default function PickupPage() {
             rows={3}
             className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors resize-none"
           />
-          <p className="text-xs text-gray-400 mt-1">공용현관 비번 등 집배원에게 전달할 내용을 입력하세요.</p>
         </div>
 
         {/* 즉시 해외배송 옵션 */}
@@ -340,7 +262,6 @@ export default function PickupPage() {
             <p className="text-sm font-bold text-gray-800">✈️ 수거 후 바로 해외배송 신청</p>
             <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
               체크하면 수거 신청 완료 즉시 해외배송 신청 화면으로 이동합니다.
-              배송지·인보이스를 미리 입력하고 싶을 때 선택하세요.
             </p>
           </div>
         </button>
@@ -393,48 +314,6 @@ export default function PickupPage() {
           </div>
         )}
       </form>
-
-      {/* 저장된 주소 선택 모달 */}
-      {addrModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40">
-          <div className="w-full max-w-[430px] bg-white rounded-t-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <p className="text-sm font-bold text-gray-800">저장된 수거지 선택</p>
-              <button onClick={() => setAddrModalOpen(false)} className="p-1.5 rounded-full hover:bg-gray-100">
-                <X size={18} className="text-gray-500" />
-              </button>
-            </div>
-            <div className="max-h-80 overflow-y-auto p-4 space-y-2">
-              {savedAddresses.map(a => (
-                <button
-                  key={a.id}
-                  type="button"
-                  onClick={() => {
-                    setAddress(a.address ?? "");
-                    setAddressDetail(a.address_detail ?? "");
-                    setZipcode(a.zipcode ?? "");
-                    setPhone(a.phone ?? "");
-                    setAddrModalOpen(false);
-                  }}
-                  className="w-full text-left bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 hover:border-blue-300 hover:bg-blue-50 transition-all"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{a.label}</span>
-                    {a.is_default && (
-                      <span className="flex items-center gap-0.5 text-[10px] text-amber-600">
-                        <Star size={9} fill="currentColor" /> 기본
-                      </span>
-                    )}
-                    <span className="text-sm font-semibold text-gray-800 ml-1">{a.name}</span>
-                  </div>
-                  <p className="text-xs text-gray-500">[{a.zipcode}] {a.address} {a.address_detail}</p>
-                  {a.phone && <p className="text-xs text-gray-400 mt-0.5">{a.phone}</p>}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3">
