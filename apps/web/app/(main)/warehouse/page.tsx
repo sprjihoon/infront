@@ -339,7 +339,7 @@ export default function WarehousePage() {
             className="flex items-center gap-2.5 bg-blue-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-95 transition-transform"
           >
             <Send size={16} />
-            {selectedIds.size}개 물품 해외배송 신청
+            {selectedIds.size}개 물품 출고신청
           </button>
         </div>
       )}

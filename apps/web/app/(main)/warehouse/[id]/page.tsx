@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Package, Truck, MapPin, Weight, Ruler,
   AlertTriangle, CheckCircle, Clock, Play, Image as ImageIcon,
-  RotateCcw, Send, ChevronRight, FileText, Navigation, RefreshCw,
+  RotateCcw, Send, FileText, Navigation, RefreshCw,
   Edit3, X, Check, Plus, Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -720,28 +720,6 @@ export default function ParcelDetailPage() {
         </div>
       )}
 
-      {/* 연결된 주문 */}
-      {linkedOrders.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">연결된 배송 주문</h2>
-          {linkedOrders.map((lo) => (
-            lo.orders && (
-              <Link
-                key={lo.order_id}
-                href="/orders"
-                className="flex items-center justify-between py-2 border-t first:border-t-0"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{lo.orders.order_no}</p>
-                  <p className="text-xs text-gray-400">{new Date(lo.orders.created_at).toLocaleDateString("ko-KR")}</p>
-                </div>
-                <ChevronRight size={16} className="text-gray-400" />
-              </Link>
-            )
-          ))}
-        </div>
-      )}
-
       {/* 액션 버튼 */}
       <div className="space-y-2 pb-2">
         {canShip && (
@@ -750,7 +728,7 @@ export default function ParcelDetailPage() {
             className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform shadow"
           >
             <Send size={18} />
-            해외배송 신청
+            출고신청
           </Link>
         )}
         {canReturn && (
