@@ -98,22 +98,6 @@ function ShippingRequestContent() {
     return Array.from(ids);
   }, [urlParcelIds, step0Done, selectedItemKeys]);
 
-  // Step 0 완료 시 선택된 내품으로 인보이스 초기화
-  const handleStep0Confirm = useCallback(() => {
-    const preItems = selectableItems
-      .filter((it) => selectedItemKeys.has(it.key))
-      .map((it) => ({
-        key: it.key,
-        name_en: it.name_en,
-        quantity: it.quantity,
-        unit_price_usd: it.unit_price_usd,
-        hs_code: it.hs_code,
-        origin_country: it.origin_country,
-      }));
-    if (preItems.length > 0) setItems(preItems);
-    setStep0Done(true);
-  }, [selectableItems, selectedItemKeys]);
-
   const [step, setStep] = useState(1);
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [loading, setLoading] = useState(false);
@@ -155,7 +139,7 @@ function ShippingRequestContent() {
     });
   }, [step0Done]);
 
-  // parcel 목록 → 개별 내품 아이템 목록으로 플랫화
+  // parcel 목록 → 개별 내품 아이템 목록으로 플랫화 (Step 0 완료 버튼보다 먼저 선언)
   const selectableItems = useMemo<SelectableItem[]>(() => {
     const result: SelectableItem[] = [];
     for (const p of shippableParcels) {
@@ -194,6 +178,22 @@ function ShippingRequestContent() {
     return result;
   }, [shippableParcels]);
 
+  // Step 0 완료 시 선택된 내품으로 인보이스 초기화
+  const handleStep0Confirm = useCallback(() => {
+    const preItems = selectableItems
+      .filter((it) => selectedItemKeys.has(it.key))
+      .map((it) => ({
+        key: it.key,
+        name_en: it.name_en,
+        quantity: it.quantity,
+        unit_price_usd: it.unit_price_usd,
+        hs_code: it.hs_code,
+        origin_country: it.origin_country,
+      }));
+    if (preItems.length > 0) setItems(preItems);
+    setStep0Done(true);
+  }, [selectableItems, selectedItemKeys]);
+
   // 물품 로드 (Step 0 완료 후)
   useEffect(() => {
     if (!step0Done || parcelIds.length === 0) return;
@@ -204,10 +204,10 @@ function ShippingRequestContent() {
     });
     supabase
       .from("parcels")
-      .select("id, tracking_no, sender_name, status, weight_actual, notes")
+      .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items")
       .in("id", parcelIds)
       .then(({ data }) => {
-        setParcels(data ?? []);
+        setParcels((data ?? []) as Parcel[]);
         setLoading(false);
       });
   }, [step0Done, parcelIds]);
