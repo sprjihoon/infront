@@ -348,7 +348,7 @@ export default function WarehousePage() {
 
       {/* 해외배송 신청 FAB */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
+        <div className="fixed left-0 right-0 flex justify-center px-4 z-40" style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}>
           <button
             onClick={handleShippingRequest}
             className="flex items-center gap-2.5 bg-blue-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-95 transition-transform"

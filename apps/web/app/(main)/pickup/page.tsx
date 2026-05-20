@@ -468,7 +468,7 @@ export default function PickupPage() {
       </form>
 
       {/* 하단 버튼 */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3">
+      <div className="sticky bg-white border-t border-gray-100 px-4 py-3" style={{ bottom: "calc(60px + var(--sab, 0px))" }}>
         <button
           type="submit"
           form=""

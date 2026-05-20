@@ -52,11 +52,12 @@ interface InvoiceItem {
   origin_country: string;
 }
 
-// 박스별 구성 (Step 0.5)
+// 박스별 구성
+interface BoxItem { key: string; qty: number; }
 interface BoxSetup {
   id: number;
   address: OverseasAddressValue | null;
-  itemKeys: string[];
+  items: BoxItem[];
 }
 
 // ── 상수 ────────────────────────────────────────────────────
@@ -95,12 +96,12 @@ function ShippingRequestContent() {
   const [defaultOverseasAddress, setDefaultOverseasAddress] = useState<OverseasAddressValue | null>(null);
 
   // 박스 구성
-  const [boxes, setBoxes] = useState<BoxSetup[]>([{ id: 1, address: null, itemKeys: [] }]);
+  const [boxes, setBoxes] = useState<BoxSetup[]>([{ id: 1, address: null, items: [] }]);
   const [expandedBoxAddress, setExpandedBoxAddress] = useState<number | null>(null);
 
-  // 아이템 담기 모드 — 어느 박스에 담는지
+  // 아이템 담기 모드 — 어느 박스에 담는지, 임시 수량 Map
   const [selectingForBoxId, setSelectingForBoxId] = useState<number | null>(null);
-  const [tempSelected, setTempSelected] = useState<Set<string>>(new Set());
+  const [tempQty, setTempQty] = useState<Map<string, number>>(new Map());
 
   // parcelIds: URL 직접 or 박스 구성 완료 후
   const parcelIds = useMemo(() => {
@@ -108,7 +109,7 @@ function ShippingRequestContent() {
     if (phase !== "main_flow") return [];
     const ids = new Set<string>();
     for (const b of boxes) {
-      for (const key of b.itemKeys) ids.add(key.split("__")[0]);
+      for (const bi of b.items) ids.add(bi.key.split("__")[0]);
     }
     return Array.from(ids);
   }, [urlParcelIds, phase, boxes]);
@@ -170,7 +171,7 @@ function ShippingRequestContent() {
           email: defaultAddr.email ?? "",
         };
         setDefaultOverseasAddress(addr);
-        setBoxes([{ id: 1, address: addr, itemKeys: [] }]);
+        setBoxes([{ id: 1, address: addr, items: [] }]);
       }
       setPreflowLoading(false);
     });
@@ -983,7 +984,7 @@ function ShippingRequestContent() {
       </div>
 
       {/* 하단 버튼 */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-30">
+      <div className="fixed left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px))" }}>
         <div className="max-w-[600px] mx-auto">
           {step < 5 ? (
             <button
