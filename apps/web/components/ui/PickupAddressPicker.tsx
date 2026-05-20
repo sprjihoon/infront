@@ -11,7 +11,7 @@ export interface PickupAddressValue {
   zipcode: string;
   address: string;
   addressDetail: string;
-  savedId?: string;      // 저장된 주소에서 선택한 경우
+  savedId?: string;
   label?: string;
 }
 
@@ -37,14 +37,13 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [mode, setMode] = useState<"list" | "new">("list");
 
-  // 새 주소 입력 폼
   const [newLabel, setNewLabel] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newZip, setNewZip] = useState("");
   const [newAddr, setNewAddr] = useState("");
   const [newDetail, setNewDetail] = useState("");
-  const [saveToBook, setSaveToBook] = useState(true);
+  const [saveOption, setSaveOption] = useState<"save" | "default" | "once">("save");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -64,7 +63,6 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
       .order("created_at", { ascending: false });
     setSaved(data ?? []);
 
-    // 기본 주소 자동 채움 (아직 선택 안 된 경우)
     if (!value && data && data.length > 0) {
       const def = data.find((a) => a.is_default) ?? data[0];
       onChange({
@@ -96,63 +94,69 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
     if (!newName || !newPhone || !newAddr || !newZip) return;
     setSaving(true);
 
-    if (saveToBook && customerId) {
-      const supabase = createClient();
-      const { data } = await supabase
-        .from("customer_addresses")
-        .insert({
-          customer_id: customerId,
-          type: "pickup",
-          label: newLabel || "새 주소",
+    try {
+      if (saveOption !== "once" && customerId) {
+        const supabase = createClient();
+        const isDefault = saveOption === "default" || saved.length === 0;
+
+        if (isDefault && saved.some((a) => a.is_default)) {
+          await supabase
+            .from("customer_addresses")
+            .update({ is_default: false })
+            .eq("customer_id", customerId)
+            .eq("type", "pickup");
+        }
+
+        const { data } = await supabase
+          .from("customer_addresses")
+          .insert({
+            customer_id: customerId,
+            type: "pickup",
+            label: newLabel.trim() || "새 주소",
+            name: newName,
+            phone: newPhone,
+            zipcode: newZip,
+            address: newAddr,
+            address_detail: newDetail,
+            is_default: isDefault,
+          })
+          .select()
+          .single();
+
+        onChange({
+          savedId: data?.id,
+          label: newLabel.trim() || "새 주소",
           name: newName,
           phone: newPhone,
           zipcode: newZip,
           address: newAddr,
-          address_detail: newDetail,
-          is_default: saved.length === 0, // 첫 주소면 기본값으로
-        })
-        .select()
-        .single();
-
-      onChange({
-        savedId: data?.id,
-        label: newLabel || "새 주소",
-        name: newName,
-        phone: newPhone,
-        zipcode: newZip,
-        address: newAddr,
-        addressDetail: newDetail,
-      });
-      await loadSaved();
-    } else {
-      onChange({
-        name: newName,
-        phone: newPhone,
-        zipcode: newZip,
-        address: newAddr,
-        addressDetail: newDetail,
-      });
+          addressDetail: newDetail,
+        });
+        await loadSaved();
+      } else {
+        onChange({
+          name: newName,
+          phone: newPhone,
+          zipcode: newZip,
+          address: newAddr,
+          addressDetail: newDetail,
+        });
+      }
+    } finally {
+      setSaving(false);
+      setSheet(false);
+      resetNewForm();
     }
-
-    setSaving(false);
-    setSheet(false);
-    resetNewForm();
   }
 
   function resetNewForm() {
     setNewLabel(""); setNewName(""); setNewPhone("");
     setNewZip(""); setNewAddr(""); setNewDetail("");
-    setSaveToBook(true); setMode("list");
-  }
-
-  function openNew() {
-    resetNewForm();
-    setMode("new");
+    setSaveOption("save"); setMode("list");
   }
 
   return (
     <>
-      {/* 선택된 주소 카드 */}
       <button
         type="button"
         onClick={() => { setMode("list"); setSheet(true); }}
@@ -198,27 +202,25 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
         )}
       </button>
 
-      {/* 바텀시트 오버레이 */}
       {sheet && (
         <div
           className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) { setSheet(false); resetNewForm(); } }}
         >
           <div className="w-full max-w-[600px] bg-white rounded-t-3xl overflow-hidden flex flex-col max-h-[85vh]">
-            {/* 시트 헤더 */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <p className="text-sm font-bold text-gray-900">
                 {mode === "list" ? "수거지 선택" : "새 수거지 등록"}
               </p>
               <button
                 onClick={() => {
-                  if (mode === "new") { setMode("list"); }
+                  if (mode === "new") setMode("list");
                   else { setSheet(false); resetNewForm(); }
                 }}
                 className="p-1.5 rounded-full hover:bg-gray-100"
               >
                 {mode === "new" ? (
-                  <span className="text-xs text-gray-500 px-1">← 목록</span>
+                  <span className="text-xs text-blue-500 font-medium px-1">← 목록</span>
                 ) : (
                   <X size={18} className="text-gray-500" />
                 )}
@@ -226,7 +228,6 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
             </div>
 
             <div className="overflow-y-auto flex-1">
-              {/* ─── 주소 목록 모드 ─── */}
               {mode === "list" && (
                 <div className="p-4 space-y-2">
                   {saved.length === 0 ? (
@@ -275,40 +276,24 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     ))
                   )}
 
-                  {/* 새 주소 등록 버튼 */}
                   <button
                     type="button"
-                    onClick={openNew}
+                    onClick={() => { resetNewForm(); setMode("new"); }}
                     className="w-full flex items-center gap-3 rounded-2xl border-2 border-dashed border-gray-200 p-4 text-left hover:border-blue-300 hover:bg-blue-50 transition-all active:scale-[0.98]"
                   >
                     <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
                       <Plus size={18} className="text-gray-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-700">새 수거지 등록</p>
+                      <p className="text-sm font-semibold text-gray-700">새 수거지 입력</p>
                       <p className="text-xs text-gray-400 mt-0.5">주소록에 저장하거나 일회성으로 입력</p>
                     </div>
                   </button>
                 </div>
               )}
 
-              {/* ─── 새 주소 입력 모드 ─── */}
               {mode === "new" && (
                 <div className="p-4 space-y-4">
-                  {/* 별칭 */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      별칭 <span className="text-gray-400 font-normal">(예: 집, 회사, 부모님댁)</span>
-                    </label>
-                    <input
-                      value={newLabel}
-                      onChange={(e) => setNewLabel(e.target.value)}
-                      placeholder="집"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                    />
-                  </div>
-
-                  {/* 이름 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                       이름 <span className="text-red-400">*</span>
@@ -316,15 +301,14 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     <input
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      placeholder="홍길동"
+                      placeholder="황길동"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
                   </div>
 
-                  {/* 연락처 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      연락처 <span className="text-red-400">*</span>
+                      연락잘 <span className="text-red-400">*</span>
                     </label>
                     <input
                       value={newPhone}
@@ -335,7 +319,6 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     />
                   </div>
 
-                  {/* 주소 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                       주소 <span className="text-red-400">*</span>
@@ -367,29 +350,86 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     />
                   </div>
 
-                  {/* 주소록 저장 토글 */}
-                  <button
-                    type="button"
-                    onClick={() => setSaveToBook(!saveToBook)}
-                    className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
-                      saveToBook ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white"
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      saveToBook ? "bg-blue-600 border-blue-600" : "border-gray-300"
-                    }`}>
-                      {saveToBook && <Check size={12} className="text-white" />}
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-800">주소록에 저장</p>
-                      <p className="text-xs text-gray-500 mt-0.5">다음에도 빠르게 선택할 수 있어요</p>
-                    </div>
-                  </button>
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-500">저장 방식</p>
+
+                    <button
+                      type="button"
+                      onClick={() => setSaveOption("save")}
+                      className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
+                        saveOption === "save" ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        saveOption === "save" ? "border-blue-500 bg-blue-500" : "border-gray-300"
+                      }`}>
+                        {saveOption === "save" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-sm font-semibold text-gray-800">주소록에 저장</p>
+                        <p className="text-xs text-gray-500 mt-0.5">별칭을 지정해 다음에도 빠르게 선택</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSaveOption("default")}
+                      className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
+                        saveOption === "default" ? "border-amber-400 bg-amber-50" : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        saveOption === "default" ? "border-amber-500 bg-amber-500" : "border-gray-300"
+                      }`}>
+                        {saveOption === "default" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <div className="text-left flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-semibold text-gray-800">기본 주소로 저장</p>
+                          <span className="text-[10px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-0.5">
+                            <Star size={9} fill="currentColor" /> 기본
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">앱을 열 때마다 자동으로 선택됩니다</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSaveOption("once")}
+                      className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
+                        saveOption === "once" ? "border-gray-400 bg-gray-50" : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        saveOption === "once" ? "border-gray-500 bg-gray-500" : "border-gray-300"
+                      }`}>
+                        {saveOption === "once" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="text-sm font-semibold text-gray-800">저장하지 않고 사용</p>
+                        <p className="text-xs text-gray-500 mt-0.5">이번 신청에만 사용하고 저장하지 않음</p>
+                      </div>
+                    </button>
+
+                    {(saveOption === "save" || saveOption === "default") && (
+                      <div className="pt-1">
+                        <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                          별칭 <span className="text-gray-400 font-normal">(예: 집, 회사, 부모님대)</span>
+                        </label>
+                        <input
+                          value={newLabel}
+                          onChange={(e) => setNewLabel(e.target.value)}
+                          placeholder={saveOption === "default" ? "기본주소" : "집"}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* 확인 버튼 (새 주소 모드일 때) */}
             {mode === "new" && (
               <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
                 <button

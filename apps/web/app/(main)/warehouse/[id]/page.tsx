@@ -283,10 +283,22 @@ export default function ParcelDetailPage() {
               )}
             </>
           ) : (
-            <div className="text-center py-4 text-sm text-gray-400">
-              {parcel.courier
-                ? "추적 정보를 불러오는 중이에요 (앱 재접속 시 갱신됩니다)"
-                : "택배사 정보가 없어 추적할 수 없어요"}
+            <div className="text-center py-4 space-y-2">
+              {parcel.courier ? (
+                <>
+                  <p className="text-sm text-gray-400">추적 정보를 불러오는 중이에요</p>
+                  <button
+                    onClick={refreshTracking}
+                    disabled={syncing}
+                    className="inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
+                    {syncing ? "갱신 중..." : "지금 새로고침"}
+                  </button>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400">택배사 정보가 없어 추적할 수 없어요</p>
+              )}
             </div>
           )}
         </div>

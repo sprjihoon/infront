@@ -103,6 +103,13 @@ export default function PickupPage() {
     if (disabledDates.includes(pickupDate)) { setError("토·일요일 및 공휴일은 수거가 불가합니다."); return; }
     if (!agreed) { setError("서비스 안내에 동의해주세요."); return; }
 
+    if (itemsOpen) {
+      const filled = invoiceItems.filter(i => i.name_en.trim());
+      if (filled.length === 0) { setError("품목을 하나 이상 입력해주세요."); return; }
+      const missingHs = filled.find(i => !i.hs_code.trim());
+      if (missingHs) { setError("모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)"); return; }
+    }
+
     setLoading(true);
     try {
       const resp = await fetch("/api/pickup", {
@@ -273,7 +280,7 @@ export default function PickupPage() {
           />
         </div>
 
-        {/* 물품 내역 (선택) */}
+        {/* 물품 내역 (필수) */}
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <button
             type="button"
@@ -281,8 +288,9 @@ export default function PickupPage() {
             className="w-full flex items-center justify-between px-4 py-3.5 bg-white text-left"
           >
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-gray-800">물품 내역 미리 등록</span>
-              <span className="text-xs text-gray-400 font-normal">(선택 · 해외배송 시 자동 반영)</span>
+              <span className="text-sm font-bold text-gray-800">물품 내역</span>
+              <span className="text-red-500 text-xs font-semibold">*필수</span>
+              <span className="text-xs text-gray-400 font-normal">· 인보이스·마이창고 자동 반영</span>
               {itemsOpen && invoiceItems.some(i => i.name_en) && (
                 <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">
                   {invoiceItems.filter(i => i.name_en).length}종
@@ -358,6 +366,24 @@ export default function PickupPage() {
                             className="flex-1 bg-transparent text-sm focus:outline-none min-w-0" />
                         </div>
                       </div>
+                    </div>
+                    <div className="mt-2">
+                      <label className="text-[10px] font-semibold flex items-center gap-1">
+                        <span className="text-gray-400">HS 코드</span>
+                        <span className="text-red-400">*</span>
+                        <span className="text-gray-300 font-normal">· 6자리 숫자</span>
+                      </label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={8}
+                        value={item.hs_code}
+                        onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, hs_code: e.target.value.replace(/\D/g, "") } : it))}
+                        placeholder="예: 630900"
+                        className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                          item.name_en && !item.hs_code ? "border-red-300 bg-red-50" : "border-gray-100"
+                        }`}
+                      />
                     </div>
                   </div>
                 ))}

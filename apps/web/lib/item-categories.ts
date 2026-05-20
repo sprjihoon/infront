@@ -8,6 +8,9 @@ export interface ItemCategory {
 }
 
 export const ITEM_CATEGORIES: ItemCategory[] = [
+  // ── 유학생 짐 ──
+  { id: "personal_effects", name_ko: "개인 소지품 (유학생 짐)", name_en: "Personal Effects", hs_code: "630900", group: "유학생 짐" },
+
   // ── 의류 ──
   { id: "clothing_top",     name_ko: "상의 (티셔츠·셔츠·블라우스)", name_en: "Clothing - Top",          hs_code: "610910", group: "의류" },
   { id: "clothing_bottom",  name_ko: "하의 (바지·스커트·레깅스)",   name_en: "Clothing - Bottom",       hs_code: "610462", group: "의류" },
