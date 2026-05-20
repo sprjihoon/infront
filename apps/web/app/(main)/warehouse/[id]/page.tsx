@@ -6,14 +6,16 @@ import Link from "next/link";
 import {
   ArrowLeft, Package, Truck, MapPin, Weight, Ruler,
   AlertTriangle, CheckCircle, Clock, Play, Image as ImageIcon,
-  RotateCcw, Send, ChevronRight, FileText,
+  RotateCcw, Send, ChevronRight, FileText, Navigation,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { TRACKING_STATUS } from "@/lib/tracking/client";
 
 interface Parcel {
   id: string;
   tracking_no: string | null;
   pickup_tracking_no: string | null;
+  courier: string | null;
   status: string;
   sender_name: string | null;
   sender_address: string | null;
@@ -27,6 +29,30 @@ interface Parcel {
   notes: string | null;
   inbound_at: string | null;
   created_at: string;
+  // 추적
+  tracking_status: string | null;
+  tracking_last_event: TrackingEvent | null;
+  tracking_events: TrackingEvent[] | null;
+  tracking_synced_at: string | null;
+  // 인보이스
+  item_condition: string | null;
+  pre_invoice_items: InvoiceItem[] | null;
+}
+
+interface TrackingEvent {
+  time: string;
+  statusCode: string;
+  statusLabel: string;
+  description: string;
+  location: string;
+}
+
+interface InvoiceItem {
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  origin_country: string;
+  hs_code?: string;
 }
 
 interface ParcelMedia {
@@ -54,6 +80,7 @@ interface LinkedOrder {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; step: number }> = {
+  PRE_REGISTERED:  { label: "등록 완료",      color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200", step: 0 },
   PENDING_PICKUP:  { label: "수거 신청 완료", color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200", step: 1 },
   PICKED_UP:       { label: "수거 완료",      color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",     step: 2 },
   INBOUND:         { label: "창고 입고",       color: "text-green-700",  bg: "bg-green-50 border-green-200",   step: 3 },
@@ -172,6 +199,107 @@ export default function ParcelDetailPage() {
           )}
         </div>
       </div>
+
+      {/* 국내 배송 추적 (PRE_REGISTERED / PENDING_PICKUP 단계) */}
+      {parcel.status === "PRE_REGISTERED" && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <Navigation size={15} className="text-blue-500" />
+              국내 배송 추적
+            </h2>
+            {parcel.tracking_synced_at && (
+              <span className="text-xs text-gray-400">
+                {new Date(parcel.tracking_synced_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })} 기준
+              </span>
+            )}
+          </div>
+
+          {/* 진행 단계 바 */}
+          <TrackingProgressBar statusCode={parcel.tracking_status} />
+
+          {parcel.tracking_last_event ? (
+            <>
+              {/* 최신 이벤트 강조 */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-bold ${TRACKING_STATUS[parcel.tracking_last_event.statusCode]?.color ?? "text-gray-600"}`}>
+                    {parcel.tracking_last_event.statusLabel || TRACKING_STATUS[parcel.tracking_last_event.statusCode]?.label || parcel.tracking_last_event.statusCode}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    {new Date(parcel.tracking_last_event.time).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-700">{parcel.tracking_last_event.description}</p>
+                {parcel.tracking_last_event.location && (
+                  <p className="text-xs text-gray-400 mt-0.5">📍 {parcel.tracking_last_event.location}</p>
+                )}
+              </div>
+
+              {/* 전체 이벤트 (접기/펼치기는 생략, 최근 5개) */}
+              {parcel.tracking_events && parcel.tracking_events.length > 1 && (
+                <div className="space-y-0">
+                  {parcel.tracking_events.slice(0, 6).map((ev, idx) => (
+                    <div key={idx} className="flex gap-3 py-2 border-b border-gray-50 last:border-0">
+                      <div className="flex flex-col items-center mt-1 shrink-0">
+                        <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-blue-500" : "bg-gray-200"}`} />
+                        {idx < (parcel.tracking_events?.length ?? 0) - 1 && (
+                          <div className="w-px flex-1 bg-gray-100 mt-1" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-gray-700">{ev.description}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {ev.location && <span className="text-xs text-gray-400">{ev.location}</span>}
+                          <span className="text-xs text-gray-300">
+                            {new Date(ev.time).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-4 text-sm text-gray-400">
+              {parcel.courier
+                ? "추적 정보를 불러오는 중이에요 (앱 재접속 시 갱신됩니다)"
+                : "택배사 정보가 없어 추적할 수 없어요"}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 등록 물품 내역 (PRE_REGISTERED) */}
+      {parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
+          <h2 className="text-sm font-semibold text-gray-900">등록 물품 내역</h2>
+          <div className="flex items-center gap-2">
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${parcel.item_condition === "USED" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
+              {parcel.item_condition === "USED" ? "중고품" : "새 제품"}
+            </span>
+            <span className="text-xs text-gray-400">총 {parcel.pre_invoice_items.length}종</span>
+          </div>
+          <div className="space-y-2">
+            {parcel.pre_invoice_items.map((item, idx) => (
+              <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                <div>
+                  <p className="text-sm text-gray-800 font-medium">{item.name_en}</p>
+                  <p className="text-xs text-gray-400">수량 {item.quantity} · 원산지 {item.origin_country}</p>
+                </div>
+                <p className="text-sm font-semibold text-gray-700">$ {item.unit_price_usd}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between text-sm pt-1">
+            <span className="text-gray-500">총 신고금액</span>
+            <span className="font-bold text-gray-900">
+              USD {parcel.pre_invoice_items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0).toFixed(2)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 기본 정보 */}
       <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
@@ -399,6 +527,46 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
       <span className="text-sm text-gray-800 flex-1 break-all">{value}</span>
     </div>
   );
+}
+
+const TRACK_STEPS = [
+  { code: "INFORMATION_RECEIVED", label: "접수" },
+  { code: "AT_PICKUP",            label: "집하" },
+  { code: "IN_TRANSIT",           label: "이동 중" },
+  { code: "OUT_FOR_DELIVERY",     label: "배달 출발" },
+  { code: "DELIVERED",            label: "배달 완료" },
+];
+
+function TrackingProgressBar({ statusCode }: { statusCode: string | null }) {
+  const currentStep = TRACKING_STATUS[statusCode ?? ""]?.step ?? 0;
+  const maxStep = 5;
+
+  return (
+    <div className="flex items-start gap-0">
+      {TRACK_STEPS.map((step, idx) => {
+        const stepNum = idx + 1;
+        const done = currentStep >= stepNum;
+        const active = currentStep === stepNum;
+        return (
+          <div key={step.code} className="flex-1 flex flex-col items-center gap-1">
+            <div className="w-full flex items-center">
+              <div className={`w-full h-1 ${idx === 0 ? "invisible" : done ? "bg-blue-500" : "bg-gray-100"}`} />
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
+                done ? (active ? "bg-blue-600 text-white ring-2 ring-blue-200" : "bg-blue-500 text-white") : "bg-gray-100 text-gray-400"
+              }`}>
+                {done && !active ? <CheckCircle size={12} className="text-white" /> : stepNum}
+              </div>
+              <div className={`w-full h-1 ${idx === TRACK_STEPS.length - 1 ? "invisible" : done && currentStep > stepNum ? "bg-blue-500" : "bg-gray-100"}`} />
+            </div>
+            <span className={`text-[10px] text-center leading-tight ${done ? (active ? "text-blue-600 font-bold" : "text-blue-500") : "text-gray-400"}`}>
+              {step.label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+  void maxStep;
 }
 
 const CHECKLIST_LABEL: Record<string, string> = {

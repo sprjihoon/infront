@@ -17,6 +17,7 @@ interface Parcel {
 }
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  PRE_REGISTERED: { label: "등록 완료",       color: "text-indigo-600 bg-indigo-50" },
   PENDING_PICKUP: { label: "수거 신청 완료", color: "text-yellow-600 bg-yellow-50" },
   PICKED_UP:      { label: "수거 완료",      color: "text-blue-600 bg-blue-50"   },
   INBOUND:        { label: "창고 입고",       color: "text-green-600 bg-green-50" },
@@ -67,6 +68,22 @@ const QUICK_ACTIONS = [
   },
 ];
 
+// 세션당 1회만 추적 동기화 (30분 쿨다운)
+const SYNC_COOLDOWN_MS = 30 * 60 * 1000;
+const SYNC_KEY = "tracking_synced_at";
+
+function shouldSync(): boolean {
+  try {
+    const last = sessionStorage.getItem(SYNC_KEY);
+    if (!last) return true;
+    return Date.now() - parseInt(last, 10) > SYNC_COOLDOWN_MS;
+  } catch { return true; }
+}
+
+function markSynced() {
+  try { sessionStorage.setItem(SYNC_KEY, String(Date.now())); } catch { /* ignore */ }
+}
+
 export default function HomeClient() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [parcels,  setParcels]  = useState<Parcel[]>([]);
@@ -83,13 +100,23 @@ export default function HomeClient() {
         .maybeSingle()
         .then(({ data }) => setUserInfo(data));
 
-      supabase
-        .from("parcels")
-        .select("id, tracking_no, status, created_at")
-        .eq("customer_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5)
-        .then(({ data }) => setParcels(data ?? []));
+      const fetchParcels = () =>
+        supabase
+          .from("parcels")
+          .select("id, tracking_no, status, created_at")
+          .eq("customer_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5)
+          .then(({ data }) => setParcels(data ?? []));
+
+      // 추적 동기화 (세션당 1회)
+      if (shouldSync()) {
+        fetch("/api/parcels/sync-tracking", { method: "POST" })
+          .then(() => { markSynced(); fetchParcels(); })
+          .catch(() => fetchParcels());
+      } else {
+        fetchParcels();
+      }
     });
   }, []);
 

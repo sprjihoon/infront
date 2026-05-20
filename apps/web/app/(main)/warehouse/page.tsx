@@ -16,6 +16,8 @@ interface Parcel {
   is_shippable: boolean | null;
   hold_reason: string | null;
   notes: string | null;
+  tracking_status: string | null;
+  tracking_last_event: { statusLabel: string; description: string; location: string; time: string } | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
@@ -54,7 +56,7 @@ export default function WarehousePage() {
       if (!user) return;
       supabase
         .from("parcels")
-        .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes")
+        .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event")
         .eq("customer_id", user.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => {
@@ -281,7 +283,14 @@ export default function WarehousePage() {
                 )}
                 {parcel.status === "PRE_REGISTERED" && (
                   <div className="mt-2 bg-indigo-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-indigo-600">📬 센터 도착 대기 중 · 도착 후 입고 처리됩니다</p>
+                    {parcel.tracking_last_event ? (
+                      <p className="text-xs text-indigo-700">
+                        🚚 {parcel.tracking_last_event.statusLabel || parcel.tracking_last_event.description}
+                        {parcel.tracking_last_event.location ? ` · ${parcel.tracking_last_event.location}` : ""}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-indigo-600">📬 센터 도착 대기 중 · 도착 후 입고 처리됩니다</p>
+                    )}
                   </div>
                 )}
               </div>
