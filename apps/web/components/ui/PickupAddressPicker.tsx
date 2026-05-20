@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { MapPin, Star, Plus, ChevronRight, X, Check, Pencil } from "lucide-react";
@@ -204,7 +204,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
 
       {sheet && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
+          className="fixed inset-0 z-[200] bg-black/40 flex items-end justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) { setSheet(false); resetNewForm(); } }}
         >
           <div className="w-full max-w-[600px] bg-white rounded-t-3xl overflow-hidden flex flex-col max-h-[85vh]">
@@ -452,3 +452,4 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
     </>
   );
 }
+
