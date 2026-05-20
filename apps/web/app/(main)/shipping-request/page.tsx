@@ -219,53 +219,73 @@ function ShippingRequestContent() {
   // 박스 개수 변경 (새 박스는 기본 해외배송지 적용, 줄어들면 아이템을 박스 1로)
   const handleBoxCountChange = useCallback((count: number) => {
     setBoxes((prev) => {
-      const allKeys = prev.flatMap((b) => b.itemKeys);
       const newBoxes: BoxSetup[] = Array.from({ length: count }, (_, i) => ({
         id: i + 1,
         address: prev[i]?.address ?? defaultOverseasAddress,
-        itemKeys: prev[i]?.itemKeys ?? [],
+        items: prev[i]?.items ?? [],
       }));
       if (count < prev.length) {
-        const keepKeys = new Set(newBoxes.flatMap((b) => b.itemKeys));
-        const overflow = allKeys.filter((k) => !keepKeys.has(k));
-        newBoxes[0].itemKeys = [...newBoxes[0].itemKeys, ...overflow];
+        // 잘린 박스의 아이템을 박스 1로 병합
+        const keepKeys = new Set(newBoxes.flatMap((b) => b.items.map((bi) => bi.key)));
+        for (let i = count; i < prev.length; i++) {
+          for (const bi of prev[i].items) {
+            if (!keepKeys.has(bi.key)) {
+              newBoxes[0].items = [...newBoxes[0].items, bi];
+            }
+          }
+        }
       }
       return newBoxes;
     });
   }, [defaultOverseasAddress]);
 
+  // 다른 박스들에 이미 배정된 해당 아이템의 총 수량
+  const getOtherBoxQty = useCallback((itemKey: string, excludeBoxId: number): number => {
+    return boxes.filter((b) => b.id !== excludeBoxId)
+      .reduce((sum, b) => sum + (b.items.find((bi) => bi.key === itemKey)?.qty ?? 0), 0);
+  }, [boxes]);
+
   // "박스에 담기" 버튼 → 아이템 선택 모드 진입
   const openItemSelect = useCallback((boxId: number) => {
     const box = boxes.find((b) => b.id === boxId);
-    setTempSelected(new Set(box?.itemKeys ?? []));
+    const initMap = new Map<string, number>();
+    (box?.items ?? []).forEach((bi) => initMap.set(bi.key, bi.qty));
+    setTempQty(initMap);
     setSelectingForBoxId(boxId);
     setPhase("item_select");
   }, [boxes]);
 
-  // 아이템 선택 완료 → 박스에 반영
+  // 아이템 선택 완료 → 박스에 반영 (qty > 0인 것만)
   const confirmItemSelect = useCallback(() => {
     if (selectingForBoxId === null) return;
+    const newItems: BoxItem[] = [];
+    tempQty.forEach((qty, key) => { if (qty > 0) newItems.push({ key, qty }); });
     setBoxes((prev) =>
-      prev.map((b) =>
-        b.id === selectingForBoxId
-          ? { ...b, itemKeys: Array.from(tempSelected) }
-          : { ...b, itemKeys: b.itemKeys.filter((k) => !tempSelected.has(k)) }
-      )
+      prev.map((b) => {
+        if (b.id === selectingForBoxId) return { ...b, items: newItems };
+        // 다른 박스에서 동일 key가 있으면 이미 처리됨 — 수량은 각자 관리
+        return b;
+      })
     );
     setPhase("box_config");
     setSelectingForBoxId(null);
-  }, [selectingForBoxId, tempSelected]);
+  }, [selectingForBoxId, tempQty]);
 
   // 박스 구성 완료 → 실제 5단계 플로우 시작
   const handleBoxConfigConfirm = useCallback(() => {
-    const allSelectedKeys = boxes.flatMap((b) => b.itemKeys);
-    if (allSelectedKeys.length === 0) return;
+    const totalQty = boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0);
+    if (totalQty === 0) return;
+    // 박스 1 기준으로 인보이스 초기화 (각 박스의 아이템을 qty 반영)
+    const allBoxItems = boxes.flatMap((b) => b.items);
+    // key 기준 합산 (같은 품목이 여러 박스에 분산된 경우 합산)
+    const merged = new Map<string, number>();
+    allBoxItems.forEach(({ key, qty }) => merged.set(key, (merged.get(key) ?? 0) + qty));
     const preItems = selectableItems
-      .filter((it) => allSelectedKeys.includes(it.key))
+      .filter((it) => merged.has(it.key))
       .map((it) => ({
         key: it.key,
         name_en: it.name_en,
-        quantity: it.quantity,
+        quantity: merged.get(it.key)!,
         unit_price_usd: it.unit_price_usd,
         hs_code: it.hs_code,
         origin_country: it.origin_country,
@@ -380,14 +400,13 @@ function ShippingRequestContent() {
     }
   }
 
-  // ── phase: item_select — 특정 박스에 담을 내품 선택 ───────────
+  // ── phase: item_select — 특정 박스에 담을 내품 선택 (수량 스테퍼) ─
   if (phase === "item_select" && selectingForBoxId !== null) {
     const parcelGroups = shippableParcels.map((p) => ({
       parcel: p,
       items: selectableItems.filter((it) => it.parcelId === p.id),
     }));
-    const allKeys = selectableItems.map((it) => it.key);
-    const allSelected = allKeys.length > 0 && allKeys.every((k) => tempSelected.has(k));
+    const totalSelected = Array.from(tempQty.values()).reduce((s, v) => s + v, 0);
 
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
@@ -398,16 +417,13 @@ function ShippingRequestContent() {
             </button>
             <div className="flex-1">
               <p className="text-sm font-bold text-gray-900">{selectingForBoxId}{"\ubc88 \ubc15\uc2a4\uc5d0 \ub2f4\uc744 \ub0b4\ud488"}</p>
-              <p className="text-xs text-gray-400">{"\ubc14\uc2a4\ucf13\uc5d0 \ub2f4\uc744 \uc81c\ud488\uc744 \uc120\ud0dd\ud558\uc138\uc694"}</p>
+              <p className="text-xs text-gray-400">{"\uc218\ub7c9\uc744 \uc124\uc815\ud574\uc8fc\uc138\uc694 \u2014 \uac19\uc740 \ud488\ubaa9\uc744 \uc5ec\ub7ec \ubc15\uc2a4\uc5d0 \ub098\ub220 \ub2f4\uc744 \uc218 \uc788\uc5b4\uc694"}</p>
             </div>
-            <button
-              onClick={() => setTempSelected(allSelected ? new Set() : new Set(allKeys))}
-              className={`text-xs font-bold px-2.5 py-1 rounded-full border transition-all ${
-                allSelected ? "text-blue-600 bg-blue-50 border-blue-300" : "text-gray-500 bg-white border-gray-200"
-              }`}
-            >
-              {allSelected ? "\uc120\ud0dd\ud574\uc81c" : "\uc804\uccb4\uc120\ud0dd"}
-            </button>
+            {totalSelected > 0 && (
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full shrink-0">
+                {totalSelected}{"\uac1c"}
+              </span>
+            )}
           </div>
         </div>
 
@@ -420,72 +436,85 @@ function ShippingRequestContent() {
               <p className="text-sm font-semibold text-gray-500">{"\ucd9c\uace0 \uac00\ub2a5\ud55c \ubb3c\ud488\uc774 \uc5c6\uc2b5\ub2c8\ub2e4"}</p>
             </div>
           ) : (
-            parcelGroups.map(({ parcel: p, items: pItems }) => {
-              const allChecked = pItems.every((it) => tempSelected.has(it.key));
-              const someChecked = pItems.some((it) => tempSelected.has(it.key));
-              return (
-                <div key={p.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
-                    <button
-                      onClick={() =>
-                        setTempSelected((prev) => {
-                          const next = new Set(prev);
-                          if (allChecked) pItems.forEach((it) => next.delete(it.key));
-                          else pItems.forEach((it) => next.add(it.key));
-                          return next;
-                        })
-                      }
-                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                        allChecked ? "bg-blue-600 border-blue-600" : someChecked ? "bg-blue-200 border-blue-400" : "border-gray-300 bg-white"
-                      }`}
-                    >
-                      {(allChecked || someChecked) && <span className="text-white text-xs font-bold">{allChecked ? "✓" : "–"}</span>}
-                    </button>
-                    <Package size={15} className="text-gray-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-700 truncate">{p.tracking_no ?? "\uc1a1\uc7a5\ubc88\ud638 \ubbf8\ub4f1\ub85d"}</p>
-                      <p className="text-[10px] text-gray-400">
-                        {p.sender_address ?? p.sender_name ?? "\ubc1c\uc1a1\uc778 \ubbf8\ud655\uc778"}
-                        {p.weight_actual ? ` \u00b7 ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
-                      </p>
-                    </div>
-                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                      p.status === "INSPECTION" ? "text-purple-700 bg-purple-50 border-purple-200" : "text-green-700 bg-green-50 border-green-200"
-                    }`}>{p.status === "INSPECTION" ? "\uac80\ud488\uc911" : "\uc785\uace0\uc644\ub8cc"}</span>
+            parcelGroups.map(({ parcel: p, items: pItems }) => (
+              <div key={p.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                {/* 택배 헤더 */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
+                  <Package size={15} className="text-gray-400 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-700 truncate">{p.tracking_no ?? "\uc1a1\uc7a5\ubc88\ud638 \ubbf8\ub4f1\ub85d"}</p>
+                    <p className="text-[10px] text-gray-400">
+                      {p.sender_address ?? p.sender_name ?? "\ubc1c\uc1a1\uc778 \ubbf8\ud655\uc778"}
+                      {p.weight_actual ? ` \u00b7 ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
+                    </p>
                   </div>
-                  <div className="divide-y divide-gray-50">
-                    {pItems.map((item) => {
-                      const checked = tempSelected.has(item.key);
-                      return (
-                        <button
-                          key={item.key}
-                          onClick={() =>
-                            setTempSelected((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(item.key)) next.delete(item.key);
-                              else next.add(item.key);
-                              return next;
-                            })
-                          }
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${checked ? "bg-blue-50" : "bg-white hover:bg-gray-50"}`}
-                        >
-                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${checked ? "bg-blue-600 border-blue-600" : "border-gray-300"}`}>
-                            {checked && <span className="text-white text-xs font-bold">✓</span>}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
-                            <p className="text-xs text-gray-400">
-                              {item.quantity}{"\uac1c"}
-                              {item.unit_price_usd > 0 ? ` \u00b7 $${item.unit_price_usd}` : ""}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                    p.status === "INSPECTION" ? "text-purple-700 bg-purple-50 border-purple-200" : "text-green-700 bg-green-50 border-green-200"
+                  }`}>{p.status === "INSPECTION" ? "\uac80\ud488\uc911" : "\uc785\uace0\uc644\ub8cc"}</span>
                 </div>
-              );
-            })
+
+                {/* 내품 목록 — 수량 스테퍼 */}
+                <div className="divide-y divide-gray-50">
+                  {pItems.map((item) => {
+                    const currentQty = tempQty.get(item.key) ?? 0;
+                    const otherQty = getOtherBoxQty(item.key, selectingForBoxId!);
+                    const maxQty = item.quantity - otherQty;
+                    const isActive = currentQty > 0;
+
+                    return (
+                      <div
+                        key={item.key}
+                        className={`flex items-center gap-3 px-4 py-3 transition-colors ${isActive ? "bg-blue-50" : "bg-white"}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
+                          <p className="text-xs text-gray-400">
+                            {"\uc7ac\uace0 "}{item.quantity}{"\uac1c"}
+                            {otherQty > 0 ? ` \u00b7 \ub2e4\ub978 \ubc15\uc2a4 ${otherQty}\uac1c` : ""}
+                            {item.unit_price_usd > 0 ? ` \u00b7 $${item.unit_price_usd}` : ""}
+                          </p>
+                        </div>
+
+                        {/* 수량 스테퍼 */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            onClick={() =>
+                              setTempQty((prev) => {
+                                const next = new Map(prev);
+                                const v = (next.get(item.key) ?? 0) - 1;
+                                if (v <= 0) next.delete(item.key);
+                                else next.set(item.key, v);
+                                return next;
+                              })
+                            }
+                            disabled={currentQty === 0}
+                            className="w-8 h-8 rounded-lg border-2 border-gray-200 flex items-center justify-center text-gray-500 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
+                          >
+                            –
+                          </button>
+                          <span className={`w-8 text-center text-sm font-bold ${isActive ? "text-blue-600" : "text-gray-300"}`}>
+                            {currentQty}
+                          </span>
+                          <button
+                            onClick={() =>
+                              setTempQty((prev) => {
+                                const next = new Map(prev);
+                                next.set(item.key, Math.min((next.get(item.key) ?? 0) + 1, maxQty));
+                                return next;
+                              })
+                            }
+                            disabled={currentQty >= maxQty}
+                            className="w-8 h-8 rounded-lg border-2 border-blue-300 bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))
           )}
         </div>
 
@@ -493,11 +522,11 @@ function ShippingRequestContent() {
           <div className="max-w-[600px] mx-auto">
             <button
               onClick={confirmItemSelect}
-              disabled={tempSelected.size === 0}
+              disabled={totalSelected === 0}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               <CheckCircle size={16} />
-              {tempSelected.size}{"\uac1c \uc120\ud0dd \uc644\ub8cc \u2014 \ubc15\uc2a4\uc5d0 \ub2f4\uae30"}
+              {totalSelected}{"\uac1c \ub2f4\uae30 \uc644\ub8cc"}
             </button>
           </div>
         </div>
@@ -507,7 +536,7 @@ function ShippingRequestContent() {
 
   // ── phase: box_config — 박스 구성 ────────────────────────────
   if (phase === "box_config") {
-    const totalAssigned = boxes.reduce((s, b) => s + b.itemKeys.length, 0);
+    const totalAssigned = boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0);
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
         <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
@@ -556,7 +585,10 @@ function ShippingRequestContent() {
           ) : (
             /* 박스별 카드 */
             boxes.map((box) => {
-              const boxItems = selectableItems.filter((it) => box.itemKeys.includes(it.key));
+              const boxItemDetails = box.items
+                .map((bi) => ({ bi, item: selectableItems.find((it) => it.key === bi.key) }))
+                .filter((x): x is { bi: BoxItem; item: SelectableItem } => !!x.item);
+              const totalBoxQty = box.items.reduce((s, bi) => s + bi.qty, 0);
               const isAddressOpen = expandedBoxAddress === box.id;
               return (
                 <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
@@ -565,8 +597,8 @@ function ShippingRequestContent() {
                     <div className="flex items-center gap-2">
                       <Package size={16} className="text-white" />
                       <p className="text-sm font-bold text-white">{box.id}{"\ubc88 \ubc15\uc2a4"}</p>
-                      {boxItems.length > 0 && (
-                        <span className="text-xs text-blue-200">{boxItems.length}{"\uac1c \ub0b4\ud488"}</span>
+                      {totalBoxQty > 0 && (
+                        <span className="text-xs text-blue-200">{totalBoxQty}{"\uac1c"}</span>
                       )}
                     </div>
                     <button
@@ -591,18 +623,19 @@ function ShippingRequestContent() {
 
                   {/* 내품 목록 */}
                   <div className="divide-y divide-gray-50">
-                    {boxItems.length === 0 ? (
+                    {boxItemDetails.length === 0 ? (
                       <p className="text-xs text-gray-400 text-center py-4">{"\uc544\uc9c1 \ub2f4\uc740 \ub0b4\ud488\uc774 \uc5c6\uc5b4\uc694"}</p>
                     ) : (
-                      boxItems.map((item) => (
-                        <div key={item.key} className="flex items-center gap-3 px-4 py-3">
+                      boxItemDetails.map(({ bi, item }) => (
+                        <div key={bi.key} className="flex items-center gap-3 px-4 py-3">
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
                             <p className="text-xs text-gray-400">
-                              {item.parcelSender} · {item.quantity}{"\uac1c"}
+                              {item.parcelSender}
                               {item.unit_price_usd > 0 ? ` · $${item.unit_price_usd}` : ""}
                             </p>
                           </div>
+                          <span className="text-sm font-bold text-blue-600 shrink-0">{bi.qty}{"\uac1c"}</span>
                         </div>
                       ))
                     )}
@@ -615,7 +648,7 @@ function ShippingRequestContent() {
                       className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl hover:bg-blue-50 active:scale-[0.98] transition-all"
                     >
                       <span className="text-lg leading-none">+</span>
-                      {"\ubc15\uc2a4\uc5d0 \ub2f4\uae30"}
+                      {box.items.length > 0 ? "\ub0b4\ud488 \uc218\uc815" : "\ubc15\uc2a4\uc5d0 \ub2f4\uae30"}
                     </button>
                   </div>
                 </div>
