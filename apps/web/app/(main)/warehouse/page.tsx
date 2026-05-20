@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Search, CheckSquare, Square, Send } from "lucide-react";
+import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Parcel {
@@ -19,6 +19,7 @@ interface Parcel {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
+  PRE_REGISTERED: { label: "등록 완료",  color: "text-indigo-700 bg-indigo-50 border-indigo-200", dot: "bg-indigo-400" },
   PENDING_PICKUP: { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
   PICKED_UP:      { label: "수거 완료", color: "text-blue-700 bg-blue-50 border-blue-200",   dot: "bg-blue-400" },
   INBOUND:        { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200", dot: "bg-green-400" },
@@ -28,11 +29,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
 };
 
 const FILTER_TABS = [
-  { key: "ALL",        label: "전체" },
-  { key: "INBOUND",    label: "입고완료" },
-  { key: "INSPECTION", label: "검품중" },
-  { key: "HOLD",       label: "보류" },
-  { key: "DONE",       label: "처리완료" },
+  { key: "ALL",            label: "전체" },
+  { key: "PRE_REGISTERED", label: "등록완료" },
+  { key: "INBOUND",        label: "입고완료" },
+  { key: "INSPECTION",     label: "검품중" },
+  { key: "HOLD",           label: "보류" },
+  { key: "DONE",           label: "처리완료" },
 ];
 
 // 배송 신청 가능한 상태
@@ -129,15 +131,24 @@ export default function WarehousePage() {
       {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-xl font-bold text-gray-900">📦 마이창고</h1>
-        {eligibleInFiltered.length > 0 && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={selectAll}
-            className="flex items-center gap-1.5 text-xs font-medium text-blue-600 px-3 py-1.5 bg-blue-50 rounded-full"
+            onClick={() => router.push("/register-parcel")}
+            className="flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-full shadow-sm shadow-blue-200"
           >
-            {allEligibleSelected ? <CheckSquare size={13} /> : <Square size={13} />}
-            {allEligibleSelected ? "선택 해제" : "전체 선택"}
+            <Plus size={13} />
+            물품 등록
           </button>
-        )}
+          {eligibleInFiltered.length > 0 && (
+            <button
+              onClick={selectAll}
+              className="flex items-center gap-1.5 text-xs font-medium text-blue-600 px-3 py-1.5 bg-blue-50 rounded-full"
+            >
+              {allEligibleSelected ? <CheckSquare size={13} /> : <Square size={13} />}
+              {allEligibleSelected ? "선택 해제" : "전체 선택"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 검색 */}
@@ -188,7 +199,18 @@ export default function WarehousePage() {
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-10 text-center">
           <Package size={44} className="text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">입고된 물품이 없어요</p>
+          <p className="text-gray-500 text-sm font-medium mb-1">
+            {filter === "PRE_REGISTERED" ? "등록된 물품이 없어요" : "입고된 물품이 없어요"}
+          </p>
+          <p className="text-xs text-gray-400 mb-5">
+            쇼핑몰에서 창고 주소로 발송한 물품을<br />미리 등록해두세요
+          </p>
+          <button
+            onClick={() => router.push("/register-parcel")}
+            className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl"
+          >
+            <ClipboardList size={15} /> 물품 등록하기
+          </button>
         </div>
       ) : (
         <div className="space-y-3">
@@ -255,6 +277,11 @@ export default function WarehousePage() {
                 {parcel.status === "HOLD" && parcel.hold_reason && (
                   <div className="mt-2 bg-red-50 rounded-lg px-3 py-2">
                     <p className="text-xs text-red-600">⚠️ {parcel.hold_reason}</p>
+                  </div>
+                )}
+                {parcel.status === "PRE_REGISTERED" && (
+                  <div className="mt-2 bg-indigo-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-indigo-600">📬 센터 도착 대기 중 · 도착 후 입고 처리됩니다</p>
                   </div>
                 )}
               </div>
