@@ -1,3 +1,4 @@
 {
-  "alias": ["infront-app.vercel.app"]
+  "alias": ["infront-app.vercel.app"],
+  "rootDirectory": "apps/web"
 }

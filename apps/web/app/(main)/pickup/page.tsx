@@ -66,7 +66,7 @@ export default function PickupPage() {
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
-      const { data: cust } = await supabase.from("customers").select("id").eq("auth_user_id", user.id).single();
+      const { data: cust } = await supabase.from("customers").select("id").eq("id", user.id).single();
       if (!cust) return;
       const { data } = await supabase
         .from("customer_addresses")
@@ -81,9 +81,11 @@ export default function PickupPage() {
   const [goodsName, setGoodsName]       = useState("");
   const [notes, setNotes]               = useState("");
   const [agreed, setAgreed]             = useState(false);
+  const [immediateShip, setImmediateShip] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState("");
   const [result, setResult]             = useState<{
+    parcel_id: string;
     tracking_no: string;
     pickup_date: string;
     post_office: string;
@@ -132,12 +134,18 @@ export default function PickupPage() {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "수거 신청에 실패했습니다.");
 
-      setResult({
+      const resultData = {
+        parcel_id: data.parcel_id,
         tracking_no: data.tracking_no,
         pickup_date: data.pickup_date ?? "",
         post_office: data.post_office ?? "",
         is_test: data.is_test ?? false,
-      });
+      };
+      if (immediateShip && data.parcel_id) {
+        router.push(`/shipping-request?parcels=${data.parcel_id}`);
+        return;
+      }
+      setResult(resultData);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "수거 신청 중 오류가 발생했습니다.");
     } finally {
@@ -331,6 +339,28 @@ export default function PickupPage() {
           />
           <p className="text-xs text-gray-400 mt-1">공용현관 비번 등 집배원에게 전달할 내용을 입력하세요.</p>
         </div>
+
+        {/* 즉시 해외배송 옵션 */}
+        <button
+          type="button"
+          onClick={() => setImmediateShip(!immediateShip)}
+          className={`flex items-start gap-3 w-full text-left p-4 rounded-xl border-2 transition-colors ${
+            immediateShip ? "border-violet-500 bg-violet-50" : "border-gray-200 bg-white"
+          }`}
+        >
+          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+            immediateShip ? "bg-violet-600 border-violet-600" : "border-gray-300"
+          }`}>
+            {immediateShip && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-800">✈️ 수거 후 바로 해외배송 신청</p>
+            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+              체크하면 수거 신청 완료 즉시 해외배송 신청 화면으로 이동합니다.
+              배송지·인보이스를 미리 입력하고 싶을 때 선택하세요.
+            </p>
+          </div>
+        </button>
 
         {/* 서비스 안내 */}
         <div className="bg-gray-50 rounded-xl p-4 space-y-2">

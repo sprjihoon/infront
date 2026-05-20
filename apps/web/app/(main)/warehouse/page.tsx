@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Package, Search } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Package, Search, CheckSquare, Square, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface Parcel {
@@ -14,30 +15,36 @@ interface Parcel {
   weight_actual: number | null;
   is_shippable: boolean | null;
   hold_reason: string | null;
+  notes: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
   PENDING_PICKUP: { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
-  PICKED_UP: { label: "수거 완료", color: "text-blue-700 bg-blue-50 border-blue-200", dot: "bg-blue-400" },
-  INBOUND: { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200", dot: "bg-green-400" },
-  INSPECTION: { label: "검품 중", color: "text-purple-700 bg-purple-50 border-purple-200", dot: "bg-purple-400" },
-  HOLD: { label: "보류", color: "text-red-700 bg-red-50 border-red-200", dot: "bg-red-400" },
-  DONE: { label: "처리 완료", color: "text-gray-600 bg-gray-50 border-gray-200", dot: "bg-gray-400" },
+  PICKED_UP:      { label: "수거 완료", color: "text-blue-700 bg-blue-50 border-blue-200",   dot: "bg-blue-400" },
+  INBOUND:        { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200", dot: "bg-green-400" },
+  INSPECTION:     { label: "검품 중",   color: "text-purple-700 bg-purple-50 border-purple-200", dot: "bg-purple-400" },
+  HOLD:           { label: "보류",      color: "text-red-700 bg-red-50 border-red-200",       dot: "bg-red-400" },
+  DONE:           { label: "처리 완료", color: "text-gray-600 bg-gray-50 border-gray-200",    dot: "bg-gray-400" },
 };
 
 const FILTER_TABS = [
-  { key: "ALL", label: "전체" },
-  { key: "INBOUND", label: "입고완료" },
+  { key: "ALL",        label: "전체" },
+  { key: "INBOUND",    label: "입고완료" },
   { key: "INSPECTION", label: "검품중" },
-  { key: "HOLD", label: "보류" },
-  { key: "DONE", label: "처리완료" },
+  { key: "HOLD",       label: "보류" },
+  { key: "DONE",       label: "처리완료" },
 ];
 
+// 배송 신청 가능한 상태
+const SHIPPABLE_STATUSES = new Set(["INBOUND", "INSPECTION"]);
+
 export default function WarehousePage() {
+  const router = useRouter();
   const [parcels, setParcels] = useState<Parcel[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const supabase = createClient();
@@ -45,7 +52,7 @@ export default function WarehousePage() {
       if (!user) return;
       supabase
         .from("parcels")
-        .select("*")
+        .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes")
         .eq("customer_id", user.id)
         .order("created_at", { ascending: false })
         .then(({ data }) => {
@@ -64,10 +71,64 @@ export default function WarehousePage() {
     return matchStatus && matchSearch;
   });
 
+  function toggleSelect(id: string, shippable: boolean) {
+    if (!shippable) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function selectAll() {
+    const eligibleIds = filtered
+      .filter((p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false)
+      .map((p) => p.id);
+    const allSelected = eligibleIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        eligibleIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        eligibleIds.forEach((id) => next.add(id));
+        return next;
+      });
+    }
+  }
+
+  function handleShippingRequest() {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds).join(",");
+    router.push(`/shipping-request?parcels=${ids}`);
+  }
+
+  const eligibleInFiltered = filtered.filter(
+    (p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false
+  );
+  const allEligibleSelected =
+    eligibleInFiltered.length > 0 &&
+    eligibleInFiltered.every((p) => selectedIds.has(p.id));
+
   return (
-    <div className="px-4 py-6">
+    <div className="px-4 py-6 pb-36">
       {/* 헤더 */}
-      <h1 className="text-xl font-bold text-gray-900 mb-4">📦 마이창고</h1>
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-bold text-gray-900">📦 마이창고</h1>
+        {eligibleInFiltered.length > 0 && (
+          <button
+            onClick={selectAll}
+            className="flex items-center gap-1.5 text-xs font-medium text-blue-600 px-3 py-1.5 bg-blue-50 rounded-full"
+          >
+            {allEligibleSelected ? <CheckSquare size={13} /> : <Square size={13} />}
+            {allEligibleSelected ? "선택 해제" : "전체 선택"}
+          </button>
+        )}
+      </div>
 
       {/* 검색 */}
       <div className="relative mb-4">
@@ -97,6 +158,16 @@ export default function WarehousePage() {
         ))}
       </div>
 
+      {/* 선택 안내 */}
+      {eligibleInFiltered.length > 0 && selectedIds.size === 0 && (
+        <div className="bg-blue-50 rounded-xl px-4 py-2.5 mb-3 flex items-center gap-2">
+          <CheckSquare size={14} className="text-blue-500 shrink-0" />
+          <p className="text-xs text-blue-700">
+            입고된 물품을 선택해서 해외배송을 신청할 수 있어요
+          </p>
+        </div>
+      )}
+
       {/* 목록 */}
       {loading ? (
         <div className="space-y-3">
@@ -113,26 +184,58 @@ export default function WarehousePage() {
         <div className="space-y-3">
           {filtered.map((parcel) => {
             const cfg = STATUS_CONFIG[parcel.status] ?? STATUS_CONFIG.DONE;
+            const isSelectable =
+              SHIPPABLE_STATUSES.has(parcel.status) && parcel.is_shippable !== false;
+            const isSelected = selectedIds.has(parcel.id);
+
             return (
-              <div key={parcel.id} className="bg-white rounded-2xl p-4 shadow-sm">
+              <div
+                key={parcel.id}
+                onClick={() => toggleSelect(parcel.id, isSelectable)}
+                className={`bg-white rounded-2xl p-4 shadow-sm transition-all ${
+                  isSelectable ? "cursor-pointer" : ""
+                } ${
+                  isSelected
+                    ? "ring-2 ring-blue-500 shadow-blue-100"
+                    : isSelectable
+                    ? "hover:ring-1 hover:ring-blue-200"
+                    : ""
+                }`}
+              >
                 <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      {parcel.tracking_no ?? "송장번호 미등록"}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {parcel.sender_name ?? "발송인 미확인"}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    {/* 체크박스 */}
+                    {isSelectable && (
+                      <div className="mt-0.5 shrink-0">
+                        {isSelected ? (
+                          <CheckSquare size={18} className="text-blue-600" />
+                        ) : (
+                          <Square size={18} className="text-gray-300" />
+                        )}
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {parcel.tracking_no ?? "송장번호 미등록"}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {parcel.sender_name ?? "발송인 미확인"}
+                        {parcel.notes ? ` · ${parcel.notes}` : ""}
+                      </p>
+                    </div>
                   </div>
-                  <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${cfg.color}`}>
+                  <span
+                    className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${cfg.color}`}
+                  >
                     <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
                     {cfg.label}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-4 text-xs text-gray-400">
+                <div className={`flex items-center gap-4 text-xs text-gray-400 ${isSelectable ? "pl-7" : ""}`}>
                   <span>
-                    입고: {parcel.inbound_at
+                    입고:{" "}
+                    {parcel.inbound_at
                       ? new Date(parcel.inbound_at).toLocaleDateString("ko-KR")
                       : "대기중"}
                   </span>
@@ -149,6 +252,19 @@ export default function WarehousePage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 해외배송 신청 FAB */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
+          <button
+            onClick={handleShippingRequest}
+            className="flex items-center gap-2.5 bg-blue-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-95 transition-transform"
+          >
+            <Send size={16} />
+            {selectedIds.size}개 물품 해외배송 신청
+          </button>
         </div>
       )}
     </div>
