@@ -10,13 +10,37 @@ import { createClient } from "@/lib/supabase/client";
 import OverseasAddressPicker, { OverseasAddressValue, COUNTRIES } from "@/components/ui/OverseasAddressPicker";
 
 // ── 타입 ────────────────────────────────────────────────────
+interface PreInvoiceItem {
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  hs_code?: string;
+  origin_country: string;
+}
+
 interface Parcel {
   id: string;
   tracking_no: string | null;
   sender_name: string | null;
+  sender_address: string | null;
   status: string;
   weight_actual: number | null;
   notes: string | null;
+  pre_invoice_items: PreInvoiceItem[] | null;
+}
+
+// 아이템 선택 단위 (parcel 내 개별 내품)
+interface SelectableItem {
+  key: string;           // `${parcelId}__${itemIndex}`
+  parcelId: string;
+  itemIndex: number;
+  parcelTracking: string | null;
+  parcelSender: string | null;
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  hs_code: string;
+  origin_country: string;
 }
 
 interface InvoiceItem {
@@ -56,16 +80,39 @@ function ShippingRequestContent() {
   const searchParams = useSearchParams();
   const urlParcelIds = useMemo(() => searchParams.get("parcels")?.split(",").filter(Boolean) ?? [], [searchParams]);
 
-  // Step 0: parcel 선택 (URL에 parcels 없을 때)
+  // Step 0: 내품 선택 (URL에 parcels 없을 때)
   const [step0Done, setStep0Done] = useState(urlParcelIds.length > 0);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set(urlParcelIds));
+  // selectedItemKeys: Set of `${parcelId}__${itemIndex}` keys
+  const [selectedItemKeys, setSelectedItemKeys] = useState<Set<string>>(new Set());
   const [shippableParcels, setShippableParcels] = useState<Parcel[]>([]);
   const [step0Loading, setStep0Loading] = useState(false);
 
-  const parcelIds = useMemo(
-    () => (step0Done ? Array.from(selectedIds) : []),
-    [step0Done, selectedIds]
-  );
+  // URL로 들어온 경우 parcelIds 직접 사용, Step 0 거친 경우 선택된 아이템의 parcelId 집합
+  const parcelIds = useMemo(() => {
+    if (urlParcelIds.length > 0) return urlParcelIds;
+    if (!step0Done) return [];
+    const ids = new Set<string>();
+    for (const key of selectedItemKeys) {
+      ids.add(key.split("__")[0]);
+    }
+    return Array.from(ids);
+  }, [urlParcelIds, step0Done, selectedItemKeys]);
+
+  // Step 0 완료 시 선택된 내품으로 인보이스 초기화
+  const handleStep0Confirm = useCallback(() => {
+    const preItems = selectableItems
+      .filter((it) => selectedItemKeys.has(it.key))
+      .map((it) => ({
+        key: it.key,
+        name_en: it.name_en,
+        quantity: it.quantity,
+        unit_price_usd: it.unit_price_usd,
+        hs_code: it.hs_code,
+        origin_country: it.origin_country,
+      }));
+    if (preItems.length > 0) setItems(preItems);
+    setStep0Done(true);
+  }, [selectableItems, selectedItemKeys]);
 
   const [step, setStep] = useState(1);
   const [parcels, setParcels] = useState<Parcel[]>([]);
@@ -99,7 +146,7 @@ function ShippingRequestContent() {
       setCustomerId(user.id);
       const { data } = await supabase
         .from("parcels")
-        .select("id, tracking_no, sender_name, status, weight_actual, notes")
+        .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items")
         .eq("customer_id", user.id)
         .in("status", SHIPPABLE_STATUSES)
         .order("inbound_at", { ascending: false });
@@ -107,6 +154,45 @@ function ShippingRequestContent() {
       setStep0Loading(false);
     });
   }, [step0Done]);
+
+  // parcel 목록 → 개별 내품 아이템 목록으로 플랫화
+  const selectableItems = useMemo<SelectableItem[]>(() => {
+    const result: SelectableItem[] = [];
+    for (const p of shippableParcels) {
+      const items = p.pre_invoice_items;
+      if (items && items.length > 0) {
+        items.forEach((item, idx) => {
+          result.push({
+            key: `${p.id}__${idx}`,
+            parcelId: p.id,
+            itemIndex: idx,
+            parcelTracking: p.tracking_no,
+            parcelSender: p.sender_address ?? p.sender_name,
+            name_en: item.name_en,
+            quantity: item.quantity,
+            unit_price_usd: item.unit_price_usd,
+            hs_code: item.hs_code ?? "",
+            origin_country: item.origin_country,
+          });
+        });
+      } else {
+        // pre_invoice_items 없으면 parcel 자체를 하나의 아이템으로 표시
+        result.push({
+          key: `${p.id}__0`,
+          parcelId: p.id,
+          itemIndex: 0,
+          parcelTracking: p.tracking_no,
+          parcelSender: p.sender_address ?? p.sender_name,
+          name_en: p.notes ?? p.tracking_no ?? "\ubb3c\ud488",
+          quantity: 1,
+          unit_price_usd: 0,
+          hs_code: "",
+          origin_country: "KR",
+        });
+      }
+    }
+    return result;
+  }, [shippableParcels]);
 
   // 물품 로드 (Step 0 완료 후)
   useEffect(() => {
@@ -213,10 +299,19 @@ function ShippingRequestContent() {
     }
   }
 
-  // ── Step 0: 물품 선택 ─────────────────────────────────────────
+  // ── Step 0: 내품 선택 ─────────────────────────────────────────
   if (!step0Done) {
+    // parcel별로 아이템 그룹화 (표시용)
+    const parcelGroups = shippableParcels.map((p) => ({
+      parcel: p,
+      items: selectableItems.filter((it) => it.parcelId === p.id),
+    }));
+
+    const totalSelected = selectedItemKeys.size;
+
     return (
       <div className="min-h-screen bg-gray-50 pb-32">
+        {/* 헤더 */}
         <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
           <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
             <button onClick={() => router.back()} className="p-1 -ml-1">
@@ -224,12 +319,17 @@ function ShippingRequestContent() {
             </button>
             <div className="flex-1">
               <p className="text-sm font-bold text-gray-900">{"\ucd9c\uace0\uc2e0\uccad"}</p>
-              <p className="text-xs text-gray-400">{"\ucd9c\uace0\ud560 \ubb3c\ud488\uc744 \uc120\ud0dd\ud574\uc8fc\uc138\uc694"}</p>
+              <p className="text-xs text-gray-400">{"\ud574\uc678\ub85c \ubcf4\ub0bc \ub0b4\ud488\uc744 \uc120\ud0dd\ud574\uc8fc\uc138\uc694"}</p>
             </div>
+            {totalSelected > 0 && (
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                {totalSelected}{"\uac1c \uc120\ud0dd"}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-3">
+        <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-4 pb-32">
           {step0Loading ? (
             <div className="flex justify-center py-16">
               <Loader2 size={28} className="animate-spin text-blue-500" />
@@ -247,63 +347,111 @@ function ShippingRequestContent() {
               </button>
             </div>
           ) : (
-            <>
-              <p className="text-xs text-gray-500 px-1">{"\uc785\uace0 \uc644\ub8cc\ub41c \ubb3c\ud488 \u00b7 \ubcf5\uc218 \uc120\ud0dd \uac00\ub2a5"}</p>
-              {shippableParcels.map((p) => {
-                const checked = selectedIds.has(p.id);
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() =>
-                      setSelectedIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(p.id)) next.delete(p.id);
-                        else next.add(p.id);
-                        return next;
-                      })
-                    }
-                    className={`w-full flex items-center gap-3 p-4 rounded-2xl border-2 text-left transition-all ${
-                      checked ? "border-blue-500 bg-blue-50" : "border-gray-100 bg-white"
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                      checked ? "bg-blue-600 border-blue-600" : "border-gray-300"
-                    }`}>
-                      {checked && <span className="text-white text-xs font-bold">✓</span>}
-                    </div>
-                    <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                      <Package size={18} className="text-blue-500" />
-                    </div>
+            parcelGroups.map(({ parcel: p, items }) => {
+              const allChecked = items.every((it) => selectedItemKeys.has(it.key));
+              const someChecked = items.some((it) => selectedItemKeys.has(it.key));
+
+              return (
+                <div key={p.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                  {/* 택배 박스 헤더 */}
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
+                    <button
+                      onClick={() =>
+                        setSelectedItemKeys((prev) => {
+                          const next = new Set(prev);
+                          if (allChecked) {
+                            items.forEach((it) => next.delete(it.key));
+                          } else {
+                            items.forEach((it) => next.add(it.key));
+                          }
+                          return next;
+                        })
+                      }
+                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                        allChecked
+                          ? "bg-blue-600 border-blue-600"
+                          : someChecked
+                          ? "bg-blue-200 border-blue-400"
+                          : "border-gray-300 bg-white"
+                      }`}
+                    >
+                      {(allChecked || someChecked) && (
+                        <span className="text-white text-xs font-bold">{allChecked ? "✓" : "–"}</span>
+                      )}
+                    </button>
+                    <Package size={15} className="text-gray-400 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
+                      <p className="text-xs font-semibold text-gray-700 truncate">
                         {p.tracking_no ?? "\uc1a1\uc7a5\ubc88\ud638 \ubbf8\ub4f1\ub85d"}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        {p.sender_name ?? "\ubc1c\uc1a1\uc778 \ubbf8\ud655\uc778"}
-                        {p.notes ? ` \u00b7 ${p.notes}` : ""}
+                      <p className="text-[10px] text-gray-400">
+                        {p.sender_address ?? p.sender_name ?? "\ubc1c\uc1a1\uc778 \ubbf8\ud655\uc778"}
+                        {p.weight_actual ? ` \u00b7 ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
                       </p>
                     </div>
-                    {p.weight_actual ? (
-                      <span className="text-xs text-gray-500 shrink-0">{(p.weight_actual / 1000).toFixed(2)}kg</span>
-                    ) : (
-                      <span className="text-xs text-gray-300 shrink-0">{"\ubbf8\uce21\uc815"}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                      p.status === "INSPECTION"
+                        ? "text-purple-700 bg-purple-50 border-purple-200"
+                        : "text-green-700 bg-green-50 border-green-200"
+                    }`}>
+                      {p.status === "INSPECTION" ? "\uac80\ud488\uc911" : "\uc785\uace0\uc644\ub8cc"}
+                    </span>
+                  </div>
+
+                  {/* 내품 목록 */}
+                  <div className="divide-y divide-gray-50">
+                    {items.map((item) => {
+                      const checked = selectedItemKeys.has(item.key);
+                      return (
+                        <button
+                          key={item.key}
+                          onClick={() =>
+                            setSelectedItemKeys((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(item.key)) next.delete(item.key);
+                              else next.add(item.key);
+                              return next;
+                            })
+                          }
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
+                            checked ? "bg-blue-50" : "bg-white hover:bg-gray-50"
+                          }`}
+                        >
+                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                            checked ? "bg-blue-600 border-blue-600" : "border-gray-300"
+                          }`}>
+                            {checked && <span className="text-white text-xs font-bold">✓</span>}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
+                            <p className="text-xs text-gray-400">
+                              {item.quantity}{"\uac1c"}
+                              {item.unit_price_usd > 0 ? ` \u00b7 $${item.unit_price_usd}` : ""}
+                              {item.origin_country && item.origin_country !== "KR" ? ` \u00b7 ${item.origin_country}` : ""}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
 
-        {selectedIds.size > 0 && (
-          <div className="fixed bottom-20 left-0 right-0 flex justify-center px-4 z-40">
-            <button
-              onClick={() => setStep0Done(true)}
-              className="flex items-center gap-2.5 bg-blue-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-95 transition-transform"
-            >
-              <Globe size={16} />
-              {selectedIds.size}{"\uac1c \ubb3c\ud488 \ucd9c\uace0\uc2e0\uccad"}
-            </button>
+        {/* 하단 확인 버튼 */}
+        {totalSelected > 0 && (
+          <div className="fixed bottom-20 left-0 right-0 px-4 z-40">
+            <div className="max-w-[600px] mx-auto">
+              <button
+                onClick={handleStep0Confirm}
+                className="w-full flex items-center justify-center gap-2.5 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-[0.98] transition-transform"
+              >
+                <Globe size={16} />
+                {totalSelected}{"\uac1c \ub0b4\ud488 \ucd9c\uace0\uc2e0\uccad\ud558\uae30"}
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
+interface InvoiceItem {
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  origin_country: string;
+}
+
 interface Parcel {
   id: string;
   tracking_no: string | null;
@@ -18,6 +25,7 @@ interface Parcel {
   notes: string | null;
   tracking_status: string | null;
   tracking_last_event: { statusLabel: string; description: string; location: string; time: string } | null;
+  pre_invoice_items: InvoiceItem[] | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
@@ -59,7 +67,7 @@ export default function WarehousePage() {
     if (!user) return;
     const { data } = await supabase
       .from("parcels")
-      .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event")
+      .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event, pre_invoice_items")
       .eq("customer_id", user.id)
       .order("created_at", { ascending: false });
     setParcels(data ?? []);
@@ -276,6 +284,13 @@ export default function WarehousePage() {
                         {parcel.sender_name ?? "발송인 미확인"}
                         {parcel.notes ? ` · ${parcel.notes}` : ""}
                       </p>
+                      {parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {parcel.pre_invoice_items[0].name_en}
+                          {parcel.pre_invoice_items.length > 1 && ` 외 ${parcel.pre_invoice_items.length - 1}종`}
+                          {" · "}총 {parcel.pre_invoice_items.reduce((s, i) => s + i.quantity, 0)}개
+                        </p>
+                      )}
                     </div>
                   </div>
                   <span
