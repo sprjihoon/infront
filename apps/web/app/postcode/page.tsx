@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+export const dynamic = "force-dynamic";
+
 declare global {
   interface Window {
     daum: {
