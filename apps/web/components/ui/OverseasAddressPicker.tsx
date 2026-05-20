@@ -5,36 +5,36 @@ import { Globe, Star, Plus, ChevronRight, ChevronDown, X, Check } from "lucide-r
 import { createClient } from "@/lib/supabase/client";
 
 export const COUNTRIES = [
-  { code: "JP", name: "일본",         flag: "🇯🇵" },
-  { code: "CN", name: "중국",         flag: "🇨🇳" },
-  { code: "US", name: "미국",         flag: "🇺🇸" },
-  { code: "AU", name: "호주",         flag: "🇦🇺" },
-  { code: "CA", name: "캐나다",       flag: "🇨🇦" },
-  { code: "GB", name: "영국",         flag: "🇬🇧" },
-  { code: "DE", name: "독일",         flag: "🇩🇪" },
-  { code: "FR", name: "프랑스",       flag: "🇫🇷" },
-  { code: "SG", name: "싱가포르",     flag: "🇸🇬" },
-  { code: "HK", name: "홍콩",         flag: "🇭🇰" },
-  { code: "TW", name: "대만",         flag: "🇹🇼" },
-  { code: "TH", name: "태국",         flag: "🇹🇭" },
-  { code: "VN", name: "베트남",       flag: "🇻🇳" },
-  { code: "PH", name: "필리핀",       flag: "🇵🇭" },
-  { code: "MY", name: "말레이시아",   flag: "🇲🇾" },
-  { code: "ID", name: "인도네시아",   flag: "🇮🇩" },
-  { code: "MO", name: "마카오",       flag: "🇲🇴" },
-  { code: "MN", name: "몽골",         flag: "🇲🇳" },
-  { code: "NZ", name: "뉴질랜드",     flag: "🇳🇿" },
-  { code: "IT", name: "이탈리아",     flag: "🇮🇹" },
-  { code: "ES", name: "스페인",       flag: "🇪🇸" },
-  { code: "NL", name: "네덜란드",     flag: "🇳🇱" },
-  { code: "SE", name: "스웨덴",       flag: "🇸🇪" },
-  { code: "CH", name: "스위스",       flag: "🇨🇭" },
-  { code: "RU", name: "러시아",       flag: "🇷🇺" },
-  { code: "BR", name: "브라질",       flag: "🇧🇷" },
-  { code: "MX", name: "멕시코",       flag: "🇲🇽" },
-  { code: "AE", name: "아랍에미리트", flag: "🇦🇪" },
-  { code: "SA", name: "사우디아라비아",flag:"🇸🇦" },
-  { code: "IN", name: "인도",         flag: "🇮🇳" },
+  { code: "JP", name: "?�본",         flag: "?��?��" },
+  { code: "CN", name: "중국",         flag: "?��?��" },
+  { code: "US", name: "미국",         flag: "?��?��" },
+  { code: "AU", name: "?�주",         flag: "?��?��" },
+  { code: "CA", name: "캐나??,       flag: "?��?��" },
+  { code: "GB", name: "?�국",         flag: "?��?��" },
+  { code: "DE", name: "?�일",         flag: "?��?��" },
+  { code: "FR", name: "?�랑??,       flag: "?��?��" },
+  { code: "SG", name: "?��??�르",     flag: "?��?��" },
+  { code: "HK", name: "?�콩",         flag: "?��?��" },
+  { code: "TW", name: "?��?,         flag: "?��?��" },
+  { code: "TH", name: "?�국",         flag: "?��?��" },
+  { code: "VN", name: "베트??,       flag: "?��?��" },
+  { code: "PH", name: "?�리?�",       flag: "?��?��" },
+  { code: "MY", name: "말레?�시??,   flag: "?��?��" },
+  { code: "ID", name: "?�도?�시??,   flag: "?��?��" },
+  { code: "MO", name: "마카??,       flag: "?��?��" },
+  { code: "MN", name: "몽골",         flag: "?��?��" },
+  { code: "NZ", name: "?�질?�드",     flag: "?��?��" },
+  { code: "IT", name: "?�탈리아",     flag: "?��?��" },
+  { code: "ES", name: "?�페??,       flag: "?��?��" },
+  { code: "NL", name: "?�덜?�??,     flag: "?��?��" },
+  { code: "SE", name: "?�웨??,       flag: "?��?��" },
+  { code: "CH", name: "?�위??,       flag: "?��?��" },
+  { code: "RU", name: "?�시??,       flag: "?��?��" },
+  { code: "BR", name: "브라�?,       flag: "?��?��" },
+  { code: "MX", name: "멕시�?,       flag: "?��?��" },
+  { code: "AE", name: "?�랍?��?리트", flag: "?��?��" },
+  { code: "SA", name: "?�우?�아?�비??,flag:"?��?��" },
+  { code: "IN", name: "?�도",         flag: "?��?��" },
 ];
 
 export interface OverseasAddressValue {
@@ -45,7 +45,7 @@ export interface OverseasAddressValue {
   countryCode: string;
   addr1: string;   // State / Province
   addr2: string;   // City
-  addr3: string;   // Street / 상세주소
+  addr3: string;   // Street / ?�세주소
   zip: string;
   email: string;
 }
@@ -102,7 +102,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
       .order("created_at", { ascending: false });
     setSaved(data ?? []);
 
-    // 기본 주소 자동 채움
+    // 기본 주소 ?�동 채�?
     if (!value && data && data.length > 0) {
       const def = data.find((a) => a.is_default) ?? data[0];
       onChange(toValue(def));
@@ -178,7 +178,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
 
   return (
     <>
-      {/* 선택된 주소 카드 */}
+      {/* ?�택??주소 카드 */}
       <button
         type="button"
         onClick={() => { setMode("list"); setSheet(true); }}
@@ -216,8 +216,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
             </div>
             <div className="flex items-center gap-1 shrink-0 text-violet-600 text-xs font-medium mt-0.5">
               <Globe size={12} />
-              변경
-            </div>
+              변�?            </div>
           </div>
         ) : (
           <div className="flex items-center gap-3 py-1">
@@ -225,25 +224,25 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
               <Globe size={18} className="text-violet-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700">해외 배송지를 선택해주세요</p>
-              <p className="text-xs text-gray-400 mt-0.5">저장된 주소 선택 또는 새로 입력</p>
+              <p className="text-sm font-semibold text-gray-700">?�외 배송지�??�택?�주?�요</p>
+              <p className="text-xs text-gray-400 mt-0.5">?�?�된 주소 ?�택 ?�는 ?�로 ?�력</p>
             </div>
             <ChevronRight size={16} className="text-gray-300 ml-auto" />
           </div>
         )}
       </button>
 
-      {/* 바텀시트 */}
+      {/* 바�??�트 */}
       {sheet && (
         <div
           className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) { setSheet(false); setMode("list"); } }}
         >
-          <div className="w-full max-w-[430px] bg-white rounded-t-3xl overflow-hidden flex flex-col max-h-[90vh]">
-            {/* 헤더 */}
+          <div className="w-full max-w-[600px] bg-white rounded-t-3xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* ?�더 */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <p className="text-sm font-bold text-gray-900">
-                {mode === "list" ? "해외 배송지 선택" : "새 해외 배송지 등록"}
+                {mode === "list" ? "?�외 배송지 ?�택" : "???�외 배송지 ?�록"}
               </p>
               <button
                 onClick={() => {
@@ -253,7 +252,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                 className="p-1.5 rounded-full hover:bg-gray-100 flex items-center"
               >
                 {mode === "new"
-                  ? <span className="text-xs text-gray-500 px-1">← 목록</span>
+                  ? <span className="text-xs text-gray-500 px-1">??목록</span>
                   : <X size={18} className="text-gray-500" />}
               </button>
             </div>
@@ -265,8 +264,8 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                   {saved.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                       <Globe size={32} className="mx-auto mb-2 text-gray-200" />
-                      <p className="text-sm">저장된 해외 배송지가 없어요</p>
-                      <p className="text-xs mt-1">새 배송지를 등록해보세요</p>
+                      <p className="text-sm">?�?�된 ?�외 배송지가 ?�어??/p>
+                      <p className="text-xs mt-1">??배송지�??�록?�보?�요</p>
                     </div>
                   ) : (
                     saved.map((a) => {
@@ -315,7 +314,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                     })
                   )}
 
-                  {/* 새 주소 추가 버튼 */}
+                  {/* ??주소 추�? 버튼 */}
                   <button
                     type="button"
                     onClick={openNew}
@@ -325,33 +324,33 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                       <Plus size={18} className="text-gray-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-700">새 해외 배송지 등록</p>
-                      <p className="text-xs text-gray-400 mt-0.5">주소록에 저장하거나 일회성으로 입력</p>
+                      <p className="text-sm font-semibold text-gray-700">???�외 배송지 ?�록</p>
+                      <p className="text-xs text-gray-400 mt-0.5">주소록에 ?�?�하거나 ?�회?�으�??�력</p>
                     </div>
                   </button>
                 </div>
               )}
 
-              {/* 새 주소 입력 모드 */}
+              {/* ??주소 ?�력 모드 */}
               {mode === "new" && (
                 <div className="p-4 space-y-4">
                   {/* 별칭 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      별칭 <span className="text-gray-400 font-normal">(예: 일본 친구, 도쿄 자택)</span>
+                      별칭 <span className="text-gray-400 font-normal">(?? ?�본 친구, ?�쿄 ?�택)</span>
                     </label>
                     <input
                       value={newVal.label ?? ""}
                       onChange={(e) => setNewVal((v) => ({ ...v, label: e.target.value }))}
-                      placeholder="도쿄 자택"
+                      placeholder="?�쿄 ?�택"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200"
                     />
                   </div>
 
-                  {/* 국가 */}
+                  {/* �?? */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      국가 <span className="text-red-400">*</span>
+                      �?? <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
                       <button
@@ -382,10 +381,10 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                     </div>
                   </div>
 
-                  {/* 수취인 */}
+                  {/* ?�취??*/}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      수취인 이름 <span className="text-red-400">*</span>
+                      ?�취???�름 <span className="text-red-400">*</span>
                     </label>
                     <input
                       value={newVal.name}
@@ -395,9 +394,9 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                     />
                   </div>
 
-                  {/* 연락처 */}
+                  {/* ?�락�?*/}
                   <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">연락처</label>
+                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">?�락�?/label>
                     <input
                       value={newVal.phone}
                       onChange={(e) => setNewVal((v) => ({ ...v, phone: e.target.value }))}
@@ -406,10 +405,10 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                     />
                   </div>
 
-                  {/* 상세주소 */}
+                  {/* ?�세주소 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      상세주소 (Street) <span className="text-red-400">*</span>
+                      ?�세주소 (Street) <span className="text-red-400">*</span>
                     </label>
                     <input
                       value={newVal.addr3}
@@ -419,10 +418,10 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                     />
                   </div>
 
-                  {/* 시/도 */}
+                  {/* ????*/}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">시 (City)</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">??(City)</label>
                       <input
                         value={newVal.addr2}
                         onChange={(e) => setNewVal((v) => ({ ...v, addr2: e.target.value }))}
@@ -441,10 +440,10 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                     </div>
                   </div>
 
-                  {/* 우편번호 + 이메일 */}
+                  {/* ?�편번호 + ?�메??*/}
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">우편번호</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">?�편번호</label>
                       <input
                         value={newVal.zip}
                         onChange={(e) => setNewVal((v) => ({ ...v, zip: e.target.value }))}
@@ -453,7 +452,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">이메일</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">?�메??/label>
                       <input
                         type="email"
                         value={newVal.email}
@@ -464,7 +463,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                     </div>
                   </div>
 
-                  {/* 주소록 저장 토글 */}
+                  {/* 주소�??�???��? */}
                   <button
                     type="button"
                     onClick={() => setSaveToBook(!saveToBook)}
@@ -478,15 +477,15 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                       {saveToBook && <Check size={12} className="text-white" />}
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-800">주소록에 저장</p>
-                      <p className="text-xs text-gray-500 mt-0.5">다음에도 빠르게 선택할 수 있어요</p>
+                      <p className="text-sm font-semibold text-gray-800">주소록에 ?�??/p>
+                      <p className="text-xs text-gray-500 mt-0.5">?�음?�도 빠르�??�택?????�어??/p>
                     </div>
                   </button>
                 </div>
               )}
             </div>
 
-            {/* 확인 버튼 */}
+            {/* ?�인 버튼 */}
             {mode === "new" && (
               <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
                 <button
@@ -498,7 +497,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                   {saving ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <><Check size={16} /> 이 주소로 선택</>
+                    <><Check size={16} /> ??주소�??�택</>
                   )}
                 </button>
               </div>

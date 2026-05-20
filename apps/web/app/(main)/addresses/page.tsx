@@ -9,7 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 
-// â”€â”€ íƒ€ì… â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ?€?€ ?€???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
 type AddrType = "pickup" | "overseas";
 
 interface Address {
@@ -43,39 +43,39 @@ const EMPTY_OVERSEAS = (): Partial<Address> => ({
 });
 
 const COUNTRIES = [
-  { code: "JP", name: "ì¼ë³¸", flag: "ğŸ‡¯ğŸ‡µ" },
-  { code: "CN", name: "ì¤‘êµ­", flag: "ğŸ‡¨ğŸ‡³" },
-  { code: "US", name: "ë¯¸êµ­", flag: "ğŸ‡ºğŸ‡¸" },
-  { code: "AU", name: "í˜¸ì£¼", flag: "ğŸ‡¦ğŸ‡º" },
-  { code: "CA", name: "ìºë‚˜ë‹¤", flag: "ğŸ‡¨ğŸ‡¦" },
-  { code: "GB", name: "ì˜êµ­", flag: "ğŸ‡¬ğŸ‡§" },
-  { code: "DE", name: "ë…ì¼", flag: "ğŸ‡©ğŸ‡ª" },
-  { code: "FR", name: "í”„ë‘ìŠ¤", flag: "ğŸ‡«ğŸ‡·" },
-  { code: "SG", name: "ì‹±ê°€í¬ë¥´", flag: "ğŸ‡¸ğŸ‡¬" },
-  { code: "HK", name: "í™ì½©", flag: "ğŸ‡­ğŸ‡°" },
-  { code: "TW", name: "ëŒ€ë§Œ", flag: "ğŸ‡¹ğŸ‡¼" },
-  { code: "TH", name: "íƒœêµ­", flag: "ğŸ‡¹ğŸ‡­" },
-  { code: "VN", name: "ë² íŠ¸ë‚¨", flag: "ğŸ‡»ğŸ‡³" },
-  { code: "PH", name: "í•„ë¦¬í•€", flag: "ğŸ‡µğŸ‡­" },
-  { code: "MY", name: "ë§ë ˆì´ì‹œì•„", flag: "ğŸ‡²ğŸ‡¾" },
-  { code: "ID", name: "ì¸ë„ë„¤ì‹œì•„", flag: "ğŸ‡®ğŸ‡©" },
-  { code: "MO", name: "ë§ˆì¹´ì˜¤", flag: "ğŸ‡²ğŸ‡´" },
-  { code: "MN", name: "ëª½ê³¨", flag: "ğŸ‡²ğŸ‡³" },
-  { code: "NZ", name: "ë‰´ì§ˆëœë“œ", flag: "ğŸ‡³ğŸ‡¿" },
-  { code: "IT", name: "ì´íƒˆë¦¬ì•„", flag: "ğŸ‡®ğŸ‡¹" },
-  { code: "ES", name: "ìŠ¤í˜ì¸", flag: "ğŸ‡ªğŸ‡¸" },
-  { code: "NL", name: "ë„¤ëœë€ë“œ", flag: "ğŸ‡³ğŸ‡±" },
-  { code: "SE", name: "ìŠ¤ì›¨ë´", flag: "ğŸ‡¸ğŸ‡ª" },
-  { code: "CH", name: "ìŠ¤ìœ„ìŠ¤", flag: "ğŸ‡¨ğŸ‡­" },
-  { code: "RU", name: "ëŸ¬ì‹œì•„", flag: "ğŸ‡·ğŸ‡º" },
-  { code: "BR", name: "ë¸Œë¼ì§ˆ", flag: "ğŸ‡§ğŸ‡·" },
-  { code: "MX", name: "ë©•ì‹œì½”", flag: "ğŸ‡²ğŸ‡½" },
-  { code: "AE", name: "ì•„ëì—ë¯¸ë¦¬íŠ¸", flag: "ğŸ‡¦ğŸ‡ª" },
-  { code: "SA", name: "ì‚¬ìš°ë””ì•„ë¼ë¹„ì•„", flag: "ğŸ‡¸ğŸ‡¦" },
-  { code: "IN", name: "ì¸ë„", flag: "ğŸ‡®ğŸ‡³" },
+  { code: "JP", name: "?¼ë³¸", flag: "?‡¯?‡µ" },
+  { code: "CN", name: "ì¤‘êµ­", flag: "?‡¨?‡³" },
+  { code: "US", name: "ë¯¸êµ­", flag: "?‡º?‡¸" },
+  { code: "AU", name: "?¸ì£¼", flag: "?‡¦?‡º" },
+  { code: "CA", name: "ìºë‚˜??, flag: "?‡¨?‡¦" },
+  { code: "GB", name: "?êµ­", flag: "?‡¬?‡§" },
+  { code: "DE", name: "?…ì¼", flag: "?‡©?‡ª" },
+  { code: "FR", name: "?„ë‘??, flag: "?‡«?‡·" },
+  { code: "SG", name: "?±ê??¬ë¥´", flag: "?‡¸?‡¬" },
+  { code: "HK", name: "?ì½©", flag: "?‡­?‡°" },
+  { code: "TW", name: "?€ë§?, flag: "?‡¹?‡¼" },
+  { code: "TH", name: "?œêµ­", flag: "?‡¹?‡­" },
+  { code: "VN", name: "ë² íŠ¸??, flag: "?‡»?‡³" },
+  { code: "PH", name: "?„ë¦¬?€", flag: "?‡µ?‡­" },
+  { code: "MY", name: "ë§ë ˆ?´ì‹œ??, flag: "?‡²?‡¾" },
+  { code: "ID", name: "?¸ë„?¤ì‹œ??, flag: "?‡®?‡©" },
+  { code: "MO", name: "ë§ˆì¹´??, flag: "?‡²?‡´" },
+  { code: "MN", name: "ëª½ê³¨", flag: "?‡²?‡³" },
+  { code: "NZ", name: "?´ì§ˆ?œë“œ", flag: "?‡³?‡¿" },
+  { code: "IT", name: "?´íƒˆë¦¬ì•„", flag: "?‡®?‡¹" },
+  { code: "ES", name: "?¤í˜??, flag: "?‡ª?‡¸" },
+  { code: "NL", name: "?¤ëœ?€??, flag: "?‡³?‡±" },
+  { code: "SE", name: "?¤ì›¨??, flag: "?‡¸?‡ª" },
+  { code: "CH", name: "?¤ìœ„??, flag: "?‡¨?‡­" },
+  { code: "RU", name: "?¬ì‹œ??, flag: "?‡·?‡º" },
+  { code: "BR", name: "ë¸Œë¼ì§?, flag: "?‡§?‡·" },
+  { code: "MX", name: "ë©•ì‹œì½?, flag: "?‡²?‡½" },
+  { code: "AE", name: "?„ë?ë?ë¦¬íŠ¸", flag: "?‡¦?‡ª" },
+  { code: "SA", name: "?¬ìš°?”ì•„?¼ë¹„??, flag: "?‡¸?‡¦" },
+  { code: "IN", name: "?¸ë„", flag: "?‡®?‡³" },
 ];
 
-// â”€â”€ ë©”ì¸ í˜ì´ì§€ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ?€?€ ë©”ì¸ ?˜ì´ì§€ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
 export default function AddressesPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -85,7 +85,7 @@ export default function AddressesPage() {
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ëª¨ë‹¬ ìƒíƒœ
+  // ëª¨ë‹¬ ?íƒœ
   const [modal, setModal] = useState<"add" | "edit" | null>(null);
   const [editTarget, setEditTarget] = useState<Address | null>(null);
   const [form, setForm] = useState<Partial<Address>>({});
@@ -93,7 +93,7 @@ export default function AddressesPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [countryOpen, setCountryOpen] = useState(false);
 
-  // â”€â”€ ë°ì´í„° ë¡œë“œ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ ?°ì´??ë¡œë“œ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -125,13 +125,13 @@ export default function AddressesPage() {
 
   const filtered = addresses.filter(a => a.type === tab);
 
-  // â”€â”€ ì €ì¥ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ ?€???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   async function save() {
     if (!customerId) return;
-    if (!form.label?.trim()) { alert("í‘œì‹œëª…ì„ ì…ë ¥í•´ì£¼ì„¸ìš”."); return; }
-    if (!form.name?.trim())  { alert("ì´ë¦„ì„ ì…ë ¥í•´ì£¼ì„¸ìš”."); return; }
-    if (tab === "pickup" && !form.address?.trim()) { alert("ì£¼ì†Œë¥¼ ê²€ìƒ‰í•´ì£¼ì„¸ìš”."); return; }
-    if (tab === "overseas" && !form.overseas_addr3?.trim()) { alert("ìƒì„¸ì£¼ì†Œë¥¼ ì…ë ¥í•´ì£¼ì„¸ìš”."); return; }
+    if (!form.label?.trim()) { alert("?œì‹œëª…ì„ ?…ë ¥?´ì£¼?¸ìš”."); return; }
+    if (!form.name?.trim())  { alert("?´ë¦„???…ë ¥?´ì£¼?¸ìš”."); return; }
+    if (tab === "pickup" && !form.address?.trim()) { alert("ì£¼ì†Œë¥?ê²€?‰í•´ì£¼ì„¸??"); return; }
+    if (tab === "overseas" && !form.overseas_addr3?.trim()) { alert("?ì„¸ì£¼ì†Œë¥??…ë ¥?´ì£¼?¸ìš”."); return; }
 
     setSaving(true);
     const payload = { ...form, customer_id: customerId, type: tab };
@@ -146,14 +146,14 @@ export default function AddressesPage() {
     load();
   }
 
-  // â”€â”€ ì‚­ì œ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ ?? œ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   async function remove(id: string) {
     await supabase.from("customer_addresses").delete().eq("id", id);
     setDeleteConfirm(null);
     load();
   }
 
-  // â”€â”€ ê¸°ë³¸ ì£¼ì†Œ ì„¤ì • â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ ê¸°ë³¸ ì£¼ì†Œ ?¤ì • ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   async function setDefault(addr: Address) {
     if (!customerId) return;
     await supabase.from("customer_addresses")
@@ -178,27 +178,27 @@ export default function AddressesPage() {
 
   const selCountry = COUNTRIES.find(c => c.code === form.country_code) ?? COUNTRIES[0];
 
-  // â”€â”€ UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ?€?€ UI ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* í—¤ë” */}
+      {/* ?¤ë” */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-[430px] mx-auto flex items-center gap-3 px-4 py-3">
+        <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
           <button onClick={() => router.back()} className="p-1 -ml-1">
             <ArrowLeft size={22} className="text-gray-700" />
           </button>
-          <h1 className="text-base font-semibold text-gray-900">ì£¼ì†Œë¡ ê´€ë¦¬</h1>
+          <h1 className="text-base font-semibold text-gray-900">ì£¼ì†Œë¡?ê´€ë¦?/h1>
           <button
             onClick={openAdd}
             className="ml-auto flex items-center gap-1 bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded-xl"
           >
-            <Plus size={14} /> ì¶”ê°€
+            <Plus size={14} /> ì¶”ê?
           </button>
         </div>
       </div>
 
-      <div className="max-w-[430px] mx-auto px-4 pt-4">
-        {/* íƒ­ */}
+      <div className="max-w-[600px] mx-auto px-4 pt-4">
+        {/* ??*/}
         <div className="flex bg-white rounded-2xl p-1 shadow-sm mb-4">
           {(["pickup", "overseas"] as AddrType[]).map(t => (
             <button
@@ -212,7 +212,7 @@ export default function AddressesPage() {
                   : "text-gray-400"
               }`}
             >
-              {t === "pickup" ? <><MapPin size={14} /> ìˆ˜ê±°ë°°ì†¡ì§€</> : <><Globe size={14} /> í•´ì™¸ë°°ì†¡ì§€</>}
+              {t === "pickup" ? <><MapPin size={14} /> ?˜ê±°ë°°ì†¡ì§€</> : <><Globe size={14} /> ?´ì™¸ë°°ì†¡ì§€</>}
             </button>
           ))}
         </div>
@@ -232,12 +232,12 @@ export default function AddressesPage() {
                 : <Globe size={28} className="text-violet-300" />}
             </div>
             <p className="text-base font-semibold text-gray-700 mb-1">
-              {tab === "pickup" ? "ì €ì¥ëœ ìˆ˜ê±°ì§€ê°€ ì—†ì–´ìš”" : "ì €ì¥ëœ í•´ì™¸ ë°°ì†¡ì§€ê°€ ì—†ì–´ìš”"}
+              {tab === "pickup" ? "?€?¥ëœ ?˜ê±°ì§€ê°€ ?†ì–´?? : "?€?¥ëœ ?´ì™¸ ë°°ì†¡ì§€ê°€ ?†ì–´??}
             </p>
             <p className="text-xs text-gray-400 mb-6 leading-relaxed">
               {tab === "pickup"
-                ? "ìì£¼ ì“°ëŠ” ìˆ˜ê±°ì§€ë¥¼ ì €ì¥í•´ë‘ë©´\nìˆ˜ê±° ì‹ ì²­ ì‹œ ë¹ ë¥´ê²Œ ì…ë ¥í•  ìˆ˜ ìˆì–´ìš”."
-                : "ìì£¼ ë°œì†¡í•˜ëŠ” í•´ì™¸ ìˆ˜ì·¨ì¸ ì£¼ì†Œë¥¼\nì €ì¥í•´ë‘ë©´ ë°œì†¡ ì‹œ ë°”ë¡œ ì„ íƒí•  ìˆ˜ ìˆì–´ìš”."}
+                ? "?ì£¼ ?°ëŠ” ?˜ê±°ì§€ë¥??€?¥í•´?ë©´\n?˜ê±° ? ì²­ ??ë¹ ë¥´ê²??…ë ¥?????ˆì–´??"
+                : "?ì£¼ ë°œì†¡?˜ëŠ” ?´ì™¸ ?˜ì·¨??ì£¼ì†Œë¥?n?€?¥í•´?ë©´ ë°œì†¡ ??ë°”ë¡œ ? íƒ?????ˆì–´??"}
             </p>
             <button
               onClick={openAdd}
@@ -246,7 +246,7 @@ export default function AddressesPage() {
               }`}
             >
               <Plus size={16} />
-              {tab === "pickup" ? "ìˆ˜ê±°ì§€ ì¶”ê°€í•˜ê¸°" : "í•´ì™¸ ë°°ì†¡ì§€ ì¶”ê°€í•˜ê¸°"}
+              {tab === "pickup" ? "?˜ê±°ì§€ ì¶”ê??˜ê¸°" : "?´ì™¸ ë°°ì†¡ì§€ ì¶”ê??˜ê¸°"}
             </button>
           </div>
         ) : (
@@ -321,7 +321,7 @@ export default function AddressesPage() {
                     onClick={() => setDefault(addr)}
                     className="mt-2.5 text-[11px] text-gray-400 hover:text-amber-600 transition-colors flex items-center gap-1"
                   >
-                    <Star size={11} /> ê¸°ë³¸ ì£¼ì†Œë¡œ ì„¤ì •
+                    <Star size={11} /> ê¸°ë³¸ ì£¼ì†Œë¡??¤ì •
                   </button>
                 )}
               </div>
@@ -330,12 +330,12 @@ export default function AddressesPage() {
         )}
       </div>
 
-      {/* ì‚­ì œ í™•ì¸ */}
+      {/* ?? œ ?•ì¸ */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center">
           <div className="w-full max-w-[380px] bg-white rounded-2xl p-5 shadow-xl">
-            <p className="text-base font-bold text-gray-900 mb-1">ì£¼ì†Œë¥¼ ì‚­ì œí• ê¹Œìš”?</p>
-            <p className="text-sm text-gray-500 mb-5">ì‚­ì œí•œ ì£¼ì†ŒëŠ” ë³µêµ¬í•  ìˆ˜ ì—†ìŠµë‹ˆë‹¤.</p>
+            <p className="text-base font-bold text-gray-900 mb-1">ì£¼ì†Œë¥??? œ? ê¹Œ??</p>
+            <p className="text-sm text-gray-500 mb-5">?? œ??ì£¼ì†Œ??ë³µêµ¬?????†ìŠµ?ˆë‹¤.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setDeleteConfirm(null)}
@@ -347,62 +347,62 @@ export default function AddressesPage() {
                 onClick={() => remove(deleteConfirm)}
                 className="flex-1 py-3 bg-red-500 text-white text-sm font-semibold rounded-xl"
               >
-                ì‚­ì œ
+                ?? œ
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ì¶”ê°€/ìˆ˜ì • ëª¨ë‹¬ */}
+      {/* ì¶”ê?/?˜ì • ëª¨ë‹¬ */}
       {modal && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/40">
           <div
             className="flex-1 flex items-end justify-center sm:items-center"
             onClick={e => { if (e.target === e.currentTarget) setModal(null); }}
           >
-            <div className="w-full max-w-[430px] bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
-              {/* ëª¨ë‹¬ í—¤ë” */}
+            <div className="w-full max-w-[600px] bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              {/* ëª¨ë‹¬ ?¤ë” */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                 <p className="text-sm font-bold text-gray-800">
-                  {tab === "pickup" ? "ìˆ˜ê±°ì§€" : "í•´ì™¸ ë°°ì†¡ì§€"} {modal === "add" ? "ì¶”ê°€" : "ìˆ˜ì •"}
+                  {tab === "pickup" ? "?˜ê±°ì§€" : "?´ì™¸ ë°°ì†¡ì§€"} {modal === "add" ? "ì¶”ê?" : "?˜ì •"}
                 </p>
                 <button onClick={() => setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
                   <X size={18} className="text-gray-500" />
                 </button>
               </div>
 
-              {/* ëª¨ë‹¬ í¼ */}
+              {/* ëª¨ë‹¬ ??*/}
               <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-                {/* í‘œì‹œëª… */}
+                {/* ?œì‹œëª?*/}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                    í‘œì‹œëª… <span className="text-red-400">*</span>
+                    ?œì‹œëª?<span className="text-red-400">*</span>
                   </label>
                   <input
                     value={form.label ?? ""}
                     onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
-                    placeholder="ì˜ˆ: ì§‘, íšŒì‚¬, ë¶€ëª¨ë‹˜ëŒ"
+                    placeholder="?? ì§? ?Œì‚¬, ë¶€ëª¨ë‹˜??
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
 
-                {/* ì´ë¦„ */}
+                {/* ?´ë¦„ */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                    {tab === "pickup" ? "ìˆ˜ê±°ì§€ ë‹´ë‹¹ì" : "ìˆ˜ì·¨ì¸ ì´ë¦„"} <span className="text-red-400">*</span>
+                    {tab === "pickup" ? "?˜ê±°ì§€ ?´ë‹¹?? : "?˜ì·¨???´ë¦„"} <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={form.name ?? ""}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="ì´ë¦„ ì…ë ¥"
+                    placeholder="?´ë¦„ ?…ë ¥"
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                   />
                 </div>
 
-                {/* ì—°ë½ì²˜ */}
+                {/* ?°ë½ì²?*/}
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">ì—°ë½ì²˜</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">?°ë½ì²?/label>
                   <input
                     value={form.phone ?? ""}
                     onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
@@ -411,7 +411,7 @@ export default function AddressesPage() {
                   />
                 </div>
 
-                {/* â”€â”€ ìˆ˜ê±°ì§€ ì „ìš© â”€â”€ */}
+                {/* ?€?€ ?˜ê±°ì§€ ?„ìš© ?€?€ */}
                 {tab === "pickup" && (
                   <>
                     <div>
@@ -422,11 +422,11 @@ export default function AddressesPage() {
                         <input
                           value={form.zipcode ?? ""}
                           readOnly
-                          placeholder="ìš°í¸ë²ˆí˜¸"
+                          placeholder="?°í¸ë²ˆí˜¸"
                           className="w-24 bg-gray-50 border border-gray-100 rounded-xl px-3 py-3 text-sm text-gray-500"
                         />
                         <AddressSearchButton
-                          label="ì£¼ì†Œ ê²€ìƒ‰"
+                          label="ì£¼ì†Œ ê²€??
                           onSelect={(z, a) => setForm(f => ({ ...f, zipcode: z, address: a, address_detail: "" }))}
                           className="flex-1 bg-blue-600 text-white text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
                         />
@@ -434,26 +434,26 @@ export default function AddressesPage() {
                       <input
                         value={form.address ?? ""}
                         readOnly
-                        placeholder="ë„ë¡œëª… ì£¼ì†Œ"
+                        placeholder="?„ë¡œëª?ì£¼ì†Œ"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-500 mb-2"
                       />
                       <input
                         value={form.address_detail ?? ""}
                         onChange={e => setForm(f => ({ ...f, address_detail: e.target.value }))}
-                        placeholder="ìƒì„¸ì£¼ì†Œ (ë™/í˜¸ìˆ˜)"
+                        placeholder="?ì„¸ì£¼ì†Œ (???¸ìˆ˜)"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                       />
                     </div>
                   </>
                 )}
 
-                {/* â”€â”€ í•´ì™¸ ë°°ì†¡ì§€ ì „ìš© â”€â”€ */}
+                {/* ?€?€ ?´ì™¸ ë°°ì†¡ì§€ ?„ìš© ?€?€ */}
                 {tab === "overseas" && (
                   <>
-                    {/* êµ­ê°€ ì„ íƒ */}
+                    {/* êµ?? ? íƒ */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        êµ­ê°€ <span className="text-red-400">*</span>
+                        êµ?? <span className="text-red-400">*</span>
                       </label>
                       <div className="relative">
                         <button
@@ -486,19 +486,19 @@ export default function AddressesPage() {
                     {/* ì£¼ì†Œ */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                        ìƒì„¸ì£¼ì†Œ <span className="text-red-400">*</span>
+                        ?ì„¸ì£¼ì†Œ <span className="text-red-400">*</span>
                       </label>
                       <input
                         value={form.overseas_addr3 ?? ""}
                         onChange={e => setForm(f => ({ ...f, overseas_addr3: e.target.value }))}
-                        placeholder="Street / ìƒì„¸ì£¼ì†Œ"
+                        placeholder="Street / ?ì„¸ì£¼ì†Œ"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 mb-2"
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           value={form.overseas_addr2 ?? ""}
                           onChange={e => setForm(f => ({ ...f, overseas_addr2: e.target.value }))}
-                          placeholder="ì‹œ / City"
+                          placeholder="??/ City"
                           className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
                         />
                         <input
@@ -510,7 +510,7 @@ export default function AddressesPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">ìš°í¸ë²ˆí˜¸</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">?°í¸ë²ˆí˜¸</label>
                       <input
                         value={form.overseas_zip ?? ""}
                         onChange={e => setForm(f => ({ ...f, overseas_zip: e.target.value }))}
@@ -519,7 +519,7 @@ export default function AddressesPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">ì´ë©”ì¼</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">?´ë©”??/label>
                       <input
                         type="email"
                         value={form.email ?? ""}
@@ -532,7 +532,7 @@ export default function AddressesPage() {
                 )}
               </div>
 
-              {/* ì €ì¥ ë²„íŠ¼ */}
+              {/* ?€??ë²„íŠ¼ */}
               <div className="px-5 py-4 border-t border-gray-100 shrink-0">
                 <button
                   onClick={save}
@@ -544,8 +544,7 @@ export default function AddressesPage() {
                   ) : (
                     <Check size={16} />
                   )}
-                  ì €ì¥í•˜ê¸°
-                </button>
+                  ?€?¥í•˜ê¸?                </button>
               </div>
             </div>
           </div>

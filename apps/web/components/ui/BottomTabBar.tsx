@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { Home, Package, Truck, Globe, User } from "lucide-react";
 
 const TABS = [
-  { href: "/home",      label: "홈",       icon: Home },
-  { href: "/pickup",    label: "수거신청", icon: Truck },
+  { href: "/home",      label: "??,       icon: Home },
+  { href: "/pickup",    label: "?�거?�청", icon: Truck },
   { href: "/warehouse", label: "마이창고", icon: Package },
-  { href: "/orders",    label: "배송현황", icon: Globe },
-  { href: "/mypage",    label: "마이페이지",icon: User },
+  { href: "/orders",    label: "배송?�황", icon: Globe },
+  { href: "/mypage",    label: "마이?�이지",icon: User },
 ];
 
 export default function BottomTabBar() {
@@ -20,7 +20,7 @@ export default function BottomTabBar() {
       className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-50"
       style={{ paddingBottom: "var(--sab, 0px)" }}
     >
-      <div className="max-w-[430px] mx-auto flex">
+      <div className="max-w-[600px] mx-auto flex">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);
           return (

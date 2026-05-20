@@ -13,7 +13,7 @@ const SERVICES = [
   {
     id: "ems-parcel",
     label: "EMS",
-    sublabel: "비서류",
+    sublabel: "비서�?,
     premiumcd: "31",
     em_ee: "em",
     color: "bg-blue-600",
@@ -25,7 +25,7 @@ const SERVICES = [
   {
     id: "ems-doc",
     label: "EMS",
-    sublabel: "서류",
+    sublabel: "?�류",
     premiumcd: "31",
     em_ee: "ee",
     color: "bg-blue-400",
@@ -36,8 +36,8 @@ const SERVICES = [
   },
   {
     id: "ems-premium",
-    label: "EMS 프리미엄",
-    sublabel: "비서류",
+    label: "EMS ?�리미엄",
+    sublabel: "비서�?,
     premiumcd: "32",
     em_ee: "em",
     color: "bg-violet-600",
@@ -61,36 +61,36 @@ const SERVICES = [
 ] as const;
 
 const COUNTRIES = [
-  { code: "JP", name: "일본", flag: "🇯🇵" },
-  { code: "US", name: "미국", flag: "🇺🇸" },
-  { code: "CN", name: "중국", flag: "🇨🇳" },
-  { code: "AU", name: "호주", flag: "🇦🇺" },
-  { code: "CA", name: "캐나다", flag: "🇨🇦" },
-  { code: "GB", name: "영국", flag: "🇬🇧" },
-  { code: "DE", name: "독일", flag: "🇩🇪" },
-  { code: "FR", name: "프랑스", flag: "🇫🇷" },
-  { code: "SG", name: "싱가포르", flag: "🇸🇬" },
-  { code: "HK", name: "홍콩", flag: "🇭🇰" },
-  { code: "TH", name: "태국", flag: "🇹🇭" },
-  { code: "VN", name: "베트남", flag: "🇻🇳" },
-  { code: "PH", name: "필리핀", flag: "🇵🇭" },
-  { code: "MY", name: "말레이시아", flag: "🇲🇾" },
-  { code: "ID", name: "인도네시아", flag: "🇮🇩" },
-  { code: "TW", name: "대만", flag: "🇹🇼" },
-  { code: "MO", name: "마카오", flag: "🇲🇴" },
-  { code: "MN", name: "몽골", flag: "🇲🇳" },
-  { code: "NZ", name: "뉴질랜드", flag: "🇳🇿" },
-  { code: "IT", name: "이탈리아", flag: "🇮🇹" },
-  { code: "ES", name: "스페인", flag: "🇪🇸" },
-  { code: "NL", name: "네덜란드", flag: "🇳🇱" },
-  { code: "SE", name: "스웨덴", flag: "🇸🇪" },
-  { code: "CH", name: "스위스", flag: "🇨🇭" },
-  { code: "RU", name: "러시아", flag: "🇷🇺" },
-  { code: "BR", name: "브라질", flag: "🇧🇷" },
-  { code: "MX", name: "멕시코", flag: "🇲🇽" },
-  { code: "AE", name: "아랍에미리트", flag: "🇦🇪" },
-  { code: "SA", name: "사우디아라비아", flag: "🇸🇦" },
-  { code: "IN", name: "인도", flag: "🇮🇳" },
+  { code: "JP", name: "?�본", flag: "?��?��" },
+  { code: "US", name: "미국", flag: "?��?��" },
+  { code: "CN", name: "중국", flag: "?��?��" },
+  { code: "AU", name: "?�주", flag: "?��?��" },
+  { code: "CA", name: "캐나??, flag: "?��?��" },
+  { code: "GB", name: "?�국", flag: "?��?��" },
+  { code: "DE", name: "?�일", flag: "?��?��" },
+  { code: "FR", name: "?�랑??, flag: "?��?��" },
+  { code: "SG", name: "?��??�르", flag: "?��?��" },
+  { code: "HK", name: "?�콩", flag: "?��?��" },
+  { code: "TH", name: "?�국", flag: "?��?��" },
+  { code: "VN", name: "베트??, flag: "?��?��" },
+  { code: "PH", name: "?�리?�", flag: "?��?��" },
+  { code: "MY", name: "말레?�시??, flag: "?��?��" },
+  { code: "ID", name: "?�도?�시??, flag: "?��?��" },
+  { code: "TW", name: "?��?, flag: "?��?��" },
+  { code: "MO", name: "마카??, flag: "?��?��" },
+  { code: "MN", name: "몽골", flag: "?��?��" },
+  { code: "NZ", name: "?�질?�드", flag: "?��?��" },
+  { code: "IT", name: "?�탈리아", flag: "?��?��" },
+  { code: "ES", name: "?�페??, flag: "?��?��" },
+  { code: "NL", name: "?�덜?�??, flag: "?��?��" },
+  { code: "SE", name: "?�웨??, flag: "?��?��" },
+  { code: "CH", name: "?�위??, flag: "?��?��" },
+  { code: "RU", name: "?�시??, flag: "?��?��" },
+  { code: "BR", name: "브라�?, flag: "?��?��" },
+  { code: "MX", name: "멕시�?, flag: "?��?��" },
+  { code: "AE", name: "?�랍?��?리트", flag: "?��?��" },
+  { code: "SA", name: "?�우?�아?�비??, flag: "?��?��" },
+  { code: "IN", name: "?�도", flag: "?��?��" },
 ];
 
 type ServiceResult =
@@ -150,7 +150,7 @@ export default function ShippingCalcPage() {
     });
     const res = await fetch(`/api/ems/quote?${params}`);
     const data = await res.json();
-    if (!res.ok) return { status: "error", message: data.error ?? "조회 실패" };
+    if (!res.ok) return { status: "error", message: data.error ?? "조회 ?�패" };
     return { status: "ok", fee: data.totalFee };
   }
 
@@ -158,7 +158,7 @@ export default function ShippingCalcPage() {
     setInputError(null);
     setResults(null);
     if (!weight || parseFloat(weight) <= 0) {
-      setInputError("무게를 입력해주세요.");
+      setInputError("무게�??�력?�주?�요.");
       return;
     }
 
@@ -193,26 +193,24 @@ export default function ShippingCalcPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      {/* 헤더 */}
+      {/* ?�더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-[430px] mx-auto flex items-center gap-3 px-4 py-3">
+        <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
           <button onClick={() => router.back()} className="p-1 -ml-1">
             <ArrowLeft size={22} className="text-gray-700" />
           </button>
           <h1 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">
             <Calculator size={17} className="text-blue-600" />
-            국제배송 요금 계산기
-          </h1>
+            �?��배송 ?�금 계산�?          </h1>
         </div>
       </div>
 
-      <div className="max-w-[430px] mx-auto px-4 py-4 space-y-4">
+      <div className="max-w-[600px] mx-auto px-4 py-4 space-y-4">
 
-        {/* 목적국 */}
+        {/* 목적�?*/}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-1.5">
-            <Globe size={13} /> 목적국
-          </p>
+            <Globe size={13} /> 목적�?          </p>
           <button
             onClick={() => { setCountryOpen(v => !v); setCountrySearch(""); }}
             className="w-full flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100"
@@ -230,7 +228,7 @@ export default function ShippingCalcPage() {
               <div className="p-2 border-b border-gray-100">
                 <input
                   autoFocus
-                  placeholder="국가 검색..."
+                  placeholder="�?? 검??.."
                   value={countrySearch}
                   onChange={e => setCountrySearch(e.target.value)}
                   className="w-full text-sm px-3 py-2 bg-gray-50 rounded-lg outline-none"
@@ -251,22 +249,22 @@ export default function ShippingCalcPage() {
                   </button>
                 ))}
                 {filtered.length === 0 && (
-                  <p className="text-center text-sm text-gray-400 py-4">검색 결과 없음</p>
+                  <p className="text-center text-sm text-gray-400 py-4">검??결과 ?�음</p>
                 )}
               </div>
             </div>
           )}
         </section>
 
-        {/* 무게 & 크기 */}
+        {/* 무게 & ?�기 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
           <p className="text-xs font-semibold text-gray-500 mb-3 flex items-center gap-1.5">
-            <Weight size={13} /> 무게 & 크기
+            <Weight size={13} /> 무게 & ?�기
           </p>
 
           <div className="mb-3">
             <label className="block text-xs text-gray-400 mb-1">
-              실중량 (g) <span className="text-red-400">*</span>
+              ?�중??(g) <span className="text-red-400">*</span>
             </label>
             <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
               <input
@@ -275,7 +273,7 @@ export default function ShippingCalcPage() {
                 value={weight}
                 onChange={e => { setWeight(e.target.value); setResults(null); }}
                 className="flex-1 bg-transparent text-sm font-medium text-gray-900 outline-none"
-                placeholder="예: 1000"
+                placeholder="?? 1000"
               />
               <span className="text-xs text-gray-400">g</span>
               <span className="text-xs text-gray-300">
@@ -285,12 +283,12 @@ export default function ShippingCalcPage() {
           </div>
 
           <div className="mb-1">
-            <label className="block text-xs text-gray-400 mb-1">박스 크기 (cm) — 부피중량 계산용</label>
+            <label className="block text-xs text-gray-400 mb-1">박스 ?�기 (cm) ??부?�중??계산??/label>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: "가로", val: length, set: setLength },
-                { label: "세로", val: width, set: setWidth },
-                { label: "높이", val: height, set: setHeight },
+                { label: "가�?, val: length, set: setLength },
+                { label: "?�로", val: width, set: setWidth },
+                { label: "?�이", val: height, set: setHeight },
               ].map(({ label, val, set }) => (
                 <div key={label} className="bg-gray-50 rounded-xl border border-gray-100 px-3 py-2.5">
                   <p className="text-[10px] text-gray-400 mb-1">{label}</p>
@@ -310,15 +308,15 @@ export default function ShippingCalcPage() {
           {volWeight > 0 && (
             <div className="mt-3 bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1">
               <div className="flex justify-between text-gray-600">
-                <span>실중량</span>
+                <span>?�중??/span>
                 <span className="font-medium">{realWeight.toLocaleString()} g</span>
               </div>
               <div className="flex justify-between text-gray-600">
-                <span>부피중량 ({length}×{width}×{height}÷6)</span>
+                <span>부?�중??({length}×{width}×{height}÷6)</span>
                 <span className="font-medium">{volWeight.toLocaleString()} g</span>
               </div>
               <div className="flex justify-between border-t border-blue-100 pt-1 mt-1">
-                <span className="font-semibold text-blue-700">적용 중량</span>
+                <span className="font-semibold text-blue-700">?�용 중량</span>
                 <span className="font-bold text-blue-700">
                   {appliedWeight.toLocaleString()} g ({(appliedWeight / 1000).toFixed(2)}kg)
                 </span>
@@ -328,7 +326,7 @@ export default function ShippingCalcPage() {
 
           <div className="mt-3 flex gap-1.5 text-[11px] text-gray-400">
             <Info size={12} className="shrink-0 mt-0.5" />
-            <span>부피중량 = 가로 × 세로 × 높이 ÷ 6. 실중량과 부피중량 중 큰 값이 적용됩니다.</span>
+            <span>부?�중??= 가�?× ?�로 × ?�이 ÷ 6. ?�중?�과 부?�중??�???값이 ?�용?�니??</span>
           </div>
         </section>
 
@@ -339,18 +337,18 @@ export default function ShippingCalcPage() {
           className="w-full bg-blue-600 text-white rounded-2xl py-4 font-semibold text-base shadow-md active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading
-            ? <><Loader2 size={18} className="animate-spin" /> 계산 중...</>
-            : <><Calculator size={18} /> 전체 서비스 요금 비교</>}
+            ? <><Loader2 size={18} className="animate-spin" /> 계산 �?..</>
+            : <><Calculator size={18} /> ?�체 ?�비???�금 비교</>}
         </button>
 
-        {/* 입력 오류 */}
+        {/* ?�력 ?�류 */}
         {inputError && (
           <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 text-sm text-red-600">
             {inputError}
           </div>
         )}
 
-        {/* 통관 정보 */}
+        {/* ?��? ?�보 */}
         {(() => {
           const info = getCustomsInfo(countryCode);
           if (!info) return null;
@@ -359,13 +357,13 @@ export default function ShippingCalcPage() {
               <div className="bg-gradient-to-r from-orange-500 to-rose-500 px-4 py-3 flex items-center gap-2">
                 <ShieldAlert size={15} className="text-white" />
                 <span className="text-white font-semibold text-sm">
-                  {country.flag} {country.name} 통관 정보
+                  {country.flag} {country.name} ?��? ?�보
                 </span>
               </div>
               <div className="p-4 space-y-3">
-                {/* 면세한도 */}
+                {/* 면세?�도 */}
                 <div className="bg-blue-50 rounded-xl px-3 py-2.5 border border-blue-100">
-                  <p className="text-[10px] font-bold text-blue-700 mb-1">💰 면세한도</p>
+                  <p className="text-[10px] font-bold text-blue-700 mb-1">?�� 면세?�도</p>
                   <p className="text-sm font-bold text-blue-900">{info.dutyFree}</p>
                   {info.dutyFreeNote && (
                     <p className="text-[10px] text-blue-600 mt-0.5">{info.dutyFreeNote}</p>
@@ -373,40 +371,40 @@ export default function ShippingCalcPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
-                  {/* 금지품목 */}
+                  {/* 금�??�목 */}
                   <div className="bg-red-50 rounded-xl px-3 py-2.5 border border-red-100">
-                    <p className="text-[10px] font-bold text-red-700 mb-1.5">🚫 절대 금지</p>
+                    <p className="text-[10px] font-bold text-red-700 mb-1.5">?�� ?��? 금�?</p>
                     <ul className="space-y-0.5">
                       {info.prohibited.map(item => (
                         <li key={item} className="text-[10px] text-red-700 flex items-start gap-1">
-                          <span className="shrink-0">•</span><span>{item}</span>
+                          <span className="shrink-0">??/span><span>{item}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                  {/* 제한품목 */}
+                  {/* ?�한?�목 */}
                   <div className="bg-amber-50 rounded-xl px-3 py-2.5 border border-amber-100">
-                    <p className="text-[10px] font-bold text-amber-700 mb-1.5">⚠️ 제한·주의</p>
+                    <p className="text-[10px] font-bold text-amber-700 mb-1.5">?�️ ?�한·주의</p>
                     <ul className="space-y-0.5">
                       {info.restricted.map(item => (
                         <li key={item} className="text-[10px] text-amber-700 flex items-start gap-1">
-                          <span className="shrink-0">•</span><span>{item}</span>
+                          <span className="shrink-0">??/span><span>{item}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
                 </div>
 
-                {/* 배터리 + 유의사항 */}
+                {/* 배터�?+ ?�의?�항 */}
                 <div className="flex items-start gap-2 bg-violet-50 rounded-xl px-3 py-2.5 border border-violet-100">
                   <Zap size={12} className="text-violet-600 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-violet-700">
-                    <span className="font-bold">리튬배터리</span> {info.batteryLimit}
+                    <span className="font-bold">리튬배터�?/span> {info.batteryLimit}
                   </p>
                 </div>
                 {info.customsNote && (
                   <div className="bg-gray-50 rounded-xl px-3 py-2.5 border border-gray-100">
-                    <p className="text-[10px] text-gray-500 leading-relaxed">📌 {info.customsNote}</p>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">?�� {info.customsNote}</p>
                   </div>
                 )}
               </div>
@@ -414,16 +412,16 @@ export default function ShippingCalcPage() {
           );
         })()}
 
-        {/* 결과 비교표 */}
+        {/* 결과 비교??*/}
         {results && (
           <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            {/* 헤더 */}
+            {/* ?�더 */}
             <div className="bg-blue-600 px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="text-white/80 text-xs">
-                  {country.flag} {country.name} · 적용 중량 {results.appliedWeight.toLocaleString()} g
+                  {country.flag} {country.name} · ?�용 중량 {results.appliedWeight.toLocaleString()} g
                 </p>
-                <p className="text-white font-bold text-sm mt-0.5">서비스별 예상 배송비</p>
+                <p className="text-white font-bold text-sm mt-0.5">?�비?�별 ?�상 배송�?/p>
               </div>
               <button onClick={reset} className="text-white/70 hover:text-white">
                 <RotateCcw size={16} />
@@ -441,7 +439,7 @@ export default function ShippingCalcPage() {
                       isCheapest ? "bg-green-50" : ""
                     }`}
                   >
-                    {/* 서비스명 */}
+                    {/* ?�비?�명 */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className={`w-2 h-2 rounded-full ${svc.color} shrink-0`} />
@@ -453,25 +451,25 @@ export default function ShippingCalcPage() {
                         )}
                         {isCheapest && (
                           <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-semibold">
-                            최저가
+                            최�?가
                           </span>
                         )}
                       </div>
                       {svc.maxWeight < 30000 && (
                         <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
-                          최대 {svc.maxWeight / 1000}kg
+                          최�? {svc.maxWeight / 1000}kg
                         </p>
                       )}
                     </div>
 
-                    {/* 금액 / 상태 */}
+                    {/* 금액 / ?�태 */}
                     <div className="text-right shrink-0">
                       {r.status === "ok" && (
                         <div className="flex items-center gap-1">
                           <CheckCircle2 size={13} className="text-green-500" />
                           <span className={`text-base font-bold ${isCheapest ? "text-green-700" : "text-gray-900"}`}>
                             {r.fee.toLocaleString()}
-                            <span className="text-xs font-normal text-gray-400 ml-0.5">원</span>
+                            <span className="text-xs font-normal text-gray-400 ml-0.5">??/span>
                           </span>
                         </div>
                       )}
@@ -495,12 +493,12 @@ export default function ShippingCalcPage() {
               })}
             </div>
 
-            {/* 안내 */}
+            {/* ?�내 */}
             <div className="px-4 pb-4 pt-2">
               <div className="flex gap-2 bg-yellow-50 rounded-xl p-3 text-[11px] text-yellow-800">
                 <Info size={13} className="shrink-0 mt-0.5" />
                 <span>
-                  VAT 포함 예상 금액입니다. 실제 접수 시 창고 실측 무게·크기로 재계산될 수 있습니다.
+                  VAT ?�함 ?�상 금액?�니?? ?�제 ?�수 ??창고 ?�측 무게·?�기�??�계?�될 ???�습?�다.
                 </span>
               </div>
             </div>

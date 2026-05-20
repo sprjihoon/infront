@@ -12,7 +12,7 @@ interface AddressSearchButtonProps {
 export function AddressSearchButton({
   onSelect,
   className,
-  label = "주소 검색",
+  label = "주소 검??,
 }: AddressSearchButtonProps) {
   const onSelectRef = useRef(onSelect);
   const [open, setOpen] = useState(false);
@@ -21,7 +21,7 @@ export function AddressSearchButton({
     onSelectRef.current = onSelect;
   }, [onSelect]);
 
-  // iframe 모달에서 postMessage 수신
+  // iframe 모달?�서 postMessage ?�신
   useEffect(() => {
     if (!open) return;
 
@@ -51,16 +51,16 @@ export function AddressSearchButton({
         </span>
       </button>
 
-      {/* 인라인 iframe 모달 */}
+      {/* ?�라??iframe 모달 */}
       {open && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/50">
           <div className="flex-1 flex items-end justify-center sm:items-center">
             <div
-              className="w-full max-w-[430px] bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
+              className="w-full max-w-[600px] bg-white rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
               style={{ height: "520px" }}
             >
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-                <p className="text-sm font-bold text-gray-800">주소 검색</p>
+                <p className="text-sm font-bold text-gray-800">주소 검??/p>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
@@ -72,7 +72,7 @@ export function AddressSearchButton({
               <iframe
                 src="/postcode"
                 className="flex-1 border-0"
-                title="주소 검색"
+                title="주소 검??
               />
             </div>
           </div>
