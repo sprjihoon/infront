@@ -32,6 +32,28 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
 
+  // customers 레코드 확인 및 자동 생성
+  let { data: customer } = await supabase
+    .from("customers")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!customer) {
+    const seq = Date.now() % 10000;
+    const code = `SPB-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(seq).padStart(4, "0")}`;
+    const { data: created } = await supabase
+      .from("customers")
+      .insert({ id: user.id, email: user.email ?? "", customer_code: code })
+      .select("id")
+      .single();
+    customer = created;
+  }
+
+  if (!customer) {
+    return NextResponse.json({ error: "고객 정보를 생성할 수 없습니다" }, { status: 500 });
+  }
+
   const body = await req.json();
   const {
     tracking_no,
