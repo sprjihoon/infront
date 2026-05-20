@@ -6,6 +6,8 @@ import {
   ArrowLeft, ArrowRight, Package, Plus, Trash2,
   CheckCircle, AlertCircle, ChevronDown, Truck, Tag,
 } from "lucide-react";
+import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
+import type { ItemCategory } from "@/lib/item-categories";
 
 interface InvoiceItem {
   key: string;
@@ -14,6 +16,8 @@ interface InvoiceItem {
   unit_price_usd: number;
   origin_country: string;
   hs_code: string;
+  _isCustom?: boolean;
+  _categoryLabel?: string;
 }
 
 const COURIERS = [
@@ -68,6 +72,22 @@ export default function RegisterParcelPage() {
     setItems((prev) => prev.map((it, i) => i === idx ? { ...it, ...patch } : it));
   }
 
+  function selectCategory(idx: number, cat: ItemCategory) {
+    setItems((prev) =>
+      prev.map((it, i) =>
+        i === idx
+          ? {
+              ...it,
+              name_en: cat.id === "other" ? "" : cat.name_en,
+              hs_code: cat.hs_code ?? "",
+              _isCustom: cat.id === "other",
+              _categoryLabel: cat.id === "other" ? "" : cat.name_ko,
+            }
+          : it
+      )
+    );
+  }
+
   function removeItem(idx: number) {
     setItems((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -81,8 +101,6 @@ export default function RegisterParcelPage() {
       (it) => it.name_en.trim() && it.quantity >= 1 && it.unit_price_usd >= 0
     );
   }
-
-  async function handleSubmit() {
     setSubmitting(true);
     setError("");
     try {
@@ -97,7 +115,7 @@ export default function RegisterParcelPage() {
           sender_address: senderAddress || undefined,
           notes: notes || undefined,
           item_condition: condition,
-          pre_invoice_items: items.map(({ key: _k, ...rest }) => rest),
+          pre_invoice_items: items.map(({ key: _k, _isCustom: _c, _categoryLabel: _l, ...rest }) => rest),
         }),
       });
       const json = await res.json();
@@ -361,17 +379,24 @@ export default function RegisterParcelPage() {
                       )}
                     </div>
 
-                    {/* 품목명 */}
+                    {/* 품목 선택 */}
                     <div className="mb-2.5">
                       <label className="block text-xs font-semibold text-gray-500 mb-1">
-                        품목명 (영문) <span className="text-red-400">*</span>
+                        품목 선택 <span className="text-red-400">*</span>
                       </label>
-                      <input
-                        value={item.name_en}
-                        onChange={(e) => updateItem(idx, { name_en: e.target.value })}
-                        placeholder="e.g. Clothing, Shoes, Bag, Cosmetics"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      <ItemCategoryPicker
+                        value={item._isCustom ? "Other Goods" : item.name_en}
+                        onChange={(cat) => selectCategory(idx, cat)}
                       />
+                      {item._isCustom && (
+                        <input
+                          value={item.name_en}
+                          onChange={(e) => updateItem(idx, { name_en: e.target.value })}
+                          placeholder="품목명 직접 입력 (영문)"
+                          className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          autoFocus
+                        />
+                      )}
                     </div>
 
                     {/* 수량 + 단가 */}
@@ -430,14 +455,20 @@ export default function RegisterParcelPage() {
                       </div>
                       <div>
                         <label className="block text-xs font-semibold text-gray-500 mb-1">
-                          HS 코드 <span className="text-gray-400 font-normal">(선택)</span>
+                          HS 코드 <span className="text-gray-400 font-normal">(자동입력)</span>
                         </label>
-                        <input
-                          value={item.hs_code}
-                          onChange={(e) => updateItem(idx, { hs_code: e.target.value })}
-                          placeholder="6자리"
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
+                        <div className="relative">
+                          <input
+                            value={item.hs_code}
+                            onChange={(e) => updateItem(idx, { hs_code: e.target.value })}
+                            placeholder="자동 입력"
+                            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 font-mono ${
+                              item.hs_code && !item._isCustom
+                                ? "bg-blue-50 border-blue-100 text-blue-700"
+                                : "bg-gray-50 border-gray-100"
+                            }`}
+                          />
+                        </div>
                       </div>
                     </div>
 
