@@ -11,7 +11,7 @@ export interface PickupAddressValue {
   zipcode: string;
   address: string;
   addressDetail: string;
-  savedId?: string;      // ?�?�된 주소?�서 ?�택??경우
+  savedId?: string;      // 저장된 주소에서 선택한 경우
   label?: string;
 }
 
@@ -37,7 +37,8 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [mode, setMode] = useState<"list" | "new">("list");
 
-  // ??주소 ?�력 ??  const [newLabel, setNewLabel] = useState("");
+  // 새 주소 입력 폼
+  const [newLabel, setNewLabel] = useState("");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newZip, setNewZip] = useState("");
@@ -63,7 +64,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
       .order("created_at", { ascending: false });
     setSaved(data ?? []);
 
-    // 기본 주소 ?�동 채�? (?�직 ?�택 ????경우)
+    // 기본 주소 자동 채움 (아직 선택 안 된 경우)
     if (!value && data && data.length > 0) {
       const def = data.find((a) => a.is_default) ?? data[0];
       onChange({
@@ -102,19 +103,20 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
         .insert({
           customer_id: customerId,
           type: "pickup",
-          label: newLabel || "??주소",
+          label: newLabel || "새 주소",
           name: newName,
           phone: newPhone,
           zipcode: newZip,
           address: newAddr,
           address_detail: newDetail,
-          is_default: saved.length === 0, // �?주소�?기본값으�?        })
+          is_default: saved.length === 0, // 첫 주소면 기본값으로
+        })
         .select()
         .single();
 
       onChange({
         savedId: data?.id,
-        label: newLabel || "??주소",
+        label: newLabel || "새 주소",
         name: newName,
         phone: newPhone,
         zipcode: newZip,
@@ -150,7 +152,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
 
   return (
     <>
-      {/* ?�택??주소 카드 */}
+      {/* 선택된 주소 카드 */}
       <button
         type="button"
         onClick={() => { setMode("list"); setSheet(true); }}
@@ -179,7 +181,8 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
             </div>
             <div className="flex items-center gap-1 shrink-0 text-blue-600 text-xs font-medium mt-0.5">
               <Pencil size={12} />
-              변�?            </div>
+              변경
+            </div>
           </div>
         ) : (
           <div className="flex items-center gap-3 py-1">
@@ -187,25 +190,25 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
               <MapPin size={18} className="text-blue-500" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-700">?�거지�??�택?�주?�요</p>
-              <p className="text-xs text-gray-400 mt-0.5">?�?�된 주소 ?�택 ?�는 ?�로 ?�력</p>
+              <p className="text-sm font-semibold text-gray-700">수거지를 선택해주세요</p>
+              <p className="text-xs text-gray-400 mt-0.5">저장된 주소 선택 또는 새로 입력</p>
             </div>
             <ChevronRight size={16} className="text-gray-300 ml-auto" />
           </div>
         )}
       </button>
 
-      {/* 바�??�트 ?�버?�이 */}
+      {/* 바텀시트 오버레이 */}
       {sheet && (
         <div
           className="fixed inset-0 z-50 bg-black/40 flex items-end justify-center"
           onClick={(e) => { if (e.target === e.currentTarget) { setSheet(false); resetNewForm(); } }}
         >
           <div className="w-full max-w-[600px] bg-white rounded-t-3xl overflow-hidden flex flex-col max-h-[85vh]">
-            {/* ?�트 ?�더 */}
+            {/* 시트 헤더 */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
               <p className="text-sm font-bold text-gray-900">
-                {mode === "list" ? "?�거지 ?�택" : "???�거지 ?�록"}
+                {mode === "list" ? "수거지 선택" : "새 수거지 등록"}
               </p>
               <button
                 onClick={() => {
@@ -215,7 +218,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                 className="p-1.5 rounded-full hover:bg-gray-100"
               >
                 {mode === "new" ? (
-                  <span className="text-xs text-gray-500 px-1">??목록</span>
+                  <span className="text-xs text-gray-500 px-1">← 목록</span>
                 ) : (
                   <X size={18} className="text-gray-500" />
                 )}
@@ -223,14 +226,14 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
             </div>
 
             <div className="overflow-y-auto flex-1">
-              {/* ?�?�?� 주소 목록 모드 ?�?�?� */}
+              {/* ─── 주소 목록 모드 ─── */}
               {mode === "list" && (
                 <div className="p-4 space-y-2">
                   {saved.length === 0 ? (
                     <div className="text-center py-8 text-gray-400">
                       <MapPin size={32} className="mx-auto mb-2 text-gray-200" />
-                      <p className="text-sm">?�?�된 ?�거지가 ?�어??/p>
-                      <p className="text-xs mt-1">??주소�??�록?�보?�요</p>
+                      <p className="text-sm">저장된 수거지가 없어요</p>
+                      <p className="text-xs mt-1">새 주소를 등록해보세요</p>
                     </div>
                   ) : (
                     saved.map((a) => (
@@ -272,7 +275,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     ))
                   )}
 
-                  {/* ??주소 ?�록 버튼 */}
+                  {/* 새 주소 등록 버튼 */}
                   <button
                     type="button"
                     onClick={openNew}
@@ -282,46 +285,46 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       <Plus size={18} className="text-gray-500" />
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-gray-700">???�거지 ?�록</p>
-                      <p className="text-xs text-gray-400 mt-0.5">주소록에 ?�?�하거나 ?�회?�으�??�력</p>
+                      <p className="text-sm font-semibold text-gray-700">새 수거지 등록</p>
+                      <p className="text-xs text-gray-400 mt-0.5">주소록에 저장하거나 일회성으로 입력</p>
                     </div>
                   </button>
                 </div>
               )}
 
-              {/* ?�?�?� ??주소 ?�력 모드 ?�?�?� */}
+              {/* ─── 새 주소 입력 모드 ─── */}
               {mode === "new" && (
                 <div className="p-4 space-y-4">
                   {/* 별칭 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      별칭 <span className="text-gray-400 font-normal">(?? �? ?�사, 부모님??</span>
+                      별칭 <span className="text-gray-400 font-normal">(예: 집, 회사, 부모님댁)</span>
                     </label>
                     <input
                       value={newLabel}
                       onChange={(e) => setNewLabel(e.target.value)}
-                      placeholder="�?
+                      placeholder="집"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
                   </div>
 
-                  {/* ?�름 */}
+                  {/* 이름 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      ?�름 <span className="text-red-400">*</span>
+                      이름 <span className="text-red-400">*</span>
                     </label>
                     <input
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
-                      placeholder="?�길??
+                      placeholder="홍길동"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
                   </div>
 
-                  {/* ?�락�?*/}
+                  {/* 연락처 */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      ?�락�?<span className="text-red-400">*</span>
+                      연락처 <span className="text-red-400">*</span>
                     </label>
                     <input
                       value={newPhone}
@@ -341,11 +344,11 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       <input
                         readOnly
                         value={newZip}
-                        placeholder="?�편번호"
+                        placeholder="우편번호"
                         className="w-24 bg-gray-50 border border-gray-100 rounded-xl px-3 py-3 text-sm text-gray-500"
                       />
                       <AddressSearchButton
-                        label="주소 검??
+                        label="주소 검색"
                         onSelect={(z, a) => { setNewZip(z); setNewAddr(a); setNewDetail(""); }}
                         className="flex-1 bg-blue-600 text-white text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
                       />
@@ -353,18 +356,18 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     <input
                       readOnly
                       value={newAddr}
-                      placeholder="?�로�?주소"
+                      placeholder="도로명 주소"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-500 mb-2"
                     />
                     <input
                       value={newDetail}
                       onChange={(e) => setNewDetail(e.target.value)}
-                      placeholder="?�세 주소 (???�수)"
+                      placeholder="상세 주소 (동/호수)"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                     />
                   </div>
 
-                  {/* 주소�??�???��? */}
+                  {/* 주소록 저장 토글 */}
                   <button
                     type="button"
                     onClick={() => setSaveToBook(!saveToBook)}
@@ -378,15 +381,15 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       {saveToBook && <Check size={12} className="text-white" />}
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-semibold text-gray-800">주소록에 ?�??/p>
-                      <p className="text-xs text-gray-500 mt-0.5">?�음?�도 빠르�??�택?????�어??/p>
+                      <p className="text-sm font-semibold text-gray-800">주소록에 저장</p>
+                      <p className="text-xs text-gray-500 mt-0.5">다음에도 빠르게 선택할 수 있어요</p>
                     </div>
                   </button>
                 </div>
               )}
             </div>
 
-            {/* ?�인 버튼 (??주소 모드???? */}
+            {/* 확인 버튼 (새 주소 모드일 때) */}
             {mode === "new" && (
               <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
                 <button
@@ -398,7 +401,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                   {saving ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <><Check size={16} /> ??주소�??�거 ?�청</>
+                    <><Check size={16} /> 이 주소로 수거 신청</>
                   )}
                 </button>
               </div>

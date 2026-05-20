@@ -9,7 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import OverseasAddressPicker, { OverseasAddressValue, COUNTRIES } from "@/components/ui/OverseasAddressPicker";
 
-// ?€?€ ?€???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€ íƒ€ì… â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 interface Parcel {
   id: string;
   tracking_no: string | null;
@@ -28,26 +28,26 @@ interface InvoiceItem {
   origin_country: string;
 }
 
-// ?€?€ ?ìˆ˜ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€ ìƒìˆ˜ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const SHIPPING_METHODS = [
-  { code: "EMS",         name: "EMS",         desc: "?¼ë°˜ êµ? œ?°í¸ Â· 3-7??,  premiumcd: "31", em_ee: "em", badge: "bg-blue-600" },
-  { code: "EMS_PREMIUM", name: "EMS ?„ë¦¬ë¯¸ì—„", desc: "ë¹ ë¥¸ êµ? œ?°í¸ Â· 2-4??, premiumcd: "32", em_ee: "em", badge: "bg-violet-600" },
-  { code: "KPACKET",     name: "K-Packet",    desc: "?Œí˜• ê²½ëŸ‰ Â· 7-15??Â· 2kg ?´í•˜", premiumcd: "14", em_ee: "rl", badge: "bg-emerald-600" },
+  { code: "EMS",         name: "EMS",         desc: "ì¼ë°˜ êµ­ì œìš°í¸ Â· 3-7ì¼",  premiumcd: "31", em_ee: "em", badge: "bg-blue-600" },
+  { code: "EMS_PREMIUM", name: "EMS í”„ë¦¬ë¯¸ì—„", desc: "ë¹ ë¥¸ êµ­ì œìš°í¸ Â· 2-4ì¼", premiumcd: "32", em_ee: "em", badge: "bg-violet-600" },
+  { code: "KPACKET",     name: "K-Packet",    desc: "ì†Œí˜• ê²½ëŸ‰ Â· 7-15ì¼ Â· 2kg ì´í•˜", premiumcd: "14", em_ee: "rl", badge: "bg-emerald-600" },
 ] as const;
 
 const PACKAGING_OPTS = [
-  { code: "safe_pack",  name: "?ˆì „?¬ì¥",  desc: "?ì–´ìº? ?„ì¶©??ì¶”ê?",      price: 3000 },
-  { code: "repack",     name: "?¬í¬??,    desc: "??ë°•ìŠ¤ë¡?êµì²´",            price: 2000 },
-  { code: "consolidate",name: "?©í¬??,    desc: "? íƒ ë¬¼í’ˆ???˜ë‚˜ë¡??©ì¹˜ê¸?, price: 2000 },
+  { code: "safe_pack",  name: "ì•ˆì „í¬ì¥",  desc: "ì—ì–´ìº¡, ì™„ì¶©ì¬ ì¶”ê°€",      price: 3000 },
+  { code: "repack",     name: "ì¬í¬ì¥",    desc: "ìƒˆ ë°•ìŠ¤ë¡œ êµì²´",            price: 2000 },
+  { code: "consolidate",name: "í•©í¬ì¥",    desc: "ì„ íƒ ë¬¼í’ˆì„ í•˜ë‚˜ë¡œ í•©ì¹˜ê¸°", price: 2000 },
 ] as const;
 
-const STEP_LABELS = ["ë¬¼í’ˆ ?•ì¸", "ë°°ì†¡ ?µì…˜", "?´ì™¸ ë°°ì†¡ì§€", "?¸ë³´?´ìŠ¤", "ê²¬ì  ?•ì¸"];
+const STEP_LABELS = ["ë¬¼í’ˆ í™•ì¸", "ë°°ì†¡ ì˜µì…˜", "í•´ì™¸ ë°°ì†¡ì§€", "ì¸ë³´ì´ìŠ¤", "ê²¬ì  í™•ì¸"];
 
 function newItem(): InvoiceItem {
   return { key: Math.random().toString(36).slice(2), name_en: "", quantity: 1, unit_price_usd: 0, hs_code: "", origin_country: "KR" };
 }
 
-// ?€?€ ë©”ì¸ ì»´í¬?ŒíŠ¸ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+// â”€â”€ ë©”ì¸ ì»´í¬ë„ŒíŠ¸ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ShippingRequestContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,7 +63,7 @@ function ShippingRequestContent() {
   const [packOpts, setPackOpts] = useState({ safe_pack: false, repack: false, consolidate: false });
   const [packNote, setPackNote] = useState("");
 
-  // Step 3 ??OverseasAddressPicker
+  // Step 3 â€” OverseasAddressPicker
   const [overseasAddress, setOverseasAddress] = useState<OverseasAddressValue | null>(null);
 
   // Step 4
@@ -118,7 +118,7 @@ function ShippingRequestContent() {
     if (step === 5) fetchQuote();
   }, [step, fetchQuote]);
 
-  // ?€?€ ê³„ì‚° ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // â”€â”€ ê³„ì‚° â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const packagingFee = PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).reduce((s, o) => s + o.price, 0);
   const totalAmount = (estimatedFee ?? 0) + packagingFee;
   const customsValue = items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
@@ -128,7 +128,7 @@ function ShippingRequestContent() {
     ? COUNTRIES.find((c) => c.code === overseasAddress.countryCode)
     : null;
 
-  // ?€?€ ? íš¨??ê²€???€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // â”€â”€ ìœ íš¨ì„± ê²€ì‚¬ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function canProceed(): boolean {
     if (step === 3) {
       return !!(overseasAddress?.name?.trim() && overseasAddress?.addr3?.trim());
@@ -139,7 +139,7 @@ function ShippingRequestContent() {
     return true;
   }
 
-  // ?€?€ ì£¼ë¬¸ ?œì¶œ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€
+  // â”€â”€ ì£¼ë¬¸ ì œì¶œ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   async function submit() {
     if (!overseasAddress) return;
     setSubmitting(true);
@@ -170,10 +170,10 @@ function ShippingRequestContent() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "ì£¼ë¬¸ ?ì„± ?¤íŒ¨");
+      if (!res.ok) throw new Error(data.error ?? "ì£¼ë¬¸ ìƒì„± ì‹¤íŒ¨");
       router.push(`/orders?new=${data.order_no}`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "?¤ë¥˜ê°€ ë°œìƒ?ˆìŠµ?ˆë‹¤.");
+      setError(e instanceof Error ? e.message : "ì˜¤ë¥˜ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.");
     } finally {
       setSubmitting(false);
     }
@@ -189,7 +189,7 @@ function ShippingRequestContent() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      {/* ?¤ë” */}
+      {/* í—¤ë” */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
           <button onClick={() => (step === 1 ? router.back() : setStep(step - 1))} className="p-1 -ml-1">
@@ -200,7 +200,7 @@ function ShippingRequestContent() {
             <p className="text-sm font-bold text-gray-900">{STEP_LABELS[step - 1]}</p>
           </div>
         </div>
-        {/* ì§„í–‰ ë°?*/}
+        {/* ì§„í–‰ ë°” */}
         <div className="h-1 bg-gray-100">
           <div
             className="h-full bg-blue-500 transition-all duration-300"
@@ -211,15 +211,15 @@ function ShippingRequestContent() {
 
       <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-4">
 
-        {/* ?€?€ Step 1: ë¬¼í’ˆ ?•ì¸ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€ */}
+        {/* â”€â”€ Step 1: ë¬¼í’ˆ í™•ì¸ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 1 && (
           <>
             <div className="bg-blue-50 rounded-2xl p-4">
-              <p className="text-xs text-blue-700 font-semibold mb-1">? íƒ??ë¬¼í’ˆ {parcels.length}ê°?/p>
+              <p className="text-xs text-blue-700 font-semibold mb-1">ì„ íƒí•œ ë¬¼í’ˆ {parcels.length}ê°œ</p>
               {totalWeightKg > 0 ? (
-                <p className="text-xs text-blue-600">ì´??ˆìƒ ë¬´ê²Œ: {totalWeightKg.toFixed(2)}kg (?¤ì¸¡ ???•ì •)</p>
+                <p className="text-xs text-blue-600">ì´ ì˜ˆìƒ ë¬´ê²Œ: {totalWeightKg.toFixed(2)}kg (ì‹¤ì¸¡ í›„ í™•ì •)</p>
               ) : (
-                <p className="text-xs text-blue-600">ë¬´ê²Œ??ì°½ê³  ê²€?????•ì •?©ë‹ˆ??/p>
+                <p className="text-xs text-blue-600">ë¬´ê²ŒëŠ” ì°½ê³  ê²€ìˆ˜ í›„ í™•ì •ë©ë‹ˆë‹¤</p>
               )}
             </div>
             <div className="space-y-2">
@@ -230,34 +230,34 @@ function ShippingRequestContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">
-                      {p.tracking_no ?? "?¡ì¥ë²ˆí˜¸ ë¯¸ë“±ë¡?}
+                      {p.tracking_no ?? "ì†¡ì¥ë²ˆí˜¸ ë¯¸ë“±ë¡"}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {p.sender_name ?? "ë°œì†¡??ë¯¸í™•??}
+                      {p.sender_name ?? "ë°œì†¡ì¸ ë¯¸í™•ì¸"}
                       {p.notes ? ` Â· ${p.notes}` : ""}
                     </p>
                   </div>
                   {p.weight_actual ? (
                     <span className="text-xs text-gray-500 shrink-0">{(p.weight_actual / 1000).toFixed(2)}kg</span>
                   ) : (
-                    <span className="text-xs text-gray-300 shrink-0">ë¯¸ì¸¡??/span>
+                    <span className="text-xs text-gray-300 shrink-0">ë¯¸ì¸¡ì •</span>
                   )}
                 </div>
               ))}
             </div>
             <div className="bg-amber-50 rounded-xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                ?¤ì œ ë°°ì†¡ë¹„ëŠ” ë¬¼í’ˆ ?…ê³  ???¤ì¸¡ ë¬´ê²Œ ê¸°ì??¼ë¡œ ?•ì •?©ë‹ˆ??
-                ì§€ê¸??…ë ¥?˜ëŠ” ?•ë³´ë¥?ë°”íƒ•?¼ë¡œ ?¬ì „ ê²¬ì ???ˆë‚´?´ë“œë¦½ë‹ˆ??
+                ì‹¤ì œ ë°°ì†¡ë¹„ëŠ” ë¬¼í’ˆ ì…ê³  í›„ ì‹¤ì¸¡ ë¬´ê²Œ ê¸°ì¤€ìœ¼ë¡œ í™•ì •ë©ë‹ˆë‹¤.
+                ì§€ê¸ˆ ì…ë ¥í•˜ëŠ” ì •ë³´ë¥¼ ë°”íƒ•ìœ¼ë¡œ ì‚¬ì „ ê²¬ì ì„ ì•ˆë‚´í•´ë“œë¦½ë‹ˆë‹¤.
               </p>
             </div>
           </>
         )}
 
-        {/* ?€?€ Step 2: ë°°ì†¡ ?µì…˜ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€ */}
+        {/* â”€â”€ Step 2: ë°°ì†¡ ì˜µì…˜ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 2 && (
           <>
-            <p className="text-sm font-bold text-gray-800">ë°°ì†¡ ë°©ë²• ? íƒ</p>
+            <p className="text-sm font-bold text-gray-800">ë°°ì†¡ ë°©ë²• ì„ íƒ</p>
             <div className="space-y-2">
               {SHIPPING_METHODS.map((m) => (
                 <button
@@ -278,7 +278,7 @@ function ShippingRequestContent() {
               ))}
             </div>
 
-            <p className="text-sm font-bold text-gray-800 pt-2">?¬ì¥ ?µì…˜ (? íƒ)</p>
+            <p className="text-sm font-bold text-gray-800 pt-2">í¬ì¥ ì˜µì…˜ (ì„ íƒ)</p>
             <div className="space-y-2">
               {PACKAGING_OPTS.map((o) => {
                 const checked = packOpts[o.code as keyof typeof packOpts];
@@ -293,36 +293,37 @@ function ShippingRequestContent() {
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
                       checked ? "bg-blue-600 border-blue-600" : "border-gray-300"
                     }`}>
-                      {checked && <span className="text-white text-xs font-bold">??/span>}
+                      {checked && <span className="text-white text-xs font-bold">âœ“</span>}
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-800">{o.name}</p>
                       <p className="text-xs text-gray-400">{o.desc}</p>
                     </div>
                     <span className="text-xs font-semibold text-blue-600 shrink-0">
-                      +{o.price.toLocaleString()}??                    </span>
+                      +{o.price.toLocaleString()}ì›
+                    </span>
                   </button>
                 );
               })}
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-800 mb-2">?”ì²­ ë©”ëª¨ (? íƒ)</label>
+              <label className="block text-sm font-bold text-gray-800 mb-2">ìš”ì²­ ë©”ëª¨ (ì„ íƒ)</label>
               <textarea
                 value={packNote}
                 onChange={(e) => setPackNote(e.target.value)}
                 rows={3}
-                placeholder="?¬ì¥ ê´€???¹ë³„ ?”ì²­?¬í•­???…ë ¥?´ì£¼?¸ìš”"
+                placeholder="í¬ì¥ ê´€ë ¨ íŠ¹ë³„ ìš”ì²­ì‚¬í•­ì„ ì…ë ¥í•´ì£¼ì„¸ìš”"
                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
           </>
         )}
 
-        {/* ?€?€ Step 3: ?´ì™¸ ë°°ì†¡ì§€ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€ */}
+        {/* â”€â”€ Step 3: í•´ì™¸ ë°°ì†¡ì§€ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 3 && (
           <>
-            <p className="text-sm text-gray-500">?˜ì·¨??ì£¼ì†Œë¥?? íƒ?˜ê±°???ˆë¡œ ?…ë ¥?´ì£¼?¸ìš”</p>
+            <p className="text-sm text-gray-500">ìˆ˜ì·¨ì¸ ì£¼ì†Œë¥¼ ì„ íƒí•˜ê±°ë‚˜ ìƒˆë¡œ ì…ë ¥í•´ì£¼ì„¸ìš”</p>
             <OverseasAddressPicker
               value={overseasAddress}
               onChange={setOverseasAddress}
@@ -331,13 +332,13 @@ function ShippingRequestContent() {
           </>
         )}
 
-        {/* ?€?€ Step 4: ?¸ë³´?´ìŠ¤ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€ */}
+        {/* â”€â”€ Step 4: ì¸ë³´ì´ìŠ¤ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 4 && (
           <>
             <div className="bg-amber-50 rounded-xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                ?¸ê? ? ê³ ë¥??„í•œ ë¬¼í’ˆ ?´ì—­?…ë‹ˆ?? <strong>?ë¬¸?¼ë¡œ</strong> ?…ë ¥?´ì£¼?¸ìš”.
-                ?¤ì œ ê°€ê²©ì„ ?•í™•??ê¸°ì¬?´ì£¼?¸ìš” (USD ê¸°ì?).
+                ì„¸ê´€ ì‹ ê³ ë¥¼ ìœ„í•œ ë¬¼í’ˆ ë‚´ì—­ì…ë‹ˆë‹¤. <strong>ì˜ë¬¸ìœ¼ë¡œ</strong> ì…ë ¥í•´ì£¼ì„¸ìš”.
+                ì‹¤ì œ ê°€ê²©ì„ ì •í™•íˆ ê¸°ì¬í•´ì£¼ì„¸ìš” (USD ê¸°ì¤€).
               </p>
             </div>
 
@@ -357,7 +358,7 @@ function ShippingRequestContent() {
                   </div>
                   <div className="space-y-2.5">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">?ˆëª©ëª?(?ë¬¸) *</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">í’ˆëª©ëª… (ì˜ë¬¸) *</label>
                       <input
                         value={item.name_en}
                         onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
@@ -367,7 +368,7 @@ function ShippingRequestContent() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">?˜ëŸ‰ *</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">ìˆ˜ëŸ‰ *</label>
                         <input
                           type="number"
                           min={1}
@@ -377,7 +378,7 @@ function ShippingRequestContent() {
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">?¨ê? (USD) *</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">ë‹¨ê°€ (USD) *</label>
                         <input
                           type="number"
                           min={0}
@@ -390,16 +391,16 @@ function ShippingRequestContent() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">HSì½”ë“œ (? íƒ)</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">HSì½”ë“œ (ì„ íƒ)</label>
                         <input
                           value={item.hs_code}
                           onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, hs_code: e.target.value } : it))}
-                          placeholder="6?¨ìœ„"
+                          placeholder="6ë‹¨ìœ„"
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">?ì‚°ì§€ (? íƒ)</label>
+                        <label className="block text-xs font-semibold text-gray-500 mb-1">ì›ì‚°ì§€ (ì„ íƒ)</label>
                         <input
                           value={item.origin_country}
                           onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, origin_country: e.target.value } : it))}
@@ -417,26 +418,26 @@ function ShippingRequestContent() {
               onClick={() => setItems((p) => [...p, newItem()])}
               className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
             >
-              <Plus size={15} /> ë¬¼í’ˆ ì¶”ê?
+              <Plus size={15} /> ë¬¼í’ˆ ì¶”ê°€
             </button>
 
             <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
-              <span className="text-sm text-gray-600">ì´?? ê³  ê¸ˆì•¡</span>
+              <span className="text-sm text-gray-600">ì´ ì‹ ê³  ê¸ˆì•¡</span>
               <span className="text-sm font-bold text-gray-900">USD {customsValue.toFixed(2)}</span>
             </div>
           </>
         )}
 
-        {/* ?€?€ Step 5: ê²¬ì  ?•ì¸ ?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€?€ */}
+        {/* â”€â”€ Step 5: ê²¬ì  í™•ì¸ â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {step === 5 && (
           <>
             <div className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
-              <p className="text-sm font-bold text-gray-800">ì£¼ë¬¸ ?”ì•½</p>
+              <p className="text-sm font-bold text-gray-800">ì£¼ë¬¸ ìš”ì•½</p>
 
               {/* ë¬¼í’ˆ */}
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500 flex items-center gap-1.5"><Package size={14} /> ë¬¼í’ˆ</span>
-                <span className="font-semibold text-gray-800">{parcels.length}ê°?/span>
+                <span className="font-semibold text-gray-800">{parcels.length}ê°œ</span>
               </div>
 
               {/* ë°°ì†¡ ë°©ë²• */}
@@ -449,7 +450,7 @@ function ShippingRequestContent() {
 
               {/* ë°°ì†¡ì§€ */}
               <div className="flex items-start justify-between text-sm gap-4">
-                <span className="text-gray-500 shrink-0">?˜ì·¨??/span>
+                <span className="text-gray-500 shrink-0">ìˆ˜ì·¨ì¸</span>
                 <div className="text-right">
                   <p className="font-semibold text-gray-800">
                     {country?.flag} {overseasAddress?.name}
@@ -460,10 +461,10 @@ function ShippingRequestContent() {
                 </div>
               </div>
 
-              {/* ?¬ì¥ ?µì…˜ */}
+              {/* í¬ì¥ ì˜µì…˜ */}
               {Object.entries(packOpts).some(([, v]) => v) && (
                 <div className="flex items-start justify-between text-sm gap-4">
-                  <span className="text-gray-500 flex items-center gap-1.5 shrink-0"><Box size={14} /> ?¬ì¥ ?µì…˜</span>
+                  <span className="text-gray-500 flex items-center gap-1.5 shrink-0"><Box size={14} /> í¬ì¥ ì˜µì…˜</span>
                   <div className="text-right">
                     {PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).map((o) => (
                       <p key={o.code} className="text-xs text-gray-600">{o.name}</p>
@@ -472,33 +473,33 @@ function ShippingRequestContent() {
                 </div>
               )}
 
-              {/* ?¸ë³´?´ìŠ¤ */}
+              {/* ì¸ë³´ì´ìŠ¤ */}
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500 flex items-center gap-1.5"><Shield size={14} /> ?¸ê? ? ê³ ??/span>
+                <span className="text-gray-500 flex items-center gap-1.5"><Shield size={14} /> ì„¸ê´€ ì‹ ê³ ì•¡</span>
                 <span className="font-semibold text-gray-800">USD {customsValue.toFixed(2)}</span>
               </div>
 
               <div className="border-t border-gray-100 pt-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">?ˆìƒ ë°°ì†¡ë¹?/span>
+                  <span className="text-gray-500">ì˜ˆìƒ ë°°ì†¡ë¹„</span>
                   {quoteLoading ? (
                     <Loader2 size={14} className="animate-spin text-gray-400" />
                   ) : (
                     <span className="font-semibold text-gray-800">
-                      {estimatedFee != null ? `${estimatedFee.toLocaleString()}?? : "?•ì¸ ì¤?.."}
+                      {estimatedFee != null ? `${estimatedFee.toLocaleString()}ì›` : "í™•ì¸ ì¤‘..."}
                     </span>
                   )}
                 </div>
                 {packagingFee > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">?¬ì¥ ?œë¹„??/span>
-                    <span className="font-semibold text-gray-800">+{packagingFee.toLocaleString()}??/span>
+                    <span className="text-gray-500">í¬ì¥ ì„œë¹„ìŠ¤</span>
+                    <span className="font-semibold text-gray-800">+{packagingFee.toLocaleString()}ì›</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <span className="text-sm font-bold text-gray-900">?ˆìƒ ?©ê³„</span>
+                  <span className="text-sm font-bold text-gray-900">ì˜ˆìƒ í•©ê³„</span>
                   <span className="text-base font-bold text-blue-600">
-                    {totalAmount > 0 ? `${totalAmount.toLocaleString()}?? : "??}
+                    {totalAmount > 0 ? `${totalAmount.toLocaleString()}ì›` : "â€”"}
                   </span>
                 </div>
               </div>
@@ -506,7 +507,7 @@ function ShippingRequestContent() {
 
             <div className="bg-amber-50 rounded-xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
-                ?¤ì œ ?”ê¸ˆ?€ ì°½ê³  ?…ê³  ???¤ì¸¡ ë¬´ê²Œ ê¸°ì??¼ë¡œ ?•ì •?˜ë©°, ê²¬ì  ?•ì¸ ??ê²°ì œ?˜ì‹¤ ???ˆìŠµ?ˆë‹¤.
+                ì‹¤ì œ ìš”ê¸ˆì€ ì°½ê³  ì…ê³  í›„ ì‹¤ì¸¡ ë¬´ê²Œ ê¸°ì¤€ìœ¼ë¡œ í™•ì •ë˜ë©°, ê²¬ì  í™•ì¸ í›„ ê²°ì œí•˜ì‹¤ ìˆ˜ ìˆìŠµë‹ˆë‹¤.
               </p>
             </div>
 
@@ -519,7 +520,7 @@ function ShippingRequestContent() {
         )}
       </div>
 
-      {/* ?˜ë‹¨ ë²„íŠ¼ */}
+      {/* í•˜ë‹¨ ë²„íŠ¼ */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-30">
         <div className="max-w-[600px] mx-auto">
           {step < 5 ? (
@@ -528,7 +529,7 @@ function ShippingRequestContent() {
               disabled={!canProceed()}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-40 transition-opacity"
             >
-              ?¤ìŒ ?¨ê³„ <ArrowRight size={16} />
+              ë‹¤ìŒ ë‹¨ê³„ <ArrowRight size={16} />
             </button>
           ) : (
             <button
@@ -537,7 +538,7 @@ function ShippingRequestContent() {
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
-              {submitting ? "? ì²­ ì¤?.." : "?´ì™¸ë°°ì†¡ ? ì²­?˜ê¸°"}
+              {submitting ? "ì‹ ì²­ ì¤‘..." : "í•´ì™¸ë°°ì†¡ ì‹ ì²­í•˜ê¸°"}
             </button>
           )}
         </div>
