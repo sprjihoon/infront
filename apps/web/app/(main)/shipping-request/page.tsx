@@ -97,6 +97,7 @@ function ShippingRequestContent() {
   const [step05Active, setStep05Active] = useState(false);
   const [boxes, setBoxes] = useState<BoxSetup[]>([{ id: 1, address: null, itemKeys: [] }]);
   const [expandedBoxAddress, setExpandedBoxAddress] = useState<number | null>(null);
+  const [defaultOverseasAddress, setDefaultOverseasAddress] = useState<OverseasAddressValue | null>(null);
 
   // URL로 들어온 경우 parcelIds 직접 사용, Step 0 거친 경우 선택된 아이템의 parcelId 집합
   const parcelIds = useMemo(() => {
@@ -133,7 +134,7 @@ function ShippingRequestContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // Step 0: 출고 가능 물품 목록 로드
+  // Step 0: 출고 가능 물품 목록 + 기본 해외배송지 로드
   useEffect(() => {
     if (step0Done) return;
     setStep0Loading(true);
@@ -141,13 +142,42 @@ function ShippingRequestContent() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       setCustomerId(user.id);
-      const { data } = await supabase
-        .from("parcels")
-        .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items")
-        .eq("customer_id", user.id)
-        .in("status", SHIPPABLE_STATUSES)
-        .order("inbound_at", { ascending: false });
-      setShippableParcels(data ?? []);
+
+      const [{ data: parcelData }, { data: addrData }] = await Promise.all([
+        supabase
+          .from("parcels")
+          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items")
+          .eq("customer_id", user.id)
+          .in("status", SHIPPABLE_STATUSES)
+          .order("inbound_at", { ascending: false }),
+        supabase
+          .from("customer_addresses")
+          .select("id, label, name, phone, country_code, overseas_addr1, overseas_addr2, overseas_addr3, overseas_zip, email, is_default")
+          .eq("customer_id", user.id)
+          .eq("type", "overseas")
+          .order("is_default", { ascending: false })
+          .limit(5),
+      ]);
+
+      setShippableParcels(parcelData ?? []);
+
+      // 기본 해외 배송지 설정
+      const defaultAddr = (addrData ?? []).find((a) => a.is_default) ?? addrData?.[0];
+      if (defaultAddr) {
+        setDefaultOverseasAddress({
+          savedId: defaultAddr.id,
+          label: defaultAddr.label,
+          name: defaultAddr.name,
+          phone: defaultAddr.phone ?? "",
+          countryCode: defaultAddr.country_code,
+          addr1: defaultAddr.overseas_addr1 ?? "",
+          addr2: defaultAddr.overseas_addr2 ?? "",
+          addr3: defaultAddr.overseas_addr3 ?? "",
+          zip: defaultAddr.overseas_zip ?? "",
+          email: defaultAddr.email ?? "",
+        });
+      }
+
       setStep0Loading(false);
     });
   }, [step0Done]);
@@ -191,20 +221,20 @@ function ShippingRequestContent() {
     return result;
   }, [shippableParcels]);
 
-  // Step 0 → Step 0.5: 선택된 아이템을 박스 1로 초기화 후 박스 구성 화면으로
+  // Step 0 → Step 0.5: 선택된 아이템을 박스 1로 초기화, 기본 해외배송지 적용
   const handleStep0Confirm = useCallback(() => {
     const keys = Array.from(selectedItemKeys);
-    setBoxes([{ id: 1, address: null, itemKeys: keys }]);
+    setBoxes([{ id: 1, address: defaultOverseasAddress, itemKeys: keys }]);
     setStep05Active(true);
-  }, [selectedItemKeys]);
+  }, [selectedItemKeys, defaultOverseasAddress]);
 
-  // Step 0.5: 박스 개수 변경
+  // Step 0.5: 박스 개수 변경 (새 박스는 기본 해외배송지 적용)
   const handleBoxCountChange = useCallback((count: number) => {
     setBoxes((prev) => {
       const allKeys = prev.flatMap((b) => b.itemKeys);
       const newBoxes: BoxSetup[] = Array.from({ length: count }, (_, i) => ({
         id: i + 1,
-        address: prev[i]?.address ?? null,
+        address: prev[i]?.address ?? defaultOverseasAddress,
         itemKeys: prev[i]?.itemKeys ?? [],
       }));
       // 줄어든 박스의 아이템을 박스 1로 이동
@@ -215,7 +245,7 @@ function ShippingRequestContent() {
       }
       return newBoxes;
     });
-  }, []);
+  }, [defaultOverseasAddress]);
 
   // Step 0.5: 아이템을 다른 박스로 이동
   const moveItemToBox = useCallback((itemKey: string, targetBoxId: number) => {
@@ -417,7 +447,11 @@ function ShippingRequestContent() {
                     className="flex items-center gap-1 text-xs text-white/80 bg-white/20 px-2.5 py-1 rounded-full"
                   >
                     <Globe size={11} />
-                    {box.address ? box.address.name : "\ubc30\uc1a1\uc9c0 \uc124\uc815"}
+                    {box.address
+                      ? (box.address.label ?? box.address.name)
+                      : defaultOverseasAddress
+                      ? `${"\uae30\ubcf8"} (${defaultOverseasAddress.label ?? defaultOverseasAddress.name})`
+                      : "\ubc30\uc1a1\uc9c0 \uc124\uc815"}
                   </button>
                 </div>
 
