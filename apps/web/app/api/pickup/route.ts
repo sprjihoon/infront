@@ -73,12 +73,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '로그인이 필요합니다.' }, { status: 401 });
     }
 
-    // 고객 정보 조회
-    const { data: customer } = await supabase
+    // 고객 정보 조회 (트리거 생성 전 가입 계정 대비 자동 생성)
+    let { data: customer } = await supabase
       .from('customers')
       .select('id, name, customer_code')
       .eq('id', user.id)
       .single();
+
+    if (!customer) {
+      const seq = Date.now() % 10000;
+      const code = `SPB-${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${String(seq).padStart(4,'0')}`;
+      const { data: created } = await supabase
+        .from('customers')
+        .insert({ id: user.id, email: user.email ?? '', customer_code: code })
+        .select('id, name, customer_code')
+        .single();
+      customer = created;
+    }
 
     if (!customer) {
       return NextResponse.json({ error: '고객 정보를 찾을 수 없습니다.' }, { status: 404 });

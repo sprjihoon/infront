@@ -101,7 +101,7 @@ export default function AddressesPage() {
       if (!user) { router.push("/login"); return; }
 
       const { data: cust } = await supabase
-        .from("customers").select("id").eq("auth_user_id", user.id).single();
+        .from("customers").select("id").eq("id", user.id).single();
       if (!cust) return;
       setCustomerId(cust.id);
 

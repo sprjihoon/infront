@@ -53,7 +53,8 @@ CREATE TRIGGER trg_customer_addresses_updated_at
 ALTER TABLE customer_addresses ENABLE ROW LEVEL SECURITY;
 
 -- 본인 주소만 읽기/쓰기
+-- customers.id = auth.uid() 구조이므로 customer_id = auth.uid() 로 직접 비교
 CREATE POLICY "addresses_self" ON customer_addresses
   FOR ALL TO authenticated
-  USING  (customer_id = (SELECT id FROM customers WHERE auth_user_id = auth.uid()))
-  WITH CHECK (customer_id = (SELECT id FROM customers WHERE auth_user_id = auth.uid()));
+  USING  (customer_id = auth.uid())
+  WITH CHECK (customer_id = auth.uid());
