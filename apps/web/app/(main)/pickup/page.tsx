@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MapPin, Calendar, Phone, Package,
+  MapPin, Calendar, Phone,
   CheckCircle, Info, Truck, ArrowLeft, BookOpen, X, Star,
 } from "lucide-react";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
@@ -78,7 +78,6 @@ export default function PickupPage() {
     });
   }, []);
   const [pickupDate, setPickupDate]     = useState(minDate);
-  const [goodsName, setGoodsName]       = useState("");
   const [notes, setNotes]               = useState("");
   const [agreed, setAgreed]             = useState(false);
   const [immediateShip, setImmediateShip] = useState(false);
@@ -126,7 +125,6 @@ export default function PickupPage() {
           pickup_zipcode: zipcode.trim(),
           pickup_phone: phone.trim(),
           pickup_date: pickupDate,
-          goods_name: goodsName.trim() || undefined,
           pickup_notes: notes.trim() || undefined,
         }),
       });
@@ -308,21 +306,6 @@ export default function PickupPage() {
             희망일은 참고용이며 실제 수거일은 우체국 일정에 따릅니다.{" "}
             <span className="text-red-400">토·일·공휴일 수거 불가</span>
           </p>
-        </div>
-
-        {/* 물품 정보 */}
-        <div>
-          <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
-            <Package className="w-4 h-4 text-blue-600" />
-            물품 정보 (선택)
-          </label>
-          <input
-            type="text"
-            placeholder="예) 의류 5벌, 신발 2켤레"
-            value={goodsName}
-            onChange={(e) => setGoodsName(e.target.value)}
-            className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
-          />
         </div>
 
         {/* 요청사항 */}
