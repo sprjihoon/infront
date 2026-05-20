@@ -9,7 +9,20 @@ export interface ItemCategory {
 
 export const ITEM_CATEGORIES: ItemCategory[] = [
   // ── 유학생 짐 ──
-  { id: "personal_effects", name_ko: "개인 소지품 (유학생 짐)", name_en: "Personal Effects", hs_code: "630900", group: "유학생 짐" },
+  // 630900(worn clothing in bulk)은 상업용 묶음 코드라 개인짐에 부적합 → 품목별 정확한 코드 사용
+  { id: "student_clothing",    name_ko: "의류 (사용)",               name_en: "Used Clothing",                 hs_code: "610910", group: "유학생 짐" },
+  { id: "student_shoes",       name_ko: "신발 (사용)",               name_en: "Used Footwear",                 hs_code: "640299", group: "유학생 짐" },
+  { id: "student_bag",         name_ko: "가방·백팩 (사용)",          name_en: "Used Bag / Backpack",           hs_code: "420292", group: "유학생 짐" },
+  { id: "student_bedding",     name_ko: "침구·이불·베개",            name_en: "Bedding / Blanket / Pillow",    hs_code: "940490", group: "유학생 짐" },
+  { id: "student_books",       name_ko: "교재·서적",                 name_en: "Textbooks / Books",             hs_code: "490199", group: "유학생 짐" },
+  { id: "student_stationery",  name_ko: "학용품·문구",               name_en: "Stationery / School Supplies",  hs_code: "482010", group: "유학생 짐" },
+  { id: "student_laptop",      name_ko: "노트북 (사용)",             name_en: "Used Laptop / Notebook",        hs_code: "847130", group: "유학생 짐" },
+  { id: "student_tablet",      name_ko: "태블릿 (사용)",             name_en: "Used Tablet",                   hs_code: "847130", group: "유학생 짐" },
+  { id: "student_earphone",    name_ko: "이어폰·헤드폰 (사용)",      name_en: "Used Earphones / Headphones",   hs_code: "851830", group: "유학생 짐" },
+  { id: "student_kitchen",     name_ko: "주방용품 (사용)",           name_en: "Used Kitchen Items",            hs_code: "392410", group: "유학생 짐" },
+  { id: "student_toiletries",  name_ko: "세면·위생용품",             name_en: "Personal Care / Toiletries",    hs_code: "330499", group: "유학생 짐" },
+  { id: "student_sports",      name_ko: "운동·스포츠용품 (사용)",    name_en: "Used Sports Equipment",         hs_code: "950699", group: "유학생 짐" },
+  { id: "student_misc",        name_ko: "기타 잡화 (사용)",          name_en: "Used Miscellaneous Goods",      hs_code: "392690", group: "유학생 짐" },
 
   // ── 의류 ──
   { id: "clothing_top",     name_ko: "상의 (티셔츠·셔츠·블라우스)", name_en: "Clothing - Top",          hs_code: "610910", group: "의류" },
