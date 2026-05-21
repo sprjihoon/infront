@@ -118,14 +118,16 @@ export default function SidebarCalculator() {
   const customsInfo = getCustomsInfo(country);
 
   return (
-    <div className="sticky top-4 w-72 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
-      {/* 헤더 */}
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 flex items-center gap-2">
+    <div className="sticky top-4 w-72 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none flex flex-col max-h-[calc(100vh-100px)]">
+      {/* 헤더 — 항상 상단 고정 */}
+      <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 flex items-center gap-2 shrink-0">
         <Calculator size={16} className="text-white" />
         <span className="text-white font-semibold text-sm">가견적 계산기</span>
         <span className="ml-auto text-white/60 text-xs">EMS · K-Packet</span>
       </div>
 
+      {/* 스크롤 영역 */}
+      <div className="overflow-y-auto flex-1 min-h-0 scrollbar-thin scrollbar-thumb-gray-200">
       <div className="p-4 space-y-3">
 
         {/* 서류 / 비서류 */}
@@ -293,60 +295,61 @@ export default function SidebarCalculator() {
         )}
       </div>
 
-      {/* 통관 정보 */}
-      {customsInfo && (
-        <div className="border-t border-gray-100">
-          <button
-            onClick={() => setCustomsOpen(v => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
-          >
-            <div className="flex items-center gap-1.5">
-              <ShieldAlert size={13} className="text-orange-500" />
-              <span className="text-xs font-semibold text-gray-700">통관 정보</span>
-              <span className="text-[10px] text-gray-400">
-                {selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : country}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
-                면세 {customsInfo.dutyFree.split(" ")[0]}
-              </span>
-              {customsOpen
-                ? <ChevronUp size={12} className="text-gray-400" />
-                : <ChevronDown size={12} className="text-gray-400" />}
-            </div>
-          </button>
+        {/* 통관 정보 — 스크롤 영역 안에 포함 */}
+        {customsInfo && (
+          <div className="border-t border-gray-100">
+            <button
+              onClick={() => setCustomsOpen(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                <ShieldAlert size={13} className="text-orange-500" />
+                <span className="text-xs font-semibold text-gray-700">통관 정보</span>
+                <span className="text-[10px] text-gray-400">
+                  {selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : country}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                  면세 {customsInfo.dutyFree.split(" ")[0]}
+                </span>
+                {customsOpen
+                  ? <ChevronUp size={12} className="text-gray-400" />
+                  : <ChevronDown size={12} className="text-gray-400" />}
+              </div>
+            </button>
 
-          {customsOpen && (
-            <div className="px-4 pb-4 space-y-2.5">
-              {/* 면세한도 */}
-              <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
-                <p className="text-[10px] font-bold text-blue-700 mb-0.5">💰 면세한도</p>
-                <p className="text-sm font-bold text-blue-900">{customsInfo.dutyFree}</p>
-                {customsInfo.dutyFreeNote && (
-                  <p className="text-[10px] text-blue-600 mt-0.5 leading-relaxed">{customsInfo.dutyFreeNote}</p>
+            {customsOpen && (
+              <div className="px-4 pb-4 space-y-2.5">
+                {/* 면세한도 */}
+                <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
+                  <p className="text-[10px] font-bold text-blue-700 mb-0.5">💰 면세한도</p>
+                  <p className="text-sm font-bold text-blue-900">{customsInfo.dutyFree}</p>
+                  {customsInfo.dutyFreeNote && (
+                    <p className="text-[10px] text-blue-600 mt-0.5 leading-relaxed">{customsInfo.dutyFreeNote}</p>
+                  )}
+                </div>
+
+                {/* 배터리 */}
+                <div className="flex items-start gap-2 bg-violet-50 rounded-xl px-3 py-2 border border-violet-100">
+                  <Zap size={11} className="text-violet-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] font-bold text-violet-700 mb-0.5">리튬배터리</p>
+                    <p className="text-[10px] text-violet-700">{customsInfo.batteryLimit}</p>
+                  </div>
+                </div>
+
+                {/* 유의사항 */}
+                {customsInfo.customsNote && (
+                  <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                    📌 {customsInfo.customsNote}
+                  </p>
                 )}
               </div>
-
-              {/* 배터리 */}
-              <div className="flex items-start gap-2 bg-violet-50 rounded-xl px-3 py-2 border border-violet-100">
-                <Zap size={11} className="text-violet-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[10px] font-bold text-violet-700 mb-0.5">리튬배터리</p>
-                  <p className="text-[10px] text-violet-700">{customsInfo.batteryLimit}</p>
-                </div>
-              </div>
-
-              {/* 유의사항 */}
-              {customsInfo.customsNote && (
-                <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-                  📌 {customsInfo.customsNote}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+      </div>{/* /스크롤 영역 */}
     </div>
   );
 }
