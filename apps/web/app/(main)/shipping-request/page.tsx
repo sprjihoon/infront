@@ -214,28 +214,28 @@ function ShippingRequestContent() {
     return result;
   }, [shippableParcels]);
 
-  // 박스 개수 변경 (새 박스는 기본 해외배송지 적용, 줄어들면 아이템을 박스 1로)
-  const handleBoxCountChange = useCallback((count: number) => {
-    setBoxes((prev) => {
-      const newBoxes: BoxSetup[] = Array.from({ length: count }, (_, i) => ({
-        id: i + 1,
-        address: prev[i]?.address ?? defaultOverseasAddress,
-        items: prev[i]?.items ?? [],
-      }));
-      if (count < prev.length) {
-        // 잘린 박스의 아이템을 박스 1로 병합
-        const keepKeys = new Set(newBoxes.flatMap((b) => b.items.map((bi) => bi.key)));
-        for (let i = count; i < prev.length; i++) {
-          for (const bi of prev[i].items) {
-            if (!keepKeys.has(bi.key)) {
-              newBoxes[0].items = [...newBoxes[0].items, bi];
-            }
-          }
-        }
-      }
-      return newBoxes;
-    });
+  // 박스 추가
+  const handleAddBox = useCallback(() => {
+    setBoxes((prev) => [
+      ...prev,
+      { id: prev.length > 0 ? Math.max(...prev.map((b) => b.id)) + 1 : 1, address: defaultOverseasAddress, items: [] },
+    ]);
   }, [defaultOverseasAddress]);
+
+  // 박스 삭제 (담긴 아이템은 박스 1로 병합)
+  const handleRemoveBox = useCallback((boxId: number) => {
+    setBoxes((prev) => {
+      const target = prev.find((b) => b.id === boxId);
+      if (!target || prev.length <= 1) return prev;
+      const remaining = prev.filter((b) => b.id !== boxId);
+      const keepKeys = new Set(remaining.flatMap((b) => b.items.map((bi) => bi.key)));
+      const orphans = target.items.filter((bi) => !keepKeys.has(bi.key));
+      if (orphans.length > 0) {
+        remaining[0] = { ...remaining[0], items: [...remaining[0].items, ...orphans] };
+      }
+      return remaining;
+    });
+  }, []);
 
   // 다른 박스들에 이미 배정된 해당 아이템의 총 수량
   const getOtherBoxQty = useCallback((itemKey: string, excludeBoxId: number): number => {
@@ -542,25 +542,6 @@ function ShippingRequestContent() {
         </div>
 
         <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-5 pb-40">
-          {/* 박스 개수 선택 */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <p className="text-sm font-bold text-gray-900 mb-1">{"\ubaa8\ub450 \uba87 \ubc15\uc2a4\ub85c \ubcf4\ub0bc\uae4c\uc694?"}</p>
-            <p className="text-xs text-gray-400 mb-3">{"\ubc15\uc2a4\ub9c8\ub2e4 \ub2e4\ub978 \ubc30\uc1a1\uc9c0\ub85c \ubcf4\ub0bc \uc218 \uc788\uc5b4\uc694"}</p>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  onClick={() => handleBoxCountChange(n)}
-                  className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
-                    boxes.length === n ? "border-blue-500 bg-blue-50 text-blue-700" : "border-gray-100 bg-white text-gray-500"
-                  }`}
-                >
-                  {n}{"\ubc15\uc2a4"}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {preflowLoading ? (
             <div className="flex justify-center py-10"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
           ) : shippableParcels.length === 0 ? (
@@ -591,13 +572,24 @@ function ShippingRequestContent() {
                         <span className="text-xs text-blue-200">{totalBoxQty}{"\uac1c"}</span>
                       )}
                     </div>
-                    <button
-                      onClick={() => setExpandedBoxAddress(isAddressOpen ? null : box.id)}
-                      className="flex items-center gap-1 text-xs text-white/80 bg-white/20 px-2.5 py-1 rounded-full"
-                    >
-                      <Globe size={11} />
-                      {box.address ? (box.address.label ?? box.address.name) : "\ubc30\uc1a1\uc9c0 \uc124\uc815"}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setExpandedBoxAddress(isAddressOpen ? null : box.id)}
+                        className="flex items-center gap-1 text-xs text-white/80 bg-white/20 px-2.5 py-1 rounded-full"
+                      >
+                        <Globe size={11} />
+                        {box.address ? (box.address.label ?? box.address.name) : "\ubc30\uc1a1\uc9c0 \uc124\uc815"}
+                      </button>
+                      {boxes.length > 1 && (
+                        <button
+                          onClick={() => handleRemoveBox(box.id)}
+                          className="w-6 h-6 flex items-center justify-center rounded-full bg-white/20 text-white/80 hover:bg-white/30 text-sm leading-none"
+                          title={"\ubc15\uc2a4 \uc0ad\uc81c"}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* 주소 피커 (펼침) */}
@@ -644,6 +636,17 @@ function ShippingRequestContent() {
                 </div>
               );
             })
+          )}
+
+          {/* 박스 추가 버튼 */}
+          {!preflowLoading && shippableParcels.length > 0 && (
+            <button
+              onClick={handleAddBox}
+              className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 text-gray-500 text-sm font-bold py-4 rounded-2xl hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 active:scale-[0.98] transition-all"
+            >
+              <span className="text-lg leading-none">+</span>
+              {"\ubc15\uc2a4 \ucd94\uac00"}
+            </button>
           )}
         </div>
 
