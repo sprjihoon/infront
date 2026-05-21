@@ -76,7 +76,10 @@ async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Respon
   }
 }
 
-/** GET 요청 (조회 API — 암호화 없음, 네트워크 오류 시 1회 재시도) */
+const MAX_RETRY = 2; // 최대 재시도 횟수 (초기 시도 제외)
+const RETRY_DELAY_MS = 1000;
+
+/** GET 요청 (조회 API — 암호화 없음, 네트워크 오류 시 최대 2회 재시도) */
 async function getQuery(endpoint: string, params: Record<string, string>, attempt = 0): Promise<string> {
   const url = new URL(`${BASE}/${endpoint}`);
   url.searchParams.set('regkey', getKey());
@@ -91,9 +94,9 @@ async function getQuery(endpoint: string, params: Record<string, string>, attemp
     checkError(xml);
     return xml;
   } catch (e) {
-    if (attempt === 0 && e instanceof EmsApiError && e.message.includes('네트워크 오류')) {
-      await new Promise(r => setTimeout(r, 1500));
-      return getQuery(endpoint, params, 1);
+    if (attempt < MAX_RETRY && e instanceof EmsApiError && e.message.includes('네트워크 오류')) {
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      return getQuery(endpoint, params, attempt + 1);
     }
     throw e;
   }

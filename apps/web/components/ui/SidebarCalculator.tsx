@@ -103,6 +103,10 @@ export default function SidebarCalculator() {
           out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: e instanceof Error ? e.message : "오류" };
         }
         setResults([...out]);
+        // 서비스 간 짧은 간격으로 EMS 서버 부하 완화
+        if (i < services.length - 1) {
+          await new Promise(r => setTimeout(r, 300));
+        }
       }
     } finally {
       setLoading(false);
