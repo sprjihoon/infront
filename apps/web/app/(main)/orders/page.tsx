@@ -124,7 +124,7 @@ function OrdersContent() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/orders")
+    fetch("/api/orders", { cache: "no-store" })
       .then((r) => r.json())
       .then(({ orders: data }) => {
         setOrders(data ?? []);

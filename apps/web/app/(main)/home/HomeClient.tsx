@@ -153,7 +153,7 @@ export default function HomeClient() {
           .then(({ data }) => setParcels(data ?? []));
 
       // 최근 배송 현황 1건
-      fetch("/api/orders")
+      fetch("/api/orders", { cache: "no-store" })
         .then((r) => r.json())
         .then(({ orders: data }) => setOrders((data ?? []).slice(0, 1)))
         .catch(() => {});
