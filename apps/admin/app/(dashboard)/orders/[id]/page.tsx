@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Package, User, MapPin, Send, Truck,
   CheckCircle, ChevronDown, DollarSign, Plus, Trash2,
-  Box, Weight, Edit3, X, Check,
+  Box, Weight, Edit3, X, Check, Mail, Printer,
 } from "lucide-react";
 
 interface Order {
@@ -18,6 +18,11 @@ interface Order {
   recipient_country: string;
   recipient_address: string;
   recipient_phone: string | null;
+  recipient_addr1: string | null;
+  recipient_addr2: string | null;
+  recipient_addr3: string | null;
+  recipient_zip: string | null;
+  recipient_email: string | null;
   item_list: Array<{ name: string; qty: number; price: number; origin: string }>;
   est_shipping_fee: number | null;
   shipping_fee: number | null;
@@ -27,6 +32,11 @@ interface Order {
   carrier: string | null;
   created_at: string;
   customers: { name: string; email: string; customer_code: string } | null;
+  // EMS 접수 결과
+  ems_regino: string | null;
+  ems_fee: number | null;
+  ems_applied_at: string | null;
+  ems_premium_cd: string | null;
 }
 
 interface OrderParcel {
@@ -126,6 +136,12 @@ export default function OrderDetailPage() {
   const [quoteNote, setQuoteNote] = useState("");
   const [showQuoteForm, setShowQuoteForm] = useState(false);
 
+  // EMS 접수 폼
+  const [showEmsForm, setShowEmsForm] = useState(false);
+  const [emsForm, setEmsForm] = useState({ totweight: "", boxlength: "", boxwidth: "", boxheight: "" });
+  const [emsSubmitting, setEmsSubmitting] = useState(false);
+  const [emsMsg, setEmsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   // 박스 편집 상태 (box.id → 편집 중 데이터)
   const [editingBox, setEditingBox] = useState<string | null>(null);
   const [boxEdits, setBoxEdits] = useState<Record<string, Partial<ShippingBox>>>({});
@@ -186,6 +202,39 @@ export default function OrderDetailPage() {
     if (!confirm("박스를 삭제하시겠습니까?")) return;
     const ok = await callApi({ action: "delete_box", box_id: boxId });
     if (ok) loadOrder();
+  }
+
+  async function handleEmsApply() {
+    const { totweight, boxlength, boxwidth, boxheight } = emsForm;
+    if (!totweight || !boxlength || !boxwidth || !boxheight) {
+      setEmsMsg({ type: "err", text: "모든 측정값(중량·가로·세로·높이)을 입력해주세요." });
+      return;
+    }
+    setEmsSubmitting(true);
+    setEmsMsg(null);
+    try {
+      const res = await fetch(`/api/admin/ems/apply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: id,
+          totweight: Number(totweight),
+          boxlength: Number(boxlength),
+          boxwidth:  Number(boxwidth),
+          boxheight: Number(boxheight),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setEmsMsg({ type: "err", text: json.error ?? "EMS 접수 실패" });
+      } else {
+        setEmsMsg({ type: "ok", text: `✅ 등기번호 ${json.regino} · 예상요금 ${json.ems_fee?.toLocaleString()}원` });
+        setShowEmsForm(false);
+        loadOrder();
+      }
+    } finally {
+      setEmsSubmitting(false);
+    }
   }
 
   async function handleShipAll() {
@@ -574,6 +623,173 @@ export default function OrderDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ═══════════════════════════════════════════════
+          EMS 우체국 접수
+      ═══════════════════════════════════════════════ */}
+      {(() => {
+        const canApplyEms = ["PAID", "PACKING", "PACKAGING_DONE", "QUOTE_SENT"].includes(order.status);
+        const alreadyApplied = !!order.ems_regino;
+        const missingAddr = !order.recipient_addr3;
+
+        if (!canApplyEms && !alreadyApplied) return null;
+
+        return (
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
+                <Send size={15} className="text-blue-500" />
+                EMS 우체국 접수
+              </h2>
+              {alreadyApplied && (
+                <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
+                  접수 완료
+                </span>
+              )}
+            </div>
+
+            {/* 이미 접수된 경우 — 결과 표시 */}
+            {alreadyApplied ? (
+              <div className="px-4 py-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                  <CheckCircle size={16} className="text-green-500" />
+                  등기번호: <span className="font-mono">{order.ems_regino}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm text-gray-500">
+                  {order.ems_fee && (
+                    <div>
+                      <span className="text-xs text-gray-400 block">예상요금</span>
+                      <span className="font-semibold text-gray-800">{order.ems_fee.toLocaleString()}원</span>
+                    </div>
+                  )}
+                  {order.ems_applied_at && (
+                    <div>
+                      <span className="text-xs text-gray-400 block">접수일시</span>
+                      <span className="font-semibold text-gray-800">
+                        {new Date(order.ems_applied_at).toLocaleString("ko-KR", { dateStyle: "short", timeStyle: "short" })}
+                      </span>
+                    </div>
+                  )}
+                  {order.ems_premium_cd && (
+                    <div>
+                      <span className="text-xs text-gray-400 block">서비스 구분</span>
+                      <span className="font-semibold text-gray-800">
+                        {{ "31": "EMS", "32": "EMS 프리미엄", "14": "K-Packet" }[order.ems_premium_cd] ?? order.ems_premium_cd}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {/* 라벨 인쇄 버튼 */}
+                <Link
+                  href={`/orders/${id}/label`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors"
+                >
+                  <Printer size={14} /> EMS 라벨 인쇄
+                </Link>
+              </div>
+            ) : missingAddr ? (
+              /* 주소 분리 저장 미완 — 안내 */
+              <div className="px-4 py-4 bg-amber-50 text-sm text-amber-700 flex items-start gap-2">
+                <span className="shrink-0 mt-0.5">⚠️</span>
+                <span>
+                  수취인 주소(addr1/2/3)가 분리 저장되지 않았습니다.
+                  <br />SQL 마이그레이션(012) 실행 후, 고객이 <strong>새로 주문</strong>해야 EMS 접수가 가능합니다.
+                </span>
+              </div>
+            ) : (
+              /* 접수 폼 */
+              <div className="px-4 py-4 space-y-3">
+                {/* 수취인 미리보기 */}
+                <div className="bg-gray-50 rounded-xl p-3 text-xs space-y-1 text-gray-600">
+                  <p className="font-semibold text-gray-800">{order.recipient_name} · {order.recipient_country}</p>
+                  <p>{[order.recipient_addr3, order.recipient_addr2, order.recipient_addr1].filter(Boolean).join(", ")}</p>
+                  {order.recipient_zip  && <p>우편번호: {order.recipient_zip}</p>}
+                  {order.recipient_phone && <p>전화: {order.recipient_phone}</p>}
+                  {order.recipient_email && (
+                    <p className="flex items-center gap-1"><Mail size={10} />{order.recipient_email}</p>
+                  )}
+                </div>
+
+                {emsMsg && (
+                  <div className={`rounded-xl px-3 py-2 text-sm ${emsMsg.type === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>
+                    {emsMsg.text}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowEmsForm(!showEmsForm)}
+                  className="w-full flex items-center justify-between text-sm font-semibold text-blue-600"
+                >
+                  <span className="flex items-center gap-2">
+                    <Truck size={14} /> 박스 실측값 입력 후 접수
+                  </span>
+                  <ChevronDown size={14} className={showEmsForm ? "rotate-180" : ""} />
+                </button>
+
+                {showEmsForm && (
+                  <div className="space-y-3 pt-1">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">총중량 (g) *</label>
+                        <input
+                          type="number" min={1}
+                          value={emsForm.totweight}
+                          onChange={e => setEmsForm(f => ({ ...f, totweight: e.target.value }))}
+                          placeholder="예: 1250"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">가로 (cm) *</label>
+                        <input
+                          type="number" min={1} step={0.1}
+                          value={emsForm.boxlength}
+                          onChange={e => setEmsForm(f => ({ ...f, boxlength: e.target.value }))}
+                          placeholder="예: 30"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">세로 (cm) *</label>
+                        <input
+                          type="number" min={1} step={0.1}
+                          value={emsForm.boxwidth}
+                          onChange={e => setEmsForm(f => ({ ...f, boxwidth: e.target.value }))}
+                          placeholder="예: 20"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-gray-500 block mb-1">높이 (cm) *</label>
+                        <input
+                          type="number" min={1} step={0.1}
+                          value={emsForm.boxheight}
+                          onChange={e => setEmsForm(f => ({ ...f, boxheight: e.target.value }))}
+                          placeholder="예: 15"
+                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleEmsApply}
+                      disabled={emsSubmitting}
+                      className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-2 disabled:opacity-60"
+                    >
+                      {emsSubmitting
+                        ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        : <><Send size={14} /> EMS 우체국 접수하기</>
+                      }
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 견적 확정 */}
       {canQuote && (

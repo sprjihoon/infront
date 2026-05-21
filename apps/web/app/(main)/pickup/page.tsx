@@ -17,7 +17,6 @@ interface InvoiceItem {
   unit_price_usd: number;
   origin_country: string;
   hs_code: string;
-  _isCustom?: boolean;
 }
 
 function newItem(): InvoiceItem {
@@ -124,7 +123,7 @@ export default function PickupPage() {
           item_condition: itemCondition,
           pre_invoice_items: invoiceItems
             .filter(i => i.name_en.trim())
-            .map(({ key: _k, _isCustom: _c, ...rest }) => rest),
+            .map(({ key: _k, ...rest }) => rest),
         }),
       });
 
@@ -327,19 +326,22 @@ export default function PickupPage() {
                           className="p-1 text-gray-300 hover:text-red-400"><Trash2 size={13} /></button>
                       )}
                     </div>
-                    <div className="mb-2">
+                    <div className="mb-2 space-y-1.5">
                       <ItemCategoryPicker
-                        value={item._isCustom ? "Other Goods" : item.name_en}
+                        value={item.name_en}
                         onChange={(cat: ItemCategory) => setInvoiceItems(p => p.map((it, i) =>
-                          i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "", _isCustom: cat.id === "other" } : it
+                          i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "" } : it
                         ))}
                       />
-                      {item._isCustom && (
-                        <input value={item.name_en}
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold">제품명 (영문) <span className="text-red-400">*</span></label>
+                        <input
+                          value={item.name_en}
                           onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
-                          placeholder="품목명 직접 입력 (영문)"
-                          className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
-                      )}
+                          placeholder="예: iPhone 15 Pro, Nike Air Max"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        />
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>

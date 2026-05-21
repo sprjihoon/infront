@@ -28,9 +28,9 @@ export interface CreateOrderBody {
     country_code: string;
     name: string;
     phone?: string;
-    overseas_addr1: string;
-    overseas_addr2: string;
-    overseas_addr3: string;
+    overseas_addr1: string;  // 주/도 (State/Province)
+    overseas_addr2: string;  // 시/군 (City)
+    overseas_addr3: string;  // 상세주소 (Street)
     overseas_zip?: string;
     email?: string;
   };
@@ -129,12 +129,19 @@ export async function POST(req: NextRequest) {
         payment_status: 'UNPAID',
         recipient_name: overseas_address.name,
         recipient_phone: overseas_address.phone ?? null,
+        // 단일 문자열 (기존 호환)
         recipient_address: [
           overseas_address.overseas_addr3,
           overseas_address.overseas_addr2,
           overseas_address.overseas_addr1,
         ].filter(Boolean).join(', '),
         recipient_country: overseas_address.country_code,
+        // EMS API용 분리 저장
+        recipient_addr1:   overseas_address.overseas_addr1 || null,
+        recipient_addr2:   overseas_address.overseas_addr2 || null,
+        recipient_addr3:   overseas_address.overseas_addr3 || null,
+        recipient_zip:     overseas_address.overseas_zip   || null,
+        recipient_email:   overseas_address.email          || null,
         customs_value,
         item_list,
       })

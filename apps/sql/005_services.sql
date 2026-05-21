@@ -63,36 +63,33 @@ CREATE TABLE IF NOT EXISTS order_services (
 );
 
 -- ── 반품 요청 ────────────────────────────────────────────────
+-- return_type = 'CUSTOMER_REQUEST' : 고객 반품신청 → 반송택배사 전달만
+-- return_type = 'INSPECTION_DEFECT': 검수불량 → 검수비 결제요청 필요
+-- service_fee = 1,000원 처리비 고정 (반송택배비는 고객 부담, 우리 관리 안 함)
+-- (→ 013_return_requests_v2.sql 에서 컬럼 정리 및 status ENUM 재정의)
 CREATE TABLE IF NOT EXISTS return_requests (
-  id                  UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  parcel_id           UUID        NOT NULL REFERENCES parcels(id),
-  customer_id         UUID        NOT NULL REFERENCES customers(id),
-  request_stage       TEXT        NOT NULL
-    CHECK (request_stage IN (
-      'PRE_PICKUP', 'IN_TRANSIT', 'POST_INBOUND', 'POST_INSPECTION', 'FROM_OVERSEAS'
-    )),
-  reason              TEXT        NOT NULL
-    CHECK (reason IN ('SIZE_MISMATCH', 'DEFECT', 'WRONG_ITEM', 'CHANGE_MIND', 'OTHER')),
-  reason_note         TEXT,
-  seller_name         TEXT        NOT NULL,
-  seller_address      TEXT        NOT NULL,
-  seller_phone        TEXT,
-  prepaid_label_url   TEXT,
-  inbound_tracking_no TEXT,
-  return_tracking_no  TEXT,
-  status              TEXT        DEFAULT 'REQUESTED'
+  id                    UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  parcel_id             UUID        NOT NULL REFERENCES parcels(id),
+  customer_id           UUID        NOT NULL REFERENCES customers(id),
+  return_type           TEXT        NOT NULL DEFAULT 'CUSTOMER_REQUEST'
+    CHECK (return_type IN ('CUSTOMER_REQUEST', 'INSPECTION_DEFECT')),
+  inspection_result_id  UUID        REFERENCES inspection_results(id),
+  seller_name           TEXT,
+  seller_address        TEXT,
+  seller_phone          TEXT,
+  prepaid_label_url     TEXT,
+  return_tracking_no    TEXT,
+  status                TEXT        DEFAULT 'REQUESTED'
     CHECK (status IN (
-      'REQUESTED', 'WAITING_INBOUND', 'INSPECTING',
-      'PACKED', 'SHIPPED', 'COMPLETED', 'CANCELLED'
+      'REQUESTED', 'PAYMENT_REQUESTED',
+      'SHIPPED', 'COMPLETED', 'CANCELLED'
     )),
-  service_fee         NUMERIC(10,0) DEFAULT 0,
-  shipping_fee        NUMERIC(10,0) DEFAULT 0,
-  total_fee           NUMERIC(10,0) DEFAULT 0,
-  payment_status      TEXT        DEFAULT 'UNPAID'
+  service_fee           NUMERIC(10,0) DEFAULT 1000,
+  payment_status        TEXT        DEFAULT 'UNPAID'
     CHECK (payment_status IN ('UNPAID', 'PAID', 'CANCELLED')),
-  worker_id           UUID        REFERENCES auth.users(id),
-  completed_at        TIMESTAMPTZ,
-  created_at          TIMESTAMPTZ DEFAULT NOW()
+  worker_id             UUID        REFERENCES auth.users(id),
+  completed_at          TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 검수 결과 ────────────────────────────────────────────────
@@ -122,7 +119,8 @@ INSERT INTO services (code, category, name, description, price, price_type, sort
   ('CONSOLIDATE',      'PACKAGING',     '합포장',         '여러 물품을 하나로 합치기',     2000, 'FIXED',  22),
   ('BOX_S',            'BOX_DELIVERY',  '소형 박스 배송', '소형 박스 (20×20×20cm 이하)',   3000, 'FIXED',  30),
   ('BOX_M',            'BOX_DELIVERY',  '중형 박스 배송', '중형 박스 (40×30×30cm 이하)',   4000, 'FIXED',  31),
-  ('BOX_L',            'BOX_DELIVERY',  '대형 박스 배송', '대형 박스 (60×50×50cm 이하)',   5000, 'FIXED',  32)
+  ('BOX_L',            'BOX_DELIVERY',  '대형 박스 배송', '대형 박스 (60×50×50cm 이하)',   5000, 'FIXED',  32),
+  ('RETURN_PROCESS',   'RETURN',        '반품 처리비',    '반품 접수 및 반송 처리',          1000, 'FIXED',  40)
 ON CONFLICT (code) DO NOTHING;
 
 -- ── RLS ─────────────────────────────────────────────────────
