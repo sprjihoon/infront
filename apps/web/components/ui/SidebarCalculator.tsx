@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText } from "lucide-react";
 
-const SERVICES = [
-  { id: "ems-parcel",  label: "EMS",        sub: "비서류", premiumcd: "31", em_ee: "em", color: "bg-blue-600",   maxW: 30000 },
-  { id: "ems-doc",     label: "EMS",        sub: "서류",   premiumcd: "31", em_ee: "ee", color: "bg-blue-400",   maxW: 30000 },
-  { id: "ems-premium", label: "EMS프리미엄", sub: "",      premiumcd: "32", em_ee: "em", color: "bg-violet-600", maxW: 30000 },
-  { id: "k-packet",    label: "K-Packet",   sub: "",       premiumcd: "14", em_ee: "rl", color: "bg-emerald-600",maxW: 2000 },
+const PARCEL_SERVICES = [
+  { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-blue-600",    maxW: 30000 },
+  { id: "ems-premium", label: "EMS프리미엄", premiumcd: "32", em_ee: "em", color: "bg-violet-600",  maxW: 30000 },
+  { id: "k-packet",    label: "K-Packet",   premiumcd: "14", em_ee: "rl", color: "bg-emerald-600", maxW: 2000  },
+] as const;
+
+const DOC_SERVICES = [
+  { id: "ems-doc", label: "EMS 서류", premiumcd: "31", em_ee: "ee", color: "bg-blue-400", maxW: 30000 },
 ] as const;
 
 const POPULAR = [
@@ -25,59 +28,75 @@ const POPULAR = [
   { code: "TW", flag: "🇹🇼", name: "대만" },
 ];
 
+type ServiceResult = {
+  id: string;
+  label: string;
+  color: string;
+  fee: number | null;
+  err: string | null;
+};
+
 export default function SidebarCalculator() {
-  const [serviceId, setServiceId] = useState("ems-parcel");
-  const [country, setCountry]     = useState("JP");
-  const [weight, setWeight]       = useState("1000");
-  const [length, setLength]       = useState("");
-  const [width,  setWidth]        = useState("");
-  const [height, setHeight]       = useState("");
-  const [showMore, setShowMore]   = useState(false);
+  const [docType, setDocType] = useState<"parcel" | "doc">("parcel");
+  const [country, setCountry] = useState("JP");
+  const [weight,  setWeight]  = useState("1000");
+  const [length,  setLength]  = useState("");
+  const [width,   setWidth]   = useState("");
+  const [height,  setHeight]  = useState("");
+  const [showMore, setShowMore] = useState(false);
 
-  const [loading, setLoading]     = useState(false);
-  const [result,  setResult]      = useState<number | null>(null);
-  const [error,   setError]       = useState<string | null>(null);
+  const [loading, setLoading]   = useState(false);
+  const [results, setResults]   = useState<ServiceResult[] | null>(null);
+  const [error,   setError]     = useState<string | null>(null);
 
-  const service = SERVICES.find(s => s.id === serviceId)!;
   const volWeight = length && width && height
     ? Math.round(parseFloat(length) * parseFloat(width) * parseFloat(height) / 6)
     : 0;
   const applied = Math.max(parseFloat(weight) || 0, volWeight);
 
+  const services = docType === "doc" ? DOC_SERVICES : PARCEL_SERVICES;
+
+  function reset() {
+    setResults(null);
+    setError(null);
+  }
+
   async function calc() {
     setError(null);
-    setResult(null);
+    setResults(null);
     if (!weight || parseFloat(weight) <= 0) { setError("무게를 입력해주세요."); return; }
-
-    const maxG = service.id === "k-packet" ? 2000 : 30000;
-    if (applied > maxG) {
-      setError(`중량 초과: ${service.label} 최대 ${maxG / 1000}kg (입력 ${(applied / 1000).toFixed(1)}kg)`);
-      return;
-    }
 
     setLoading(true);
     try {
-      const p = new URLSearchParams({
-        premiumcd: service.premiumcd, em_ee: service.em_ee,
-        countrycd: country, totweight: String(Math.round(applied)),
-        ...(length ? { boxlength: length } : {}),
-        ...(width  ? { boxwidth:  width  } : {}),
-        ...(height ? { boxheight: height } : {}),
+      const fetches = services.map(async (s): Promise<ServiceResult> => {
+        if (applied > s.maxW) {
+          return { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
+        }
+        const p = new URLSearchParams({
+          premiumcd: s.premiumcd, em_ee: s.em_ee,
+          countrycd: country, totweight: String(Math.round(applied)),
+          ...(length ? { boxlength: length } : {}),
+          ...(width  ? { boxwidth:  width  } : {}),
+          ...(height ? { boxheight: height } : {}),
+        });
+        try {
+          const res  = await fetch(`/api/ems/quote?${p}`);
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error ?? "조회 실패");
+          return { id: s.id, label: s.label, color: s.color, fee: data.totalFee as number, err: null };
+        } catch (e) {
+          return { id: s.id, label: s.label, color: s.color, fee: null, err: e instanceof Error ? e.message : "오류" };
+        }
       });
-      const res  = await fetch(`/api/ems/quote?${p}`);
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error ?? "조회 실패");
-      }
-      setResult(data.totalFee);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "오류");
+      setResults(await Promise.all(fetches));
     } finally {
       setLoading(false);
     }
   }
 
   const selectedCountry = POPULAR.find(c => c.code === country);
+  const validFees = results?.filter(r => r.fee !== null).map(r => r.fee!) ?? [];
+  const minFee = validFees.length ? Math.min(...validFees) : null;
 
   return (
     <div className="sticky top-4 w-72 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
@@ -90,35 +109,43 @@ export default function SidebarCalculator() {
 
       <div className="p-4 space-y-3">
 
-        {/* 서비스 */}
+        {/* 서류 / 비서류 */}
         <div>
-          <p className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">서비스</p>
+          <p className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">종류</p>
           <div className="grid grid-cols-2 gap-1.5">
-            {SERVICES.map(s => (
-              <button
-                key={s.id}
-                onClick={() => { setServiceId(s.id); setResult(null); }}
-                className={`rounded-lg px-2 py-1.5 text-left flex items-center gap-1.5 border transition-all text-xs ${
-                  serviceId === s.id
-                    ? "border-blue-500 bg-blue-50 text-blue-700 font-semibold"
-                    : "border-gray-100 bg-gray-50 text-gray-600"
-                }`}
-              >
-                <span className={`w-2 h-2 rounded-full shrink-0 ${s.color}`} />
-                <span className="truncate">{s.label}{s.sub && ` ${s.sub}`}</span>
-              </button>
-            ))}
+            <button
+              onClick={() => { setDocType("parcel"); reset(); }}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                docType === "parcel"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100"
+              }`}
+            >
+              <Package size={13} />
+              비서류
+            </button>
+            <button
+              onClick={() => { setDocType("doc"); reset(); }}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold flex items-center justify-center gap-1.5 border transition-all ${
+                docType === "doc"
+                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  : "border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100"
+              }`}
+            >
+              <FileText size={13} />
+              서류
+            </button>
           </div>
         </div>
 
-        {/* 국가 */}
+        {/* 목적국 */}
         <div>
           <p className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">목적국</p>
           <div className="grid grid-cols-4 gap-1">
             {POPULAR.slice(0, showMore ? 12 : 8).map(c => (
               <button
                 key={c.code}
-                onClick={() => { setCountry(c.code); setResult(null); }}
+                onClick={() => { setCountry(c.code); reset(); }}
                 title={c.name}
                 className={`rounded-lg py-1.5 text-center text-base transition-all border ${
                   country === c.code
@@ -143,14 +170,14 @@ export default function SidebarCalculator() {
           )}
         </div>
 
-        {/* 무게 */}
+        {/* 실중량 */}
         <div>
           <p className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">실중량</p>
           <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
             <input
               type="number" min="1"
               value={weight}
-              onChange={e => { setWeight(e.target.value); setResult(null); }}
+              onChange={e => { setWeight(e.target.value); reset(); }}
               className="flex-1 bg-transparent text-sm font-medium text-gray-900 outline-none w-0"
               placeholder="1000"
             />
@@ -175,7 +202,7 @@ export default function SidebarCalculator() {
                 <input
                   type="number" min="0"
                   value={val}
-                  onChange={e => { set(e.target.value); setResult(null); }}
+                  onChange={e => { set(e.target.value); reset(); }}
                   className="w-full bg-transparent text-xs font-medium text-gray-900 outline-none"
                   placeholder="0"
                 />
@@ -207,20 +234,40 @@ export default function SidebarCalculator() {
         )}
 
         {/* 결과 */}
-        {result !== null && (
-          <div className="bg-gradient-to-br from-blue-50 to-violet-50 rounded-xl p-3 border border-blue-100">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-gray-500">
-                {selectedCountry?.flag} {selectedCountry?.name} · {service.label}{service.sub ? ` ${service.sub}` : ""}
+        {results && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between mb-0.5">
+              <p className="text-[10px] text-gray-400">
+                {selectedCountry?.flag} {selectedCountry?.name} · {docType === "doc" ? "서류" : "비서류"} · {applied.toLocaleString()}g
               </p>
-              <button onClick={() => setResult(null)} className="text-gray-300 hover:text-gray-500">
+              <button onClick={reset} className="text-gray-300 hover:text-gray-500">
                 <RotateCcw size={12} />
               </button>
             </div>
-            <p className="text-2xl font-bold text-gray-900">
-              {result.toLocaleString()}<span className="text-sm font-medium text-gray-500 ml-1">원</span>
-            </p>
-            <p className="text-[10px] text-gray-400 mt-0.5">가견적 · 실제 접수 시 우체국 요금 기준으로 확정</p>
+            {results.map(r => (
+              <div
+                key={r.id}
+                className={`rounded-xl px-3 py-2 border flex items-center justify-between ${
+                  r.fee !== null && r.fee === minFee && validFees.length > 1
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-gray-50 border-gray-100"
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${r.color}`} />
+                  <span className="text-xs text-gray-600 truncate">{r.label}</span>
+                  {r.fee !== null && r.fee === minFee && validFees.length > 1 && (
+                    <span className="text-[9px] bg-blue-500 text-white px-1 py-0.5 rounded font-bold shrink-0">최저</span>
+                  )}
+                </div>
+                {r.err ? (
+                  <span className="text-[10px] text-gray-400 shrink-0 ml-2">{r.err}</span>
+                ) : (
+                  <span className="text-sm font-bold text-gray-900 shrink-0 ml-2">{r.fee!.toLocaleString()}원</span>
+                )}
+              </div>
+            ))}
+            <p className="text-[10px] text-gray-400 text-center pt-0.5">가견적 · 실제 접수 시 우체국 요금 기준으로 확정</p>
           </div>
         )}
       </div>
