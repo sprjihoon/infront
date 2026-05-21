@@ -78,20 +78,24 @@ export async function DELETE(
     }
   }
 
-  // DB 상태 복원
+  // DB 상태 업데이트 (PICKUP_CANCELLED로 명시적 표기)
   const { error: updateError } = await supabase
     .from('parcels')
     .update({
-      status:             'PRE_REGISTERED',
-      pickup_tracking_no: null,
-      tracking_no:        null,
-      courier:            null,
+      status:              'PICKUP_CANCELLED',
+      pickup_tracking_no:  null,
+      tracking_no:         null,
+      courier:             null,
       tracking_carrier_id: null,
-      epost_req_no:       null,
-      epost_res_no:       null,
-      epost_order_no:     null,
-      epost_pickup_date:  null,
-      epost_price:        null,
+      tracking_status:     null,
+      tracking_last_event: null,
+      tracking_events:     null,
+      tracking_synced_at:  null,
+      epost_req_no:        null,
+      epost_res_no:        null,
+      epost_order_no:      null,
+      epost_pickup_date:   null,
+      epost_price:         null,
       pickup_requested_at: null,
     })
     .eq('id', id)

@@ -118,9 +118,10 @@ interface LinkedOrder {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; step: number }> = {
-  PRE_REGISTERED:  { label: "등록 완료",      color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200", step: 0 },
-  PENDING_PICKUP:  { label: "수거 신청 완료", color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200", step: 1 },
-  PICKED_UP:       { label: "수거 완료",      color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",     step: 2 },
+  PRE_REGISTERED:    { label: "등록 완료",    color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200",   step: 0 },
+  PENDING_PICKUP:    { label: "수거 신청 완료", color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200", step: 1 },
+  PICKUP_CANCELLED:  { label: "수거 취소",    color: "text-red-600",    bg: "bg-red-50 border-red-200",         step: 0 },
+  PICKED_UP:         { label: "수거 완료",    color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",       step: 2 },
   INBOUND:         { label: "창고 입고",       color: "text-green-700",  bg: "bg-green-50 border-green-200",   step: 3 },
   INSPECTION:      { label: "검품 진행 중",    color: "text-purple-700", bg: "bg-purple-50 border-purple-200", step: 4 },
   PACKING:         { label: "포장 작업 중",    color: "text-orange-700", bg: "bg-orange-50 border-orange-200", step: 5 },
@@ -838,6 +839,15 @@ export default function ParcelDetailPage() {
             <X size={18} />
             수거 신청 취소
           </button>
+        )}
+        {parcel.status === "PICKUP_CANCELLED" && (
+          <Link
+            href="/pickup"
+            className="flex items-center justify-center gap-2 w-full bg-yellow-500 text-white font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform shadow"
+          >
+            <Package size={18} />
+            수거 재신청
+          </Link>
         )}
         {canShip && (
           <Link

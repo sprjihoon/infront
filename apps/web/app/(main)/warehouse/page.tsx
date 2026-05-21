@@ -30,8 +30,9 @@ interface Parcel {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  PRE_REGISTERED: { label: "등록 완료",  color: "text-indigo-700 bg-indigo-50 border-indigo-200", dot: "bg-indigo-400" },
-  PENDING_PICKUP: { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
+  PRE_REGISTERED:   { label: "등록 완료",  color: "text-indigo-700 bg-indigo-50 border-indigo-200", dot: "bg-indigo-400" },
+  PENDING_PICKUP:   { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
+  PICKUP_CANCELLED: { label: "수거 취소", color: "text-red-600 bg-red-50 border-red-200",          dot: "bg-red-400" },
   PICKED_UP:      { label: "수거 완료", color: "text-blue-700 bg-blue-50 border-blue-200",   dot: "bg-blue-400" },
   INBOUND:        { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200", dot: "bg-green-400" },
   INSPECTION:     { label: "검품 중",   color: "text-purple-700 bg-purple-50 border-purple-200", dot: "bg-purple-400" },
@@ -41,8 +42,9 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
 
 const FILTER_TABS = [
   { key: "ALL",            label: "전체" },
-  { key: "PRE_REGISTERED", label: "등록완료" },
-  { key: "PENDING_PICKUP", label: "수거신청" },
+  { key: "PRE_REGISTERED",   label: "등록완료" },
+  { key: "PENDING_PICKUP",   label: "수거신청" },
+  { key: "PICKUP_CANCELLED", label: "수거취소" },
   { key: "PICKED_UP",      label: "수거완료" },
   { key: "INBOUND",        label: "입고완료" },
   { key: "INSPECTION",     label: "검품중" },
@@ -340,6 +342,11 @@ export default function WarehousePage() {
                 {parcel.status === "PENDING_PICKUP" && (
                   <div className="mt-2 bg-yellow-50 rounded-lg px-3 py-2">
                     <p className="text-xs text-yellow-700">📦 우체국 수거 예약 완료 · 집배원 방문 예정</p>
+                  </div>
+                )}
+                {parcel.status === "PICKUP_CANCELLED" && (
+                  <div className="mt-2 bg-red-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-red-600">❌ 수거 신청이 취소되었습니다 · 다시 수거 신청하세요</p>
                   </div>
                 )}
                 {parcel.status === "PICKED_UP" && (
