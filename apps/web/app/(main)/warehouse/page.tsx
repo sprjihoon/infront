@@ -6,6 +6,7 @@ import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList, Refres
 import { createClient } from "@/lib/supabase/client";
 
 interface InvoiceItem {
+  product_name?: string;
   name_en: string;
   quantity: number;
   unit_price_usd: number;
@@ -286,7 +287,7 @@ export default function WarehousePage() {
                       </p>
                       {parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 && (
                         <p className="text-xs text-gray-500 mt-1">
-                          {parcel.pre_invoice_items[0].name_en}
+                          {parcel.pre_invoice_items[0].product_name || parcel.pre_invoice_items[0].name_en}
                           {parcel.pre_invoice_items.length > 1 && ` 외 ${parcel.pre_invoice_items.length - 1}종`}
                           {" · "}총 {parcel.pre_invoice_items.reduce((s, i) => s + i.quantity, 0)}개
                         </p>

@@ -51,6 +51,7 @@ interface TrackingEvent {
 }
 
 interface InvoiceItem {
+  product_name?: string;
   name_en: string;
   quantity: number;
   unit_price_usd: number;
@@ -412,8 +413,13 @@ export default function ParcelDetailPage() {
                     {parcel.pre_invoice_items.map((item, idx) => (
                       <div key={idx} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                         <div>
-                          <p className="text-sm text-gray-800 font-medium">{item.name_en}</p>
-                          <p className="text-xs text-gray-400">수량 {item.quantity} · 원산지 {item.origin_country}</p>
+                          <p className="text-sm text-gray-800 font-medium">
+                            {item.product_name || item.name_en}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {item.product_name && <span className="text-gray-400">{item.name_en} · </span>}
+                            수량 {item.quantity} · 원산지 {item.origin_country}
+                          </p>
                         </div>
                         <p className="text-sm font-semibold text-gray-700">$ {item.unit_price_usd}</p>
                       </div>
@@ -462,6 +468,12 @@ export default function ParcelDetailPage() {
                           className="p-1 text-gray-300 hover:text-red-400"><Trash2 size={13} /></button>
                       )}
                     </div>
+                    <input
+                      value={item.product_name ?? ""}
+                      onChange={e => setEditItems(p => p.map((it, i) => i === idx ? { ...it, product_name: e.target.value } : it))}
+                      placeholder="제품명 (예: 나이키 운동화)"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
                     <ItemCategoryPicker
                       value={item._isCustom ? "Other Goods" : item.name_en}
                       onChange={(cat: ItemCategory) => setEditItems(p => p.map((it, i) =>

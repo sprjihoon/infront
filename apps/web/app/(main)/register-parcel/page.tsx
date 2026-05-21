@@ -11,6 +11,7 @@ import type { ItemCategory } from "@/lib/item-categories";
 
 interface InvoiceItem {
   key: string;
+  product_name?: string;
   name_en: string;
   quantity: number;
   unit_price_usd: number;
@@ -382,12 +383,22 @@ export default function RegisterParcelPage() {
                       )}
                     </div>
 
+                    {/* 제품명 (메모) */}
+                    <div className="mb-2.5">
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">제품명</label>
+                      <input
+                        value={item.product_name ?? ""}
+                        onChange={(e) => updateItem(idx, { product_name: e.target.value })}
+                        placeholder="예: 나이키 운동화, 화장품 세트 (선택)"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      />
+                    </div>
+
                     {/* 품목 선택 */}
                     <div className="mb-2.5">
                       <label className="block text-xs font-semibold text-gray-500 mb-1">
                         품목 선택 <span className="text-red-400">*</span>
-                      </label>
-                      <ItemCategoryPicker
+                      </label>                      <ItemCategoryPicker
                         value={item._isCustom ? "Other Goods" : item.name_en}
                         onChange={(cat) => selectCategory(idx, cat)}
                       />
