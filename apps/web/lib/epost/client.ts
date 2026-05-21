@@ -4,7 +4,7 @@
  */
 
 import { seed128Encrypt, buildEpostParams } from './seed128';
-import type { InsertOrderParams, InsertOrderResponse, GetResInfoParams, GetResInfoResponse, EPOST_TREAT_STATUS } from './types';
+import type { InsertOrderParams, InsertOrderResponse, GetResInfoParams, GetResInfoResponse, CancelOrderParams, EPOST_TREAT_STATUS } from './types';
 export type { GetResInfoResponse };
 
 const EPOST_BASE_URL = 'http://ship.epost.go.kr';
@@ -130,6 +130,28 @@ export async function getResInfo(params: GetResInfoParams): Promise<GetResInfoRe
     vTelNo:      parseXml(xml, 'vTelNo')   ?? undefined,
     treatStusCd,
     treatStusNm: STATUS_NAMES[treatStusCd],
+  };
+}
+
+export async function cancelOrder(params: CancelOrderParams): Promise<{ reqNo: string; resNo: string }> {
+  const custNo = (params.custNo || getEnv('EPOST_CUSTOMER_ID')).trim();
+  const apprNo = (params.apprNo || getEnv('EPOST_APPROVAL_NO')).trim();
+
+  const xml = await callEPost('api.CancelOrder.jparcel', {
+    custNo,
+    apprNo,
+    reqType: params.reqType,
+    payType: params.payType ?? '2',
+    reqNo:   params.reqNo,
+    resNo:   params.resNo,
+    regiNo:  params.regiNo,
+    reqYmd:  params.reqYmd,
+    delYn:   params.delYn,
+  });
+
+  return {
+    reqNo: parseXml(xml, 'reqNo') ?? '',
+    resNo: parseXml(xml, 'resNo') ?? '',
   };
 }
 

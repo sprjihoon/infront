@@ -173,6 +173,10 @@ export default function ParcelDetailPage() {
   const [editTracking, setEditTracking] = useState("");
   const [editCourier, setEditCourier] = useState("");
 
+  // 수거 취소 확인 모달
+  const [showCancelPickup, setShowCancelPickup] = useState(false);
+  const [cancellingPickup, setCancellingPickup] = useState(false);
+
   // 부가서비스 신청 모달
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
@@ -250,6 +254,20 @@ export default function ParcelDetailPage() {
     }
     setServiceSuccess(true);
     setSelectedServices(new Set());
+  }
+
+  async function cancelPickup() {
+    if (!parcel) return;
+    setCancellingPickup(true);
+    const res = await fetch(`/api/pickup/${parcel.id}`, { method: "DELETE" });
+    setCancellingPickup(false);
+    if (res.ok) {
+      setShowCancelPickup(false);
+      loadData();
+    } else {
+      const j = await res.json().catch(() => ({})) as { error?: string };
+      alert(j.error ?? "취소에 실패했습니다. 다시 시도해주세요.");
+    }
   }
 
   async function refreshTracking() {
@@ -811,6 +829,16 @@ export default function ParcelDetailPage() {
 
       {/* 액션 버튼 */}
       <div className="space-y-2 pb-2">
+        {parcel.status === "PENDING_PICKUP" && (
+          <button
+            type="button"
+            onClick={() => setShowCancelPickup(true)}
+            className="flex items-center justify-center gap-2 w-full bg-white border border-red-200 text-red-500 font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm"
+          >
+            <X size={18} />
+            수거 신청 취소
+          </button>
+        )}
         {canShip && (
           <Link
             href={`/shipping-request?parcels=${parcel.id}`}
@@ -851,6 +879,33 @@ export default function ParcelDetailPage() {
           </div>
         )}
       </div>
+
+      {/* 수거 신청 취소 확인 모달 */}
+      {showCancelPickup && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center">
+          <div className="w-full max-w-[380px] bg-white rounded-2xl p-5 shadow-xl">
+            <p className="text-base font-bold text-gray-900 mb-1">수거 신청을 취소할까요?</p>
+            <p className="text-sm text-gray-500 mb-5">취소 후 다시 수거 신청을 하실 수 있습니다.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCancelPickup(false)}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl"
+              >
+                닫기
+              </button>
+              <button
+                onClick={cancelPickup}
+                disabled={cancellingPickup}
+                className="flex-1 py-3 bg-red-500 text-white text-sm font-semibold rounded-xl disabled:opacity-60 flex items-center justify-center gap-1"
+              >
+                {cancellingPickup
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : "수거 취소"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 부가서비스 신청 모달 */}
       {showServiceModal && (
