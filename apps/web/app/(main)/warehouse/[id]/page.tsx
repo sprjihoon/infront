@@ -616,7 +616,7 @@ export default function ParcelDetailPage() {
       <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">기본 정보</h2>
-          {canEdit && !editingTracking && (
+          {canEdit && !editingTracking && !parcel.pickup_tracking_no && (
             <button
               onClick={() => openEditTracking(parcel)}
               className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"

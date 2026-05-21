@@ -156,6 +156,9 @@ export async function POST(req: NextRequest) {
         customer_id: user.id,
         status: 'PENDING_PICKUP',
         pickup_tracking_no: epostResult.regiNo,
+        tracking_no: epostResult.regiNo,          // tracker.delivery 추적용 (우체국택배 고정)
+        courier: '우체국택배',
+        tracking_carrier_id: 'kr.epost',
         pickup_address,
         pickup_address_detail: pickup_address_detail ?? null,
         pickup_zipcode,
