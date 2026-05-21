@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Bell, Truck, Calculator, Globe } from "lucide-react";
+import { Package, ChevronRight, Bell, Truck, Calculator, Globe, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface UserInfo {
@@ -14,6 +14,34 @@ interface InvoiceItem {
   product_name?: string;
   quantity: number;
 }
+
+interface Order {
+  id: string;
+  order_no: string;
+  status: string;
+  shipping_method: string;
+  recipient_name: string | null;
+  recipient_country: string | null;
+  created_at: string;
+}
+
+const ORDER_STATUS: Record<string, { label: string; color: string; dot: string }> = {
+  DRAFT:               { label: "신청 완료",   color: "text-blue-700 bg-blue-50 border-blue-200",     dot: "bg-blue-400" },
+  PACKAGING_REQUESTED: { label: "포장 요청",   color: "text-orange-700 bg-orange-50 border-orange-200", dot: "bg-orange-400" },
+  PACKAGING_DONE:      { label: "포장 완료",   color: "text-teal-700 bg-teal-50 border-teal-200",       dot: "bg-teal-400" },
+  QUOTE_SENT:          { label: "견적 발송",   color: "text-amber-700 bg-amber-50 border-amber-200",    dot: "bg-amber-400" },
+  PENDING_PAYMENT:     { label: "결제 대기",   color: "text-red-700 bg-red-50 border-red-200",          dot: "bg-red-400" },
+  PAID:                { label: "결제 완료",   color: "text-green-700 bg-green-50 border-green-200",    dot: "bg-green-400" },
+  IN_TRANSIT:          { label: "배송 중",     color: "text-sky-700 bg-sky-50 border-sky-200",          dot: "bg-sky-400" },
+  DELIVERED:           { label: "배송 완료",   color: "text-gray-600 bg-gray-50 border-gray-200",       dot: "bg-gray-400" },
+  CANCELLED:           { label: "취소됨",      color: "text-gray-400 bg-gray-50 border-gray-200",       dot: "bg-gray-300" },
+};
+
+const COUNTRY_FLAG: Record<string, string> = {
+  JP: "🇯🇵", CN: "🇨🇳", US: "🇺🇸", AU: "🇦🇺", CA: "🇨🇦",
+  GB: "🇬🇧", SG: "🇸🇬", HK: "🇭🇰", TW: "🇹🇼", TH: "🇹🇭",
+  VN: "🇻🇳", PH: "🇵🇭", MY: "🇲🇾", ID: "🇮🇩", DE: "🇩🇪", FR: "🇫🇷",
+};
 
 interface Parcel {
   id: string;
@@ -101,6 +129,7 @@ function markSynced() {
 export default function HomeClient() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [parcels,  setParcels]  = useState<Parcel[]>([]);
+  const [orders,   setOrders]   = useState<Order[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -123,6 +152,12 @@ export default function HomeClient() {
           .limit(1)
           .then(({ data }) => setParcels(data ?? []));
 
+      // 최근 배송 현황 1건
+      fetch("/api/orders")
+        .then((r) => r.json())
+        .then(({ orders: data }) => setOrders((data ?? []).slice(0, 1)))
+        .catch(() => {});
+
       // 추적 동기화 (세션당 1회)
       if (shouldSync()) {
         fetch("/api/parcels/sync-tracking", { method: "POST" })
@@ -135,46 +170,46 @@ export default function HomeClient() {
   }, []);
 
   return (
-    <div className="px-4 py-6 space-y-5">
+    <div className="px-4 py-3 space-y-3">
 
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">
+          <h1 className="text-lg font-bold text-gray-900">
             안녕하세요 {userInfo?.name ?? ""}님 👋
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            무엇을 도와드릴까요?
-          </p>
+          <p className="text-xs text-gray-500 mt-0.5">무엇을 도와드릴까요?</p>
         </div>
         <button className="relative p-2">
-          <Bell size={22} className="text-gray-700" />
+          <Bell size={20} className="text-gray-700" />
         </button>
       </div>
 
       {/* 서비스 안내 배너 */}
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-5 text-white">
-        <p className="text-white/70 text-xs font-medium mb-1">인프론트 해외배송 대행</p>
-        <p className="text-base font-bold leading-snug">
-          수거 → 검품 → 포장 → 국제발송<br />
-          <span className="text-white/80 text-sm font-normal">EMS · EMS 프리미엄 · K-Packet</span>
-        </p>
+      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl px-4 py-3 text-white flex items-center justify-between">
+        <div>
+          <p className="text-white/70 text-[11px] font-medium mb-0.5">인프론트 해외배송 대행</p>
+          <p className="text-sm font-bold leading-snug">
+            수거 → 검품 → 포장 → 국제발송
+          </p>
+          <p className="text-white/70 text-[11px] mt-0.5">EMS · EMS 프리미엄 · K-Packet</p>
+        </div>
         <Link
           href="/pickup"
-          className="mt-4 inline-flex items-center gap-1.5 bg-white text-blue-600 rounded-xl px-4 py-2 text-sm font-semibold active:scale-95 transition-transform"
+          className="shrink-0 ml-3 inline-flex items-center gap-1 bg-white text-blue-600 rounded-xl px-3 py-1.5 text-xs font-semibold active:scale-95 transition-transform"
         >
-          <Truck size={15} />
-          수거 신청하기
+          <Truck size={13} />
+          수거 신청
         </Link>
       </div>
 
       {/* 빠른 서비스 */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {QUICK_ACTIONS.map((a) => (
           <Link
             key={a.href}
             href={a.href}
-            className={`${a.className} rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform`}
+            className={`${a.className} rounded-2xl p-3 flex items-center gap-3 shadow-sm active:scale-[0.97] transition-transform`}
           >
             {a.icon}
             <div>
@@ -282,6 +317,54 @@ export default function HomeClient() {
                       <p className="text-xs text-blue-700">🚛 수거 완료 · 센터로 이동 중</p>
                     </div>
                   )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 최근 배송 현황 */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-base font-bold text-gray-900">최근 배송 현황</h2>
+          <Link href="/orders" className="text-xs text-blue-600 font-medium flex items-center gap-0.5">
+            전체보기 <ChevronRight size={14} />
+          </Link>
+        </div>
+
+        {orders.length === 0 ? (
+          <div className="bg-white rounded-2xl px-4 py-4 shadow-sm flex items-center gap-3">
+            <Send size={28} className="text-gray-200 shrink-0" />
+            <div>
+              <p className="text-sm text-gray-500 font-medium">진행 중인 배송이 없어요</p>
+              <p className="text-xs text-gray-400">출고 신청 후 여기서 확인하세요</p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {orders.map((order) => {
+              const cfg = ORDER_STATUS[order.status] ?? ORDER_STATUS.DRAFT;
+              const flag = COUNTRY_FLAG[order.recipient_country ?? ""] ?? "🌍";
+              return (
+                <Link
+                  key={order.id}
+                  href="/orders"
+                  className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm active:scale-[0.98] transition-transform"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl shrink-0">{flag}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {order.recipient_name ?? order.recipient_country ?? "—"}
+                      </p>
+                      <p className="text-xs text-gray-400">{order.order_no}</p>
+                    </div>
+                  </div>
+                  <span className={`flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ml-2 ${cfg.color}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                    {cfg.label}
+                  </span>
                 </Link>
               );
             })}
