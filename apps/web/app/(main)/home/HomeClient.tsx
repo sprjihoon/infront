@@ -120,7 +120,7 @@ export default function HomeClient() {
           .select("id, tracking_no, pickup_tracking_no, status, sender_name, created_at, inbound_at, weight_actual, hold_reason, notes, tracking_last_event, pre_invoice_items")
           .eq("customer_id", user.id)
           .order("created_at", { ascending: false })
-          .limit(5)
+          .limit(1)
           .then(({ data }) => setParcels(data ?? []));
 
       // 추적 동기화 (세션당 1회)

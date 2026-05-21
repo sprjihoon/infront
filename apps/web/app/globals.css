@@ -27,3 +27,9 @@ body {
 * {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Next.js dev-tools portal positioning reset */
+nextjs-portal {
+  left: unset !important;
+  top: unset !important;
+}

@@ -47,7 +47,6 @@ const FILTER_TABS = [
   { key: "INBOUND",        label: "입고완료" },
   { key: "INSPECTION",     label: "검품중" },
   { key: "HOLD",           label: "보류" },
-  { key: "DONE",           label: "처리완료" },
 ];
 
 // 배송 신청 가능한 상태
@@ -70,6 +69,7 @@ export default function WarehousePage() {
       .from("parcels")
       .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event, pre_invoice_items")
       .eq("customer_id", user.id)
+      .neq("status", "DONE")
       .order("created_at", { ascending: false });
     setParcels(data ?? []);
     setLoading(false);
@@ -91,10 +91,16 @@ export default function WarehousePage() {
 
   const filtered = parcels.filter((p) => {
     const matchStatus = filter === "ALL" || p.status === filter;
+    const q = search.trim();
     const matchSearch =
-      !search ||
-      p.tracking_no?.includes(search) ||
-      p.sender_name?.includes(search);
+      !q ||
+      p.tracking_no?.includes(q) ||
+      p.sender_name?.includes(q) ||
+      p.pre_invoice_items?.some(
+        (item) =>
+          item.product_name?.includes(q) ||
+          item.name_en?.toLowerCase().includes(q.toLowerCase())
+      );
     return matchStatus && matchSearch;
   });
 
@@ -190,7 +196,7 @@ export default function WarehousePage() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="송장번호 또는 발송인 검색"
+          placeholder="송장번호, 발송인, 제품명 검색"
           className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>

@@ -6,16 +6,22 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 const SAVED_EMAIL_KEY = "infront_saved_email";
+const SAVED_PASSWORD_KEY = "infront_saved_password";
 
 function getSavedEmail() {
   if (typeof window === "undefined") return "";
   return localStorage.getItem(SAVED_EMAIL_KEY) ?? "";
 }
 
+function getSavedPassword() {
+  if (typeof window === "undefined") return "";
+  return localStorage.getItem(SAVED_PASSWORD_KEY) ?? "";
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState(getSavedEmail);
-  const [password, setPassword] = useState("");
+  const [password, setPassword] = useState(getSavedPassword);
   const [rememberMe, setRememberMe] = useState(() => !!getSavedEmail());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -27,8 +33,10 @@ export default function LoginPage() {
 
     if (rememberMe) {
       localStorage.setItem(SAVED_EMAIL_KEY, email);
+      localStorage.setItem(SAVED_PASSWORD_KEY, password);
     } else {
       localStorage.removeItem(SAVED_EMAIL_KEY);
+      localStorage.removeItem(SAVED_PASSWORD_KEY);
     }
 
     const supabase = createClient();
@@ -94,7 +102,7 @@ export default function LoginPage() {
                 </svg>
               )}
             </div>
-            <span className="text-sm text-gray-600">아이디 저장</span>
+            <span className="text-sm text-gray-600">아이디/비밀번호 저장</span>
           </label>
         </div>
 

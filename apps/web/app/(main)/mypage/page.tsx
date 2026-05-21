@@ -41,7 +41,7 @@ export default function MyPage() {
   }, []);
 
   function copyAddress() {
-    const text = `[${INFRONT_ZIPCODE}] ${INFRONT_ADDRESS}\n수취인: 인프론트 ${customer?.customer_code ?? ""}`;
+    const text = `[${INFRONT_ZIPCODE}] ${INFRONT_ADDRESS}\n수취인: ${customer?.name ?? ""}`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -68,12 +68,6 @@ export default function MyPage() {
             <p className="text-sm text-gray-500">{customer?.email ?? "—"}</p>
           </div>
         </div>
-        <div className="bg-gray-50 rounded-xl px-4 py-3">
-          <p className="text-xs text-gray-500 mb-1">고객번호</p>
-          <p className="text-sm font-bold text-blue-600 tracking-wide">
-            {customer?.customer_code ?? "—"}
-          </p>
-        </div>
       </div>
 
       {/* 입고 주소 */}
@@ -87,7 +81,7 @@ export default function MyPage() {
         <div className="bg-blue-50 rounded-xl px-4 py-3 mb-3">
           <p className="text-[11px] text-blue-500 font-medium mb-0.5">수취인명 (반드시 기재)</p>
           <p className="text-sm font-bold text-blue-800 tracking-wide">
-            인프론트 {customer?.customer_code ?? "—"}
+            {customer?.name ?? "—"}
           </p>
         </div>
 
@@ -108,7 +102,9 @@ export default function MyPage() {
         </button>
         <p className="text-xs text-gray-400 mt-3 leading-relaxed">
           💡 국내 쇼핑몰 주문 시 위 주소로 배송받으시면 자동 입고됩니다.
-          수취인명에 <span className="font-semibold text-gray-600">고객번호를 반드시</span> 함께 기재해주세요.
+        </p>
+        <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2 leading-relaxed">
+          ⚠️ 수거 신청 이외의 입고는 <span className="font-semibold">마이창고 물품 등록</span>이 필수입니다.
         </p>
       </div>
 

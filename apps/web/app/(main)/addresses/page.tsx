@@ -136,6 +136,12 @@ export default function AddressesPage() {
     setSaving(true);
     const payload = { ...form, customer_id: customerId, type: tab };
 
+    if (form.is_default) {
+      await supabase.from("customer_addresses")
+        .update({ is_default: false })
+        .eq("customer_id", customerId).eq("type", tab);
+    }
+
     if (modal === "edit" && editTarget) {
       await supabase.from("customer_addresses").update(payload).eq("id", editTarget.id);
     } else {
@@ -533,11 +539,27 @@ export default function AddressesPage() {
               </div>
 
               {/* 저장 버튼 */}
-              <div className="px-5 py-4 border-t border-gray-100 shrink-0">
+              <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-3">
+                {/* 기본 주소 설정 토글 */}
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, is_default: !f.is_default }))}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl"
+                >
+                  <div className="flex items-center gap-2 text-sm text-gray-700">
+                    <Star size={15} className={form.is_default ? "text-amber-500 fill-amber-400" : "text-gray-400"} />
+                    기본 주소로 설정
+                  </div>
+                  <div className={`w-10 h-6 rounded-full transition-colors relative ${form.is_default ? "bg-amber-400" : "bg-gray-200"}`}>
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${form.is_default ? "left-5" : "left-1"}`} />
+                  </div>
+                </button>
                 <button
                   onClick={save}
                   disabled={saving}
-                  className="w-full bg-blue-600 text-white font-semibold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2"
+                  className={`w-full text-white font-semibold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2 ${
+                    tab === "pickup" ? "bg-blue-600" : "bg-violet-600"
+                  }`}
                 >
                   {saving ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />

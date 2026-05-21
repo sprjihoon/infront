@@ -12,15 +12,17 @@ import type { ItemCategory } from "@/lib/item-categories";
 
 interface InvoiceItem {
   key: string;
+  product_name?: string;
   name_en: string;
   quantity: number;
   unit_price_usd: number;
   origin_country: string;
   hs_code: string;
+  _isCustom?: boolean;
 }
 
 function newItem(): InvoiceItem {
-  return { key: Math.random().toString(36).slice(2), name_en: "", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "" };
+  return { key: Math.random().toString(36).slice(2), product_name: "", name_en: "", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "", _isCustom: false };
 }
 
 // 한국 공휴일 (2026)
@@ -103,7 +105,9 @@ export default function PickupPage() {
     if (!agreed) { setError("서비스 안내에 동의해주세요."); return; }
 
     const filled = invoiceItems.filter(i => i.name_en.trim());
-    if (filled.length === 0) { setError("물품 내역을 하나 이상 입력해주세요."); setItemsOpen(true); return; }
+    if (filled.length === 0) { setError("품목을 하나 이상 선택해주세요."); setItemsOpen(true); return; }
+    const missingCategory = invoiceItems.find(i => !i.name_en.trim());
+    if (missingCategory) { setError("모든 품목의 품목 선택을 완료해주세요."); setItemsOpen(true); return; }
     const missingHs = filled.find(i => !i.hs_code.trim());
     if (missingHs) { setError("모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)"); setItemsOpen(true); return; }
 
@@ -123,7 +127,7 @@ export default function PickupPage() {
           item_condition: itemCondition,
           pre_invoice_items: invoiceItems
             .filter(i => i.name_en.trim())
-            .map(({ key: _k, ...rest }) => rest),
+            .map(({ key: _k, _isCustom: _c, ...rest }) => rest),
         }),
       });
 
@@ -327,20 +331,34 @@ export default function PickupPage() {
                       )}
                     </div>
                     <div className="mb-2 space-y-1.5">
-                      <ItemCategoryPicker
-                        value={item.name_en}
-                        onChange={(cat: ItemCategory) => setInvoiceItems(p => p.map((it, i) =>
-                          i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "" } : it
-                        ))}
-                      />
+                      {/* 제품명 (선택) */}
                       <div>
-                        <label className="text-[10px] text-gray-400 font-semibold">제품명 (영문) <span className="text-red-400">*</span></label>
+                        <label className="text-[10px] text-gray-400 font-semibold">제품명</label>
                         <input
-                          value={item.name_en}
-                          onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
-                          placeholder="예: iPhone 15 Pro, Nike Air Max"
+                          value={item.product_name ?? ""}
+                          onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, product_name: e.target.value } : it))}
+                          placeholder="예: 나이키 운동화, 화장품 세트 (선택)"
                           className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                         />
+                      </div>
+                      {/* 품목 선택 (필수) */}
+                      <div>
+                        <label className="text-[10px] text-gray-400 font-semibold">품목 선택 <span className="text-red-400">*</span></label>
+                        <ItemCategoryPicker
+                          value={item._isCustom ? "Other Goods" : item.name_en}
+                          onChange={(cat: ItemCategory) => setInvoiceItems(p => p.map((it, i) =>
+                            i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "", _isCustom: cat.id === "other" } : it
+                          ))}
+                        />
+                        {item._isCustom && (
+                          <input
+                            value={item.name_en}
+                            onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
+                            placeholder="품목명 직접 입력 (영문)"
+                            className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                            autoFocus
+                          />
+                        )}
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
