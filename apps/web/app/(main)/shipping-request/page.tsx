@@ -124,11 +124,10 @@ function ShippingRequestContent() {
   const [packOpts, setPackOpts] = useState({ safe_pack: false, repack: false, consolidate: false });
   const [packNote, setPackNote] = useState("");
 
-  // Step 3 — OverseasAddressPicker
-  const [overseasAddress, setOverseasAddress] = useState<OverseasAddressValue | null>(null);
+  // Step 3 — 박스별 주소는 boxes[i].address 를 직접 사용
 
-  // Step 4
-  const [items, setItems] = useState<InvoiceItem[]>([newItem()]);
+  // Step 4 — 박스별 인보이스 (boxes 배열과 인덱스 동기)
+  const [boxInvoices, setBoxInvoices] = useState<InvoiceItem[][]>([[newItem()]]);
 
   // Step 5
   const [submitting, setSubmitting] = useState(false);
@@ -269,27 +268,30 @@ function ShippingRequestContent() {
     setSelectingForBoxId(null);
   }, [selectingForBoxId, tempQty]);
 
-  // 박스 구성 완료 → 실제 5단계 플로우 시작
+  // 박스 구성 완료 → 실제 4단계 플로우 시작
   const handleBoxConfigConfirm = useCallback(() => {
     const totalQty = boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0);
     if (totalQty === 0) return;
-    // 박스 1 기준으로 인보이스 초기화 (각 박스의 아이템을 qty 반영)
-    const allBoxItems = boxes.flatMap((b) => b.items);
-    // key 기준 합산 (같은 품목이 여러 박스에 분산된 경우 합산)
-    const merged = new Map<string, number>();
-    allBoxItems.forEach(({ key, qty }) => merged.set(key, (merged.get(key) ?? 0) + qty));
-    const preItems = selectableItems
-      .filter((it) => merged.has(it.key))
-      .map((it) => ({
-        key: it.key,
-        name_en: it.name_en,
-        quantity: merged.get(it.key)!,
-        unit_price_usd: it.unit_price_usd,
-        hs_code: it.hs_code,
-        origin_country: it.origin_country,
-      }));
-    if (preItems.length > 0) setItems(preItems);
-    if (boxes[0]?.address) setOverseasAddress(boxes[0].address);
+    // 박스별 인보이스 초기화 (각 박스의 아이템을 qty 반영)
+    const newBoxInvoices: InvoiceItem[][] = boxes.map((box) => {
+      const preItems = box.items
+        .map((bi) => {
+          const sel = selectableItems.find((it) => it.key === bi.key);
+          if (!sel) return null;
+          return {
+            key: bi.key,
+            name_en: sel.name_en,
+            quantity: bi.qty,
+            unit_price_usd: sel.unit_price_usd,
+            hs_code: sel.hs_code,
+            origin_country: sel.origin_country,
+          } as InvoiceItem;
+        })
+        .filter((x): x is InvoiceItem => x !== null);
+      return preItems.length > 0 ? preItems : [newItem()];
+    });
+    setBoxInvoices(newBoxInvoices);
+    // 주소는 boxes[i].address 에 그대로 유지 — 별도 복사 불필요
     setPhase("main_flow");
   }, [boxes, selectableItems]);
 
@@ -314,57 +316,70 @@ function ShippingRequestContent() {
 
   // ── 계산 ──────────────────────────────────────────────────
   const packagingFee = PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).reduce((s, o) => s + o.price, 0);
-  const customsValue = items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
+  const customsValue = boxInvoices.flatMap((inv) => inv).reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
   const totalWeightKg = parcels.reduce((s, p) => s + (p.weight_actual ?? 0), 0) / 1000;
 
-  const country = overseasAddress
-    ? COUNTRIES.find((c) => c.code === overseasAddress.countryCode)
+  const country = boxes[0]?.address
+    ? COUNTRIES.find((c) => c.code === boxes[0].address!.countryCode)
     : null;
 
   // ── 유효성 검사 ───────────────────────────────────────────
   function canProceed(): boolean {
     if (step === 3) {
-      return !!(overseasAddress?.name?.trim() && overseasAddress?.addr3?.trim());
+      return boxes.every((b) => !!(b.address?.name?.trim() && b.address?.addr3?.trim()));
     }
     if (step === 4) {
-      return items.every((i) => i.name_en.trim() && i.quantity > 0 && i.unit_price_usd >= 0);
+      return boxInvoices.every((inv) =>
+        inv.every((i) => i.name_en.trim() && i.quantity > 0 && i.unit_price_usd >= 0)
+      );
     }
     return true;
   }
 
   // ── 주문 제출 ─────────────────────────────────────────────
   async function submit() {
-    if (!overseasAddress) return;
+    if (boxes.some((b) => !b.address)) return;
     setSubmitting(true);
     setError("");
     try {
-      const addr = {
-        country_code: overseasAddress.countryCode,
-        name: overseasAddress.name,
-        phone: overseasAddress.phone || undefined,
-        overseas_addr1: overseasAddress.addr1,
-        overseas_addr2: overseasAddress.addr2,
-        overseas_addr3: overseasAddress.addr3,
-        overseas_zip: overseasAddress.zip || undefined,
-        email: overseasAddress.email || undefined,
-      };
+      const orderNos: string[] = [];
+      for (let i = 0; i < boxes.length; i++) {
+        const box = boxes[i];
+        const addr = box.address!;
+        const inv = boxInvoices[i] ?? [newItem()];
+        // URL 직접 진입(단일박스) → parcelIds 전체, 박스구성 진입 → 해당 박스의 parcel만
+        const boxParcelIds =
+          urlParcelIds.length > 0
+            ? parcelIds
+            : [...new Set(box.items.map((bi) => bi.key.split("__")[0]))];
 
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          parcel_ids: parcelIds,
-          shipping_method: shippingMethod,
-          packaging_options: { ...packOpts, note: packNote },
-          overseas_address: addr,
-          item_list: items.map(({ key: _k, ...rest }) => rest),
-          estimated_shipping_fee: 0,
-          packaging_fee: packagingFee,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "주문 생성 실패");
-      router.push(`/orders?new=${data.order_no}`);
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            parcel_ids: boxParcelIds,
+            shipping_method: shippingMethod,
+            packaging_options: { ...packOpts, note: packNote },
+            overseas_address: {
+              country_code: addr.countryCode,
+              name: addr.name,
+              phone: addr.phone || undefined,
+              overseas_addr1: addr.addr1,
+              overseas_addr2: addr.addr2,
+              overseas_addr3: addr.addr3,
+              overseas_zip: addr.zip || undefined,
+              email: addr.email || undefined,
+            },
+            item_list: inv.map(({ key: _k, ...rest }) => rest),
+            estimated_shipping_fee: 0,
+            packaging_fee: packagingFee,
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? `${i + 1}번 박스 주문 생성 실패`);
+        orderNos.push(data.order_no);
+      }
+      router.push(`/orders?new=${orderNos[0]}`);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "오류가 발생했습니다.");
     } finally {
@@ -825,12 +840,42 @@ function ShippingRequestContent() {
         {/* ── Step 3: 해외 배송지 ───────────────────────────── */}
         {step === 3 && (
           <>
-            <p className="text-sm text-gray-500">수취인 주소를 선택하거나 새로 입력해주세요</p>
-            <OverseasAddressPicker
-              value={overseasAddress}
-              onChange={setOverseasAddress}
-              customerId={customerId}
-            />
+            {boxes.length === 1 ? (
+              <>
+                <p className="text-sm text-gray-500">수취인 주소를 선택하거나 새로 입력해주세요</p>
+                <OverseasAddressPicker
+                  value={boxes[0].address}
+                  onChange={(addr) =>
+                    setBoxes((prev) => prev.map((b, i) => (i === 0 ? { ...b, address: addr } : b)))
+                  }
+                  customerId={customerId}
+                />
+              </>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-500">박스별 수취인 주소를 확인·수정해주세요</p>
+                {boxes.map((box) => (
+                  <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-blue-600">
+                      <Globe size={14} className="text-white" />
+                      <p className="text-sm font-bold text-white">{box.id}번 박스 배송지</p>
+                      {box.address?.name && (
+                        <span className="text-xs text-blue-200 ml-1">— {box.address.name}</span>
+                      )}
+                    </div>
+                    <div className="px-4 py-4">
+                      <OverseasAddressPicker
+                        value={box.address}
+                        onChange={(addr) =>
+                          setBoxes((prev) => prev.map((b) => (b.id === box.id ? { ...b, address: addr } : b)))
+                        }
+                        customerId={customerId}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 
@@ -844,84 +889,122 @@ function ShippingRequestContent() {
               </p>
             </div>
 
-            <div className="space-y-3">
-              {items.map((item, idx) => (
-                <div key={item.key} className="bg-white rounded-2xl p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-gray-500">물품 {idx + 1}</span>
-                    {items.length > 1 && (
-                      <button
-                        onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))}
-                        className="p-1 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-400"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-2.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">품목명 (영문) *</label>
-                      <input
-                        value={item.name_en}
-                        onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
-                        placeholder="e.g. Clothing, Cosmetics, Electronics"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">수량 *</label>
-                        <input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, quantity: parseInt(e.target.value) || 1 } : it))}
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">단가 (USD) *</label>
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={item.unit_price_usd}
-                          onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, unit_price_usd: parseFloat(e.target.value) || 0 } : it))}
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">HS코드 (선택)</label>
-                        <input
-                          value={item.hs_code}
-                          onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, hs_code: e.target.value } : it))}
-                          placeholder="6단위"
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-gray-500 mb-1">원산지 (선택)</label>
-                        <input
-                          value={item.origin_country}
-                          onChange={(e) => setItems((p) => p.map((it, i) => i === idx ? { ...it, origin_country: e.target.value } : it))}
-                          placeholder="KR"
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            {boxes.map((box, boxIdx) => {
+              const inv = boxInvoices[boxIdx] ?? [newItem()];
+              const updateItem = (itemIdx: number, patch: Partial<InvoiceItem>) =>
+                setBoxInvoices((prev) => {
+                  const next = prev.map((arr) => [...arr]);
+                  next[boxIdx] = next[boxIdx].map((it, i) => (i === itemIdx ? { ...it, ...patch } : it));
+                  return next;
+                });
+              const removeItem = (itemIdx: number) =>
+                setBoxInvoices((prev) => {
+                  const next = prev.map((arr) => [...arr]);
+                  next[boxIdx] = next[boxIdx].filter((_, i) => i !== itemIdx);
+                  return next;
+                });
+              const addItem = () =>
+                setBoxInvoices((prev) => {
+                  const next = prev.map((arr) => [...arr]);
+                  next[boxIdx] = [...next[boxIdx], newItem()];
+                  return next;
+                });
 
-            <button
-              onClick={() => setItems((p) => [...p, newItem()])}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
-            >
-              <Plus size={15} /> 물품 추가
-            </button>
+              return (
+                <div key={box.id} className="space-y-3">
+                  {boxes.length > 1 && (
+                    <div className="flex items-center gap-2 pt-1">
+                      <Package size={14} className="text-blue-500 shrink-0" />
+                      <p className="text-sm font-bold text-gray-800">
+                        {box.id}번 박스 인보이스
+                        {box.address?.name ? (
+                          <span className="text-xs font-normal text-gray-400 ml-1.5">— {box.address.name}</span>
+                        ) : null}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    {inv.map((item, idx) => (
+                      <div key={item.key} className="bg-white rounded-2xl p-4 shadow-sm">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-bold text-gray-500">물품 {idx + 1}</span>
+                          {inv.length > 1 && (
+                            <button
+                              onClick={() => removeItem(idx)}
+                              className="p-1 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-400"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-2.5">
+                          <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">품목명 (영문) *</label>
+                            <input
+                              value={item.name_en}
+                              onChange={(e) => updateItem(idx, { name_en: e.target.value })}
+                              placeholder="e.g. Clothing, Cosmetics, Electronics"
+                              className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">수량 *</label>
+                              <input
+                                type="number"
+                                min={1}
+                                value={item.quantity}
+                                onChange={(e) => updateItem(idx, { quantity: parseInt(e.target.value) || 1 })}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">단가 (USD) *</label>
+                              <input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={item.unit_price_usd}
+                                onChange={(e) => updateItem(idx, { unit_price_usd: parseFloat(e.target.value) || 0 })}
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">HS코드 (선택)</label>
+                              <input
+                                value={item.hs_code}
+                                onChange={(e) => updateItem(idx, { hs_code: e.target.value })}
+                                placeholder="6단위"
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">원산지 (선택)</label>
+                              <input
+                                value={item.origin_country}
+                                onChange={(e) => updateItem(idx, { origin_country: e.target.value })}
+                                placeholder="KR"
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={addItem}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
+                  >
+                    <Plus size={15} /> {boxes.length > 1 ? `${box.id}번 박스 물품 추가` : "물품 추가"}
+                  </button>
+                </div>
+              );
+            })}
 
             <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between">
               <span className="text-sm text-gray-600">총 신고 금액</span>

@@ -308,7 +308,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                      연락잘 <span className="text-red-400">*</span>
+                      연락처 <span className="text-red-400">*</span>
                     </label>
                     <input
                       value={newPhone}

@@ -66,7 +66,7 @@ export default function PickupPage() {
   const [error, setError]               = useState("");
 
   // 물품 내역
-  const [itemsOpen, setItemsOpen]       = useState(false);
+  const [itemsOpen, setItemsOpen]       = useState(true);
   const [itemCondition, setItemCondition] = useState<"NEW" | "USED">("NEW");
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([newItem()]);
   const [result, setResult]             = useState<{
@@ -103,12 +103,10 @@ export default function PickupPage() {
     if (disabledDates.includes(pickupDate)) { setError("토·일요일 및 공휴일은 수거가 불가합니다."); return; }
     if (!agreed) { setError("서비스 안내에 동의해주세요."); return; }
 
-    if (itemsOpen) {
-      const filled = invoiceItems.filter(i => i.name_en.trim());
-      if (filled.length === 0) { setError("품목을 하나 이상 입력해주세요."); return; }
-      const missingHs = filled.find(i => !i.hs_code.trim());
-      if (missingHs) { setError("모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)"); return; }
-    }
+    const filled = invoiceItems.filter(i => i.name_en.trim());
+    if (filled.length === 0) { setError("물품 내역을 하나 이상 입력해주세요."); setItemsOpen(true); return; }
+    const missingHs = filled.find(i => !i.hs_code.trim());
+    if (missingHs) { setError("모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)"); setItemsOpen(true); return; }
 
     setLoading(true);
     try {
@@ -122,13 +120,11 @@ export default function PickupPage() {
           pickup_phone: pickupAddress.phone,
           pickup_date: pickupDate,
           pickup_notes: notes.trim() || undefined,
-          // 품목 내역 (입력된 경우에만)
-          ...(itemsOpen && invoiceItems.some(i => i.name_en) && {
-            item_condition: itemCondition,
-            pre_invoice_items: invoiceItems
-              .filter(i => i.name_en.trim())
-              .map(({ key: _k, _isCustom: _c, ...rest }) => rest),
-          }),
+          // 물품 내역 (항상 전송)
+          item_condition: itemCondition,
+          pre_invoice_items: invoiceItems
+            .filter(i => i.name_en.trim())
+            .map(({ key: _k, _isCustom: _c, ...rest }) => rest),
         }),
       });
 
