@@ -47,7 +47,6 @@ export default function SidebarCalculator() {
   const [height,  setHeight]  = useState("");
   const [showMore, setShowMore] = useState(false);
   const [customsOpen, setCustomsOpen] = useState(false);
-  const [showProhibited, setShowProhibited] = useState(false);
 
   const [loading, setLoading]   = useState(false);
   const [results, setResults]   = useState<ServiceResult[] | null>(null);
@@ -298,7 +297,7 @@ export default function SidebarCalculator() {
       {customsInfo && (
         <div className="border-t border-gray-100">
           <button
-            onClick={() => { setCustomsOpen(v => !v); setShowProhibited(false); }}
+            onClick={() => setCustomsOpen(v => !v)}
             className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center gap-1.5">
@@ -336,31 +335,6 @@ export default function SidebarCalculator() {
                   <p className="text-[10px] font-bold text-violet-700 mb-0.5">리튬배터리</p>
                   <p className="text-[10px] text-violet-700">{customsInfo.batteryLimit}</p>
                 </div>
-              </div>
-
-              {/* 금지품목 토글 */}
-              <div className="bg-red-50 rounded-xl border border-red-100 overflow-hidden">
-                <button
-                  onClick={() => setShowProhibited(v => !v)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-left"
-                >
-                  <p className="text-[10px] font-bold text-red-700">🚫 절대 금지품목 ({customsInfo.prohibited.length})</p>
-                  {showProhibited
-                    ? <ChevronUp size={11} className="text-red-400" />
-                    : <ChevronDown size={11} className="text-red-400" />}
-                </button>
-                {showProhibited && (
-                  <div className="px-3 pb-2">
-                    <ul className="space-y-0.5">
-                      {customsInfo.prohibited.map(item => (
-                        <li key={item} className="text-[10px] text-red-700 flex items-start gap-1">
-                          <span className="shrink-0">•</span>
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
               </div>
 
               {/* 유의사항 */}
