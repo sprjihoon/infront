@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText } from "lucide-react";
+import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText, ShieldAlert, Zap } from "lucide-react";
+import { getCustomsInfo } from "@/lib/customs-data";
 
 const PARCEL_SERVICES = [
   { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-blue-600",    maxW: 30000 },
@@ -34,6 +35,7 @@ type ServiceResult = {
   color: string;
   fee: number | null;
   err: string | null;
+  pending?: boolean;
 };
 
 export default function SidebarCalculator() {
@@ -44,6 +46,8 @@ export default function SidebarCalculator() {
   const [width,   setWidth]   = useState("");
   const [height,  setHeight]  = useState("");
   const [showMore, setShowMore] = useState(false);
+  const [customsOpen, setCustomsOpen] = useState(false);
+  const [showProhibited, setShowProhibited] = useState(false);
 
   const [loading, setLoading]   = useState(false);
   const [results, setResults]   = useState<ServiceResult[] | null>(null);
@@ -67,10 +71,21 @@ export default function SidebarCalculator() {
     if (!weight || parseFloat(weight) <= 0) { setError("무게를 입력해주세요."); return; }
 
     setLoading(true);
+    // 모든 서비스를 pending 상태로 초기화해 즉시 표시
+    const initial: ServiceResult[] = services.map(s => ({
+      id: s.id, label: s.label, color: s.color, fee: null, err: null, pending: true,
+    }));
+    setResults([...initial]);
+
+    // 동시 요청 시 우체국 EMS 서버가 오류를 반환하므로 순차 처리
+    const out: ServiceResult[] = [...initial];
     try {
-      const fetches = services.map(async (s): Promise<ServiceResult> => {
+      for (let i = 0; i < services.length; i++) {
+        const s = services[i];
         if (applied > s.maxW) {
-          return { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
+          out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
+          setResults([...out]);
+          continue;
         }
         const p = new URLSearchParams({
           premiumcd: s.premiumcd, em_ee: s.em_ee,
@@ -83,12 +98,12 @@ export default function SidebarCalculator() {
           const res  = await fetch(`/api/ems/quote?${p}`);
           const data = await res.json();
           if (!res.ok) throw new Error(data.error ?? "조회 실패");
-          return { id: s.id, label: s.label, color: s.color, fee: data.totalFee as number, err: null };
+          out[i] = { id: s.id, label: s.label, color: s.color, fee: data.totalFee as number, err: null };
         } catch (e) {
-          return { id: s.id, label: s.label, color: s.color, fee: null, err: e instanceof Error ? e.message : "오류" };
+          out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: e instanceof Error ? e.message : "오류" };
         }
-      });
-      setResults(await Promise.all(fetches));
+        setResults([...out]);
+      }
     } finally {
       setLoading(false);
     }
@@ -97,6 +112,7 @@ export default function SidebarCalculator() {
   const selectedCountry = POPULAR.find(c => c.code === country);
   const validFees = results?.filter(r => r.fee !== null).map(r => r.fee!) ?? [];
   const minFee = validFees.length ? Math.min(...validFees) : null;
+  const customsInfo = getCustomsInfo(country);
 
   return (
     <div className="sticky top-4 w-72 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
@@ -260,7 +276,9 @@ export default function SidebarCalculator() {
                     <span className="text-[9px] bg-blue-500 text-white px-1 py-0.5 rounded font-bold shrink-0">최저</span>
                   )}
                 </div>
-                {r.err ? (
+                {r.pending ? (
+                  <Loader2 size={13} className="animate-spin text-gray-300 shrink-0 ml-2" />
+                ) : r.err ? (
                   <span className="text-[10px] text-gray-400 shrink-0 ml-2">{r.err}</span>
                 ) : (
                   <span className="text-sm font-bold text-gray-900 shrink-0 ml-2">{r.fee!.toLocaleString()}원</span>
@@ -271,6 +289,86 @@ export default function SidebarCalculator() {
           </div>
         )}
       </div>
+
+      {/* 통관 정보 */}
+      {customsInfo && (
+        <div className="border-t border-gray-100">
+          <button
+            onClick={() => { setCustomsOpen(v => !v); setShowProhibited(false); }}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
+          >
+            <div className="flex items-center gap-1.5">
+              <ShieldAlert size={13} className="text-orange-500" />
+              <span className="text-xs font-semibold text-gray-700">통관 정보</span>
+              <span className="text-[10px] text-gray-400">
+                {selectedCountry ? `${selectedCountry.flag} ${selectedCountry.name}` : country}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-medium text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded">
+                면세 {customsInfo.dutyFree.split(" ")[0]}
+              </span>
+              {customsOpen
+                ? <ChevronUp size={12} className="text-gray-400" />
+                : <ChevronDown size={12} className="text-gray-400" />}
+            </div>
+          </button>
+
+          {customsOpen && (
+            <div className="px-4 pb-4 space-y-2.5">
+              {/* 면세한도 */}
+              <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
+                <p className="text-[10px] font-bold text-blue-700 mb-0.5">💰 면세한도</p>
+                <p className="text-sm font-bold text-blue-900">{customsInfo.dutyFree}</p>
+                {customsInfo.dutyFreeNote && (
+                  <p className="text-[10px] text-blue-600 mt-0.5 leading-relaxed">{customsInfo.dutyFreeNote}</p>
+                )}
+              </div>
+
+              {/* 배터리 */}
+              <div className="flex items-start gap-2 bg-violet-50 rounded-xl px-3 py-2 border border-violet-100">
+                <Zap size={11} className="text-violet-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[10px] font-bold text-violet-700 mb-0.5">리튬배터리</p>
+                  <p className="text-[10px] text-violet-700">{customsInfo.batteryLimit}</p>
+                </div>
+              </div>
+
+              {/* 금지품목 토글 */}
+              <div className="bg-red-50 rounded-xl border border-red-100 overflow-hidden">
+                <button
+                  onClick={() => setShowProhibited(v => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 text-left"
+                >
+                  <p className="text-[10px] font-bold text-red-700">🚫 절대 금지품목 ({customsInfo.prohibited.length})</p>
+                  {showProhibited
+                    ? <ChevronUp size={11} className="text-red-400" />
+                    : <ChevronDown size={11} className="text-red-400" />}
+                </button>
+                {showProhibited && (
+                  <div className="px-3 pb-2">
+                    <ul className="space-y-0.5">
+                      {customsInfo.prohibited.map(item => (
+                        <li key={item} className="text-[10px] text-red-700 flex items-start gap-1">
+                          <span className="shrink-0">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {/* 유의사항 */}
+              {customsInfo.customsNote && (
+                <p className="text-[10px] text-gray-500 leading-relaxed bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                  📌 {customsInfo.customsNote}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

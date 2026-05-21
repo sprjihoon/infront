@@ -17,7 +17,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
 
   const selected = ITEM_CATEGORIES.find((c) => c.name_en === value) ?? null;
 
-  // ????? ???? ???? ?? ???? ????
+  // 검색어가 있으면 그룹 펼침 없이 결과만 표시
   const isSearching = query.trim().length > 0;
 
   const filtered = isSearching
@@ -57,7 +57,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
     if (open) setTimeout(() => inputRef.current?.focus(), 80);
   }, [open]);
 
-  // ??? ????? ?? ?? ?? ???
+  // 열릴 때 선택된 항목의 그룹 자동 펼침
   useEffect(() => {
     if (open && selected) {
       setExpanded((prev) => new Set([...prev, selected.group]));
@@ -66,7 +66,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
 
   return (
     <>
-      {/* ????? */}
+      {/* 트리거 버튼 */}
       <button
         type="button"
         onClick={() => setOpen(true)}
@@ -83,13 +83,13 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
               )}
             </div>
           ) : (
-            <span className="text-gray-400">???? ??????</span>
+            <span className="text-gray-400">품목명을 선택해주세요</span>
           )}
         </div>
         <ChevronDown size={14} className="text-gray-400 shrink-0 ml-2" />
       </button>
 
-      {/* ?? ?? */}
+      {/* 바텀 시트 */}
       {open && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end items-center">
           <div
@@ -98,11 +98,11 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
           />
 
           <div className="relative w-full max-w-[600px] bg-white rounded-t-3xl max-h-[82vh] flex flex-col shadow-2xl">
-            {/* ?? */}
+            {/* 헤더 */}
             <div className="px-4 pt-4 pb-3 border-b border-gray-100">
               <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-3" />
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-bold text-gray-900">???? ??????</h3>
+                <h3 className="text-base font-bold text-gray-900">품목명 선택</h3>
                 <button
                   onClick={() => { setOpen(false); setQuery(""); }}
                   className="p-1.5 rounded-full hover:bg-gray-100"
@@ -110,30 +110,30 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
                   <X size={18} className="text-gray-500" />
                 </button>
               </div>
-              {/* ?? */}
+              {/* 검색 */}
               <div className="relative">
                 <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="?????? ?????? HS????? ?????"
+                  placeholder="한글명, 영문명, HS코드로 검색"
                   className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
                 />
               </div>
             </div>
 
-            {/* ?? */}
+            {/* 목록 */}
             <div className="overflow-y-auto flex-1">
               {Object.keys(grouped).length === 0 ? (
-                <div className="py-12 text-center text-sm text-gray-400">????? ???? ?????????</div>
+                <div className="py-12 text-center text-sm text-gray-400">검색 결과가 없습니다</div>
               ) : (
                 Object.entries(grouped).map(([group, items]) => {
                   const isOpen = isGroupOpen(group);
                   const hasSelected = items.some((c) => c.name_en === value);
                   return (
                     <div key={group} className="border-b border-gray-50 last:border-0">
-                      {/* ?? ?? */}
+                      {/* 그룹 헤더 */}
                       <button
                         type="button"
                         onClick={() => toggleGroup(group)}
@@ -153,7 +153,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
                         )}
                       </button>
 
-                      {/* ?? ??? */}
+                      {/* 아이템 목록 */}
                       {isOpen && (
                         <div>
                           {items.map((cat) => {
