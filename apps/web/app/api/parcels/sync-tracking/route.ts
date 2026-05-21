@@ -5,6 +5,7 @@ import {
   trackParcel,
   COURIER_TO_CARRIER_ID,
 } from "@/lib/tracking/client";
+import { getResInfo } from "@/lib/epost/client";
 
 // 추적 대상 상태 (창고 도착 전 국내 이동 중)
 const TRACKABLE_STATUSES = new Set(["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"]);
@@ -69,5 +70,59 @@ export async function POST(_req: NextRequest) {
     })
   );
 
-  return NextResponse.json({ synced, total: parcels.length });
+  // ── PENDING_PICKUP 수거상태 동기화 (우체국 GetResInfo) ──────────────────
+  const { data: pendingParcels } = await supabase
+    .from("parcels")
+    .select("id, epost_order_no, pickup_requested_at, epost_req_no, pickup_tracking_no")
+    .eq("customer_id", user.id)
+    .eq("status", "PENDING_PICKUP")
+    .not("epost_order_no", "is", null);
+
+  let pickupSynced = 0;
+  if (pendingParcels && pendingParcels.length > 0) {
+    await Promise.all(
+      pendingParcels.map(async (p) => {
+        if (!p.epost_order_no || !p.pickup_requested_at) return;
+        if (p.epost_req_no?.startsWith("MOCK-")) return;
+
+        const reqYmd = new Date(p.pickup_requested_at)
+          .toISOString()
+          .slice(0, 10)
+          .replace(/-/g, "");
+
+        try {
+          const result = await getResInfo({
+            reqType: "2",
+            orderNo: p.epost_order_no,
+            reqYmd,
+          });
+
+          if (parseInt(result.treatStusCd) >= 1) {
+            await supabase
+              .from("parcels")
+              .update({ status: "PICKED_UP" })
+              .eq("id", p.id);
+
+            await supabase.from("notifications").insert({
+              customer_id: user.id,
+              parcel_id: p.id,
+              type: "INBOUND",
+              title: "수거 완료",
+              body: `운송장 ${p.pickup_tracking_no ?? p.epost_order_no} 물품이 수거되었습니다.`,
+            });
+
+            pickupSynced++;
+          }
+        } catch {
+          // 개별 조회 실패는 무시하고 계속
+        }
+      })
+    );
+  }
+
+  return NextResponse.json({
+    synced,
+    total: parcels.length,
+    pickup_synced: pickupSynced,
+  });
 }

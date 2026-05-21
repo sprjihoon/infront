@@ -165,6 +165,7 @@ export async function POST(req: NextRequest) {
         pickup_requested_at: new Date().toISOString(),
         epost_req_no: epostResult.reqNo,
         epost_res_no: epostResult.resNo,
+        epost_order_no: orderNo,
         epost_pickup_date: epostResult.resDate,
         epost_price: epostResult.price,
         notes: goods_name ?? null,

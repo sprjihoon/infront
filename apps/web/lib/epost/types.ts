@@ -45,6 +45,33 @@ export interface InsertOrderResponse {
   notifyMsg?: string;
 }
 
+/** treatStusCd 상태코드: 00=신청접수, 01=집하완료(수거완료), 02=수거중, 03=배달완료 */
+export const EPOST_TREAT_STATUS: Record<string, string> = {
+  '00': '신청접수',
+  '01': '집하완료',
+  '02': '수거중',
+  '03': '배달완료',
+};
+
+export interface GetResInfoParams {
+  custNo?: string;
+  reqType: '1' | '2';
+  orderNo: string;
+  reqYmd: string; // YYYYMMDD
+}
+
+export interface GetResInfoResponse {
+  reqNo: string;
+  resNo: string;
+  regiNo: string;
+  regiPoNm: string;
+  resDate: string;
+  price: string;
+  vTelNo?: string;
+  treatStusCd: string;
+  treatStusNm?: string;
+}
+
 export interface CancelOrderParams {
   custNo: string;
   apprNo: string;

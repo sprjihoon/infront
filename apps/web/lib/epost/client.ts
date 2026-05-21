@@ -4,7 +4,8 @@
  */
 
 import { seed128Encrypt, buildEpostParams } from './seed128';
-import type { InsertOrderParams, InsertOrderResponse } from './types';
+import type { InsertOrderParams, InsertOrderResponse, GetResInfoParams, GetResInfoResponse, EPOST_TREAT_STATUS } from './types';
+export type { GetResInfoResponse };
 
 const EPOST_BASE_URL = 'http://ship.epost.go.kr';
 const OFFICE_SER = '260537802'; // 공급지코드 (인프론트)
@@ -102,6 +103,34 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
 
   if (!result.regiNo) throw new Error('우체국 API 응답에 운송장번호(regiNo)가 없습니다.');
   return result;
+}
+
+export async function getResInfo(params: GetResInfoParams): Promise<GetResInfoResponse> {
+  const custNo = ((params.custNo ?? '') || getEnv('EPOST_CUSTOMER_ID')).trim();
+
+  const xml = await callEPost('api.GetResInfo.jparcel', {
+    custNo,
+    reqType: params.reqType,
+    orderNo: params.orderNo,
+    reqYmd:  params.reqYmd,
+  });
+
+  const treatStusCd = parseXml(xml, 'treatStusCd') ?? '00';
+  const STATUS_NAMES: Record<string, string> = {
+    '00': '신청접수', '01': '집하완료', '02': '수거중', '03': '배달완료',
+  };
+
+  return {
+    reqNo:       parseXml(xml, 'reqNo')    ?? '',
+    resNo:       parseXml(xml, 'resNo')    ?? '',
+    regiNo:      parseXml(xml, 'regiNo')   ?? '',
+    regiPoNm:    parseXml(xml, 'regiPoNm') ?? '',
+    resDate:     parseXml(xml, 'resDate')  ?? '',
+    price:       parseXml(xml, 'price')    ?? '0',
+    vTelNo:      parseXml(xml, 'vTelNo')   ?? undefined,
+    treatStusCd,
+    treatStusNm: STATUS_NAMES[treatStusCd],
+  };
 }
 
 export function mockInsertOrder(): InsertOrderResponse {
