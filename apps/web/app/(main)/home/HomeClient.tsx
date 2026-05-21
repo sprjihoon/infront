@@ -170,46 +170,46 @@ export default function HomeClient() {
   }, []);
 
   return (
-    <div className="px-4 py-3 space-y-3">
+    <div className="px-4 py-5 space-y-4">
 
       {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-gray-900">
+          <h1 className="text-xl font-bold text-gray-900">
             안녕하세요 {userInfo?.name ?? ""}님 👋
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">무엇을 도와드릴까요?</p>
+          <p className="text-sm text-gray-500 mt-0.5">무엇을 도와드릴까요?</p>
         </div>
         <button className="relative p-2">
-          <Bell size={20} className="text-gray-700" />
+          <Bell size={22} className="text-gray-700" />
         </button>
       </div>
 
       {/* 서비스 안내 배너 */}
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl px-4 py-3 text-white flex items-center justify-between">
+      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white flex items-center justify-between">
         <div>
-          <p className="text-white/70 text-[11px] font-medium mb-0.5">인프론트 해외배송 대행</p>
-          <p className="text-sm font-bold leading-snug">
+          <p className="text-white/70 text-xs font-medium mb-0.5">인프론트 해외배송 대행</p>
+          <p className="text-base font-bold leading-snug">
             수거 → 검품 → 포장 → 국제발송
           </p>
-          <p className="text-white/70 text-[11px] mt-0.5">EMS · EMS 프리미엄 · K-Packet</p>
+          <p className="text-white/80 text-xs mt-0.5">EMS · EMS 프리미엄 · K-Packet</p>
         </div>
         <Link
           href="/pickup"
-          className="shrink-0 ml-3 inline-flex items-center gap-1 bg-white text-blue-600 rounded-xl px-3 py-1.5 text-xs font-semibold active:scale-95 transition-transform"
+          className="shrink-0 ml-3 inline-flex items-center gap-1.5 bg-white text-blue-600 rounded-xl px-3.5 py-2 text-sm font-semibold active:scale-95 transition-transform"
         >
-          <Truck size={13} />
+          <Truck size={14} />
           수거 신청
         </Link>
       </div>
 
       {/* 빠른 서비스 */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {QUICK_ACTIONS.map((a) => (
           <Link
             key={a.href}
             href={a.href}
-            className={`${a.className} rounded-2xl p-3 flex items-center gap-3 shadow-sm active:scale-[0.97] transition-transform`}
+            className={`${a.className} rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform`}
           >
             {a.icon}
             <div>
