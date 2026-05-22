@@ -73,6 +73,12 @@ const PACKAGING_OPTS = [
   { code: "consolidate",name: "합포장",    desc: "선택 물품을 하나로 합치기", price: 2000 },
 ] as const;
 
+const ADDON_SERVICES = [
+  { code: "RECEIPT_DISPOSE",  name: "영수증/인보이스 폐기", desc: "세관 신고 가격 노출 방지",             price: 0, badge: "무료" },
+  { code: "PRICE_TAG_REMOVE", name: "가격표 제거",          desc: "태그·스티커 등 가격 표시 제거",        price: 0, badge: "무료" },
+  { code: "OVERPACK_REMOVE",  name: "과포장 제거",          desc: "불필요한 박스·완충재 제거 (무게 절감)", price: 0, badge: "무료" },
+];
+
 const STEP_LABELS = ["물품 확인", "배송 옵션", "해외 배송지", "인보이스"];
 
 function newItem(): InvoiceItem {
@@ -123,6 +129,7 @@ function ShippingRequestContent() {
   const [shippingMethod, setShippingMethod] = useState<"EMS" | "EMS_PREMIUM" | "KPACKET">("EMS");
   const [packOpts, setPackOpts] = useState({ safe_pack: false, repack: false, consolidate: false });
   const [packNote, setPackNote] = useState("");
+  const [addonServiceSet, setAddonServiceSet] = useState<Set<string>>(new Set());
 
   // Step 3 — 박스별 주소는 boxes[i].address 를 직접 사용
 
@@ -378,6 +385,19 @@ function ShippingRequestContent() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error ?? `${i + 1}번 박스 주문 생성 실패`);
         orderNos.push(data.order_no);
+
+        // 부가서비스 신청 (폐기/제거 등)
+        if (addonServiceSet.size > 0) {
+          const services = ADDON_SERVICES.filter(s => addonServiceSet.has(s.code))
+            .map(s => ({ service_code: s.code, service_name: s.name, price: s.price }));
+          for (const pid of boxParcelIds) {
+            await fetch(`/api/parcels/${pid}/service-requests`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ services }),
+            }).catch(() => {});
+          }
+        }
       }
       router.push(`/orders?new=${orderNos[0]}`);
     } catch (e: unknown) {
@@ -824,13 +844,49 @@ function ShippingRequestContent() {
               })}
             </div>
 
+            <p className="text-sm font-bold text-gray-800 pt-2">부가서비스 (선택)</p>
+            <div className="space-y-2">
+              {ADDON_SERVICES.map((o) => {
+                const checked = addonServiceSet.has(o.code);
+                return (
+                  <button
+                    key={o.code}
+                    onClick={() => setAddonServiceSet((prev) => {
+                      const next = new Set(prev);
+                      checked ? next.delete(o.code) : next.add(o.code);
+                      return next;
+                    })}
+                    className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                      checked ? "border-amber-500 bg-amber-50" : "border-gray-100 bg-white"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                      checked ? "bg-amber-500 border-amber-500" : "border-gray-300"
+                    }`}>
+                      {checked && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-semibold text-gray-800">{o.name}</span>
+                        {o.badge && (
+                          <span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded-full">{o.badge}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400">{o.desc}</p>
+                    </div>
+                    <span className="text-xs font-semibold text-green-600 shrink-0">무료</span>
+                  </button>
+                );
+              })}
+            </div>
+
             <div>
               <label className="block text-sm font-bold text-gray-800 mb-2">요청 메모 (선택)</label>
               <textarea
                 value={packNote}
                 onChange={(e) => setPackNote(e.target.value)}
                 rows={3}
-                placeholder="포장 관련 특별 요청사항을 입력해주세요"
+                placeholder="포장·처리 관련 특별 요청사항을 입력해주세요"
                 className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>

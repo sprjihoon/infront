@@ -125,16 +125,23 @@ function OrdersContent() {
 
   useEffect(() => {
     fetch("/api/orders", { cache: "no-store" })
-      .then((r) => r.json())
-      .then(({ orders: data }) => {
+      .then(async (r) => {
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error ?? "주문 목록을 불러오지 못했습니다.");
+        return body.orders as Order[] | undefined;
+      })
+      .then((data) => {
         setOrders(data ?? []);
         setLoading(false);
         if (newOrderNo) {
-          const found = data?.find((o: Order) => o.order_no === newOrderNo);
+          const found = data?.find((o) => o.order_no === newOrderNo);
           if (found) setExpandedId(found.id);
         }
       })
-      .catch(() => setLoading(false));
+      .catch((err: unknown) => {
+        console.error("[orders]", err);
+        setLoading(false);
+      });
   }, [newOrderNo]);
 
   return (

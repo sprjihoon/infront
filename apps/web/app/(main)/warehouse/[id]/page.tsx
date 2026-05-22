@@ -8,7 +8,6 @@ import {
   AlertTriangle, CheckCircle, Clock, Play, Image as ImageIcon,
   RotateCcw, Send, Navigation, RefreshCw,
   Edit3, X, Check, Plus, Trash2, Lock,
-  ScanSearch, Sparkles, ChevronRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { TRACKING_STATUS } from "@/lib/tracking/client";
@@ -65,33 +64,7 @@ function newInvoiceItem(): InvoiceItem {
   return { name_en: "", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "" };
 }
 
-interface ServiceDef {
-  code: string;
-  name: string;
-  desc: string;
-  price: number;
-  badge?: string;
-}
 
-const ALL_SERVICES: ServiceDef[] = [
-  // 검품
-  { code: "BASIC_INSPECT",    name: "기본 검품",          desc: "외관 확인 + 사진 촬영",                price: 0,    badge: "무료" },
-  { code: "DETAIL_INSPECT",   name: "정밀검수",            desc: "전체 사진 + 체크리스트 + 영상",        price: 3000 },
-  { code: "CLOTHING_INSPECT", name: "의류 검수",           desc: "펼침·라벨·전후면 촬영",                price: 2000 },
-  // 폐기/제거
-  { code: "RECEIPT_DISPOSE",  name: "영수증/인보이스 폐기", desc: "세관 신고 가격 노출 방지",             price: 0,    badge: "무료" },
-  { code: "PRICE_TAG_REMOVE", name: "가격표 제거",          desc: "태그·스티커 등 가격 표시 제거",        price: 0,    badge: "무료" },
-  { code: "OVERPACK_REMOVE",  name: "과포장 제거",          desc: "불필요한 박스·완충재 제거 (무게 절감)", price: 0,    badge: "무료" },
-  // 포장
-  { code: "SAFE_PACK",        name: "안전포장 강화",        desc: "에어캡·완충재 추가",                   price: 3000 },
-  { code: "REPACK",           name: "재포장",               desc: "새 박스로 교체",                       price: 2000 },
-];
-
-const SERVICE_SECTIONS = [
-  { label: "검품",     icon: "🔍", codes: ["BASIC_INSPECT", "DETAIL_INSPECT", "CLOTHING_INSPECT"] },
-  { label: "폐기·제거", icon: "🗑️", codes: ["RECEIPT_DISPOSE", "PRICE_TAG_REMOVE", "OVERPACK_REMOVE"] },
-  { label: "포장",     icon: "📦", codes: ["SAFE_PACK", "REPACK"] },
-];
 
 interface ParcelMedia {
   id: string;
@@ -178,14 +151,6 @@ export default function ParcelDetailPage() {
   const [showCancelPickup, setShowCancelPickup] = useState(false);
   const [cancellingPickup, setCancellingPickup] = useState(false);
 
-  // 부가서비스 신청 모달
-  const [showServiceModal, setShowServiceModal] = useState(false);
-  const [selectedServices, setSelectedServices] = useState<Set<string>>(new Set());
-  const [serviceNote, setServiceNote] = useState("");
-  const [serviceSubmitting, setServiceSubmitting] = useState(false);
-  const [serviceError, setServiceError] = useState("");
-  const [serviceSuccess, setServiceSuccess] = useState(false);
-  const [existingRequests, setExistingRequests] = useState<{ service_code: string; service_name: string; status: string }[]>([]);
 
   const loadData = useCallback(async () => {
     if (!parcelId) return;
@@ -218,44 +183,6 @@ export default function ParcelDetailPage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  async function openServiceModal() {
-    setSelectedServices(new Set());
-    setServiceNote("");
-    setServiceError("");
-    setServiceSuccess(false);
-    // 기존 신청 내역 로드
-    try {
-      const res = await fetch(`/api/parcels/${parcelId}/service-requests`);
-      if (res.ok) {
-        const json = await res.json() as { requests: { service_code: string; service_name: string; status: string }[] };
-        setExistingRequests(json.requests ?? []);
-      }
-    } catch {}
-    setShowServiceModal(true);
-  }
-
-  async function submitServiceRequest() {
-    if (selectedServices.size === 0) { setServiceError("서비스를 하나 이상 선택해주세요."); return; }
-    setServiceSubmitting(true); setServiceError("");
-    const selected = ALL_SERVICES.filter(s => selectedServices.has(s.code));
-    const res = await fetch(`/api/parcels/${parcelId}/service-requests`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        services: selected.map(s => ({ service_code: s.code, service_name: s.name, price: s.price })),
-        note: serviceNote.trim() || undefined,
-      }),
-    });
-    setServiceSubmitting(false);
-    if (!res.ok) {
-      const j = await res.json() as { error: string };
-      setServiceError(j.error ?? "오류가 발생했습니다.");
-      return;
-    }
-    setServiceSuccess(true);
-    setSelectedServices(new Set());
-  }
 
   async function cancelPickup() {
     if (!parcel) return;
@@ -867,27 +794,6 @@ export default function ParcelDetailPage() {
             반품 신청
           </Link>
         )}
-        {/* 검품·부가서비스 신청 */}
-        {!["SHIPPING", "DONE"].includes(parcel.status) && (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={openServiceModal}
-              className="flex flex-col items-center justify-center gap-1.5 bg-white border border-gray-200 text-gray-700 font-medium py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm"
-            >
-              <ScanSearch size={18} className="text-violet-500" />
-              <span className="text-xs font-semibold">검품 신청</span>
-            </button>
-            <button
-              type="button"
-              onClick={openServiceModal}
-              className="flex flex-col items-center justify-center gap-1.5 bg-white border border-gray-200 text-gray-700 font-medium py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm"
-            >
-              <Sparkles size={18} className="text-amber-500" />
-              <span className="text-xs font-semibold">부가서비스</span>
-            </button>
-          </div>
-        )}
       </div>
 
       {/* 수거 신청 취소 확인 모달 */}
@@ -912,154 +818,6 @@ export default function ParcelDetailPage() {
                   ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   : "수거 취소"}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 부가서비스 신청 모달 */}
-      {showServiceModal && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center px-0">
-          <div className="w-full max-w-[600px] bg-white rounded-t-3xl overflow-hidden flex flex-col max-h-[85vh]">
-            {/* 헤더 */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-3 shrink-0">
-              <div>
-                <h3 className="text-base font-bold text-gray-900">검품 · 부가서비스 신청</h3>
-                <p className="text-xs text-gray-400 mt-0.5">원하는 서비스를 선택하세요 (복수 선택 가능)</p>
-              </div>
-              <button onClick={() => setShowServiceModal(false)} className="p-1.5 rounded-full text-gray-400 hover:bg-gray-100">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 px-5 pb-4 space-y-5">
-              {/* 기존 신청 내역 */}
-              {existingRequests.length > 0 && (
-                <div className="bg-blue-50 rounded-2xl p-3.5 space-y-1.5">
-                  <p className="text-xs font-bold text-blue-700 mb-2">신청된 서비스</p>
-                  {existingRequests.map((r, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <span className="text-xs text-gray-700">{r.service_name}</span>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                        r.status === 'DONE' ? 'bg-green-100 text-green-700' :
-                        r.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                        r.status === 'CANCELLED' ? 'bg-gray-100 text-gray-400' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {r.status === 'DONE' ? '완료' : r.status === 'IN_PROGRESS' ? '진행 중' : r.status === 'CANCELLED' ? '취소' : '접수'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* 서비스 섹션별 목록 */}
-              {SERVICE_SECTIONS.map(section => (
-                <div key={section.label}>
-                  <p className="text-xs font-bold text-gray-500 mb-2.5 flex items-center gap-1.5">
-                    <span>{section.icon}</span> {section.label}
-                  </p>
-                  <div className="space-y-2">
-                    {section.codes.map(code => {
-                      const svc = ALL_SERVICES.find(s => s.code === code);
-                      if (!svc) return null;
-                      const isSelected = selectedServices.has(code);
-                      const alreadyRequested = existingRequests.some(r => r.service_code === code && r.status !== 'CANCELLED');
-                      return (
-                        <button
-                          key={code}
-                          type="button"
-                          disabled={alreadyRequested}
-                          onClick={() => {
-                            setSelectedServices(prev => {
-                              const next = new Set(prev);
-                              next.has(code) ? next.delete(code) : next.add(code);
-                              return next;
-                            });
-                          }}
-                          className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all text-left ${
-                            alreadyRequested
-                              ? 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-                              : isSelected
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-100 bg-white'
-                          }`}
-                        >
-                          <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors ${
-                            isSelected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'
-                          }`}>
-                            {isSelected && <Check size={11} className="text-white" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className={`text-sm font-semibold ${isSelected ? 'text-blue-700' : 'text-gray-800'}`}>
-                                {svc.name}
-                              </span>
-                              {alreadyRequested && (
-                                <span className="text-[10px] bg-gray-200 text-gray-500 px-1.5 py-0.5 rounded-full">신청됨</span>
-                              )}
-                              {svc.badge && !alreadyRequested && (
-                                <span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded-full">{svc.badge}</span>
-                              )}
-                            </div>
-                            <p className="text-xs text-gray-400 mt-0.5">{svc.desc}</p>
-                          </div>
-                          <span className={`text-sm font-bold shrink-0 ${svc.price === 0 ? 'text-green-600' : 'text-gray-700'}`}>
-                            {svc.price === 0 ? '무료' : `₩${svc.price.toLocaleString()}`}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              {/* 요청사항 */}
-              <div>
-                <label className="text-xs font-bold text-gray-500 mb-1.5 flex items-center gap-1">
-                  요청사항 <span className="font-normal text-gray-400">(선택)</span>
-                </label>
-                <textarea
-                  value={serviceNote}
-                  onChange={e => setServiceNote(e.target.value)}
-                  placeholder="예) 운동화 박스 안 종이 지지대 제거해주세요"
-                  rows={2}
-                  className="w-full px-3.5 py-3 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-400 resize-none"
-                />
-              </div>
-
-              {serviceError && (
-                <p className="text-xs text-red-500 bg-red-50 px-3.5 py-2.5 rounded-xl">{serviceError}</p>
-              )}
-            </div>
-
-            {/* 하단 버튼 */}
-            <div className="px-5 py-4 border-t border-gray-100 shrink-0" style={{ paddingBottom: "calc(1rem + var(--sab, 0px))" }}>
-              {serviceSuccess ? (
-                <div className="flex items-center justify-center gap-2 py-4 text-green-600">
-                  <CheckCircle size={20} />
-                  <span className="font-bold text-sm">신청이 접수되었습니다!</span>
-                  <button
-                    onClick={() => setShowServiceModal(false)}
-                    className="ml-2 flex items-center gap-1 text-xs text-gray-500 underline"
-                  >
-                    닫기 <ChevronRight size={12} />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={submitServiceRequest}
-                  disabled={serviceSubmitting || selectedServices.size === 0}
-                  className="w-full py-4 rounded-2xl text-sm font-bold transition-colors bg-blue-600 text-white disabled:bg-gray-200 disabled:text-gray-400"
-                >
-                  {serviceSubmitting
-                    ? "신청 중..."
-                    : selectedServices.size > 0
-                    ? `서비스 신청 (${selectedServices.size}개)`
-                    : "서비스를 선택해주세요"}
-                </button>
-              )}
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Plus, Trash2,
-  CheckCircle, AlertCircle, ChevronDown, Truck, Tag,
+  CheckCircle, AlertCircle, ChevronDown, Truck, Tag, ScanSearch,
 } from "lucide-react";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
 import type { ItemCategory } from "@/lib/item-categories";
@@ -19,6 +19,8 @@ interface InvoiceItem {
   hs_code: string;
   _isCustom?: boolean;
   _categoryLabel?: string;
+  inspection?: string;
+  specials?: string[];
 }
 
 const COURIERS = [
@@ -33,6 +35,21 @@ function newItem(): InvoiceItem {
     origin_country: "KR", hs_code: "",
   };
 }
+
+// 품목별 검품 (각 품목 카드에서 선택)
+const PER_ITEM_INSPECTION = [
+  { code: "BASIC_INSPECT",    name: "기본검수",  price: 0    },
+  { code: "CLOTHING_INSPECT", name: "의류검수",  price: 1000 },
+  { code: "DETAIL_INSPECT",   name: "제품검수",  price: 2000 },
+];
+
+const SPECIAL_INSPECTION_SERVICES = [
+  { code: "STEAM_IRON",    name: "스팀다리미",   desc: "의류 구김·주름 제거",      price: 1000 },
+  { code: "AIR_DRESSER",   name: "에어드레서",   desc: "의류 먼지·냄새 케어",      price: 1000 },
+  { code: "THREAD_REMOVE", name: "실밥제거",     desc: "의류 실밥 정리",           price: 1000 },
+  { code: "PP_BAG",        name: "PP봉투포장",   desc: "PP봉투 개별 포장",         price: 1000 },
+  { code: "FUNC_CHECK",    name: "제품기능검수",  desc: "제품 작동·기능 여부 확인", price: 1000 },
+];
 
 const ORIGIN_OPTIONS = [
   { code: "KR", label: "한국 (KR)" },
@@ -61,6 +78,8 @@ export default function RegisterParcelPage() {
   // Step 2: 물품 내역
   const [condition, setCondition] = useState<"NEW" | "USED">("NEW");
   const [items, setItems] = useState<InvoiceItem[]>([newItem()]);
+
+  const [specialsOpenKeys, setSpecialsOpenKeys] = useState<Set<string>>(new Set());
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -118,11 +137,52 @@ export default function RegisterParcelPage() {
           sender_address: senderAddress || undefined,
           notes: notes || undefined,
           item_condition: condition,
-          pre_invoice_items: items.map(({ key: _k, _isCustom: _c, _categoryLabel: _l, ...rest }) => rest),
+          pre_invoice_items: items.map(({ key: _k, _isCustom: _c, _categoryLabel: _l, inspection: _i, specials: _s, ...rest }) => rest),
         }),
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? "오류가 발생했습니다"); return; }
+
+      // 검품·특수옵션 서비스 신청
+      const parcelId = json.data?.id;
+      if (parcelId) {
+        const services: { service_code: string; service_name: string; price: number; note?: string }[] = [];
+
+        // 품목별 검품 집계
+        const inspMap = new Map<string, { name: string; price: number; items: string[] }>();
+        items.filter(i => i.name_en.trim() && i.inspection).forEach(item => {
+          const opt = PER_ITEM_INSPECTION.find(o => o.code === item.inspection);
+          if (!opt) return;
+          if (!inspMap.has(opt.code)) inspMap.set(opt.code, { name: opt.name, price: opt.price, items: [] });
+          inspMap.get(opt.code)!.items.push(item.product_name || item.name_en);
+        });
+        inspMap.forEach(({ name, price, items: iNames }, code) => {
+          services.push({ service_code: code, service_name: name, price, note: `${iNames.length}건: ${iNames.join(", ")}` });
+        });
+
+        // 품목별 특수 처리 집계
+        const specialsMap = new Map<string, { name: string; price: number; items: string[] }>();
+        items.filter(i => i.name_en.trim() && i.specials?.length).forEach(item => {
+          (item.specials ?? []).forEach(code => {
+            const opt = SPECIAL_INSPECTION_SERVICES.find(o => o.code === code);
+            if (!opt) return;
+            if (!specialsMap.has(code)) specialsMap.set(code, { name: opt.name, price: opt.price, items: [] });
+            specialsMap.get(code)!.items.push(item.product_name || item.name_en);
+          });
+        });
+        specialsMap.forEach(({ name, price, items: iNames }, code) => {
+          services.push({ service_code: code, service_name: name, price, note: `${iNames.length}건: ${iNames.join(", ")}` });
+        });
+
+        if (services.length > 0) {
+          await fetch(`/api/parcels/${parcelId}/service-requests`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ services }),
+          }).catch(() => {});
+        }
+      }
+
       setWasMerged(json.merged === true);
       setDone(true);
     } finally {
@@ -493,6 +553,86 @@ export default function RegisterParcelPage() {
                         <span className="font-semibold text-gray-700">${(item.quantity * item.unit_price_usd).toFixed(2)}</span>
                       </div>
                     )}
+
+                    {/* 검품 + 특수 처리 */}
+                    <div className="mt-2.5 pt-2.5 border-t border-gray-100 space-y-2">
+                      {/* 검품 선택 */}
+                      <div>
+                        <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
+                          <ScanSearch size={12} className="text-violet-400" /> 검품
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {PER_ITEM_INSPECTION.map(opt => {
+                            const isActive = item.inspection === opt.code;
+                            return (
+                              <button
+                                key={opt.code}
+                                type="button"
+                                onClick={() => updateItem(idx, { inspection: isActive ? undefined : opt.code })}
+                                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                                  isActive
+                                    ? "bg-violet-500 border-violet-500 text-white"
+                                    : "bg-white border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-600"
+                                }`}
+                              >
+                                {opt.name}
+                                <span className={`ml-1 ${isActive ? "text-violet-200" : "text-gray-400"}`}>
+                                  {opt.price === 0 ? "무료" : `₩${opt.price.toLocaleString()}`}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 특수 처리 — 품목별 접이식 */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setSpecialsOpenKeys(prev => {
+                            const next = new Set(prev);
+                            next.has(item.key) ? next.delete(item.key) : next.add(item.key);
+                            return next;
+                          })}
+                          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-amber-500 transition-colors"
+                        >
+                          <span>✨</span>
+                          <span className="font-semibold">특수 처리</span>
+                          {(item.specials?.length ?? 0) > 0 && (
+                            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{item.specials!.length}</span>
+                          )}
+                          <ChevronDown size={11} className={`transition-transform ${specialsOpenKeys.has(item.key) ? "rotate-180" : ""}`} />
+                        </button>
+                        {specialsOpenKeys.has(item.key) && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {SPECIAL_INSPECTION_SERVICES.map(opt => {
+                              const isActive = item.specials?.includes(opt.code);
+                              return (
+                                <button
+                                  key={opt.code}
+                                  type="button"
+                                  onClick={() => updateItem(idx, {
+                                    specials: isActive
+                                      ? (item.specials ?? []).filter(c => c !== opt.code)
+                                      : [...(item.specials ?? []), opt.code],
+                                  })}
+                                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                                    isActive
+                                      ? "bg-amber-500 border-amber-500 text-white"
+                                      : "bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600"
+                                  }`}
+                                >
+                                  {opt.name}
+                                  <span className={`ml-1 ${isActive ? "text-amber-200" : "text-gray-400"}`}>
+                                    ₩{opt.price.toLocaleString()}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -514,6 +654,7 @@ export default function RegisterParcelPage() {
                 <span className="text-base font-bold text-gray-900">USD {totalUSD.toFixed(2)}</span>
               </div>
             )}
+
 
             {/* 안내 메시지 */}
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 leading-relaxed">

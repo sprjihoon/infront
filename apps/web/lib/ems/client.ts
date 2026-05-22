@@ -143,12 +143,37 @@ export interface QuoteResult {
   totalFee: number;   // 총 배송예상비용(KRW)
 }
 
+/** EMS 서류 중량 구간 (g): 0.3/0.5/0.75/1/1.25/1.5/1.75/2 kg */
+export const EMS_DOC_WEIGHT_TIERS_G = [300, 500, 750, 1000, 1250, 1500, 1750, 2000] as const;
+
+/** 실중량을 EMS 서류 요금 구간으로 올림 */
+export function snapDocWeightG(g: number): number {
+  for (const tier of EMS_DOC_WEIGHT_TIERS_G) {
+    if (g <= tier) return tier;
+  }
+  return 2000;
+}
+
+export function getMaxWeightG(premiumcd: string, em_ee?: string): number {
+  if (premiumcd === '14' || em_ee === 'ee') return 2000;
+  if (premiumcd === '32') return 70000;
+  return 30000;
+}
+
 export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
+  const isDoc = p.em_ee === 'ee';
+  const totweight = isDoc ? snapDocWeightG(p.totweight) : p.totweight;
+
   // 중량 상한 체크
-  const maxG = p.premiumcd === '14' ? 2000 : 30000;
+  const maxG = getMaxWeightG(p.premiumcd, p.em_ee);
+  const serviceName =
+    p.premiumcd === '14' ? 'K-Packet'
+    : isDoc ? 'EMS 서류'
+    : p.premiumcd === '32' ? 'EMS 프리미엄'
+    : 'EMS';
   if (p.totweight > maxG) {
     throw new EmsApiError(
-      `중량 초과: ${p.premiumcd === '14' ? 'K-Packet' : 'EMS'} 최대 ${maxG / 1000}kg (입력: ${(p.totweight / 1000).toFixed(1)}kg)`,
+      `중량 초과: ${serviceName} 최대 ${maxG / 1000}kg (입력: ${(p.totweight / 1000).toFixed(1)}kg)`,
     );
   }
 
@@ -156,13 +181,16 @@ export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
     premiumcd: p.premiumcd,
     em_ee:     p.em_ee,
     countrycd: p.countrycd,
-    totweight: String(p.totweight),
+    totweight: String(totweight),
     boyn:      p.boyn ?? 'N',
     boprc:     String(p.boprc ?? 0),
   };
-  if (p.boxlength) params.boxlength = String(p.boxlength);
-  if (p.boxwidth)  params.boxwidth  = String(p.boxwidth);
-  if (p.boxheight) params.boxheight = String(p.boxheight);
+  // 서류는 부피중량·박스 크기 미적용
+  if (!isDoc) {
+    if (p.boxlength) params.boxlength = String(p.boxlength);
+    if (p.boxwidth)  params.boxwidth  = String(p.boxwidth);
+    if (p.boxheight) params.boxheight = String(p.boxheight);
+  }
 
   // apprno: 계약 승인번호 (env var에 \r\n 포함될 수 있으므로 clean 처리됨)
   const apprno = clean(p.apprno) || getAppr();

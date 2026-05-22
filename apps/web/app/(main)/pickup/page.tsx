@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, Plus, Trash2, ChevronDown,
+  MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, Plus, Trash2, ChevronDown, ScanSearch,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
@@ -19,11 +19,28 @@ interface InvoiceItem {
   origin_country: string;
   hs_code: string;
   _isCustom?: boolean;
+  inspection?: string;
+  specials?: string[];
 }
 
 function newItem(): InvoiceItem {
   return { key: Math.random().toString(36).slice(2), product_name: "", name_en: "", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "", _isCustom: false };
 }
+
+// 품목별 검품 (각 품목 카드에서 선택)
+const PER_ITEM_INSPECTION = [
+  { code: "BASIC_INSPECT",    name: "기본검수",  price: 0    },
+  { code: "CLOTHING_INSPECT", name: "의류검수",  price: 1000 },
+  { code: "DETAIL_INSPECT",   name: "제품검수",  price: 2000 },
+];
+
+const SPECIAL_INSPECTION_SERVICES = [
+  { code: "STEAM_IRON",    name: "스팀다리미",   desc: "의류 구김·주름 제거",      price: 1000 },
+  { code: "AIR_DRESSER",   name: "에어드레서",   desc: "의류 먼지·냄새 케어",      price: 1000 },
+  { code: "THREAD_REMOVE", name: "실밥제거",     desc: "의류 실밥 정리",           price: 1000 },
+  { code: "PP_BAG",        name: "PP봉투포장",   desc: "PP봉투 개별 포장",         price: 1000 },
+  { code: "FUNC_CHECK",    name: "제품기능검수",  desc: "제품 작동·기능 여부 확인", price: 1000 },
+];
 
 // 한국 공휴일 (2026)
 const KR_HOLIDAYS = new Set([
@@ -70,6 +87,7 @@ export default function PickupPage() {
   const [itemsOpen, setItemsOpen]       = useState(true);
   const [itemCondition, setItemCondition] = useState<"NEW" | "USED">("NEW");
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([newItem()]);
+  const [specialsOpenKeys, setSpecialsOpenKeys] = useState<Set<string>>(new Set());
   const [result, setResult]             = useState<{
     parcel_id: string;
     tracking_no: string;
@@ -127,12 +145,51 @@ export default function PickupPage() {
           item_condition: itemCondition,
           pre_invoice_items: invoiceItems
             .filter(i => i.name_en.trim())
-            .map(({ key: _k, _isCustom: _c, ...rest }) => rest),
+            .map(({ key: _k, _isCustom: _c, inspection: _i, specials: _s, ...rest }) => rest),
         }),
       });
 
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || "수거 신청에 실패했습니다.");
+
+      // 검품·특수옵션 서비스 신청
+      if (data.parcel_id) {
+        const services: { service_code: string; service_name: string; price: number; note?: string }[] = [];
+
+        // 품목별 검품 집계
+        const inspMap = new Map<string, { name: string; price: number; items: string[] }>();
+        invoiceItems.filter(i => i.name_en.trim() && i.inspection).forEach(item => {
+          const opt = PER_ITEM_INSPECTION.find(o => o.code === item.inspection);
+          if (!opt) return;
+          if (!inspMap.has(opt.code)) inspMap.set(opt.code, { name: opt.name, price: opt.price, items: [] });
+          inspMap.get(opt.code)!.items.push(item.product_name || item.name_en);
+        });
+        inspMap.forEach(({ name, price, items }, code) => {
+          services.push({ service_code: code, service_name: name, price, note: `${items.length}건: ${items.join(", ")}` });
+        });
+
+        // 품목별 특수 처리 집계
+        const specialsMap = new Map<string, { name: string; price: number; items: string[] }>();
+        invoiceItems.filter(i => i.name_en.trim() && i.specials?.length).forEach(item => {
+          (item.specials ?? []).forEach(code => {
+            const opt = SPECIAL_INSPECTION_SERVICES.find(o => o.code === code);
+            if (!opt) return;
+            if (!specialsMap.has(code)) specialsMap.set(code, { name: opt.name, price: opt.price, items: [] });
+            specialsMap.get(code)!.items.push(item.product_name || item.name_en);
+          });
+        });
+        specialsMap.forEach(({ name, price, items: iNames }, code) => {
+          services.push({ service_code: code, service_name: name, price, note: `${iNames.length}건: ${iNames.join(", ")}` });
+        });
+
+        if (services.length > 0) {
+          await fetch(`/api/parcels/${data.parcel_id}/service-requests`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ services }),
+          }).catch(() => {});
+        }
+      }
 
       if (immediateShip && data.parcel_id) {
         router.push(`/shipping-request?parcels=${data.parcel_id}`);
@@ -401,6 +458,88 @@ export default function PickupPage() {
                         }`}
                       />
                     </div>
+
+                    {/* 검품 + 특수 처리 */}
+                    <div className="mt-2 pt-2 border-t border-gray-100 space-y-2">
+                      {/* 검품 선택 */}
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-semibold mb-1.5 flex items-center gap-1">
+                          <ScanSearch size={10} className="text-violet-400" /> 검품
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {PER_ITEM_INSPECTION.map(opt => {
+                            const isActive = item.inspection === opt.code;
+                            return (
+                              <button
+                                key={opt.code}
+                                type="button"
+                                onClick={() => setInvoiceItems(p => p.map((it, i) =>
+                                  i === idx ? { ...it, inspection: isActive ? undefined : opt.code } : it
+                                ))}
+                                className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                                  isActive
+                                    ? "bg-violet-500 border-violet-500 text-white"
+                                    : "bg-white border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-600"
+                                }`}
+                              >
+                                {opt.name}
+                                <span className={`ml-1 ${isActive ? "text-violet-200" : "text-gray-400"}`}>
+                                  {opt.price === 0 ? "무료" : `₩${opt.price.toLocaleString()}`}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* 특수 처리 — 품목별 접이식 */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setSpecialsOpenKeys(prev => {
+                            const next = new Set(prev);
+                            next.has(item.key) ? next.delete(item.key) : next.add(item.key);
+                            return next;
+                          })}
+                          className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-amber-500 transition-colors"
+                        >
+                          <span>✨</span>
+                          <span className="font-semibold">특수 처리</span>
+                          {(item.specials?.length ?? 0) > 0 && (
+                            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">{item.specials!.length}</span>
+                          )}
+                          <ChevronDown size={11} className={`transition-transform ${specialsOpenKeys.has(item.key) ? "rotate-180" : ""}`} />
+                        </button>
+                        {specialsOpenKeys.has(item.key) && (
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                            {SPECIAL_INSPECTION_SERVICES.map(opt => {
+                              const isActive = item.specials?.includes(opt.code);
+                              return (
+                                <button
+                                  key={opt.code}
+                                  type="button"
+                                  onClick={() => setInvoiceItems(p => p.map((it, i) => {
+                                    if (i !== idx) return it;
+                                    const cur = it.specials ?? [];
+                                    return { ...it, specials: isActive ? cur.filter(c => c !== opt.code) : [...cur, opt.code] };
+                                  }))}
+                                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
+                                    isActive
+                                      ? "bg-amber-500 border-amber-500 text-white"
+                                      : "bg-white border-gray-200 text-gray-500 hover:border-amber-300 hover:text-amber-600"
+                                  }`}
+                                >
+                                  {opt.name}
+                                  <span className={`ml-1 ${isActive ? "text-amber-200" : "text-gray-400"}`}>
+                                    ₩{opt.price.toLocaleString()}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -412,6 +551,7 @@ export default function PickupPage() {
             </div>
           )}
         </div>
+
 
         {/* 즉시 해외배송 옵션 */}
         <button

@@ -239,23 +239,43 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get('limit') ?? '20', 10);
 
-    const { data: orders, error } = await supabase
+    const baseSelect = `
+      id, order_no, status, shipping_method, packaging_type,
+      packaging_fee, shipping_fee, total_amount, payment_status,
+      recipient_name, recipient_country,
+      customs_value, item_list, intl_tracking_no,
+      created_at, updated_at,
+      order_parcels (parcel_id)
+    `;
+
+    const selectWithBoxes = `${baseSelect},
+      shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
+    `;
+
+    let { data: orders, error } = await supabase
       .from('orders')
-      .select(`
-        id, order_no, status, shipping_method, packaging_type,
-        packaging_fee, shipping_fee, total_amount, payment_status,
-        recipient_name, recipient_country,
-        customs_value, item_list, intl_tracking_no,
-        created_at, updated_at,
-        order_parcels (parcel_id),
-        shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
-      `)
+      .select(selectWithBoxes)
       .eq('customer_id', user.id)
       .order('created_at', { ascending: false })
       .limit(limit);
 
+    // shipping_boxes 테이블 미적용 환경 호환 (010 마이그레이션 전)
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      const fallback = await supabase
+        .from('orders')
+        .select(baseSelect)
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+      if (fallback.error) {
+        return NextResponse.json({ error: fallback.error.message }, { status: 500 });
+      }
+
+      orders = (fallback.data ?? []).map((order) => ({
+        ...order,
+        shipping_boxes: [],
+      }));
     }
 
     return NextResponse.json({ orders: orders ?? [] });

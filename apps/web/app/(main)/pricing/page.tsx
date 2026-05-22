@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Calculator, Info, CheckCircle2, ExternalLink,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Clock,
 } from "lucide-react";
 import Link from "next/link";
+import SidebarPricingGuide from "@/components/ui/SidebarPricingGuide";
 
 // ── 우체국 EMS 공식 요금 (우정사업본부 koreapost.go.kr) ──────────────────
 // 서류(doc): 0.3/0.5/0.75/1/1.25/1.5/1.75/2 kg (8단계)
@@ -83,16 +84,16 @@ const EMS_COUNTRIES = [
 
 // 기타 국가 (지역별 일괄 요금)
 const EMS_OTHER_ZONES = [
-  { id:"oz1",label:"1지역 국가",
+  { id:"oz1",label:"1지역 국가", countries:"몽골 · 카자흐스탄 · 우즈베키스탄 · 키르기스스탄 등",
     doc:[18000,20000,21000,22000,23000,24000,25000,26000],
     pcl:[20500,21000,22500,23500,24500,25500,26500,28500,30500,32000,34000,36000,38000,39500,41500,43500,45500,48000,50500,52500,55000,57500,60000,62000,64500,67000,69000,71500,74000,76000,78500,81000,83000,85500,88000,90000,92500,95000,97000,99500,102000,104500,106500,109000,111500,113500,116000,118500,120500,123000,125500,127500,130000,132500,134500,137000,139500,141500,144000,146500,149000,151000,153500] },
-  { id:"oz2",label:"2지역 국가",
+  { id:"oz2",label:"2지역 국가", countries:"인도 · 파키스탄 · 방글라데시 · 스리랑카 · UAE · 사우디 등",
     doc:[18000,20000,21500,23000,24500,26000,27500,29000],
     pcl:[20500,22000,23500,25000,26500,28000,29500,32000,35000,37500,40500,43000,46000,48500,51000,54000,56500,59500,61000,66000,70500,75500,80500,85000,90000,95000,99500,104500,109000,114000,119000,123500,128500,133500,138000,143000,148000,152500,157500,162000,167000,172000,176500,181500,186500,191000,196000,200500,205500,210500,215000,220000,225000,229500,234500,239500,244000,249000,253500,258500,263500,268000,273000] },
-  { id:"oz3",label:"3지역 국가",
+  { id:"oz3",label:"3지역 국가", countries:"이탈리아 · 네덜란드 · 벨기에 · 스위스 · 폴란드 · 터키 등",
     doc:[28000,30000,32000,34000,36000,38000,40000,42000],
     pcl:[30500,32500,34500,36500,38500,40500,42500,46500,50000,54000,58000,61500,65500,69000,73000,78000,83000,88000,93000,97500,102500,107500,112500,117500,122500,127500,132500,137500,142500,147500,152500,157500,162000,167000,172000,177000,182000,187000,192000,197000,202000,207000,212000,217000,221500,226500,231500,236500,241500,246500,251500,256500,261500,266500,271500,276500,281500,286000,291000,296000,301000,306000,311000] },
-  { id:"oz4",label:"4지역 국가",
+  { id:"oz4",label:"4지역 국가", countries:"아르헨티나 · 칠레 · 페루 · 남아공 · 이집트 · 케냐 등",
     doc:[30500,32500,35500,38500,41500,44500,47500,50500],
     pcl:[33000,36000,39000,42000,45000,48000,51000,56500,62000,69500,77000,85000,92500,100000,107500,115000,123000,130500,138000,145500,153000,160500,168500,176000,183500,191000,198500,206000,214000,221500,229000,236500,244000,252000,259500,267000,274500,282000,289500,297500,305000,312500,320000,327500,335500,343000,350500,358000,365500,373000,381000,388500,396000,403500,411000,418500,426500,434000,441500,449000,456500,464500,472000] },
 ];
@@ -124,12 +125,91 @@ const KPACKET_COUNTRIES = [
   { id:"BR", flag:"🇧🇷", name:"브라질",   region:"오세아니아·중남미", rates:[5410,7030,8660,10280,11900,13380,14870,16350,17840,19340,21310,23270,25240,27210,29160,30920,32690,34450,36210,37970] },
 ];
 
+// ── EMS 프리미엄 지역별 국가 (우체국 EMS 프리미엄 공식 지역표 기준) ─────
+const PREMIUM_ZONE_META = [
+  {
+    zone: "1",
+    docId: "pz1",
+    pclId: "PP1",
+    label: "1지역",
+    countries: ["중국", "홍콩", "대만", "마카오"],
+  },
+  {
+    zone: "2",
+    docId: "pz2",
+    pclId: "PP2",
+    label: "2지역",
+    countries: ["일본", "태국", "싱가포르", "베트남", "말레이시아", "브루네이", "캄보디아"],
+  },
+  {
+    zone: "3",
+    docId: "pz3",
+    pclId: "PP3",
+    label: "3지역",
+    countries: [
+      "미국", "캐나다", "호주", "뉴질랜드", "영국", "독일", "프랑스", "이탈리아", "스페인", "네덜란드",
+      "벨기에", "스웨덴", "노르웨이", "덴마크", "핀란드", "오스트리아", "스위스", "폴란드", "체코", "헝가리",
+      "루마니아", "불가리아", "그리스", "포르투갈", "아일랜드", "에스토니아", "라트비아", "룩셈부르크", "슬로바키아", "슬로베니아",
+      "크로아티아", "북마케도니아", "몰도바", "알바니아", "아이스랜드", "터키", "인도", "인도네시아", "필리핀", "몽골",
+      "몰디브", "부탄", "UAE", "바레인", "아르메니아", "아제르바이잔", "그루지아", "벨라루스", "보스니아", "파푸아뉴기니",
+      "바티칸", "스코틀랜드",
+    ],
+  },
+  {
+    zone: "4",
+    docId: "pz4",
+    pclId: "PP4",
+    label: "4지역",
+    countries: [
+      "멕시코", "칠레", "콜롬비아", "파나마", "파라과이", "과테말라", "엘살바도르", "니카라과", "코스트리카", "볼리비아",
+      "가이아나", "피지", "이집트", "남아프리카", "나이지리아", "케냐", "에티오피아", "탄자니아", "알제리", "앙골라",
+      "잠비아", "르완다", "카메룬", "차드", "지부티", "레소토", "말리", "니제르", "토고", "베냉",
+      "보츠와나", "부르키나파소", "라이베리아", "모잠비크", "카보베르데", "파키스탄", "오만", "요르단", "이스라엘", "카타르",
+      "쿠웨이트", "자메이카", "아이티", "바하마", "바베이도스", "버뮤다", "트리니다드토바고",
+    ],
+  },
+  {
+    zone: "5",
+    docId: "pz5",
+    pclId: "PP5",
+    label: "5지역",
+    countries: [
+      "브라질", "아르헨티나", "페루", "에콰도르", "베네수엘라", "우루과이", "수리남", "벨리즈", "도미니카", "도미니카공화국",
+      "가나", "가봉", "감비아", "기니", "나미비아", "네팔", "방글라데시", "부룬디", "세네갈", "세이셸",
+      "스리랑카", "우간다", "우즈베키스탄", "우크라이나", "카자흐스탄", "키르기스스탄", "짐바브웨", "아프가니스탄", "중앙아프리카", "콩고",
+      "사우디아라비아", "이라크", "레바논", "사이프러스", "튀니지", "모로코", "모리타니아", "말라위", "마다가스카르", "시에라리온",
+      "스와질랜드", "괌", "사이판", "팔라우", "키리바시", "솔로몬", "바누아투", "통가", "사모아", "뉴칼레도니아",
+      "폴리네시아", "푸에르토리코", "버진아일랜드", "케이man제도", "아루바", "그린랜드", "프랑스령기아나", "마르티니크", "레위니옹", "몰타",
+      "모나코", "산마리노", "안도라", "지브롤터", "몬테네그로", "세르비아", "코소보", "리히텐슈타인", "리투아니아", "동티모르",
+      "그레나다", "세인트루시아", "세인트키츠", "세인트빈센트", "앤티가바부다", "앙귈라", "몬트세라트", "노퍽섬", "미국령사모아", "서사모아",
+      "쿡제도", "마샬", "터크스케이커스", "버진제도(영국)",
+    ],
+  },
+  {
+    zone: "4-1",
+    pclId: "PP_4-12",
+    label: "4-1지역",
+    countries: ["러시아"],
+  },
+] as const;
+
+function premiumZoneSummary(countries: readonly string[]) {
+  if (countries.length <= 5) return countries.join(" · ");
+  return `${countries.slice(0, 4).join(" · ")} 외 ${countries.length - 4}개국`;
+}
+
+const premiumMetaByDocId = Object.fromEntries(
+  PREMIUM_ZONE_META.filter((z) => "docId" in z && z.docId).map((z) => [z.docId, z])
+);
+const premiumMetaByPclId = Object.fromEntries(
+  PREMIUM_ZONE_META.filter((z) => "pclId" in z && z.pclId).map((z) => [z.pclId, z])
+);
+
 // ── EMS 프리미엄 서류 요금 (지역별) ─────────────────────────────────
 const PREMIUM_DOC_ZONES = [
   {
     id: "pz1",
     label: "1지역",
-    countries: "일본 · 중국 · 대만 · 홍콩 · 동남아시아",
     rows: [
       { w: "500g", fee: "16,800" },
       { w: "1kg",  fee: "21,200" },
@@ -140,7 +220,6 @@ const PREMIUM_DOC_ZONES = [
   {
     id: "pz2",
     label: "2지역",
-    countries: "인도 · 중동 (UAE · 사우디)",
     rows: [
       { w: "500g", fee: "18,000" },
       { w: "1kg",  fee: "27,100" },
@@ -151,7 +230,6 @@ const PREMIUM_DOC_ZONES = [
   {
     id: "pz3",
     label: "3지역",
-    countries: "서유럽 (독일 · 프랑스 · 영국 등)",
     rows: [
       { w: "500g", fee: "23,100" },
       { w: "1kg",  fee: "32,200" },
@@ -162,7 +240,6 @@ const PREMIUM_DOC_ZONES = [
   {
     id: "pz4",
     label: "4지역",
-    countries: "미국 · 캐나다 · 호주 · 뉴질랜드",
     rows: [
       { w: "500g", fee: "30,300" },
       { w: "1kg",  fee: "38,500" },
@@ -173,7 +250,6 @@ const PREMIUM_DOC_ZONES = [
   {
     id: "pz5",
     label: "5지역",
-    countries: "중남미 · 아프리카 · 러시아",
     rows: [
       { w: "500g", fee: "32,200" },
       { w: "1kg",  fee: "42,500" },
@@ -187,22 +263,22 @@ const PREMIUM_DOC_ZONES = [
 const PREMIUM_PCL_W = ["0.5","1","1.5","2","2.5","3","3.5","4","4.5","5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","12.5","13","13.5","14","14.5","15","15.5","16","16.5","17","17.5","18","18.5","19","19.5","20","21","22","23","24","25","26","27","28","29","30","31","32","33","34","35","36","37","38","39","40","41","42","43","44","45","46","47","48","49","50","51","52","53","54","55","56","57","58","59","60","61","62","63","64","65","66","67","68","69","70"];
 
 const PREMIUM_PCL_ZONES = [
-  { id:"PP1",label:"1지역 국가",
+  { id:"PP1",label:"1지역",
     rates:[16800,18000,19500,21000,22500,23500,25000,26000,27500,28500,30000,31500,32500,34000,35000,36500,38000,39000,40500,42000,43000,44500,46000,47000,48500,50000,51000,52500,54000,55000,56500,57500,59000,60500,61500,63000,64500,65500,67000,68000,69500,71500,73500,75400,77400,79000,81000,82800,84600,86300,88200,89900,91800,93500,95400,97100,99000,100800,102500,104400,106200,107900,109700,111500,113300,115000,116800,118600,120400,122100,123900,125600,127400,129200,131000,132700,134500,136300,138000,139800,141600,143300,145100,146900,148600,150400,152200,153900,155700,157500,159200,161000,162800]
   },
-  { id:"PP2",label:"2지역 국가",
+  { id:"PP2",label:"2지역",
     rates:[18000,20000,21500,23000,24500,26000,27500,29000,30500,31500,33000,34500,36000,37500,39000,40000,42000,43500,45000,46500,48000,49500,51000,52500,54000,55500,57000,58500,60000,61500,63000,64500,66000,67500,69000,70500,72000,73500,75000,76500,79500,82000,84500,87000,89500,92000,94500,97000,99500,102000,104500,107000,109500,112000,114500,117000,119500,122000,124500,127000,129500,132000,134500,137000,139500,142000,144500,147000,149500,152000,154500,157000,159500,162000,164500,167000,169500,172000,174500,177000,179500,182000,184500,187000,189500,192000,194500,197000,199500,202000,204500,207000,209500]
   },
-  { id:"PP3",label:"3지역 국가",
+  { id:"PP3",label:"3지역",
     rates:[23100,25000,27500,29500,31500,33500,35500,37500,39500,41500,43000,45000,47000,49000,51000,53000,55000,57000,59000,61000,63000,65000,67500,69500,71500,73500,75500,77500,79500,81500,83500,85500,88000,90000,92000,94000,96000,98000,100000,102000,107000,112000,117000,122000,127000,132000,137000,142000,147000,152000,157000,162000,167000,172000,177000,182000,187000,192000,197000,202000,207000,212000,217000,222000,227000,232000,237000,242000,247000,252000,257000,262000,267000,272000,277000,282000,287000,292000,297000,302000,307000,312000,317000,322000,327000,332000,337000,342000,347000,352000,357000,362000,367000]
   },
-  { id:"PP4",label:"4지역 국가",
+  { id:"PP4",label:"4지역",
     rates:[30300,33000,36000,39000,41000,43000,45000,47000,49000,51000,53000,55000,57000,59000,61000,63000,65000,66500,68500,70500,72500,74500,76500,78500,80500,82500,84500,86500,88500,91000,93500,96000,98500,101000,103500,106000,108500,111000,113500,116000,121000,126000,131000,136000,141000,146000,151000,156000,161000,166000,171000,176000,181000,186000,191000,196000,201000,206000,211000,216000,221000,226000,231000,236000,241000,246000,251000,256000,261000,266000,271000,276000,281000,286000,291000,296000,301000,306000,311000,316000,321000,326000,331000,336000,341000,346000,351000,356000,361000,366000,371000,376000,381000]
   },
-  { id:"PP5",label:"5지역 국가 (중남미·아프리카 등)",
+  { id:"PP5",label:"5지역",
     rates:[32200,35500,39000,42500,45100,48000,51000,53500,56500,59500,62000,64500,67500,70000,72500,75000,77500,80000,82500,85000,87500,90000,92500,95000,97500,100000,102500,105000,107500,110000,112500,115000,117500,120000,122500,125000,127500,130000,132500,135000,140000,145000,150000,155000,160000,165000,170000,175000,180000,185000,190000,195000,200000,205000,210000,215000,220000,225000,230000,235000,240000,245000,250000,255000,260000,265000,270000,275000,280000,285000,290000,295000,300000,305000,310000,315000,320000,325000,330000,335000,340000,345000,350000,355000,360000,365000,370000,375000,380000,385000,390000,395000,400000]
   },
-  { id:"PP_4-12",label:"4~12지역 국가 (러시아 등)",
+  { id:"PP_4-12",label:"4-1지역 (러시아)",
     rates:[28000,30500,33000,35500,37400,39000,40500,42500,44000,46000,47500,49000,50500,52000,53500,55000,56500,58000,59500,61000,62500,64000,65500,67000,68500,70000,71500,73000,74500,76000,77500,79000,80500,82000,83500,85000,86500,88000,89500,90500,93000,95500,98000,100500,103000,105500,108000,110500,113000,115500,118000,120500,123000,125500,128000,130500,133000,135500,138000,140500,143000,145500,148000,150500,153000,155500,158000,160500,163000,165500,168000,170500,173000,175500,178000,180500,183000,185500,188000,190500,193000,195500,198000,200500,203000,205500,208000,210500,213000,215500,218000,220500,223000]
   },
 ];
@@ -215,60 +291,33 @@ const INFRONT_FEES = [
   { label: "합포장",      desc: "여러 물품을 하나로 합치기",    fee: "+2,000원" },
 ];
 
-// ── 국제소포 요금 (koreapost.go.kr) ──────────────────────────────────
-// 항공일반소포 중량: 0.5~20kg (0.5kg 단위)
-const PARCEL_AIR_W = ["0.5","1","1.5","2","2.5","3","3.5","4","4.5","5","5.5","6","6.5","7","7.5","8","8.5","9","9.5","10","10.5","11","11.5","12","12.5","13","13.5","14","14.5","15","15.5","16","16.5","17","17.5","18","18.5","19","19.5","20"];
+type Tab = "ems" | "kpacket" | "premium" | "infront";
 
-const PARCEL_AIR_COUNTRIES = [
-  { id:"PA_JP",flag:"🇯🇵",name:"일본",      region:"아시아", rates:[18500,21000,24500,28500,32500,36500,40000,44000,48000,52000,56000,60000,64000,68000,72000,75500,79500,83500,87500,91500,95500,99500,103000,107000,111000,115000,119000,123000,127000,130500,134500,138500,142500,146500,150500,154500,158500,162000,166000,170000] },
-  { id:"PA_CN",flag:"🇨🇳",name:"중국",      region:"아시아", rates:[17000,19500,21000,23500,25000,27500,29000,31000,33000,35000,37000,39000,41000,43000,44500,46000,47500,49000,50500,52000,53500,55000,56500,58000,59500,61000,62500,64000,65500,67000,68500,70000,71500,73000,74500,76000,77500,79000,80500,82000] },
-  { id:"PA_HK",flag:"🇭🇰",name:"홍콩",      region:"아시아", rates:[17000,18000,19500,21000,22500,23500,25000,26000,27500,28500,30000,31500,32500,34000,35000,36500,38000,39000,40500,42000,43000,44500,46000,47000,48500,50000,51000,52500,54000,55000,56500,57500,59000,60500,61500,63000,64500,65500,67000,68000] },
-  { id:"PA_TW",flag:"🇹🇼",name:"대만",      region:"아시아", rates:[14000,16000,18000,20000,20500,22000,23500,25000,26500,28000,29500,31000,32500,34000,35500,37000,38500,40000,41500,43000,44500,46000,47500,49000,50500,52000,53500,55000,56500,58000,59500,61000,62500,64000,65500,67000,68500,70000,71500,73000] },
-  { id:"PA_SG",flag:"🇸🇬",name:"싱가포르",  region:"아시아", rates:[16500,18000,19500,21000,25500,26000,26500,27000,28500,30000,31500,33000,34500,36000,37500,39000,40500,42000,43500,44500,46000,48000,49500,50500,52500,53500,55000,56500,58000,59500,61000,62500,64000,65500,67000,68500,70000,71500,73000,74500] },
-  { id:"PA_MY",flag:"🇲🇾",name:"말레이시아",region:"아시아", rates:[17000,18000,19500,21000,22500,23500,25000,26000,27500,28500,30000,31500,32500,34000,35000,36500,38000,39000,40500,42000,43000,44500,46000,47000,48500,50000,51000,52500,54000,55000,56500,57500,59000,60500,61500,63000,64500,65500,67000,68000] },
-  { id:"PA_TH",flag:"🇹🇭",name:"태국",      region:"아시아", rates:[19500,23000,26500,30000,33500,37000,40500,44000,47500,50500,54000,57500,61000,64500,68000,71500,75000,78500,81500,85000,88500,92000,95500,99000,102500,106000,109500,113000,116500,119500,123000,126500,130000,133500,137000,140000,143500,147000,150500,154000] },
-  { id:"PA_VN",flag:"🇻🇳",name:"베트남",    region:"아시아", rates:[16000,19000,21500,24500,25500,27000,28500,30000,31500,33000,34500,36000,37500,39000,40500,42000,43500,45000,46500,48000,49500,51000,52500,54000,55500,57000,58500,60000,61500,63000,64500,66000,67500,69000,70500,72000,73500,75000,76500,78000] },
-  { id:"PA_PH",flag:"🇵🇭",name:"필리핀",    region:"아시아", rates:[19500,23500,27000,30000,33500,37000,40500,44000,47500,51000,54500,58000,61500,65000,68500,72000,75500,79000,82500,86000,89500,92500,96000,99500,103000,106500,110000,113500,117000,120500,124000,127500,131000,134500,138000,141500,145000,148500,151500,155000] },
-  { id:"PA_ID",flag:"🇮🇩",name:"인도네시아",region:"아시아", rates:[16000,19000,21500,24500,25500,27000,28500,30000,31500,33000,34500,36000,37500,39000,40500,42000,43500,45000,46500,48000,49500,51000,52500,54000,55500,57000,58500,60000,61500,63000,64500,66000,67500,69000,70500,72000,73500,75000,76500,78000] },
-  { id:"PA_US",flag:"🇺🇸",name:"미국",      region:"북미", rates:[26500,31500,36000,41000,45500,50000,55000,59500,64000,69000,73500,78500,83000,87500,92500,97000,102000,106500,111000,116000,120500,125000,129500,134500,139000,144000,148500,153000,158000,162500,167000,172000,176500,181000,186000,190500,195500,200000,205000,209500] },
-  { id:"PA_CA",flag:"🇨🇦",name:"캐나다",    region:"북미", rates:[16500,18000,19500,21000,21000,26000,26500,27000,28500,30000,31500,33000,34500,36000,37500,39000,40500,42000,43500,44500,46000,48000,49500,50500,52500,53500,55000,56500,58000,59500,61000,62500,64000,65500,67000,68500,70000,71500,73000,74500] },
-  { id:"PA_GB",flag:"🇬🇧",name:"영국",      region:"유럽", rates:[26000,30500,32000,34000,35500,37000,40500,44000,47500,51000,54500,58000,61500,65000,68500,72000,75500,79000,82500,86000,89500,93000,96000,100000,103500,107000,110500,114000,117700,121000,124500,128000,131000,135000,138500,142000,145500,149000,152500,156000] },
-  { id:"PA_DE",flag:"🇩🇪",name:"독일",      region:"유럽", rates:[23500,28000,31000,37000,42500,48000,54000,59500,65500,71000,77000,82500,88000,94000,99500,105500,111000,117000,122500,128000,134000,139500,145500,151000,157000,162500,168500,174000,179500,185500,191000,197000,202500,208500,214000,219500,225500,231000,237000,242500] },
-  { id:"PA_FR",flag:"🇫🇷",name:"프랑스",    region:"유럽", rates:[12500,14000,15500,17000,18500,20500,22000,23500,26000,28000,30000,33000,34500,36000,37500,39000,40500,42000,43500,47000,48500,50000,52500,54000,55000,58000,60000,62000,65500,67500,69500,73000,75000,77000,79000,81000,83000,85000,88500,89000] },
-  { id:"PA_ES",flag:"🇪🇸",name:"스페인",    region:"유럽", rates:[19500,23000,26500,30000,33500,37000,40500,44000,47000,50500,54000,57500,61000,64500,68000,71500,75000,78500,81500,85000,88500,92000,95500,99000,102500,106000,109500,113000,116500,119500,123000,126500,130000,133500,137000,140000,143500,147000,150500,154000] },
-  { id:"PA_AU",flag:"🇦🇺",name:"호주",      region:"오세아니아·중남미", rates:[26500,31500,36000,41000,45500,50000,55000,59500,64000,69000,73500,78500,83000,87500,92500,97000,102000,106500,111000,116000,120500,125000,129500,134500,139000,144000,148500,153000,158000,162500,167000,172000,176500,181000,186000,190500,195500,200000,205000,209500] },
-  { id:"PA_NZ",flag:"🇳🇿",name:"뉴질랜드",  region:"오세아니아·중남미", rates:[16500,18000,19500,21000,25500,26000,26500,27000,28500,30000,31500,33000,34500,36000,37500,39000,40500,42000,43500,44500,46000,48000,49500,50500,52500,53500,55000,56500,58000,59500,61000,62500,64000,65500,67000,68500,70000,71500,73000,74500] },
-  { id:"PA_BR",flag:"🇧🇷",name:"브라질",    region:"오세아니아·중남미", rates:[14000,16000,18000,20000,20500,22000,23500,25000,26500,28000,29500,31000,32500,34000,35500,37000,38500,40000,41500,43000,44500,46000,47500,49000,50500,52000,53500,55000,56500,58000,59500,61000,62500,64000,65500,67000,68500,70000,71500,73000] },
-  { id:"PA_RU",flag:"🇷🇺",name:"러시아",    region:"오세아니아·중남미", note:"현재 중단", rates:[17000,20000,23000,25500,26000,27000,29000,30500,32000,33500,35000,36500,38000,39500,41000,42500,44000,45500,47000,50500,52500,54500,56500,58500,60500,62500,64500,66500,68500,70500,72500,74500,76500,78500,80500,82500,84500,86500,88500,90500] },
-  { id:"PA_1Z",flag:"🌏",name:"1지역 국가",  region:"기타 지역", rates:[13500,15500,17000,19000,21000,23000,24500,27000,28500,30500,32500,34500,36500,38500,40500,42500,44500,46500,48500,50000,52000,54000,56000,58000,60000,62000,64000,66000,68000,70000,72000,74000,76000,78000,80000,82000,84000,86000,88000,89000] },
-  { id:"PA_2Z",flag:"🌏",name:"2지역 국가",  region:"기타 지역", rates:[18000,21500,24500,27500,31000,34000,37000,40000,43500,46500,49500,53000,56000,59000,62000,65000,68500,71500,74500,78000,81000,84000,87500,90500,93500,97000,100000,103000,106500,109500,112500,115500,119000,122000,125000,128500,131500,134500,137500,140500,143500,146500,150000,153000,156000,162000,162000,165000,168000,171000] },
-  { id:"PA_3Z",flag:"🌏",name:"3지역 국가",  region:"기타 지역", rates:[20500,24500,28000,31500,35000,39000,42500,46000,49500,53500,57000,60500,64500,68000,71500,75000,78500,82500,86000,89500,93500,97000,100500,104000,108000,111500,115000,118500,122500,126000,129500,133000,136500,140500,144000,147500,151500,155000,158500,162000] },
-  { id:"PA_4Z",flag:"🌏",name:"4지역 국가",  region:"기타 지역", rates:[22000,27500,33500,39000,45500,52000,58500,65000,71500,78000,84500,91000,97500,104500,110500,117500,124000,130500,137000,143500,150000,156500,163000,169500,176000,182500,189000,195500,202000,209000,215000,221500,228500,235000,241500,248000,254500,261000,267500,274000] },
-];
-
-// 선편일반소포 중량: 1~20kg (1kg 단위)
-const PARCEL_SURF_W = ["1","2","4","6","8","10","12","14","16","18","20"];
-
-const PARCEL_SURF_ZONES = [
-  { id:"PS1",label:"1지역 국가", rates:[9900,15500,20000,24500,29000,34000,38500,43000,47500,52500,57000] },
-  { id:"PS2",label:"2지역 국가", rates:[11000,17000,21500,26000,30500,35500,40000,44500,49000,54000,58500] },
-  { id:"PS3",label:"3지역 국가", rates:[12000,18500,24500,30500,37000,43000,49000,55500,61500,67500,74000] },
-  { id:"PS4",label:"4지역 국가", rates:[13000,20000,27500,35500,43000,50500,58500,66000,74000,81500,89000] },
-];
-
-type Tab = "ems" | "kpacket" | "premium" | "parcel" | "infront";
+function PremiumCountryList({ countries }: { countries: readonly string[] }) {
+  return (
+    <div className="flex flex-wrap gap-1 px-4 py-2.5 bg-violet-50/50 border-t border-violet-100">
+      {countries.map((c) => (
+        <span
+          key={c}
+          className="text-[9px] bg-white text-gray-600 px-1.5 py-0.5 rounded border border-violet-100"
+        >
+          {c}
+        </span>
+      ))}
+    </div>
+  );
+}
 
 export default function PricingPage() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("ems");
   const [emsType, setEmsType] = useState<"doc" | "pcl">("pcl");
   const [premiumType, setPremiumType] = useState<"doc" | "parcel">("doc");
-  const [parcelType, setParcelType] = useState<"air" | "surf">("air");
   const [openCountries, setOpenCountries] = useState<Set<string>>(
-    () => new Set(["일본", "중국"])
+    () => new Set()
   );
   const [openZones, setOpenZones] = useState<Set<string>>(
-    () => new Set(["JP_E","CN_E","JP","CN","PA_JP","PA_CN","PP1","PP2","pz1","pz2","PS1"])
+    () => new Set()
   );
 
   function toggleZone(id: string) {
@@ -291,15 +340,16 @@ export default function PricingPage() {
     { id: "ems",     label: "EMS",        color: "text-blue-600",    active: "bg-blue-600 text-white" },
     { id: "kpacket", label: "K-Packet",   color: "text-emerald-600", active: "bg-emerald-600 text-white" },
     { id: "premium", label: "EMS 프리미엄", color: "text-violet-600",  active: "bg-violet-600 text-white" },
-    { id: "parcel",  label: "국제소포",    color: "text-orange-600",  active: "bg-orange-600 text-white" },
     { id: "infront", label: "대행 수수료",  color: "text-gray-600",    active: "bg-gray-700 text-white" },
   ];
+
+  const sidebarContent = <SidebarPricingGuide activeTab={tab === "infront" ? undefined : tab} />;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => router.back()} className="p-1 -ml-1">
             <ArrowLeft size={22} className="text-gray-700" />
           </button>
@@ -317,16 +367,21 @@ export default function PricingPage() {
         </div>
       </div>
 
-      <div className="max-w-[600px] mx-auto px-4 py-4 space-y-4">
+      {/* 데스크톱: 600px 영역 왼쪽 밖 고정 (계산기 위젯과 대칭) */}
+      <aside
+        className="hidden lg:block fixed top-4 max-h-[calc(100vh-2rem)] overflow-y-auto z-[1]"
+        style={{ right: "calc(50% + 300px + 24px)" }}
+      >
+        {sidebarContent}
+      </aside>
 
-        {/* 요금 안내 배너 */}
-        <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white">
-          <p className="font-bold text-base mb-0.5">국제배송 요금 안내</p>
-          <p className="text-white/80 text-xs leading-relaxed">
-            아래 요금은 우체국 기준 참고 요금입니다 (VAT 포함).
-            정확한 요금은 요금 계산기로 확인하세요.
-          </p>
-        </div>
+      {/* 모바일: 상단 인라인 */}
+      <aside className="lg:hidden px-4 pt-4 space-y-4">
+        {sidebarContent}
+      </aside>
+
+      {/* 메인 콘텐츠 (600px 컨테이너 안) */}
+      <main className="px-4 py-4 space-y-4">
 
         {/* 탭 */}
         <div className="bg-white rounded-2xl p-1.5 shadow-sm flex gap-1">
@@ -374,61 +429,58 @@ export default function PricingPage() {
 
             {/* 국가별 아코디언 */}
             {(["아시아","북미","유럽","오세아니아·중남미"] as const).map(region => (
-              <div key={region}>
-                <p className="text-xs font-bold text-gray-500 px-1 mb-1.5">{region}</p>
-                <div className="space-y-2">
-                  {EMS_COUNTRIES.filter(c => c.region === region).map(country => {
-                    const isOpen = openZones.has(country.id);
-                    const rates = emsType === "doc" ? country.doc : country.pcl;
-                    const ws    = emsType === "doc" ? EMS_DOC_W : EMS_PCL_W;
-                    const previewIdx = emsType === "doc" ? 3 : 2; // 1kg preview
-                    return (
-                      <div key={country.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                        <button
-                          onClick={() => toggleZone(country.id)}
-                          className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{country.flag}</span>
-                            <div>
-                              <p className="text-sm font-bold text-gray-800">{country.name}</p>
-                              {country.note && <p className="text-[10px] text-red-500">{country.note}</p>}
+                <div key={region}>
+                  <p className="text-xs font-bold text-gray-500 px-1 mb-1.5">{region}</p>
+                  <div className="space-y-2">
+                    {EMS_COUNTRIES.filter(c => c.region === region).map(country => {
+                      const isOpen = openZones.has(country.id);
+                      const rates = emsType === "doc" ? country.doc : country.pcl;
+                      const ws    = emsType === "doc" ? EMS_DOC_W : EMS_PCL_W;
+                      const previewIdx = emsType === "doc" ? 3 : 2;
+                      return (
+                        <div key={country.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                          <button
+                            onClick={() => toggleZone(country.id)}
+                            className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{country.flag}</span>
+                              <div>
+                                <p className="text-sm font-bold text-gray-800">{country.name}</p>
+                                {country.note && <p className="text-[10px] text-red-500">{country.note}</p>}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-blue-600 font-semibold">
-                              1kg {rates[previewIdx].toLocaleString()}원
-                            </span>
-                            {isOpen
-                              ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
-                              : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
-                          </div>
-                        </button>
-                        {isOpen && (
-                          <table className="w-full text-sm border-t border-gray-50">
-                            <thead>
-                              <tr className="bg-gray-50">
-                                <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량 (kg)</th>
-                                <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">요금 (원)</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                              {ws.map((w, i) => (
-                                <tr key={w} className="hover:bg-gray-50/50">
-                                  <td className="px-4 py-2 text-gray-600 text-sm">{w}kg</td>
-                                  <td className="px-4 py-2 text-right font-semibold text-blue-700">
-                                    {rates[i].toLocaleString()}
-                                  </td>
+                            <div className="flex items-center gap-2">
+                              {isOpen
+                                ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
+                                : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                            </div>
+                          </button>
+                          {isOpen && (
+                            <table className="w-full text-sm border-t border-gray-50">
+                              <thead>
+                                <tr className="bg-gray-50">
+                                  <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량 (kg)</th>
+                                  <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">요금 (원)</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    );
-                  })}
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {ws.map((w, i) => (
+                                  <tr key={w} className="hover:bg-gray-50/50">
+                                    <td className="px-4 py-2 text-gray-600 text-sm">{w}kg</td>
+                                    <td className="px-4 py-2 text-right font-semibold text-blue-700">
+                                      {rates[i].toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
             ))}
 
             {/* 기타 지역 */}
@@ -445,11 +497,11 @@ export default function PricingPage() {
                         onClick={() => toggleZone(zone.id)}
                         className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
                       >
-                        <p className="text-sm font-bold text-gray-800">{zone.label}</p>
+                        <div className="flex-1 pr-2">
+                          <p className="text-sm font-bold text-gray-800">{zone.label}</p>
+                          <p className="text-[11px] text-gray-400 mt-0.5">{zone.countries}</p>
+                        </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-blue-600 font-semibold">
-                            1kg {rates[emsType==="doc"?3:2].toLocaleString()}원
-                          </span>
                           {isOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                         </div>
                       </button>
@@ -508,60 +560,57 @@ export default function PricingPage() {
 
             {/* 지역별 그룹 */}
             {(["아시아","북미","유럽","오세아니아·중남미"] as const).map(region => (
-              <div key={region}>
-                <p className="text-xs font-bold text-gray-500 px-1 mb-1.5">{region}</p>
-                <div className="space-y-2">
-                  {KPACKET_COUNTRIES.filter(c => c.region === region).map(country => {
-                    const isOpen = openZones.has(country.id);
-                    return (
-                      <div key={country.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                        <button
-                          onClick={() => toggleZone(country.id)}
-                          className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xl">{country.flag}</span>
-                            <div>
-                              <p className="text-sm font-bold text-gray-800">{country.name}</p>
-                              {country.note && (
-                                <p className="text-[10px] text-red-500">{country.note}</p>
-                              )}
+                <div key={region}>
+                  <p className="text-xs font-bold text-gray-500 px-1 mb-1.5">{region}</p>
+                  <div className="space-y-2">
+                    {KPACKET_COUNTRIES.filter(c => c.region === region).map(country => {
+                      const isOpen = openZones.has(country.id);
+                      return (
+                        <div key={country.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                          <button
+                            onClick={() => toggleZone(country.id)}
+                            className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-xl">{country.flag}</span>
+                              <div>
+                                <p className="text-sm font-bold text-gray-800">{country.name}</p>
+                                {country.note && (
+                                  <p className="text-[10px] text-red-500">{country.note}</p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-emerald-600 font-semibold">
-                              1kg {country.rates[9].toLocaleString()}원
-                            </span>
-                            {isOpen
-                              ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
-                              : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
-                          </div>
-                        </button>
-                        {isOpen && (
-                          <table className="w-full text-sm border-t border-gray-50">
-                            <thead>
-                              <tr className="bg-gray-50">
-                                <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량 (g)</th>
-                                <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">요금 (원)</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                              {WEIGHTS.map((w, i) => (
-                                <tr key={w} className="hover:bg-gray-50/50">
-                                  <td className="px-4 py-2 text-gray-600 text-sm">{w}g</td>
-                                  <td className="px-4 py-2 text-right font-semibold text-emerald-700">
-                                    {country.rates[i].toLocaleString()}
-                                  </td>
+                            <div className="flex items-center gap-2">
+                              {isOpen
+                                ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
+                                : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                            </div>
+                          </button>
+                          {isOpen && (
+                            <table className="w-full text-sm border-t border-gray-50">
+                              <thead>
+                                <tr className="bg-gray-50">
+                                  <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량 (g)</th>
+                                  <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">요금 (원)</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    );
-                  })}
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {WEIGHTS.map((w, i) => (
+                                  <tr key={w} className="hover:bg-gray-50/50">
+                                    <td className="px-4 py-2 text-gray-600 text-sm">{w}g</td>
+                                    <td className="px-4 py-2 text-right font-semibold text-emerald-700">
+                                      {country.rates[i].toLocaleString()}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
             ))}
 
             <div className="bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
@@ -620,6 +669,35 @@ export default function PricingPage() {
               </div>
             </div>
 
+            {/* 지역별 국가 안내 */}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <button
+                onClick={() => toggleZone("premium-zone-guide")}
+                className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
+              >
+                <p className="text-sm font-bold text-gray-800">🗺️ 지역별 국가 안내</p>
+                {openZones.has("premium-zone-guide")
+                  ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
+                  : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+              </button>
+              {openZones.has("premium-zone-guide") && (
+                <div className="border-t border-gray-100 p-4 space-y-3">
+                  <p className="text-[10px] text-gray-400">
+                    우체국 EMS 프리미엄 공식 지역표 기준 · 도착 국가에 따라 요금 지역이 달라집니다
+                  </p>
+                  {PREMIUM_ZONE_META.map((z) => (
+                    <div key={z.zone} className="rounded-xl border border-violet-100 overflow-hidden">
+                      <div className="bg-violet-50 px-3 py-2 flex items-center justify-between">
+                        <p className="text-xs font-bold text-violet-800">{z.label}</p>
+                        <p className="text-[10px] text-violet-500">{z.countries.length}개국</p>
+                      </div>
+                      <PremiumCountryList countries={z.countries} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* 비서류 — 지역별 (0.5~70kg) */}
             {premiumType === "parcel" && (
               <>
@@ -630,26 +708,31 @@ export default function PricingPage() {
                 </div>
                 {PREMIUM_PCL_ZONES.map(zone => {
                   const isOpen = openZones.has(zone.id);
+                  const meta = premiumMetaByPclId[zone.id];
                   return (
                     <div key={zone.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       <button
                         onClick={() => toggleZone(zone.id)}
                         className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
                       >
-                        <div>
+                        <div className="flex-1 pr-2">
                           <p className="text-sm font-bold text-gray-800">{zone.label}</p>
+                          {meta && (
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              {premiumZoneSummary(meta.countries)}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-violet-600 font-semibold">
-                            1kg {zone.rates[1].toLocaleString()}원
-                          </span>
                           {isOpen
                             ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
                             : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
                         </div>
                       </button>
                       {isOpen && (
-                        <table className="w-full text-sm border-t border-gray-50">
+                        <>
+                          {meta && <PremiumCountryList countries={meta.countries} />}
+                          <table className="w-full text-sm border-t border-gray-50">
                           <thead>
                             <tr className="bg-gray-50">
                               <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량 (kg)</th>
@@ -667,6 +750,7 @@ export default function PricingPage() {
                             ))}
                           </tbody>
                         </table>
+                        </>
                       )}
                     </div>
                   );
@@ -679,22 +763,29 @@ export default function PricingPage() {
               <>
                 {PREMIUM_DOC_ZONES.map(zone => {
                   const isOpen = openZones.has(zone.id);
+                  const meta = premiumMetaByDocId[zone.id];
                   return (
                     <div key={zone.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
                       <button
                         onClick={() => toggleZone(zone.id)}
                         className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
                       >
-                        <div>
+                        <div className="flex-1 pr-2">
                           <p className="text-sm font-bold text-gray-800">{zone.label}</p>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{zone.countries}</p>
+                          {meta && (
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                              {premiumZoneSummary(meta.countries)}
+                            </p>
+                          )}
                         </div>
                         {isOpen
                           ? <ChevronUp size={16} className="text-gray-400 shrink-0 ml-2" />
                           : <ChevronDown size={16} className="text-gray-400 shrink-0 ml-2" />}
                       </button>
                       {isOpen && (
-                        <table className="w-full text-sm border-t border-gray-50">
+                        <>
+                          {meta && <PremiumCountryList countries={meta.countries} />}
+                          <table className="w-full text-sm border-t border-gray-50">
                           <thead>
                             <tr className="bg-gray-50">
                               <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량</th>
@@ -710,163 +801,7 @@ export default function PricingPage() {
                             ))}
                           </tbody>
                         </table>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* 국제소포 요금표 */}
-        {tab === "parcel" && (
-          <div className="space-y-3">
-            {/* 항공/선편 토글 */}
-            <div className="bg-white rounded-2xl p-1.5 shadow-sm flex gap-1">
-              <button
-                onClick={() => setParcelType("air")}
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  parcelType === "air"
-                    ? "bg-orange-600 text-white"
-                    : "text-orange-600"
-                }`}
-              >
-                ✈️ 항공일반소포
-              </button>
-              <button
-                onClick={() => setParcelType("surf")}
-                className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                  parcelType === "surf"
-                    ? "bg-orange-600 text-white"
-                    : "text-orange-600"
-                }`}
-              >
-                🚢 선편일반소포
-              </button>
-            </div>
-
-            <div className="flex items-start gap-2 bg-orange-50 rounded-xl px-3 py-2.5 border border-orange-100">
-              <Info size={13} className="text-orange-500 shrink-0 mt-0.5" />
-              <div className="text-[11px] text-orange-700 space-y-0.5">
-                {parcelType === "air" && (
-                  <>
-                    <p>• 최대 20kg · 항공편 · 추적 가능</p>
-                    <p>• 배달 소요: 아시아 7~10일, 유럽/미주 10~14일</p>
-                  </>
-                )}
-                {parcelType === "surf" && (
-                  <>
-                    <p>• 최대 20kg · 선박편 · 저렴한 요금</p>
-                    <p>• 배달 소요: 약 1~3개월 (국가별 상이)</p>
-                  </>
-                )}
-                <p className="text-orange-500 font-medium">※ 참고 요금입니다. 정확한 요금은 계산기로 확인하세요</p>
-              </div>
-            </div>
-
-            {/* 항공일반소포 */}
-            {parcelType === "air" && (
-              <>
-                {(["아시아","북미","유럽","오세아니아·중남미","기타 지역"] as const).map(region => (
-                  <div key={region}>
-                    <p className="text-xs font-bold text-gray-500 px-1 mb-1.5">{region}</p>
-                    <div className="space-y-2">
-                      {PARCEL_AIR_COUNTRIES.filter(c => c.region === region).map(country => {
-                        const isOpen = openZones.has(country.id);
-                        return (
-                          <div key={country.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                            <button
-                              onClick={() => toggleZone(country.id)}
-                              className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="text-xl">{country.flag}</span>
-                                <div>
-                                  <p className="text-sm font-bold text-gray-800">{country.name}</p>
-                                  {country.note && <p className="text-[10px] text-red-500">{country.note}</p>}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-orange-600 font-semibold">
-                                  1kg {country.rates[1].toLocaleString()}원
-                                </span>
-                                {isOpen
-                                  ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
-                                  : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
-                              </div>
-                            </button>
-                            {isOpen && (
-                              <table className="w-full text-sm border-t border-gray-50">
-                                <thead>
-                                  <tr className="bg-gray-50">
-                                    <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량 (kg)</th>
-                                    <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">요금 (원)</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                  {PARCEL_AIR_W.map((w, i) => (
-                                    <tr key={w} className="hover:bg-gray-50/50">
-                                      <td className="px-4 py-2 text-gray-600 text-sm">{w}kg</td>
-                                      <td className="px-4 py-2 text-right font-semibold text-orange-700">
-                                        {country.rates[i].toLocaleString()}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-
-            {/* 선편일반소포 */}
-            {parcelType === "surf" && (
-              <>
-                {PARCEL_SURF_ZONES.map(zone => {
-                  const isOpen = openZones.has(zone.id);
-                  return (
-                    <div key={zone.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                      <button
-                        onClick={() => toggleZone(zone.id)}
-                        className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50 transition-colors"
-                      >
-                        <div>
-                          <p className="text-sm font-bold text-gray-800">{zone.label}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-orange-600 font-semibold">
-                            1kg {zone.rates[0].toLocaleString()}원
-                          </span>
-                          {isOpen
-                            ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
-                            : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
-                        </div>
-                      </button>
-                      {isOpen && (
-                        <table className="w-full text-sm border-t border-gray-50">
-                          <thead>
-                            <tr className="bg-gray-50">
-                              <th className="text-left px-4 py-2 text-xs text-gray-500 font-medium">중량 (kg)</th>
-                              <th className="text-right px-4 py-2 text-xs text-gray-500 font-medium">요금 (원)</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-gray-50">
-                            {PARCEL_SURF_W.map((w, i) => (
-                              <tr key={w} className="hover:bg-gray-50/50">
-                                <td className="px-4 py-2 text-gray-600 text-sm">{w}kg</td>
-                                <td className="px-4 py-2 text-right font-semibold text-orange-700">
-                                  {zone.rates[i].toLocaleString()}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                        </>
                       )}
                     </div>
                   );
@@ -979,7 +914,7 @@ export default function PricingPage() {
           </div>
         </div>
 
-      </div>
+      </main>
     </div>
   );
 }

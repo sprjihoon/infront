@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText, ShieldAlert, Zap } from "lucide-react";
 import { getCustomsInfo } from "@/lib/customs-data";
+import { snapDocWeightG } from "@/lib/ems/client";
 
 const PARCEL_SERVICES = [
   { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-blue-600",    maxW: 30000 },
-  { id: "ems-premium", label: "EMS프리미엄", premiumcd: "32", em_ee: "em", color: "bg-violet-600",  maxW: 30000 },
+  { id: "ems-premium", label: "EMS프리미엄", premiumcd: "32", em_ee: "em", color: "bg-violet-600",  maxW: 70000 },
   { id: "k-packet",    label: "K-Packet",   premiumcd: "14", em_ee: "rl", color: "bg-emerald-600", maxW: 2000  },
 ] as const;
 
 const DOC_SERVICES = [
-  { id: "ems-doc", label: "EMS 서류", premiumcd: "31", em_ee: "ee", color: "bg-blue-400", maxW: 30000 },
+  { id: "ems-doc", label: "EMS 서류", premiumcd: "31", em_ee: "ee", color: "bg-blue-400", maxW: 2000 },
 ] as const;
 
 const POPULAR = [
@@ -55,7 +56,10 @@ export default function SidebarCalculator() {
   const volWeight = length && width && height
     ? Math.round(parseFloat(length) * parseFloat(width) * parseFloat(height) / 6)
     : 0;
-  const applied = Math.max(parseFloat(weight) || 0, volWeight);
+  const realWeight = parseFloat(weight) || 0;
+  const applied = docType === "doc"
+    ? snapDocWeightG(realWeight)
+    : Math.max(realWeight, volWeight);
 
   const services = docType === "doc" ? DOC_SERVICES : PARCEL_SERVICES;
 
@@ -78,9 +82,15 @@ export default function SidebarCalculator() {
 
     // 동시 요청 시 우체국 EMS 서버가 오류를 반환하므로 순차 처리
     const out: ServiceResult[] = [...initial];
+    const isDoc = docType === "doc";
     try {
       for (let i = 0; i < services.length; i++) {
         const s = services[i];
+        if (isDoc && realWeight > s.maxW) {
+          out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
+          setResults([...out]);
+          continue;
+        }
         if (applied > s.maxW) {
           out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
           setResults([...out]);
@@ -89,9 +99,9 @@ export default function SidebarCalculator() {
         const p = new URLSearchParams({
           premiumcd: s.premiumcd, em_ee: s.em_ee,
           countrycd: country, totweight: String(Math.round(applied)),
-          ...(length ? { boxlength: length } : {}),
-          ...(width  ? { boxwidth:  width  } : {}),
-          ...(height ? { boxheight: height } : {}),
+          ...(!isDoc && length ? { boxlength: length } : {}),
+          ...(!isDoc && width  ? { boxwidth:  width  } : {}),
+          ...(!isDoc && height ? { boxheight: height } : {}),
         });
         try {
           const res  = await fetch(`/api/ems/quote?${p}`);
@@ -118,7 +128,7 @@ export default function SidebarCalculator() {
   const customsInfo = getCustomsInfo(country);
 
   return (
-    <div className="sticky top-4 w-72 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none flex flex-col max-h-[calc(100vh-100px)]">
+    <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none flex flex-col max-h-[calc(100vh-2rem)]">
       {/* 헤더 — 항상 상단 고정 */}
       <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 flex items-center gap-2 shrink-0">
         <Calculator size={16} className="text-white" />

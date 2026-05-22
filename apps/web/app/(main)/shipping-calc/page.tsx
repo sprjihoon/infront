@@ -8,6 +8,8 @@ import {
   ShieldAlert, Zap,
 } from "lucide-react";
 import { getCustomsInfo } from "@/lib/customs-data";
+import { snapDocWeightG } from "@/lib/ems/client";
+import SidebarPricingGuide from "@/components/ui/SidebarPricingGuide";
 
 const SERVICES = [
   {
@@ -32,7 +34,7 @@ const SERVICES = [
     textColor: "text-blue-500",
     badgeBg: "bg-sky-50",
     badgeBorder: "border-sky-200",
-    maxWeight: 30000,
+    maxWeight: 2000,
   },
   {
     id: "ems-premium",
@@ -44,7 +46,7 @@ const SERVICES = [
     textColor: "text-violet-700",
     badgeBg: "bg-violet-50",
     badgeBorder: "border-violet-200",
-    maxWeight: 30000,
+    maxWeight: 70000,
   },
   {
     id: "k-packet",
@@ -166,7 +168,18 @@ export default function ShippingCalcPage() {
     try {
       const services: Record<string, ServiceResult> = {};
       for (const svc of SERVICES) {
-        services[svc.id] = await fetchService(svc, appliedWeight, countryCode, length, width, height);
+        const isDoc = svc.em_ee === "ee";
+        if (isDoc && realWeight > svc.maxWeight) {
+          services[svc.id] = { status: "overweight" };
+          continue;
+        }
+        const wg = isDoc ? snapDocWeightG(realWeight) : appliedWeight;
+        services[svc.id] = await fetchService(
+          svc, wg, countryCode,
+          isDoc ? undefined : length,
+          isDoc ? undefined : width,
+          isDoc ? undefined : height,
+        );
       }
       setResults({ countryCode, appliedWeight, services });
     } finally {
@@ -195,7 +208,7 @@ export default function ShippingCalcPage() {
     <div className="min-h-screen bg-gray-50 pb-24">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
+        <div className="flex items-center gap-3 px-4 py-3">
           <button onClick={() => router.back()} className="p-1 -ml-1">
             <ArrowLeft size={22} className="text-gray-700" />
           </button>
@@ -206,7 +219,20 @@ export default function ShippingCalcPage() {
         </div>
       </div>
 
-      <div className="max-w-[600px] mx-auto px-4 py-4 space-y-4">
+      {/* 데스크톱: 600px 영역 왼쪽 — 요금 안내 위젯 */}
+      <aside
+        className="hidden lg:block fixed top-4 max-h-[calc(100vh-2rem)] overflow-y-auto z-[1]"
+        style={{ right: "calc(50% + 300px + 24px)" }}
+      >
+        <SidebarPricingGuide />
+      </aside>
+
+      {/* 모바일: 상단 인라인 */}
+      <aside className="lg:hidden px-4 pt-4">
+        <SidebarPricingGuide />
+      </aside>
+
+      <div className="px-4 py-4 space-y-4">
 
         {/* 목적국 */}
         <section className="bg-white rounded-2xl p-4 shadow-sm">
@@ -457,9 +483,9 @@ export default function ShippingCalcPage() {
                           </span>
                         )}
                       </div>
-                      {svc.maxWeight < 30000 && (
+                      {svc.maxWeight <= 2000 && (
                         <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
-                          최대 {svc.maxWeight / 1000}kg
+                          최대 {svc.maxWeight / 1000}kg{svc.em_ee === "ee" ? " · 실중량 기준" : ""}
                         </p>
                       )}
                     </div>

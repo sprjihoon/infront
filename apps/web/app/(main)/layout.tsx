@@ -15,7 +15,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* ??? ?? ? lg ???? ?? ???? ?? ?? */}
       {/* calc(50% + 300px + 24px) = ?? ?? + ?? ?? + gap */}
       <div
-        className="hidden lg:block fixed top-4"
+        className="hidden lg:block fixed top-4 w-72 max-h-[calc(100vh-2rem)] z-[1]"
         style={{ left: "calc(50% + 300px + 24px)" }}
       >
         <SidebarWrapper />
