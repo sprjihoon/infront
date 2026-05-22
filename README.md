@@ -1,6 +1,6 @@
 # 인프론트 (Infront)
 
-> 국내 수거 → 입고 검수 → 합포장/재포장 → 국제배송 대행 플랫폼
+> 국내 수거 → 창고 입고 → 검수 → 합포장/재포장 → 국제배송 대행 플랫폼
 
 ---
 
@@ -47,12 +47,11 @@
        ↓
 [N개 물품 해외배송 신청] 버튼
        ↓
-해외배송 신청 플로우 (5단계)
+해외배송 신청 플로우 (다단계)
   Step 1. 물품 확인
-  Step 2. 배송 방법 + 포장 옵션
+  Step 2. 배송 방법 + 포장 옵션 선택
   Step 3. 해외 배송지 선택 / 입력
   Step 4. 인보이스 (세관신고 물품 목록)
-  Step 5. 예상 견적 확인 + 신청
        ↓
 창고 검수 → 견적 확정 알림 (QUOTE_SENT)
        ↓
@@ -156,12 +155,12 @@ infront/
 ├── apps/
 │   ├── web/              # Next.js 16 고객 웹앱 (infront.kr)
 │   ├── admin/            # Next.js 관리자 콘솔 (admin.infront.kr)
-│   ├── mobile-cap/       # Capacitor WebView 앱 쉘 (iOS / Android)
+│   ├── mobile-cap/       # Capacitor WebView 앱 쉘 (iOS / Android) — 예정
 │   │   ├── ios/          # Xcode 프로젝트
 │   │   ├── android/      # Android 프로젝트
 │   │   └── capacitor.config.ts
-│   ├── edge/             # Supabase Edge Functions (Deno)
-│   └── sql/              # Postgres DDL 및 마이그레이션
+│   ├── edge/             # Supabase Edge Functions (Deno) — 예정
+│   └── sql/              # Postgres DDL 및 마이그레이션 (001~014)
 ├── vercel.json
 └── README.md
 ```
@@ -182,28 +181,100 @@ infront/
 ## 🧩 기술 스택
 
 ### 고객 웹 · 앱 (`apps/web` + `apps/mobile-cap`)
-- **Framework**: Next.js 16 (App Router)
-- **UI**: Tailwind CSS, Lucide Icons
-- **상태관리**: TanStack Query (React Query)
-- **인증**: Supabase SSR (`@supabase/ssr`)
-- **결제**: Toss Payments SDK (`@tosspayments/tosspayments-sdk`)
-- **앱 래핑**: Capacitor (WebView — iOS/Android 동시 대응)
-- **배포**: Vercel
+
+| 분류 | 기술 |
+|------|------|
+| Framework | Next.js 16.2 (App Router), React 19 |
+| UI | Tailwind CSS 4, Lucide Icons, 모바일 퍼스트 (max-w-600px) |
+| 상태관리 | TanStack Query (React Query) |
+| 인증 | Supabase SSR (`@supabase/ssr`) |
+| 결제 | Toss Payments SDK (`@tosspayments/tosspayments-sdk`) |
+| 앱 래핑 | Capacitor (WebView — iOS/Android) |
+| 배포 | Vercel (ICN1 Seoul 리전) |
 
 ### 관리자 (`apps/admin`)
-- **Framework**: Next.js (App Router)
-- **UI**: Tailwind CSS, shadcn-ui, Recharts
-- **영상 업로드**: tus-js-client (Cloudflare Stream 청크 업로드)
-- **영상 재생**: hls.js (HLS 스트리밍)
-- **배포**: Vercel
 
-### 공통 백엔드
-- **Database & Auth**: Supabase (Postgres + RLS + Auth)
-- **영상 CDN**: Cloudflare Stream
-- **사진 스토리지**: Supabase Storage
-- **물류 (국내)**: 우체국 방문수거 API (ePost) + 송장 추적
-- **물류 (국제)**: EMS / EMS프리미엄 / K-Packet API
-- **Push 알림**: Firebase Cloud Messaging (FCM)
+| 분류 | 기술 |
+|------|------|
+| Framework | Next.js 16 (App Router) |
+| UI | Tailwind CSS 4 |
+| 인증 | 이메일 화이트리스트 (`ADMIN_EMAILS` 환경변수) |
+| DB 접근 | Supabase Service Role Key (RLS 우회) |
+| 영상 업로드 | tus-js-client (Cloudflare Stream 청크 업로드) — 예정 |
+| 영상 재생 | hls.js (HLS 스트리밍) — 예정 |
+
+### 공통 백엔드 · 외부 연동
+
+| 분류 | 기술 |
+|------|------|
+| Database & Auth | Supabase (Postgres + RLS + Auth) |
+| 물류 (국내) | 우체국 ePost API — 방문수거, 취소, 상태조회 (SEED128 암호화) |
+| 물류 (국제) | EMS / EMS프리미엄 / K-Packet API |
+| 주소 검색 | 다음 우편번호 API |
+| 결제 | Toss Payments |
+| 영상 CDN | Cloudflare Stream — 예정 |
+| 사진 스토리지 | Supabase Storage — 예정 |
+| Push 알림 | Firebase Cloud Messaging (FCM) — 예정 |
+
+---
+
+## 🖥 고객 웹앱 페이지 구조 (`apps/web`)
+
+| 경로 | 페이지 | 설명 |
+|------|--------|------|
+| `/home` | 홈 | 최근 주문 현황, 창고 요약, 빠른 링크 |
+| `/pickup` | 수거 신청 | 우체국 ePost 방문수거 신청, 주소 선택 |
+| `/warehouse` | 마이창고 | 입고 물품 목록, 상태 필터, 다중 선택 |
+| `/warehouse/[id]` | 물품 상세 | 인라인 수정, 추적, 부가 서비스 |
+| `/shipping-request` | 출고 신청 | 다단계 플로우 (물품→옵션→주소→인보이스) |
+| `/orders` | 배송현황 | 주문 목록, 상태 표시, 운송장 조회 |
+| `/mypage` | MY | 프로필, 고객번호, 입고주소 확인 |
+| `/addresses` | 주소록 | 수거지·해외 배송지 관리 |
+| `/register-parcel` | 물품 등록 | 수동 물품 등록 |
+| `/return-request` | 반품 신청 | 반품 요청 UI |
+| `/shipping-calc` | 배송비 계산 | 해외 배송비 예상 계산기 |
+| `/postcode` | 주소 검색 | 다음 우편번호 검색 래퍼 |
+| `/payment/success` | 결제 성공 | Toss 결제 결과 처리 |
+| `/payment/fail` | 결제 실패 | Toss 결제 실패 처리 |
+| `/login`, `/signup` | 인증 | Supabase 이메일 인증 |
+
+**하단 탭바 (6탭):** 홈 / 수거신청 / 마이창고 / 출고신청 / 배송현황 / MY
+
+**사이드바 위젯 (lg+ 데스크탑):** EMS 요금 계산기 / 요율표 / 통관 정보
+
+---
+
+## 🛠 고객 API 라우트 (`apps/web/app/api/`)
+
+| 엔드포인트 | 메서드 | 역할 |
+|-----------|--------|------|
+| `/api/pickup` | POST | 우체국 수거 신청 |
+| `/api/pickup/[id]` | DELETE | 수거 취소 (ePost + DB) |
+| `/api/pickup/[id]/status` | GET | 수거 상태 조회 (GetResInfo) |
+| `/api/parcels` | POST | 물품 등록 |
+| `/api/parcels/[id]` | PATCH | 물품 수정 |
+| `/api/parcels/[id]/service-requests` | GET, POST | 물품별 부가 서비스 |
+| `/api/parcels/sync-tracking` | POST | 국내 추적 이벤트 동기화 |
+| `/api/orders` | GET, POST | 주문 목록 조회 / 생성 |
+| `/api/ems/nations` | GET | EMS 배송 가능 국가 목록 |
+| `/api/ems/quote` | GET, POST | EMS/K-Packet 배송비 견적 |
+| `/api/ems/apply` | POST | EMS 접수 등록 |
+| `/api/payment/confirm` | POST | Toss 결제 승인 |
+| `/api/return-requests` | GET, POST | 반품 신청 |
+
+---
+
+## 🏢 관리자 콘솔 페이지 구조 (`apps/admin`)
+
+| 경로 | 페이지 | 상태 |
+|------|--------|------|
+| `/login` | 관리자 로그인 | ✅ |
+| `/parcels` | 입고 물품 목록 | ✅ (상태 필터, 검색) |
+| `/parcels/[id]` | 물품 상세 | ✅ |
+| `/orders` | 국제 주문 목록 | ✅ |
+| `/orders/[id]` | 주문 상세 | ✅ |
+| `/orders/[id]/label` | 배송 라벨 | ✅ |
+| `/returns` | 반품 신청 목록 | ✅ |
 
 ---
 
@@ -229,6 +300,15 @@ infront/
 | `DELIVERED` | 배송완료 | 해외 수취인 수령 |
 | `CANCELLED` | 취소 | 취소 처리 |
 
+### parcels 수거 상태
+
+| 상태 | 설명 |
+|---|---|
+| `PICKUP_REQUESTED` | 수거 신청 완료 |
+| `PICKUP_CANCELLED` | 수거 취소 처리 완료 |
+| `IN_TRANSIT` | 국내 운송 중 |
+| `INBOUND` | 창고 입고 완료 |
+
 ### return_requests 상태
 
 | 상태 | 설명 |
@@ -243,32 +323,24 @@ infront/
 
 ---
 
-## 🗄 DB 스키마
+## 🗄 DB 스키마 (마이그레이션 001~014)
 
-```
-001_init.sql         customers, parcels, orders, order_parcels,
-                     parcel_media, packaging_requests, payments,
-                     notifications, RLS, 고객번호 자동생성 트리거
-
-002_pickup.sql       parcels: 수거 관련 컬럼 추가
-                     (pickup_tracking_no, pickup_address, epost_*)
-
-003_ems.sql          parcels: EMS 관련 컬럼 추가
-                     (ems_regino, ems_fee, ems_country, ems_applied_at)
-
-004_addresses.sql    customer_addresses 테이블
-                     (type: pickup | overseas, 국내/해외 주소 분리)
-
-005_services.sql     services          서비스 카탈로그 (코드, 요금, 카테고리)
-                     order_services    주문별 서비스 항목
-                     return_requests   반품 요청 (시점별 상태 관리)
-                     inspection_results 검수 결과 (체크리스트 JSONB)
-                     customers.auth_user_id 컬럼 추가
-
-006_fix_addresses_rls.sql
-                     customer_addresses RLS 수정
-                     (auth_user_id 참조 → auth.uid() 직접 사용)
-```
+| 파일 | 내용 |
+|------|------|
+| `001_init.sql` | 핵심 테이블: customers, parcels, orders, order_parcels, parcel_media, packaging_requests, payments, notifications, RLS, 고객번호 자동생성 트리거 |
+| `002_pickup.sql` | parcels: 수거 관련 컬럼 (pickup_tracking_no, pickup_address, epost_*) |
+| `003_ems.sql` | parcels: EMS 관련 컬럼 (ems_regino, ems_fee, ems_country, ems_applied_at) |
+| `004_addresses.sql` | customer_addresses 테이블 (type: pickup \| overseas) |
+| `005_services.sql` | services 카탈로그, order_services, return_requests, inspection_results, customers.auth_user_id |
+| `006_fix_addresses_rls.sql` | customer_addresses RLS 수정 (auth.uid() 직접 참조) |
+| `007_box_orders.sql` | 빈 박스 배송 주문 테이블 |
+| `008_parcel_registration.sql` | 고객 직접 물품 등록 지원 |
+| `009_parcel_tracking.sql` | 국내 추적 이벤트 테이블 |
+| `010_shipping_boxes.sql` | 다중 박스 출고 (shipping_boxes) |
+| `011_parcel_services.sql` | 물품별 부가 서비스 |
+| `012_orders_ems_fields.sql` | orders: EMS 관련 필드 추가 |
+| `013_return_requests_v2.sql` | 반품 요청 v2 스키마 |
+| `014_epost_order_no.sql` | epost_order_no 컬럼 (GetResInfo 상태 조회용) |
 
 ### 핵심 테이블 관계
 
@@ -278,9 +350,12 @@ customers (1) ──< orders (N)               해외배송 주문 묶음
 orders (N) ──< order_parcels >── parcels   합포장 M:N 연결
 orders (1) ──< order_services (N)          주문별 부가 서비스
 orders (1) ──< payments (N)                결제 내역
+parcels (1) ──< parcel_services (N)        물품별 부가 서비스
 parcels (1) ──< inspection_results (N)     검수 결과
 parcels (1) ──< return_requests (N)        반품 요청
+parcels (1) ──< parcel_tracking (N)        국내 추적 이벤트
 customers (1) ──< customer_addresses (N)   수거지/해외 주소록
+orders (1) ──< shipping_boxes (N)          출고 박스 정보
 parcels/orders ──< parcel_media            사진/영상 미디어
 ```
 
@@ -316,42 +391,53 @@ parcels/orders ──< parcel_media            사진/영상 미디어
 
 ---
 
-## 👤 고객 기능
+## 👤 고객 기능 현황
 
 | 기능 | 상태 | 설명 |
 |---|---|---|
 | 회원가입 / 로그인 | ✅ 완료 | 이메일, Supabase Auth |
-| 고객번호 발급 | ✅ 완료 | 가입 시 자동 발급 (예: `SPB-20260518-0001`) |
+| 고객번호 발급 | ✅ 완료 | 가입 시 자동 발급 (예: `IFT-20260518-0001`) |
 | 개인 입고주소 제공 | ✅ 완료 | 고객번호 기반 전용 입고주소 |
 | 수거 신청 | ✅ 완료 | 우체국 방문수거 API, 저장된 주소 선택 |
+| 수거 취소 | ✅ 완료 | ePost API 연동 취소 + DB 상태 업데이트 |
+| 수거 상태 조회 | ✅ 완료 | GetResInfo API 실시간 상태 폴링 |
 | 즉시배송 옵션 | ✅ 완료 | 수거 신청 시 해외배송 플로우 바로 진입 |
 | 마이창고 | ✅ 완료 | 입고 물품 목록, 상태 필터, 검색 |
-| 물품 선택 + 배송 신청 | ✅ 완료 | 체크박스 선택 → FAB 버튼 |
-| 해외배송 신청 (5단계) | ✅ 완료 | 배송옵션→배송지→인보이스→견적 |
+| 물품 직접 등록 | ✅ 완료 | 수동 물품 등록 폼 |
+| 물품 선택 + 배송 신청 | ✅ 완료 | 체크박스 다중 선택 → FAB 버튼 |
+| 해외배송 신청 (다단계) | ✅ 완료 | 배송옵션→배송지→인보이스 + 다중 박스 지원 |
 | 해외 배송지 주소록 | ✅ 완료 | 저장/수정/삭제, 기본 주소 설정 |
+| 배송비 계산기 | ✅ 완료 | 사이드바 위젯 + 전용 페이지, 국가·무게별 EMS 견적 |
 | 배송현황 (orders) | ✅ 완료 | 주문 목록, 상태 표시, 운송장 조회 |
 | 결제 (Toss) | ✅ 완료 | 카드 결제, 결제 확인 API |
+| 반품 신청 (UI) | ✅ 완료 | 반품 신청 폼 (백엔드 연동 진행 중) |
 | 검수검품 서비스 신청 | 🔲 예정 | 의류/일반 검수 옵션 선택 |
 | 빈 박스 배송 신청 | 🔲 예정 | 소/중/대 박스 국내 배송 |
-| 반품 신청 | 🔲 예정 | 시점별 반품 플로우 |
 | 물품 사진/영상 확인 | 🔲 예정 | 입고영상·검품사진·출고영상 타임라인 |
 | FCM 푸시 알림 | 🔲 예정 | 단계별 상태 알림 |
 
 ---
 
-## 🛠 관리자 기능
+## 🛠 관리자 기능 현황
 
 | 기능 | 상태 | 설명 |
 |---|---|---|
-| 접수건 관리 | 🔲 예정 | 상태별 필터, 검색, 벌크 상태변경 |
+| 관리자 로그인 | ✅ 완료 | 이메일 화이트리스트 인증 |
+| 입고 물품 목록 | ✅ 완료 | 상태별 필터, 검색 |
+| 물품 상세 조회 | ✅ 완료 | 물품 정보, 상태 변경 |
+| 국제 주문 목록 | ✅ 완료 | 주문 목록, 상태 표시 |
+| 주문 상세 조회 | ✅ 완료 | 주문 정보, 물품 목록 |
+| 배송 라벨 조회 | ✅ 완료 | 라벨 출력 페이지 |
+| 반품 신청 목록 | ✅ 완료 | 반품 현황 조회 |
+| EMS 접수 API | ✅ 완료 | 세관신고 데이터 자동 매핑 |
+| 접수건 벌크 상태 변경 | 🔲 예정 | 다중 선택 상태 변경 |
 | 국내 송장 매칭 | 🔲 예정 | 스캔 → 고객 자동 매칭 |
-| 오픈박스 영상 업로드 | 🔲 예정 | Cloudflare Stream (tus 청크 업로드) |
+| 오픈박스 영상 업로드 | 🔲 예정 | Cloudflare Stream tus 청크 업로드 |
 | 검수 결과 입력 | 🔲 예정 | 체크리스트 + 사진 업로드 |
 | 발송 가능/불가/보류 처리 | 🔲 예정 | 보류 사유 → 고객 자동 알림 |
 | 실측 무게/부피 입력 | 🔲 예정 | 부피중량 자동 계산 |
 | 견적 확정 + 결제 요청 | 🔲 예정 | QUOTE_SENT → 고객 알림 |
-| 반품 처리 | 🔲 예정 | 검수→포장→발송→완료 처리 |
-| EMS/K-Packet 접수 | 🔲 예정 | 세관신고 데이터 자동 매핑 |
+| 반품 처리 워크플로우 | 🔲 예정 | 검수→포장→발송→완료 |
 | 국제 운송장 등록 | 🔲 예정 | 등록 즉시 고객 알림 |
 | 통계 대시보드 | 🔲 예정 | 접수건수, 매출, 국가별, 서비스별 |
 
@@ -376,41 +462,45 @@ Next.js 웹앱
 
 ### Phase 1 — 고객 핵심 플로우 ✅ 완료
 
-- [x] Supabase 스키마 + RLS (001~006.sql)
+- [x] Supabase 스키마 + RLS (001~014.sql, 107+ 커밋)
 - [x] 회원가입 → 고객번호/입고주소 자동 발급
 - [x] 수거 신청 (우체국 ePost API 연동)
+- [x] 수거 취소 + 상태 조회 (GetResInfo)
 - [x] 마이창고 (입고현황, 물품 선택, 상태 필터)
-- [x] 해외배송 신청 5단계 플로우
+- [x] 물품 직접 등록
+- [x] 해외배송 신청 다단계 플로우 (다중 박스 지원)
 - [x] 해외 배송지 주소록 (저장/수정/삭제)
 - [x] 인보이스 작성 (세관신고 물품 목록)
-- [x] EMS 배송비 자동 견적 조회
+- [x] EMS 배송비 자동 견적 조회 + 사이드바 계산기
 - [x] 주문 생성 API (`POST /api/orders`)
 - [x] 배송현황 페이지 (주문 목록 + 상태)
 - [x] 결제 (Toss Payments SDK + confirm API)
 - [x] 즉시배송 옵션 (수거 신청 시 바로 배송 플로우 진입)
-- [x] 서비스 카탈로그 DB 설계 (services, order_services)
-- [x] 반품 요청 DB 설계 (return_requests)
+- [x] 서비스 카탈로그 DB 설계 (services, order_services, parcel_services)
+- [x] 반품 요청 DB 설계 + 신청 UI
 - [x] 검수 결과 DB 설계 (inspection_results)
+- [x] 국내 추적 이벤트 테이블
+- [x] 관리자: 입고/주문/반품 기본 CRUD 화면
+- [x] 관리자: EMS 접수 API
 
-### Phase 2 — 부가 서비스 + 관리자
+### Phase 2 — 부가 서비스 + 관리자 워크플로우
 
 - [ ] 검수검품 서비스 신청 UI
-- [ ] 빈 박스 배송 신청 UI
-- [ ] 반품 신청 플로우 (시점별)
-- [ ] 관리자: 입고 처리 + 오픈박스 영상 업로드
-- [ ] 관리자: 검수 결과 입력 + 사진 업로드
-- [ ] 관리자: 실측 → 견적 확정 → 결제 요청
+- [ ] 빈 박스 배송 신청 UI + 관리자 처리
+- [ ] 반품 신청 전체 플로우 (시점별 처리)
+- [ ] 관리자: 입고 처리 + 오픈박스 영상 업로드 (Cloudflare Stream)
+- [ ] 관리자: 검수 결과 입력 + 사진 업로드 (Supabase Storage)
+- [ ] 관리자: 실측 → 견적 확정 → 결제 요청 알림
 - [ ] 관리자: 반품 처리 워크플로우
-- [ ] 고객: 물품 사진/영상 타임라인
+- [ ] 고객: 물품 사진/영상 타임라인 확인
 
 ### Phase 3 — 완성도 + 앱
 
 - [ ] FCM 푸시 알림 전체 연동
-- [ ] 관리자: EMS/K-Packet 자동 접수
-- [ ] 운송장 추적 연동
+- [ ] 관리자: EMS/K-Packet 자동 접수 + 운송장 등록
+- [ ] 국내 운송장 추적 완전 연동
 - [ ] Capacitor WebView 앱 빌드 (iOS/Android)
-- [ ] 통계 대시보드
-- [ ] 빈 박스 배송 주문 처리 관리자 플로우
+- [ ] 통계 대시보드 (접수건수, 매출, 국가별, 서비스별)
 
 ---
 
@@ -433,6 +523,7 @@ Next.js 웹앱
 | `INFRONT_CENTER_PHONE` | 물류센터 연락처 |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
 | `CLOUDFLARE_STREAM_API_TOKEN` | Cloudflare Stream API 토큰 |
+| `ADMIN_EMAILS` | 관리자 이메일 목록 (콤마 구분) |
 
 ---
 
@@ -441,8 +532,9 @@ Next.js 웹앱
 - **커밋 메시지**: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
 - **보안**: 모든 시크릿은 `.env.local`에만 보관, Git 커밋 금지
 - **DB 접근**: 관리자 서버 라우트는 `SUPABASE_SERVICE_ROLE_KEY` 사용, 고객 웹은 RLS 의존
-- **모바일 우선**: 최대 430px 컨테이너, Safe Area CSS 변수 적용
+- **모바일 우선**: 최대 600px 컨테이너, Safe Area CSS 변수 적용
 - **결제 정책**: 항상 창고 검수 후 견적 확정 → 고객 결제 순서로 진행
+- **리전**: 우체국 ePost API는 Vercel ICN1(서울) 리전에서만 호출
 
 ---
 

@@ -136,6 +136,12 @@ export default function OrderDetailPage() {
   const [quoteNote, setQuoteNote] = useState("");
   const [showQuoteForm, setShowQuoteForm] = useState(false);
 
+  // 실측값 + EMS 요금 계산
+  const [measurements, setMeasurements] = useState({ totweight: "", boxlength: "", boxwidth: "", boxheight: "" });
+  const [calcFee, setCalcFee] = useState<number | null>(null);
+  const [calcLoading, setCalcLoading] = useState(false);
+  const [calcError, setCalcError] = useState("");
+
   // EMS 접수 폼
   const [showEmsForm, setShowEmsForm] = useState(false);
   const [emsForm, setEmsForm] = useState({ totweight: "", boxlength: "", boxwidth: "", boxheight: "" });
@@ -182,8 +188,60 @@ export default function OrderDetailPage() {
     }
   }
 
+  const METHOD_MAP: Record<string, { premiumcd: string; em_ee: string }> = {
+    EMS:         { premiumcd: "31", em_ee: "em" },
+    EMS_PREMIUM: { premiumcd: "32", em_ee: "em" },
+    KPACKET:     { premiumcd: "14", em_ee: "rl" },
+  };
+
+  async function handleCalcFee() {
+    const { totweight, boxlength, boxwidth, boxheight } = measurements;
+    if (!totweight || !boxlength || !boxwidth || !boxheight) {
+      setCalcError("무게와 박스 크기를 모두 입력해주세요."); return;
+    }
+    if (!order) return;
+    const method = METHOD_MAP[order.shipping_method];
+    if (!method) { setCalcError("배송 방법이 지원되지 않습니다."); return; }
+
+    setCalcLoading(true); setCalcError(""); setCalcFee(null);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "calculate_ems_fee",
+          shipping_method: order.shipping_method,
+          country: order.recipient_country,
+          totweight: Number(totweight),
+          boxlength: Number(boxlength),
+          boxwidth: Number(boxwidth),
+          boxheight: Number(boxheight),
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setCalcError(json.error ?? "계산 실패"); return; }
+      setCalcFee(json.fee);
+      setFinalFee(String(json.fee));
+    } catch {
+      setCalcError("네트워크 오류");
+    } finally {
+      setCalcLoading(false);
+    }
+  }
+
   async function handleQuote() {
-    const ok = await callApi({ action: "confirm_quote", final_shipping_fee: finalFee, note: quoteNote });
+    const { totweight, boxlength, boxwidth, boxheight } = measurements;
+    const ok = await callApi({
+      action: "confirm_quote",
+      final_shipping_fee: finalFee,
+      note: quoteNote,
+      ...(totweight && boxlength && boxwidth && boxheight && {
+        totweight: Number(totweight),
+        boxlength: Number(boxlength),
+        boxwidth: Number(boxwidth),
+        boxheight: Number(boxheight),
+      }),
+    });
     if (ok) { setMsg("견적이 고객에게 발송되었습니다"); setShowQuoteForm(false); loadOrder(); }
   }
 
@@ -798,25 +856,115 @@ export default function OrderDetailPage() {
             onClick={() => setShowQuoteForm(!showQuoteForm)}
             className="w-full flex items-center justify-between text-sm font-semibold text-blue-600"
           >
-            <span className="flex items-center gap-2"><Send size={15} /> 견적 확정 후 고객에게 발송</span>
+            <span className="flex items-center gap-2"><Send size={15} /> 실측 후 견적 확정 · 고객 발송</span>
             <ChevronDown size={15} className={showQuoteForm ? "rotate-180" : ""} />
           </button>
           {showQuoteForm && (
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-4">
+
+              {/* ── 실측값 입력 ── */}
+              <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
+                  <Weight size={13} /> 실측값 입력
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">총 중량 (g) *</label>
+                    <input
+                      type="number" min={1}
+                      value={measurements.totweight}
+                      onChange={e => setMeasurements(m => ({ ...m, totweight: e.target.value }))}
+                      placeholder="예: 1250"
+                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">가로 (cm) *</label>
+                    <input
+                      type="number" min={1} step={0.1}
+                      value={measurements.boxlength}
+                      onChange={e => setMeasurements(m => ({ ...m, boxlength: e.target.value }))}
+                      placeholder="예: 30"
+                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">세로 (cm) *</label>
+                    <input
+                      type="number" min={1} step={0.1}
+                      value={measurements.boxwidth}
+                      onChange={e => setMeasurements(m => ({ ...m, boxwidth: e.target.value }))}
+                      placeholder="예: 20"
+                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">높이 (cm) *</label>
+                    <input
+                      type="number" min={1} step={0.1}
+                      value={measurements.boxheight}
+                      onChange={e => setMeasurements(m => ({ ...m, boxheight: e.target.value }))}
+                      placeholder="예: 15"
+                      className="w-full px-2.5 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                </div>
+
+                {/* EMS 요금 계산 버튼 */}
+                <button
+                  onClick={handleCalcFee}
+                  disabled={calcLoading || !measurements.totweight || !measurements.boxlength}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg disabled:opacity-40"
+                >
+                  {calcLoading
+                    ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    : <><DollarSign size={12} /> EMS 배송비 자동 계산</>
+                  }
+                </button>
+                {calcError && <p className="text-xs text-red-500">{calcError}</p>}
+                {calcFee !== null && (
+                  <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+                    <span className="text-xs text-indigo-700 font-semibold">EMS 예상 배송비</span>
+                    <span className="text-sm font-bold text-indigo-700">{calcFee.toLocaleString()}원</span>
+                  </div>
+                )}
+              </div>
+
+              {/* ── 최종 배송비 + 메모 ── */}
               <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">실제 국제 배송비 (원)</label>
-                <input type="number" value={finalFee} onChange={(e) => setFinalFee(e.target.value)}
+                <label className="text-xs font-medium text-gray-500 block mb-1">
+                  최종 국제 배송비 (원) *
+                  {calcFee !== null && <span className="text-indigo-500 ml-1">← EMS 계산값 자동 반영됨</span>}
+                </label>
+                <input
+                  type="number" value={finalFee}
+                  onChange={(e) => setFinalFee(e.target.value)}
                   placeholder="예: 25000"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">메모 (선택)</label>
-                <input value={quoteNote} onChange={(e) => setQuoteNote(e.target.value)} placeholder="예: 실측 무게 기준 2.1kg"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <input
+                  value={quoteNote} onChange={(e) => setQuoteNote(e.target.value)}
+                  placeholder="예: 실측 무게 1.25kg 기준"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-              <button onClick={handleQuote} disabled={actioning || !finalFee}
-                className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-60">
-                {actioning ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send size={14} /> 견적 발송하기</>}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700">
+                견적 확정 후 고객에게 알림이 발송됩니다. 고객이 결제를 완료하면 <strong>EMS 접수가 자동으로 처리</strong>됩니다.
+              </div>
+
+              <button
+                onClick={handleQuote}
+                disabled={actioning || !finalFee}
+                className="w-full bg-blue-600 text-white font-semibold py-3 rounded-xl text-sm flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                {actioning
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <><Send size={14} /> 견적 발송하기</>
+                }
               </button>
             </div>
           )}

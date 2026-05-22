@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
+import { getShippingQuote, EmsApiError } from "@/lib/ems/client";
+
+export const preferredRegion = "icn1"; // EMS 요금 계산 API 접근을 위해 서울 리전
+
+const METHOD_MAP: Record<string, { premiumcd: string; em_ee: string }> = {
+  EMS:         { premiumcd: "31", em_ee: "em" },
+  EMS_PREMIUM: { premiumcd: "32", em_ee: "em" },
+  KPACKET:     { premiumcd: "14", em_ee: "rl" },
+};
 
 export async function GET(
   _req: NextRequest,
@@ -40,8 +49,34 @@ export async function PATCH(
   const body = await req.json();
   const { action } = body;
 
+  // ─── EMS 배송비 자동 계산 (실측값 기반 견적 미리보기) ───────────────
+  if (action === "calculate_ems_fee") {
+    const { shipping_method, country, totweight, boxlength, boxwidth, boxheight } = body;
+    if (!shipping_method || !country || !totweight) {
+      return NextResponse.json({ error: "shipping_method, country, totweight 필수" }, { status: 400 });
+    }
+    const method = METHOD_MAP[shipping_method as string];
+    if (!method) return NextResponse.json({ error: `지원하지 않는 배송방법: ${shipping_method}` }, { status: 400 });
+
+    try {
+      const result = await getShippingQuote({
+        premiumcd: method.premiumcd,
+        em_ee:     method.em_ee,
+        countrycd: country as string,
+        totweight: Number(totweight),
+        boxlength: boxlength ? Number(boxlength) : undefined,
+        boxwidth:  boxwidth  ? Number(boxwidth)  : undefined,
+        boxheight: boxheight ? Number(boxheight) : undefined,
+      });
+      return NextResponse.json({ fee: result.totalFee });
+    } catch (e: unknown) {
+      if (e instanceof EmsApiError) return NextResponse.json({ error: e.message }, { status: 400 });
+      return NextResponse.json({ error: String(e) }, { status: 500 });
+    }
+  }
+
   if (action === "confirm_quote") {
-    const { final_shipping_fee, note } = body;
+    const { final_shipping_fee, note, totweight, boxlength, boxwidth, boxheight } = body;
     if (!final_shipping_fee) return NextResponse.json({ error: "최종 배송비가 필요합니다" }, { status: 400 });
 
     const { data: order } = await adminDb.from("orders").select("*").eq("id", id).single();
@@ -56,11 +91,37 @@ export async function PATCH(
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    // 실측값이 있으면 shipping_box에 저장 (결제 후 EMS 자동 접수에 사용)
+    if (totweight && boxlength && boxwidth && boxheight) {
+      const { data: boxes } = await adminDb
+        .from("shipping_boxes").select("id").eq("order_id", id).order("box_seq").limit(1);
+
+      if (boxes && boxes.length > 0) {
+        await adminDb.from("shipping_boxes").update({
+          weight_kg: Number(totweight) / 1000,
+          length_cm: Number(boxlength),
+          width_cm:  Number(boxwidth),
+          height_cm: Number(boxheight),
+          updated_at: new Date().toISOString(),
+        }).eq("id", boxes[0].id);
+      } else {
+        await adminDb.from("shipping_boxes").insert({
+          order_id:  id,
+          box_seq:   1,
+          status:    "PREPARING",
+          weight_kg: Number(totweight) / 1000,
+          length_cm: Number(boxlength),
+          width_cm:  Number(boxwidth),
+          height_cm: Number(boxheight),
+        });
+      }
+    }
+
     await adminDb.from("notifications").insert({
       customer_id: order.customer_id,
       type: "QUOTE_SENT",
       title: "배송 견적이 확정되었습니다",
-      body: `총 결제 금액: ${newTotal.toLocaleString()}원${note ? ` (${note})` : ""}`,
+      body: `총 결제 금액: ${newTotal.toLocaleString()}원${note ? ` (${note})` : ""}. 결제 후 자동 발송됩니다.`,
       data: { order_id: id, total_amount: newTotal },
     });
     return NextResponse.json({ data });
