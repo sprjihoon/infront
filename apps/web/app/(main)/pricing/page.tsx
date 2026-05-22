@@ -199,10 +199,14 @@ function premiumZoneSummary(countries: readonly string[]) {
 }
 
 const premiumMetaByDocId = Object.fromEntries(
-  PREMIUM_ZONE_META.filter((z) => "docId" in z && z.docId).map((z) => [z.docId, z])
+  PREMIUM_ZONE_META.flatMap((z) =>
+    "docId" in z && z.docId ? [[z.docId, z] as const] : []
+  )
 );
 const premiumMetaByPclId = Object.fromEntries(
-  PREMIUM_ZONE_META.filter((z) => "pclId" in z && z.pclId).map((z) => [z.pclId, z])
+  PREMIUM_ZONE_META.flatMap((z) =>
+    "pclId" in z && z.pclId ? [[z.pclId, z] as const] : []
+  )
 );
 
 // ── EMS 프리미엄 서류 요금 (지역별) ─────────────────────────────────
