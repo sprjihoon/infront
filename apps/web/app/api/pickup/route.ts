@@ -21,9 +21,9 @@ import {
 export const preferredRegion = 'icn1';
 
 const CENTER_ORD_NM  = process.env.INFRONT_CENTER_ORD_NM  ?? '인프론트';
-const CENTER_ZIPCODE = process.env.INFRONT_CENTER_ZIPCODE ?? '';
-const CENTER_ADDR1   = process.env.INFRONT_CENTER_ADDR1   ?? '';
-const CENTER_ADDR2   = process.env.INFRONT_CENTER_ADDR2   ?? '';
+const CENTER_ZIPCODE = (process.env.INFRONT_CENTER_ZIPCODE ?? '').replace(/\D/g, '');
+const CENTER_ADDR1   = (process.env.INFRONT_CENTER_ADDR1   ?? '').trim();
+const CENTER_ADDR2   = (process.env.INFRONT_CENTER_ADDR2   ?? '').trim();
 const OFFICE_SER     = '260537802';
 
 function centerPhone() {
@@ -175,6 +175,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const pickupZip = pickup_zipcode.replace(/-/g, '');
+    const centerZip = CENTER_ZIPCODE.replace(/-/g, '');
+    if (
+      !isTest &&
+      pickupZip === centerZip &&
+      pickup_address.trim() === CENTER_ADDR1.trim()
+    ) {
+      return NextResponse.json(
+        { error: '수거 주소는 물류센터 주소와 달라야 합니다. 고객님 댁 주소를 입력해주세요.' },
+        { status: 400 }
+      );
+    }
+
     const parcelId = randomUUID();
     const orderNo = formatPickupOrderNo(customer.customer_code ?? undefined, parcelId);
     const goodsNm = goods_name?.trim() || '해외배송 물품';
@@ -211,16 +224,18 @@ export async function POST(req: NextRequest) {
     };
 
     let epostResult: InsertOrderResponse;
+    let orderNoUsed = orderNo;
     if (isTest) {
       console.log('[PICKUP] 테스트 모드', spec);
       epostResult = mockInsertOrder();
     } else {
       try {
-        epostResult = await insertOrder(epostParams);
+        epostResult = await insertOrder({ ...epostParams, orderNo: orderNoUsed });
       } catch (firstErr) {
         try {
+          orderNoUsed = formatPickupOrderNo(customer.customer_code ?? undefined, randomUUID());
           await new Promise((r) => setTimeout(r, 800));
-          epostResult = await insertOrder(epostParams);
+          epostResult = await insertOrder({ ...epostParams, orderNo: orderNoUsed });
         } catch (e) {
           console.error('[PICKUP] epost insert failed:', firstErr, e);
           const msg = e instanceof Error ? e.message : '우체국 API 오류';
@@ -229,7 +244,7 @@ export async function POST(req: NextRequest) {
       }
 
       const reqYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      getResInfo({ reqType: '2', orderNo, reqYmd })
+      getResInfo({ reqType: '2', orderNo: orderNoUsed, reqYmd })
         .then((info) => console.log('[PICKUP] getResInfo OK:', info.treatStusCd, info.regiNo))
         .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err));
     }
@@ -266,7 +281,7 @@ export async function POST(req: NextRequest) {
         pickup_requested_at: new Date().toISOString(),
         epost_req_no: epostResult.reqNo,
         epost_res_no: epostResult.resNo,
-        epost_order_no: orderNo,
+        epost_order_no: orderNoUsed,
         epost_pickup_date: epostResult.resDate,
         epost_price: epostResult.price,
         tracking_events: trackingEvents,

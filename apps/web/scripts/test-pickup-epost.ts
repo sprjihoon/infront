@@ -9,6 +9,7 @@ import {
   resolvePickupBoxList,
   pickupBoxSummary,
   formatPickupOrderNo,
+  assertUniquePickupOrderNos,
   type PickupBoxSizeCode,
 } from '../lib/epost/pickup-boxes';
 import { insertOrder, cancelOrder, normalizeEpostPhone, getResInfo } from '../lib/epost/client';
@@ -36,21 +37,21 @@ const OFFICE_SER = '260537802';
 
 function centerConfig() {
   return {
-    name: process.env.INFRONT_CENTER_NAME ?? '인프론트',
-    ordNm: process.env.INFRONT_CENTER_ORD_NM ?? '인프론트',
+    name: (process.env.INFRONT_CENTER_NAME ?? '인프론트').trim(),
+    ordNm: (process.env.INFRONT_CENTER_ORD_NM ?? '인프론트').trim(),
     zip: (process.env.INFRONT_CENTER_ZIPCODE ?? '').replace(/\D/g, ''),
-    addr1: process.env.INFRONT_CENTER_ADDR1 ?? '',
-    addr2: process.env.INFRONT_CENTER_ADDR2?.trim() || '없음',
+    addr1: (process.env.INFRONT_CENTER_ADDR1 ?? '').trim(),
+    addr2: (process.env.INFRONT_CENTER_ADDR2 ?? '').trim() || '없음',
     phone: normalizeEpostPhone(process.env.INFRONT_CENTER_PHONE),
   };
 }
 
-/** 테스트용 수거지 (실접수 시에도 취소 예정) */
+/** 테스트용 수거지 — 센터 주소와 동일하면 API 오류(ordMob 등) 발생 */
 const PICKUP = {
   recNm: '홍길동',
   recZip: '41142',
   recAddr1: '대구광역시 동구 동촌로 1',
-  recAddr2: '상세주소 101호',
+  recAddr2: '101호',
   recTel: '01012345678',
 };
 
@@ -63,68 +64,6 @@ type Created = {
   price: string;
 };
 
-async function submitBox(
-  sizeCode: PickupBoxSizeCode,
-  testYn: 'Y' | 'N',
-  orderNo: string,
-): Promise<Created> {
-  const [spec] = resolvePickupBoxList({ box_count: 1, box_size: sizeCode });
-  const center = centerConfig();
-  if (!center.phone) throw new Error('INFRONT_CENTER_PHONE 미설정');
-
-  const params = {
-    custNo: (process.env.EPOST_CUSTOMER_ID ?? '').trim(),
-    apprNo: (process.env.EPOST_APPROVAL_NO ?? '').trim(),
-    payType: '2' as const,
-    reqType: '2' as const,
-    officeSer: OFFICE_SER,
-    orderNo,
-    ordCompNm: center.ordNm,
-    ordNm: center.ordNm,
-    ordZip: center.zip,
-    ordAddr1: center.addr1,
-    ordAddr2: center.addr2,
-    ordMob: center.phone,
-    recNm: PICKUP.recNm,
-    recZip: PICKUP.recZip,
-    recAddr1: PICKUP.recAddr1,
-    recAddr2: PICKUP.recAddr2,
-    recTel: PICKUP.recTel,
-    recMob: PICKUP.recTel,
-    contCd: '025',
-    goodsNm: 'PICKUP',
-    weight: spec.weight,
-    volume: spec.volume,
-    microYn: 'N' as const,
-    testYn,
-    printYn: 'Y' as const,
-    inqTelCn: PICKUP.recTel,
-  };
-
-  let lastErr: unknown;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const result = await insertOrder(params);
-      if (testYn === 'N') {
-        const reqYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        await getResInfo({ reqType: '2', orderNo, reqYmd }).catch(() => {});
-      }
-      return {
-        orderNo,
-        spec: pickupBoxSummary(spec),
-        regiNo: result.regiNo,
-        reqNo: result.reqNo,
-        resNo: result.resNo ?? '',
-        price: result.price,
-      };
-    } catch (e) {
-      lastErr = e;
-      if (attempt < 3) await new Promise((r) => setTimeout(r, 1000));
-    }
-  }
-  throw lastErr;
-}
-
 async function cancelCreated(items: Created[]) {
   const custNo = (process.env.EPOST_CUSTOMER_ID ?? '').trim();
   const apprNo = (process.env.EPOST_APPROVAL_NO ?? '').trim();
@@ -133,7 +72,7 @@ async function cancelCreated(items: Created[]) {
   for (const item of items) {
     if (item.reqNo.startsWith('MOCK-')) continue;
     try {
-      await cancelOrder({
+      const cancel = await cancelOrder({
         custNo,
         apprNo,
         reqType: '2',
@@ -144,7 +83,7 @@ async function cancelCreated(items: Created[]) {
         reqYmd,
         delYn: 'Y',
       });
-      console.log(`  ✓ 취소 완료: ${item.regiNo}`);
+      console.log(`  ✓ 취소 완료: ${item.regiNo} (canceledYn=${cancel.canceledYn ?? '?'})`);
     } catch (e) {
       console.error(`  ✗ 취소 실패 ${item.regiNo}:`, e instanceof Error ? e.message : e);
     }
@@ -167,11 +106,52 @@ async function runScenario(
   const [spec] = resolvePickupBoxList({ box_count: 1, box_size: sizeCode });
   console.log(`  박스: ${pickupBoxSummary(spec)}`);
 
-  const orderNo = formatPickupOrderNo('SPB202605220001', crypto.randomUUID());
-  const c = await submitBox(sizeCode, testYn, orderNo);
-  console.log(`  ✓ regiNo=${c.regiNo} price=${c.price}원 orderNo=${orderNo}`);
-  if (testYn === 'N' || LIVE) assertRegiNo(c.regiNo, '박스');
-  return c;
+  const center = centerConfig();
+  const orderNo = formatPickupOrderNo('SPB-20260522-0001', crypto.randomUUID());
+  const result = await insertOrder({
+    custNo: (process.env.EPOST_CUSTOMER_ID ?? '').trim(),
+    apprNo: (process.env.EPOST_APPROVAL_NO ?? '').trim(),
+    payType: '2',
+    reqType: '2',
+    officeSer: OFFICE_SER,
+    orderNo,
+    ordCompNm: center.ordNm,
+    ordNm: center.ordNm,
+    ordZip: center.zip,
+    ordAddr1: center.addr1,
+    ordAddr2: center.addr2,
+    recNm: PICKUP.recNm,
+    recZip: PICKUP.recZip,
+    recAddr1: PICKUP.recAddr1,
+    recAddr2: PICKUP.recAddr2,
+    recTel: PICKUP.recTel,
+    recMob: PICKUP.recTel,
+    ordMob: center.phone,
+    contCd: '025',
+    goodsNm: 'PICKUP',
+    weight: spec.weight,
+    volume: spec.volume,
+    microYn: 'N',
+    testYn,
+    printYn: 'Y',
+    inqTelCn: PICKUP.recTel,
+  });
+
+  if (testYn === 'N') {
+    const reqYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    await getResInfo({ reqType: '2', orderNo, reqYmd }).catch(() => {});
+  }
+
+  console.log(`  ✓ regiNo=${result.regiNo} price=${result.price}원 orderNo=${orderNo}`);
+  if (testYn === 'N' || LIVE) assertRegiNo(result.regiNo, '박스');
+  return {
+    orderNo,
+    spec: pickupBoxSummary(spec),
+    regiNo: result.regiNo,
+    reqNo: result.reqNo,
+    resNo: result.resNo ?? '',
+    price: result.price,
+  };
 }
 
 async function main() {
@@ -200,6 +180,15 @@ async function main() {
     if (!(e instanceof Error) || !e.message.includes('1박스')) throw e;
   }
   console.log('✓ resolvePickupBoxList OK');
+
+  const id1 = crypto.randomUUID();
+  const id2 = crypto.randomUUID();
+  const o1 = formatPickupOrderNo('SPB-20260522-0001', id1);
+  const o2 = formatPickupOrderNo('SPB-20260522-0001', id2);
+  assertUniquePickupOrderNos([o1, o2]);
+  if (o1 === o2) throw new Error('formatPickupOrderNo 동일 parcel 중복');
+  if (!/^[A-Z0-9]+$/.test(o1)) throw new Error(`orderNo 형식 이상: ${o1}`);
+  console.log('✓ formatPickupOrderNo OK', o1, o2);
 
   const testYn: 'Y' | 'N' = LIVE ? 'N' : 'Y';
   const allCreated: Created[] = [];

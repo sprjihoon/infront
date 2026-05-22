@@ -114,9 +114,14 @@ export function pickupBoxSummary(spec: PickupBoxSizeSpec): string {
   return `${spec.label} · ${spec.weight}kg · ${spec.volume}cm`;
 }
 
-/** modo: order_number || order_id — 영숫자 20자 이내 */
-export function formatPickupOrderNo(customerCode: string | undefined, parcelId: string): string {
-  const fromCode = (customerCode ?? '').replace(/[^A-Za-z0-9]/g, '');
-  if (fromCode.length >= 8) return fromCode.slice(0, 20);
-  return parcelId.replace(/[^A-Za-z0-9]/g, '').slice(0, 20);
+/** 우체국 InsertOrder orderNo — SPB+timestamp+seq, 영숫자 20자 (실운송 검증됨) */
+export function formatPickupOrderNo(_customerCode: string | undefined, parcelId: string): string {
+  const seq = parseInt(parcelId.replace(/[^0-9]/g, '').slice(-6) || '1', 16) % 10000 || 1;
+  return `SPB${Date.now()}${seq}`.replace(/[^A-Z0-9]/g, '').slice(0, 20);
+}
+
+export function assertUniquePickupOrderNos(orderNos: string[]): void {
+  if (new Set(orderNos).size !== orderNos.length) {
+    throw new Error('orderNo 중복 — 고객코드만 사용하면 안 됩니다');
+  }
 }

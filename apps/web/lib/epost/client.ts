@@ -70,6 +70,12 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   if (typeof body.goodsNm === 'string') {
     body.goodsNm = truncateUtf8Bytes(body.goodsNm, 200);
   }
+  if (typeof body.orderNo === 'string') {
+    body.orderNo = body.orderNo.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 20);
+  }
+  if (!body.orderNo || String(body.orderNo).trim() === '') {
+    throw new Error('orderNo가 비어 있습니다.');
+  }
   if (typeof body.recAddr2 === 'string' && body.recAddr2.trim() === '') {
     body.recAddr2 = '없음';
   }
@@ -199,7 +205,11 @@ export async function getResInfo(params: GetResInfoParams): Promise<GetResInfoRe
   };
 }
 
-export async function cancelOrder(params: CancelOrderParams): Promise<{ reqNo: string; resNo: string }> {
+export async function cancelOrder(params: CancelOrderParams): Promise<{
+  reqNo: string;
+  resNo: string;
+  canceledYn?: string;
+}> {
   const custNo = (params.custNo || getEnv('EPOST_CUSTOMER_ID')).trim();
   const apprNo = (params.apprNo || getEnv('EPOST_APPROVAL_NO')).trim();
 
@@ -215,19 +225,19 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{ reqNo: s
     delYn:   params.delYn,
   };
 
+  const parseCancel = (xml: string) => ({
+    reqNo: parseXml(xml, 'reqNo') ?? '',
+    resNo: parseXml(xml, 'resNo') ?? '',
+    canceledYn: parseXml(xml, 'canceledYn') ?? undefined,
+  });
+
   // modo: api.GetResCancelCmd.jparcel (SHPAPI-U02-01)
   try {
     const xml = await callEPost('api.GetResCancelCmd.jparcel', payload);
-    return {
-      reqNo: parseXml(xml, 'reqNo') ?? '',
-      resNo: parseXml(xml, 'resNo') ?? '',
-    };
+    return parseCancel(xml);
   } catch {
     const xml = await callEPost('api.CancelOrder.jparcel', payload);
-    return {
-      reqNo: parseXml(xml, 'reqNo') ?? '',
-      resNo: parseXml(xml, 'resNo') ?? '',
-    };
+    return parseCancel(xml);
   }
 }
 
