@@ -320,13 +320,5 @@ export function buildEpostParams(params: Record<string, unknown>): string {
     if (isReq && sv.trim() === '' && key === 'recAddr2') sv = '없음';
     pairs.push(`${key}=${sv}`);
   }
-  for (const [key, val] of Object.entries(params)) {
-    if (orderedKeys.includes(key) || val === null || val === undefined || val === '') continue;
-    let sv: string;
-    if (typeof val === 'boolean') sv = val ? 'Y' : 'N';
-    else if (typeof val === 'number') sv = String(Math.floor(val));
-    else sv = String(val);
-    pairs.push(`${key}=${sv}`);
-  }
   return pairs.join('&');
 }

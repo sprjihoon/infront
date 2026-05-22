@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
-import { insertOrder, mockInsertOrder, cancelOrder } from '@/lib/epost/client';
+import { insertOrder, mockInsertOrder, cancelOrder, normalizeEpostPhone, formatEpostOrderNo } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import {
   resolvePickupBoxList,
@@ -15,11 +15,16 @@ import {
 export const preferredRegion = 'icn1'; // 우체국 API 접근을 위해 서울 리전 고정
 
 const CENTER_NAME    = process.env.INFRONT_CENTER_NAME    ?? '인프론트';
+/** ordNm 40byte 제한 — 긴 센터명은 ordCompNm에만 사용 */
+const CENTER_ORD_NM  = process.env.INFRONT_CENTER_ORD_NM  ?? '인프론트';
 const CENTER_ZIPCODE = process.env.INFRONT_CENTER_ZIPCODE ?? '';
 const CENTER_ADDR1   = process.env.INFRONT_CENTER_ADDR1   ?? '';
 const CENTER_ADDR2   = process.env.INFRONT_CENTER_ADDR2   ?? '';
-const CENTER_PHONE   = (process.env.INFRONT_CENTER_PHONE  ?? '').replace(/-/g, '');
 const OFFICE_SER     = '260537802'; // 공급지코드 (인프론트)
+
+function centerPhone() {
+  return normalizeEpostPhone(process.env.INFRONT_CENTER_PHONE);
+}
 
 interface CreatedPickup {
   parcel_id: string;
@@ -158,12 +163,30 @@ export async function POST(req: NextRequest) {
 
     const custNo = (process.env.EPOST_CUSTOMER_ID ?? '').trim();
     const apprNo = (process.env.EPOST_APPROVAL_NO ?? '').trim();
-    const hasSecurityKey = !!process.env.EPOST_SECURITY_KEY;
-    const isTest = test_mode || !hasSecurityKey || !custNo;
+    const hasEpostCreds =
+      !!process.env.EPOST_API_KEY?.trim() &&
+      !!process.env.EPOST_SECURITY_KEY?.trim() &&
+      !!custNo &&
+      !!apprNo;
+    const isTest = test_mode === true || !hasEpostCreds;
+    if (!pickup_address_detail?.trim() || pickup_address_detail.trim().length < 2) {
+      return NextResponse.json(
+        { error: '수거 상세주소를 2자 이상 입력해주세요. (우체국 API 필수)' },
+        { status: 400 }
+      );
+    }
+
+    const pickupPhone = normalizeEpostPhone(pickup_phone);
+    const centerMob = centerPhone();
+    if (!isTest && !centerMob) {
+      return NextResponse.json(
+        { error: '물류센터 연락처(INFRONT_CENTER_PHONE)가 설정되지 않았습니다.' },
+        { status: 500 }
+      );
+    }
 
     const batchId = randomUUID();
     const totalBoxes = boxSpecs.length;
-    const baseTs = Date.now();
 
     const epostCreated: Array<{ result: InsertOrderResponse; orderNo: string; boxSeq: number }> = [];
     const parcelCreated: CreatedPickup[] = [];
@@ -172,10 +195,12 @@ export async function POST(req: NextRequest) {
     let sharedPostOffice = '';
 
     for (let i = 0; i < boxSpecs.length; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, 400));
+
       const spec = boxSpecs[i];
       const boxSeq = i + 1;
-      const orderNo = `SPB-${baseTs}-${boxSeq}`;
-      const boxLabel = totalBoxes > 1 ? ` (${boxSeq}/${totalBoxes})` : '';
+      let orderNo = formatEpostOrderNo('SPB', boxSeq);
+      const boxLabel = totalBoxes > 1 ? `-${boxSeq}of${totalBoxes}` : '';
       const goodsNm = goods_name
         ? `${goods_name}${boxLabel}`
         : `해외배송 물품${boxLabel}`;
@@ -187,17 +212,18 @@ export async function POST(req: NextRequest) {
         reqType: '2' as const,
         officeSer: OFFICE_SER,
         orderNo,
-        ordCompNm: CENTER_NAME,
-        ordNm: CENTER_NAME,
+        ordCompNm: CENTER_ORD_NM,
+        ordNm: CENTER_ORD_NM,
         ordZip: CENTER_ZIPCODE,
         ordAddr1: CENTER_ADDR1,
         ordAddr2: CENTER_ADDR2 || '없음',
-        ordMob: CENTER_PHONE,
+        ordMob: centerMob,
         recNm: customer.name || '고객',
         recZip: pickup_zipcode.replace(/-/g, ''),
         recAddr1: pickup_address,
-        recAddr2: pickup_address_detail || '없음',
-        recTel: pickup_phone.replace(/-/g, '').substring(0, 12),
+        recAddr2: pickup_address_detail?.trim() || '없음',
+        recTel: pickupPhone,
+        recMob: pickupPhone,
         contCd: '025',
         goodsNm,
         weight: spec.weight,
@@ -206,7 +232,7 @@ export async function POST(req: NextRequest) {
         delivMsg: pickup_notes,
         testYn: isTest ? ('Y' as const) : ('N' as const),
         printYn: 'Y' as const,
-        inqTelCn: pickup_phone.replace(/-/g, '').substring(0, 12),
+        inqTelCn: pickupPhone,
       };
 
       let epostResult: InsertOrderResponse;
@@ -214,7 +240,29 @@ export async function POST(req: NextRequest) {
         console.log(`[PICKUP] 테스트 모드 박스 ${boxSeq}/${totalBoxes}`, spec);
         epostResult = mockInsertOrder();
       } else {
-        epostResult = await insertOrder(epostParams);
+        try {
+          epostResult = await insertOrder(epostParams);
+        } catch (firstErr) {
+          try {
+            orderNo = formatEpostOrderNo('SPB', boxSeq);
+            epostParams.orderNo = orderNo;
+            await new Promise((r) => setTimeout(r, 800));
+            epostResult = await insertOrder(epostParams);
+          } catch (e) {
+            console.error('[PICKUP] epost insert failed:', firstErr, e);
+            const msg = e instanceof Error ? e.message : '우체국 API 오류';
+            if (msg.includes('microYn') || msg.includes('초소형')) {
+              return NextResponse.json(
+                { error: '극소(마이크로) 수거 계약이 없습니다. 소형(5kg/80cm) 이상 규격을 선택해주세요.' },
+                { status: 400 }
+              );
+            }
+            if (epostCreated.length > 0) {
+              await rollbackEpostOrders(epostCreated, custNo, apprNo);
+            }
+            return NextResponse.json({ error: msg }, { status: 502 });
+          }
+        }
       }
 
       epostCreated.push({ result: epostResult, orderNo, boxSeq });

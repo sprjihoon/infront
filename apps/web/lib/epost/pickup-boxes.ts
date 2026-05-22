@@ -30,7 +30,10 @@ export interface PickupBoxSizeSpec {
   microYn: "Y" | "N";
 }
 
-/** 수거 신청 UI / API 에서 선택 가능한 박스 규격 */
+/** 수거 신청 UI / API 에서 선택 가능한 박스 규격
+ *  API 검증(2026-05): microYn=Y 미계약 → microYn N 사용
+ *  현 계약 유효 구간: 2kg/60cm, 2kg/70cm 등 (5kg/80cm는 ERR-511)
+ */
 export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
   {
     code: "MICRO",
@@ -38,38 +41,38 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
     desc: "2kg 이하 · 세변합 60cm 이하 (포카·소형 굿즈)",
     weight: 2,
     volume: 60,
-    microYn: "Y",
+    microYn: "N",
   },
   {
     code: "SMALL",
     label: "소",
-    desc: "5kg 이하 · 세변합 80cm 이하",
-    weight: 5,
-    volume: 80,
+    desc: "2kg 이하 · 세변합 70cm 이하",
+    weight: 2,
+    volume: 70,
     microYn: "N",
   },
   {
     code: "MEDIUM",
     label: "중",
-    desc: "10kg 이하 · 세변합 100cm 이하",
-    weight: 10,
-    volume: 100,
+    desc: "2kg 이하 · 세변합 70cm 이하 (계약 확장 전)",
+    weight: 2,
+    volume: 70,
     microYn: "N",
   },
   {
     code: "LARGE",
     label: "대",
-    desc: "20kg 이하 · 세변합 120cm 이하",
-    weight: 20,
-    volume: 120,
+    desc: "2kg 이하 · 세변합 70cm 이하 (계약 확장 전)",
+    weight: 2,
+    volume: 70,
     microYn: "N",
   },
   {
     code: "XL",
     label: "극대",
-    desc: "30kg 이하 · 세변합 160cm 이하",
-    weight: 30,
-    volume: 160,
+    desc: "2kg 이하 · 세변합 70cm 이하 (계약 확장 전)",
+    weight: 2,
+    volume: 70,
     microYn: "N",
   },
 ];
@@ -79,7 +82,8 @@ export const PICKUP_BOX_SIZE_MAP = Object.fromEntries(
 ) as Record<PickupBoxSizeCode, PickupBoxSizeSpec>;
 
 export const PICKUP_MAX_BOX_COUNT = 5;
-export const PICKUP_DEFAULT_SIZE: PickupBoxSizeCode = "MICRO";
+/** 기본 극소 — UI 기본값. 극소 계약(EPOST_MICRO_PICKUP=Y) 없으면 API에서 안내 */
+export const PICKUP_DEFAULT_SIZE: PickupBoxSizeCode = 'SMALL';
 
 export interface PickupBoxInput {
   size_code: PickupBoxSizeCode;

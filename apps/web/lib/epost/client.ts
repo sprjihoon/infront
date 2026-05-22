@@ -14,6 +14,70 @@ function getEnv(key: string) {
   return process.env[key] ?? '';
 }
 
+/** 우체국 API — 전화번호는 숫자만 허용 */
+export function normalizeEpostPhone(phone?: string, maxLen = 12): string {
+  if (!phone) return '';
+  return phone.replace(/\D/g, '').substring(0, maxLen);
+}
+
+/** UTF-8 바이트 기준 문자열 절단 (우체국 API 필드 길이 제한) */
+export function truncateUtf8Bytes(str: string, maxBytes: number): string {
+  if (!str) return str;
+  const buf = Buffer.from(str, 'utf8');
+  if (buf.length <= maxBytes) return str;
+  let end = maxBytes;
+  while (end > 0 && (buf[end] & 0xc0) === 0x80) end--;
+  return buf.subarray(0, end).toString('utf8');
+}
+
+/** InsertOrder orderNo — 영숫자, 하이픈 없음 (SPB + timestamp + seq) */
+export function formatEpostOrderNo(prefix = 'SPB', seq = 1): string {
+  return `${prefix}${Date.now()}${seq}`.replace(/[^A-Za-z0-9]/g, '').slice(0, 20);
+}
+
+/** 우체국 API — ordCompNm 실측 12byte 초과 시 regData 필드 밀림 */
+const EPOST_ORD_COMP_NM_MAX_BYTES = 12;
+
+const INSERT_ORDER_KEYS = new Set([
+  'custNo', 'apprNo', 'payType', 'reqType', 'officeSer',
+  'weight', 'volume', 'microYn', 'packngMtrCd', 'orderNo',
+  'insuYn', 'insuAmt',
+  'ordCompNm', 'inqTelCn', 'ordNm', 'ordZip', 'ordAddr1', 'ordAddr2', 'ordTel', 'ordMob',
+  'recNm', 'recZip', 'recAddr1', 'recAddr2', 'recTel', 'recMob',
+  'contCd', 'goodsNm', 'goodsCd', 'goodsMdl', 'goodsSize', 'goodsColor', 'qty',
+  'delivMsg', 'smsOrdCd', 'retReason', 'retVisitYmd', 'retOrigRegiNo',
+  'printYn', 'printAreaCdYn',
+]);
+
+function sanitizeInsertOrderBody(body: Record<string, unknown>) {
+  for (const key of Object.keys(body)) {
+    if (!INSERT_ORDER_KEYS.has(key)) delete body[key];
+  }
+  for (const key of ['ordMob', 'ordTel', 'recMob', 'recTel', 'inqTelCn']) {
+    if (key in body && body[key] != null && body[key] !== '') {
+      body[key] = normalizeEpostPhone(String(body[key]));
+    }
+  }
+  if (typeof body.ordCompNm === 'string') {
+    body.ordCompNm = truncateUtf8Bytes(body.ordCompNm, EPOST_ORD_COMP_NM_MAX_BYTES);
+  }
+  if (typeof body.ordNm === 'string') {
+    body.ordNm = truncateUtf8Bytes(body.ordNm, 40);
+  }
+  if (typeof body.recNm === 'string') {
+    body.recNm = truncateUtf8Bytes(body.recNm, 40);
+  }
+  if (typeof body.goodsNm === 'string') {
+    body.goodsNm = truncateUtf8Bytes(body.goodsNm, 200);
+  }
+  if (typeof body.recAddr2 === 'string' && body.recAddr2.trim() === '') {
+    body.recAddr2 = '없음';
+  }
+  if (typeof body.ordAddr2 === 'string' && body.ordAddr2.trim() === '') {
+    body.ordAddr2 = '없음';
+  }
+}
+
 function parseXml(xml: string, tag: string): string | null {
   const cdata = new RegExp(`<${tag}>\\s*<!\\[CDATA\\[(.*?)\\]\\]>\\s*</${tag}>`, 's').exec(xml);
   if (cdata) return cdata[1].trim();
@@ -81,10 +145,11 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
     officeSer: params.officeSer ?? OFFICE_SER,
     weight: Math.floor(typeof params.weight === 'number' && params.weight > 0 ? params.weight : 2),
     volume: Math.floor(typeof params.volume === 'number' && params.volume > 0 ? params.volume : 60),
-    microYn: params.microYn ?? 'N',
     printYn: params.printYn ?? 'Y',
+    microYn: params.microYn === 'Y' ? 'Y' : 'N',
   };
   delete body.testYn;
+  sanitizeInsertOrderBody(body);
 
   const xml = await callEPost('api.InsertOrder.jparcel', body, testYn);
 
@@ -158,10 +223,11 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{ reqNo: s
 export function mockInsertOrder(): InsertOrderResponse {
   const now = new Date();
   const ymd = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const suffix = `${Date.now()}${Math.floor(Math.random() * 1000)}`.slice(-7);
   return {
     reqNo:    `MOCK-REQ-${Date.now()}`,
     resNo:    `MOCK-RES-${Date.now()}`,
-    regiNo:   `700000000000${Math.floor(Math.random()*10000).toString().padStart(4,'0')}`,
+    regiNo:   `7000000${suffix.padStart(7, '0')}`,
     regiPoNm: '테스트우체국',
     resDate:  `${ymd}120000`,
     price:    '5000',
