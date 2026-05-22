@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Bell, Truck, Calculator, Globe, Send } from "lucide-react";
+import { Package, ChevronRight, Bell, Truck, Calculator, Globe, Send, BookOpen, List } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface UserInfo {
@@ -104,6 +104,24 @@ const QUICK_ACTIONS = [
     icon: <Calculator size={24} className="text-violet-600" />,
     label: "요금 계산",
     sub: "EMS · K-Packet",
+    className: "bg-white",
+    labelClass: "text-gray-900",
+    subClass: "text-gray-500",
+  },
+  {
+    href: "/pricing",
+    icon: <List size={24} className="text-orange-500" />,
+    label: "가격표",
+    sub: "우체국 요금표",
+    className: "bg-white",
+    labelClass: "text-gray-900",
+    subClass: "text-gray-500",
+  },
+  {
+    href: "/guide",
+    icon: <BookOpen size={24} className="text-teal-600" />,
+    label: "쉬운 가이드",
+    sub: "이용 방법 안내",
     className: "bg-white",
     labelClass: "text-gray-900",
     subClass: "text-gray-500",
