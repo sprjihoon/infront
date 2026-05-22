@@ -11,7 +11,6 @@ import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
 import type { ItemCategory } from "@/lib/item-categories";
 import {
   PICKUP_BOX_SIZES,
-  PICKUP_MAX_BOX_COUNT,
   PICKUP_DEFAULT_SIZE,
   type PickupBoxSizeCode,
 } from "@/lib/epost/pickup-boxes";
@@ -94,10 +93,7 @@ export default function PickupPage() {
   const [itemCondition, setItemCondition] = useState<"NEW" | "USED">("NEW");
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([newItem()]);
   const [specialsOpenKeys, setSpecialsOpenKeys] = useState<Set<string>>(new Set());
-  const [boxCount, setBoxCount]         = useState(1);
-  const [sameBoxSize, setSameBoxSize]   = useState(true);
   const [boxSize, setBoxSize]           = useState<PickupBoxSizeCode>(PICKUP_DEFAULT_SIZE);
-  const [boxSizes, setBoxSizes]         = useState<PickupBoxSizeCode[]>([PICKUP_DEFAULT_SIZE]);
 
   const [result, setResult]             = useState<{
     parcel_id: string;
@@ -109,16 +105,6 @@ export default function PickupPage() {
     post_office: string;
     is_test: boolean;
   } | null>(null);
-
-  function setBoxCountClamped(n: number) {
-    const c = Math.min(PICKUP_MAX_BOX_COUNT, Math.max(1, n));
-    setBoxCount(c);
-    setBoxSizes((prev) => {
-      const next = [...prev];
-      while (next.length < c) next.push(boxSize);
-      return next.slice(0, c);
-    });
-  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -153,10 +139,6 @@ export default function PickupPage() {
     const missingHs = filled.find(i => !i.hs_code.trim());
     if (missingHs) { setError("모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)"); setItemsOpen(true); return; }
 
-    const boxesPayload = sameBoxSize
-      ? { box_count: boxCount, box_size: boxSize }
-      : { boxes: boxSizes.slice(0, boxCount).map((size_code) => ({ size_code })) };
-
     setLoading(true);
     try {
       const resp = await fetch("/api/pickup", {
@@ -169,7 +151,8 @@ export default function PickupPage() {
           pickup_phone: pickupAddress.phone,
           pickup_date: pickupDate,
           pickup_notes: notes.trim() || undefined,
-          ...boxesPayload,
+          box_count: 1,
+          box_size: boxSize,
           item_condition: itemCondition,
           pre_invoice_items: invoiceItems
             .filter(i => i.name_en.trim())
@@ -262,21 +245,8 @@ export default function PickupPage() {
         )}
         <div className="w-full bg-gray-50 rounded-2xl p-5 mb-6 text-left space-y-3">
           <div>
-            <p className="text-xs text-gray-400">
-              운송장번호 {result.box_count > 1 ? `(${result.box_count}박스)` : ""}
-            </p>
-            {result.tracking_nos.length <= 1 ? (
-              <p className="text-base font-bold text-blue-600 tracking-widest">{result.tracking_no}</p>
-            ) : (
-              <ul className="mt-1 space-y-1.5">
-                {result.tracking_nos.map((no, i) => (
-                  <li key={no} className="text-sm font-bold text-blue-600 tracking-wide">
-                    <span className="text-gray-400 font-normal text-xs mr-1">{i + 1}.</span>
-                    {no}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p className="text-xs text-gray-400">운송장번호</p>
+            <p className="text-base font-bold text-blue-600 tracking-widest">{result.tracking_no}</p>
           </div>
           {result.post_office && (
             <div>
@@ -322,9 +292,9 @@ export default function PickupPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
           <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-bold text-blue-800">우체국 방문 수거 서비스</p>
+            <p className="text-sm font-bold text-blue-800">우체국 반품 수거</p>
             <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
-              우체국 집배원이 고객님 주소로 직접 방문합니다. 수거비는 인프론트가 부담합니다.
+              계약 반품(reqType) 방문 수거입니다. 1회 신청당 박스 1개·운송장 1장이며, 박스가 여러 개면 수거 신청을 나눠 주세요.
             </p>
           </div>
         </div>
@@ -369,119 +339,46 @@ export default function PickupPage() {
           </p>
         </div>
 
-        {/* 수거 박스 — 개수 · 규격 (우체국 InsertOrder weight/volume/microYn) */}
+        {/* 수거 박스 규격 — 반품 1박스 */}
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-4 py-3.5 bg-white border-b border-gray-100">
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-bold text-gray-800">수거 박스</span>
+              <span className="text-sm font-bold text-gray-800">박스 크기</span>
               <span className="text-red-500 text-xs font-semibold">*필수</span>
             </div>
             <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
-              박스마다 우체국 운송장 1장이 발급됩니다. 실제보다 큰 규격을 선택하면 수거비가 올라갈 수 있어요.
+              중량·크기는 우체국 소형~극대형 구간(5/10/20/30kg)과 같습니다. 여러 박스는 각각 따로 신청해 주세요.
             </p>
           </div>
-          <div className="px-4 py-4 bg-gray-50 space-y-4">
-            {/* 박스 개수 */}
-            <div>
-              <label className="text-xs font-semibold text-gray-600 mb-2 block">박스 개수</label>
-              <div className="flex items-center gap-3">
+          <div className="px-4 py-4 bg-gray-50">
+            <div className="grid grid-cols-1 gap-2">
+              {PICKUP_BOX_SIZES.map((s) => (
                 <button
+                  key={s.code}
                   type="button"
-                  disabled={boxCount <= 1}
-                  onClick={() => setBoxCountClamped(boxCount - 1)}
-                  className="w-10 h-10 rounded-xl border border-gray-200 bg-white text-lg font-bold text-gray-600 disabled:opacity-30"
+                  onClick={() => setBoxSize(s.code)}
+                  className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
+                    boxSize === s.code ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
+                  }`}
                 >
-                  −
-                </button>
-                <span className="text-xl font-bold text-gray-900 w-8 text-center">{boxCount}</span>
-                <button
-                  type="button"
-                  disabled={boxCount >= PICKUP_MAX_BOX_COUNT}
-                  onClick={() => setBoxCountClamped(boxCount + 1)}
-                  className="w-10 h-10 rounded-xl border border-gray-200 bg-white text-lg font-bold text-gray-600 disabled:opacity-30"
-                >
-                  +
-                </button>
-                <span className="text-xs text-gray-400">최대 {PICKUP_MAX_BOX_COUNT}박스</span>
-              </div>
-            </div>
-
-            {boxCount > 1 && (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sameBoxSize}
-                  onChange={(e) => setSameBoxSize(e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600"
-                />
-                <span className="text-xs text-gray-600">모든 박스 같은 크기</span>
-              </label>
-            )}
-
-            {/* 규격 선택 */}
-            {(sameBoxSize || boxCount === 1) ? (
-              <div className="grid grid-cols-1 gap-2">
-                {PICKUP_BOX_SIZES.map((s) => (
-                  <button
-                    key={s.code}
-                    type="button"
-                    onClick={() => {
-                      setBoxSize(s.code);
-                      if (sameBoxSize) setBoxSizes(Array(boxCount).fill(s.code));
-                    }}
-                    className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
-                      boxSize === s.code ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
-                      boxSize === s.code ? "border-blue-500 bg-blue-500" : "border-gray-300"
-                    }`}>
-                      {boxSize === s.code && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-bold ${boxSize === s.code ? "text-blue-700" : "text-gray-800"}`}>
-                        {s.label}
-                        {s.microYn === "Y" && (
-                          <span className="ml-1.5 text-[10px] font-semibold text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded">
-                            극소
-                          </span>
-                        )}
-                      </p>
-                      <p className="text-[11px] text-gray-500">{s.desc}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {Array.from({ length: boxCount }, (_, i) => (
-                  <div key={i} className="bg-white rounded-xl p-3 border border-gray-100">
-                    <p className="text-xs font-bold text-gray-500 mb-2">{i + 1}번 박스</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {PICKUP_BOX_SIZES.map((s) => (
-                        <button
-                          key={s.code}
-                          type="button"
-                          onClick={() => setBoxSizes((prev) => {
-                            const next = [...prev];
-                            next[i] = s.code;
-                            return next;
-                          })}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all ${
-                            boxSizes[i] === s.code
-                              ? "bg-blue-600 border-blue-600 text-white"
-                              : "bg-gray-50 border-gray-200 text-gray-600"
-                          }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
+                  <div className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
+                    boxSize === s.code ? "border-blue-500 bg-blue-500" : "border-gray-300"
+                  }`}>
+                    {boxSize === s.code && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                   </div>
-                ))}
-              </div>
-            )}
+                  <div>
+                    <p className={`text-sm font-bold ${boxSize === s.code ? "text-blue-700" : "text-gray-800"}`}>
+                      {s.label}
+                      <span className="ml-1.5 text-[10px] font-normal text-gray-500">
+                        {s.weight}kg · {s.volume}cm
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-gray-500">{s.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 

@@ -2,60 +2,54 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
-import { insertOrder, mockInsertOrder, cancelOrder, normalizeEpostPhone, formatEpostOrderNo } from '@/lib/epost/client';
+import {
+  insertOrder,
+  mockInsertOrder,
+  cancelOrder,
+  getResInfo,
+  normalizeEpostPhone,
+} from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import {
   resolvePickupBoxList,
   pickupBoxSummary,
-  PICKUP_MAX_BOX_COUNT,
+  formatPickupOrderNo,
   type PickupBoxInput,
   type PickupBoxSizeCode,
 } from '@/lib/epost/pickup-boxes';
 
-export const preferredRegion = 'icn1'; // 우체국 API 접근을 위해 서울 리전 고정
+export const preferredRegion = 'icn1';
 
-const CENTER_NAME    = process.env.INFRONT_CENTER_NAME    ?? '인프론트';
-/** ordNm 40byte 제한 — 긴 센터명은 ordCompNm에만 사용 */
 const CENTER_ORD_NM  = process.env.INFRONT_CENTER_ORD_NM  ?? '인프론트';
 const CENTER_ZIPCODE = process.env.INFRONT_CENTER_ZIPCODE ?? '';
 const CENTER_ADDR1   = process.env.INFRONT_CENTER_ADDR1   ?? '';
 const CENTER_ADDR2   = process.env.INFRONT_CENTER_ADDR2   ?? '';
-const OFFICE_SER     = '260537802'; // 공급지코드 (인프론트)
+const OFFICE_SER     = '260537802';
 
 function centerPhone() {
   return normalizeEpostPhone(process.env.INFRONT_CENTER_PHONE);
 }
 
-interface CreatedPickup {
-  parcel_id: string;
-  tracking_no: string;
-  box_seq: number;
-  price: string;
-  box_spec: string;
-}
-
-async function rollbackEpostOrders(
-  created: Array<{ result: InsertOrderResponse; orderNo: string }>,
+async function rollbackEpostOrder(
+  result: InsertOrderResponse,
   custNo: string,
   apprNo: string,
 ) {
-  for (const { result, orderNo } of created) {
-    if (!result.reqNo || result.reqNo.startsWith('MOCK-')) continue;
-    try {
-      await cancelOrder({
-        custNo,
-        apprNo,
-        reqType: '2',
-        payType: '2',
-        reqNo: result.reqNo,
-        resNo: result.resNo ?? '',
-        regiNo: result.regiNo,
-        reqYmd: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
-        delYn: 'Y',
-      });
-    } catch (e) {
-      console.error('[PICKUP] rollback cancel failed:', orderNo, e);
-    }
+  if (!result.reqNo || result.reqNo.startsWith('MOCK-')) return;
+  try {
+    await cancelOrder({
+      custNo,
+      apprNo,
+      reqType: '2',
+      payType: '2',
+      reqNo: result.reqNo,
+      resNo: result.resNo ?? '',
+      regiNo: result.regiNo,
+      reqYmd: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+      delYn: 'Y',
+    });
+  } catch (e) {
+    console.error('[PICKUP] rollback cancel failed:', result.regiNo, e);
   }
 }
 
@@ -88,8 +82,8 @@ export async function POST(req: NextRequest) {
       item_condition?: string;
       pre_invoice_items?: object[];
       boxes?: PickupBoxInput[];
-      box_count?: number;
       box_size?: PickupBoxSizeCode;
+      box_count?: number;
     };
 
     if (!pickup_address || !pickup_zipcode || !pickup_phone || !pickup_date) {
@@ -109,12 +103,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (boxSpecs.length > PICKUP_MAX_BOX_COUNT) {
-      return NextResponse.json(
-        { error: `수거 박스는 최대 ${PICKUP_MAX_BOX_COUNT}개까지 신청할 수 있습니다.` },
-        { status: 400 }
-      );
-    }
+    const spec = boxSpecs[0];
 
     if (!CENTER_ZIPCODE || !CENTER_ADDR1) {
       return NextResponse.json(
@@ -169,6 +158,7 @@ export async function POST(req: NextRequest) {
       !!custNo &&
       !!apprNo;
     const isTest = test_mode === true || !hasEpostCreds;
+
     if (!pickup_address_detail?.trim() || pickup_address_detail.trim().length < 2) {
       return NextResponse.json(
         { error: '수거 상세주소를 2자 이상 입력해주세요. (우체국 API 필수)' },
@@ -185,175 +175,144 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const batchId = randomUUID();
-    const totalBoxes = boxSpecs.length;
+    const parcelId = randomUUID();
+    const orderNo = formatPickupOrderNo(customer.customer_code ?? undefined, parcelId);
+    const goodsNm = goods_name?.trim() || '해외배송 물품';
+    const boxNote = pickupBoxSummary(spec);
 
-    const epostCreated: Array<{ result: InsertOrderResponse; orderNo: string; boxSeq: number }> = [];
-    const parcelCreated: CreatedPickup[] = [];
+    const epostParams = {
+      custNo: custNo || 'TEST',
+      apprNo: apprNo || '0000000000',
+      payType: '2' as const,
+      reqType: '2' as const,
+      officeSer: OFFICE_SER,
+      orderNo,
+      ordCompNm: CENTER_ORD_NM,
+      ordNm: CENTER_ORD_NM,
+      ordZip: CENTER_ZIPCODE,
+      ordAddr1: CENTER_ADDR1,
+      ordAddr2: CENTER_ADDR2 || '없음',
+      ordMob: centerMob,
+      recNm: customer.name || '고객',
+      recZip: pickup_zipcode.replace(/-/g, ''),
+      recAddr1: pickup_address,
+      recAddr2: pickup_address_detail.trim(),
+      recTel: pickupPhone,
+      recMob: pickupPhone,
+      contCd: '025',
+      goodsNm,
+      weight: spec.weight,
+      volume: spec.volume,
+      microYn: 'N' as const,
+      delivMsg: pickup_notes,
+      testYn: isTest ? ('Y' as const) : ('N' as const),
+      printYn: 'Y' as const,
+      inqTelCn: pickupPhone,
+    };
 
-    let sharedResDate = '';
-    let sharedPostOffice = '';
-
-    for (let i = 0; i < boxSpecs.length; i++) {
-      if (i > 0) await new Promise((r) => setTimeout(r, 400));
-
-      const spec = boxSpecs[i];
-      const boxSeq = i + 1;
-      let orderNo = formatEpostOrderNo('SPB', boxSeq);
-      const boxLabel = totalBoxes > 1 ? `-${boxSeq}of${totalBoxes}` : '';
-      const goodsNm = goods_name
-        ? `${goods_name}${boxLabel}`
-        : `해외배송 물품${boxLabel}`;
-
-      const epostParams = {
-        custNo: custNo || 'TEST',
-        apprNo: apprNo || '0000000000',
-        payType: '2' as const,
-        reqType: '2' as const,
-        officeSer: OFFICE_SER,
-        orderNo,
-        ordCompNm: CENTER_ORD_NM,
-        ordNm: CENTER_ORD_NM,
-        ordZip: CENTER_ZIPCODE,
-        ordAddr1: CENTER_ADDR1,
-        ordAddr2: CENTER_ADDR2 || '없음',
-        ordMob: centerMob,
-        recNm: customer.name || '고객',
-        recZip: pickup_zipcode.replace(/-/g, ''),
-        recAddr1: pickup_address,
-        recAddr2: pickup_address_detail?.trim() || '없음',
-        recTel: pickupPhone,
-        recMob: pickupPhone,
-        contCd: '025',
-        goodsNm,
-        weight: spec.weight,
-        volume: spec.volume,
-        microYn: spec.microYn,
-        delivMsg: pickup_notes,
-        testYn: isTest ? ('Y' as const) : ('N' as const),
-        printYn: 'Y' as const,
-        inqTelCn: pickupPhone,
-      };
-
-      let epostResult: InsertOrderResponse;
-      if (isTest) {
-        console.log(`[PICKUP] 테스트 모드 박스 ${boxSeq}/${totalBoxes}`, spec);
-        epostResult = mockInsertOrder();
-      } else {
+    let epostResult: InsertOrderResponse;
+    if (isTest) {
+      console.log('[PICKUP] 테스트 모드', spec);
+      epostResult = mockInsertOrder();
+    } else {
+      try {
+        epostResult = await insertOrder(epostParams);
+      } catch (firstErr) {
         try {
+          await new Promise((r) => setTimeout(r, 800));
           epostResult = await insertOrder(epostParams);
-        } catch (firstErr) {
-          try {
-            orderNo = formatEpostOrderNo('SPB', boxSeq);
-            epostParams.orderNo = orderNo;
-            await new Promise((r) => setTimeout(r, 800));
-            epostResult = await insertOrder(epostParams);
-          } catch (e) {
-            console.error('[PICKUP] epost insert failed:', firstErr, e);
-            const msg = e instanceof Error ? e.message : '우체국 API 오류';
-            if (msg.includes('microYn') || msg.includes('초소형')) {
-              return NextResponse.json(
-                { error: '극소(마이크로) 수거 계약이 없습니다. 소형(5kg/80cm) 이상 규격을 선택해주세요.' },
-                { status: 400 }
-              );
-            }
-            if (epostCreated.length > 0) {
-              await rollbackEpostOrders(epostCreated, custNo, apprNo);
-            }
-            return NextResponse.json({ error: msg }, { status: 502 });
-          }
+        } catch (e) {
+          console.error('[PICKUP] epost insert failed:', firstErr, e);
+          const msg = e instanceof Error ? e.message : '우체국 API 오류';
+          return NextResponse.json({ error: msg }, { status: 502 });
         }
       }
 
-      epostCreated.push({ result: epostResult, orderNo, boxSeq });
-
-      if (!sharedResDate) sharedResDate = epostResult.resDate;
-      if (!sharedPostOffice && epostResult.regiPoNm) sharedPostOffice = epostResult.regiPoNm;
-
-      const boxNote = totalBoxes > 1
-        ? `[수거 ${boxSeq}/${totalBoxes}] ${pickupBoxSummary(spec)}`
-        : pickupBoxSummary(spec);
-
-      const { data: parcel, error: parcelError } = await supabase
-        .from('parcels')
-        .insert({
-          customer_id: user.id,
-          status: 'PENDING_PICKUP',
-          pickup_tracking_no: epostResult.regiNo,
-          tracking_no: epostResult.regiNo,
-          courier: '우체국택배',
-          tracking_carrier_id: 'kr.epost',
-          pickup_address,
-          pickup_address_detail: pickup_address_detail ?? null,
-          pickup_zipcode,
-          pickup_phone,
-          pickup_date,
-          pickup_notes: pickup_notes ?? null,
-          pickup_requested_at: new Date().toISOString(),
-          epost_req_no: epostResult.reqNo,
-          epost_res_no: epostResult.resNo,
-          epost_order_no: orderNo,
-          epost_pickup_date: epostResult.resDate,
-          epost_price: epostResult.price,
-          notes: goods_name ? `${boxNote} · ${goods_name}` : boxNote,
-          pickup_batch_id: totalBoxes > 1 ? batchId : null,
-          pickup_box_seq: boxSeq,
-          pickup_box_count: totalBoxes,
-          pickup_weight_kg: spec.weight,
-          pickup_volume_cm: spec.volume,
-          pickup_micro_yn: spec.microYn,
-          ...(boxSeq === 1 && item_condition && { item_condition }),
-          ...(boxSeq === 1 && pre_invoice_items?.length && { pre_invoice_items }),
-          registered_by: 'CUSTOMER',
-        })
-        .select('id')
-        .single();
-
-      if (parcelError || !parcel) {
-        console.error('[PICKUP] parcel insert error:', parcelError);
-        if (!isTest && epostCreated.length > 0) {
-          await rollbackEpostOrders(epostCreated, custNo, apprNo);
-        }
-        return NextResponse.json(
-          { error: `박스 ${boxSeq} 저장에 실패했습니다. 이전 접수는 취소되었을 수 있습니다.` },
-          { status: 500 }
-        );
-      }
-
-      parcelCreated.push({
-        parcel_id: parcel.id,
-        tracking_no: epostResult.regiNo,
-        box_seq: boxSeq,
-        price: epostResult.price,
-        box_spec: pickupBoxSummary(spec),
-      });
+      const reqYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      getResInfo({ reqType: '2', orderNo, reqYmd })
+        .then((info) => console.log('[PICKUP] getResInfo OK:', info.treatStusCd, info.regiNo))
+        .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err));
     }
 
-    const trackingList = parcelCreated.map((p) => p.tracking_no).join(', ');
-    const totalPrice = parcelCreated.reduce((s, p) => s + (parseInt(p.price, 10) || 0), 0);
+    const trackingEvents = [{
+      timestamp: new Date().toISOString(),
+      status: 'BOOKED',
+      description: '수거예약 완료',
+      location: epostResult.regiPoNm,
+      reqNo: epostResult.reqNo,
+      resNo: epostResult.resNo,
+      apprNo: epostParams.apprNo,
+      reqType: epostParams.reqType,
+      payType: epostParams.payType,
+      source: 'epost_pickup',
+    }];
+
+    const { data: parcel, error: parcelError } = await supabase
+      .from('parcels')
+      .insert({
+        id: parcelId,
+        customer_id: user.id,
+        status: 'PENDING_PICKUP',
+        pickup_tracking_no: epostResult.regiNo,
+        tracking_no: epostResult.regiNo,
+        courier: '우체국택배',
+        tracking_carrier_id: 'kr.epost',
+        pickup_address,
+        pickup_address_detail: pickup_address_detail ?? null,
+        pickup_zipcode,
+        pickup_phone,
+        pickup_date,
+        pickup_notes: pickup_notes ?? null,
+        pickup_requested_at: new Date().toISOString(),
+        epost_req_no: epostResult.reqNo,
+        epost_res_no: epostResult.resNo,
+        epost_order_no: orderNo,
+        epost_pickup_date: epostResult.resDate,
+        epost_price: epostResult.price,
+        tracking_events: trackingEvents,
+        notes: goods_name ? `${boxNote} · ${goods_name}` : boxNote,
+        pickup_box_count: 1,
+        pickup_weight_kg: spec.weight,
+        pickup_volume_cm: spec.volume,
+        pickup_micro_yn: 'N',
+        ...(item_condition && { item_condition }),
+        ...(pre_invoice_items?.length && { pre_invoice_items }),
+        registered_by: 'CUSTOMER',
+      })
+      .select('id')
+      .single();
+
+    if (parcelError || !parcel) {
+      console.error('[PICKUP] parcel insert error:', parcelError);
+      if (!isTest) await rollbackEpostOrder(epostResult, custNo, apprNo);
+      return NextResponse.json({ error: '수거 정보 저장에 실패했습니다.' }, { status: 500 });
+    }
 
     await supabase.from('notifications').insert({
       customer_id: user.id,
-      parcel_id: parcelCreated[0].parcel_id,
+      parcel_id: parcel.id,
       type: 'INBOUND',
-      title: totalBoxes > 1 ? `수거 예약 완료 (${totalBoxes}박스)` : '수거 예약 완료',
-      body: totalBoxes > 1
-        ? `운송장 ${totalBoxes}건 (${trackingList})으로 수거가 예약되었습니다.`
-        : `운송장번호 ${trackingList}로 수거가 예약되었습니다. 수거 예정일: ${sharedResDate?.substring(0, 8) ?? '미정'}`,
+      title: '수거 예약 완료',
+      body: `운송장번호 ${epostResult.regiNo}로 수거가 예약되었습니다. 수거 예정일: ${epostResult.resDate?.substring(0, 8) ?? '미정'}`,
     }).throwOnError();
 
     return NextResponse.json({
       success: true,
-      box_count: totalBoxes,
-      pickup_batch_id: totalBoxes > 1 ? batchId : null,
-      parcel_id: parcelCreated[0].parcel_id,
-      parcel_ids: parcelCreated.map((p) => p.parcel_id),
-      tracking_no: parcelCreated[0].tracking_no,
-      tracking_nos: parcelCreated.map((p) => p.tracking_no),
-      parcels: parcelCreated,
-      pickup_date: sharedResDate,
-      price: String(totalPrice),
-      post_office: sharedPostOffice,
+      box_count: 1,
+      parcel_id: parcel.id,
+      parcel_ids: [parcel.id],
+      tracking_no: epostResult.regiNo,
+      tracking_nos: [epostResult.regiNo],
+      parcels: [{
+        parcel_id: parcel.id,
+        tracking_no: epostResult.regiNo,
+        box_seq: 1,
+        price: epostResult.price,
+        box_spec: boxNote,
+      }],
+      pickup_date: epostResult.resDate,
+      price: epostResult.price,
+      post_office: epostResult.regiPoNm,
       is_test: isTest,
     });
   } catch (err: unknown) {

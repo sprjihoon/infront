@@ -36,7 +36,7 @@ export async function DELETE(
   // 본인 소포 확인
   const { data: parcel } = await supabase
     .from('parcels')
-    .select('id, status, epost_req_no, epost_res_no, pickup_tracking_no, pickup_requested_at')
+    .select('id, status, epost_req_no, epost_res_no, pickup_tracking_no, pickup_requested_at, tracking_events')
     .eq('id', id)
     .eq('customer_id', user.id)
     .maybeSingle();
@@ -56,17 +56,26 @@ export async function DELETE(
   // 실제 우체국 API 취소 (Mock이 아니고 환경변수 있을 때만)
   if (!isMock && hasEpostEnv) {
     try {
+      const events = (Array.isArray(parcel.tracking_events) ? parcel.tracking_events : []) as Array<{
+        reqNo?: string;
+        resNo?: string;
+        apprNo?: string;
+        reqType?: string;
+        payType?: string;
+      }>;
+      const first = events[0] ?? {};
+
       const reqYmd = parcel.pickup_requested_at
         ? new Date(parcel.pickup_requested_at).toISOString().slice(0, 10).replace(/-/g, '')
         : new Date().toISOString().slice(0, 10).replace(/-/g, '');
 
       await cancelOrder({
         custNo:  (process.env.EPOST_CUSTOMER_ID ?? '').trim(),
-        apprNo:  (process.env.EPOST_APPROVAL_NO ?? '').trim(),
-        reqType: '2',
-        payType: '2',
-        reqNo:   parcel.epost_req_no!,
-        resNo:   parcel.epost_res_no ?? '',
+        apprNo:  first.apprNo ?? (process.env.EPOST_APPROVAL_NO ?? '').trim(),
+        reqType: (first.reqType === '1' ? '1' : '2') as '1' | '2',
+        payType: (first.payType === '1' ? '1' : '2') as '1' | '2',
+        reqNo:   first.reqNo ?? parcel.epost_req_no!,
+        resNo:   first.resNo ?? parcel.epost_res_no ?? '',
         regiNo:  parcel.pickup_tracking_no ?? '',
         reqYmd,
         delYn:   'Y',

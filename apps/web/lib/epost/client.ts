@@ -138,12 +138,13 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
   const apprNo = (params.apprNo || getEnv('EPOST_APPROVAL_NO')).trim();
   const testYn  = params.testYn === 'Y' ? 'Y' : 'N';
 
+  const weight = Math.floor(typeof params.weight === 'number' && params.weight > 0 ? params.weight : 2);
   const body: Record<string, unknown> = {
     ...params,
     custNo,
     apprNo,
     officeSer: params.officeSer ?? OFFICE_SER,
-    weight: Math.floor(typeof params.weight === 'number' && params.weight > 0 ? params.weight : 2),
+    weight,
     volume: Math.floor(typeof params.volume === 'number' && params.volume > 0 ? params.volume : 60),
     printYn: params.printYn ?? 'Y',
     microYn: params.microYn === 'Y' ? 'Y' : 'N',
@@ -202,7 +203,7 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{ reqNo: s
   const custNo = (params.custNo || getEnv('EPOST_CUSTOMER_ID')).trim();
   const apprNo = (params.apprNo || getEnv('EPOST_APPROVAL_NO')).trim();
 
-  const xml = await callEPost('api.CancelOrder.jparcel', {
+  const payload = {
     custNo,
     apprNo,
     reqType: params.reqType,
@@ -212,12 +213,22 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{ reqNo: s
     regiNo:  params.regiNo,
     reqYmd:  params.reqYmd,
     delYn:   params.delYn,
-  });
-
-  return {
-    reqNo: parseXml(xml, 'reqNo') ?? '',
-    resNo: parseXml(xml, 'resNo') ?? '',
   };
+
+  // modo: api.GetResCancelCmd.jparcel (SHPAPI-U02-01)
+  try {
+    const xml = await callEPost('api.GetResCancelCmd.jparcel', payload);
+    return {
+      reqNo: parseXml(xml, 'reqNo') ?? '',
+      resNo: parseXml(xml, 'resNo') ?? '',
+    };
+  } catch {
+    const xml = await callEPost('api.CancelOrder.jparcel', payload);
+    return {
+      reqNo: parseXml(xml, 'reqNo') ?? '',
+      resNo: parseXml(xml, 'resNo') ?? '',
+    };
+  }
 }
 
 export function mockInsertOrder(): InsertOrderResponse {

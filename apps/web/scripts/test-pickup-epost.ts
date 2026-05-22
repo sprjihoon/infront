@@ -8,10 +8,10 @@ import { resolve } from 'path';
 import {
   resolvePickupBoxList,
   pickupBoxSummary,
-  PICKUP_BOX_SIZES,
+  formatPickupOrderNo,
   type PickupBoxSizeCode,
 } from '../lib/epost/pickup-boxes';
-import { insertOrder, cancelOrder, normalizeEpostPhone, formatEpostOrderNo } from '../lib/epost/client';
+import { insertOrder, cancelOrder, normalizeEpostPhone, getResInfo } from '../lib/epost/client';
 
 function loadEnv() {
   const envPath = resolve(process.cwd(), '.env.local');
@@ -64,10 +64,9 @@ type Created = {
 };
 
 async function submitBox(
-  boxSeq: number,
-  total: number,
   sizeCode: PickupBoxSizeCode,
   testYn: 'Y' | 'N',
+  orderNo: string,
 ): Promise<Created> {
   const [spec] = resolvePickupBoxList({ box_count: 1, box_size: sizeCode });
   const center = centerConfig();
@@ -79,7 +78,7 @@ async function submitBox(
     payType: '2' as const,
     reqType: '2' as const,
     officeSer: OFFICE_SER,
-    orderNo: formatEpostOrderNo('SPB', boxSeq),
+    orderNo,
     ordCompNm: center.ordNm,
     ordNm: center.ordNm,
     ordZip: center.zip,
@@ -93,10 +92,10 @@ async function submitBox(
     recTel: PICKUP.recTel,
     recMob: PICKUP.recTel,
     contCd: '025',
-    goodsNm: total > 1 ? `PICKUP${boxSeq}of${total}` : 'PICKUP',
+    goodsNm: 'PICKUP',
     weight: spec.weight,
     volume: spec.volume,
-    microYn: spec.microYn,
+    microYn: 'N' as const,
     testYn,
     printYn: 'Y' as const,
     inqTelCn: PICKUP.recTel,
@@ -104,11 +103,14 @@ async function submitBox(
 
   let lastErr: unknown;
   for (let attempt = 1; attempt <= 3; attempt++) {
-    params.orderNo = formatEpostOrderNo('SPB', boxSeq);
     try {
       const result = await insertOrder(params);
+      if (testYn === 'N') {
+        const reqYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        await getResInfo({ reqType: '2', orderNo, reqYmd }).catch(() => {});
+      }
       return {
-        orderNo: params.orderNo,
+        orderNo,
         spec: pickupBoxSummary(spec),
         regiNo: result.regiNo,
         reqNo: result.reqNo,
@@ -158,27 +160,18 @@ function assertRegiNo(regiNo: string, label: string) {
 
 async function runScenario(
   name: string,
-  boxes: PickupBoxSizeCode[],
+  sizeCode: PickupBoxSizeCode,
   testYn: 'Y' | 'N',
-): Promise<Created[]> {
-  console.log(`\n▶ ${name} (testYn=${testYn}, ${boxes.length}박스)`);
-  const specs = resolvePickupBoxList({ boxes: boxes.map((size_code) => ({ size_code })) });
-  specs.forEach((s, i) => console.log(`  박스${i + 1}: ${pickupBoxSummary(s)}`));
+): Promise<Created> {
+  console.log(`\n▶ ${name} (testYn=${testYn})`);
+  const [spec] = resolvePickupBoxList({ box_count: 1, box_size: sizeCode });
+  console.log(`  박스: ${pickupBoxSummary(spec)}`);
 
-  const created: Created[] = [];
-  for (let i = 0; i < boxes.length; i++) {
-    const c = await submitBox(i + 1, boxes.length, boxes[i], testYn);
-    console.log(`  ✓ 박스${i + 1} regiNo=${c.regiNo} price=${c.price}원`);
-    if (testYn === 'N' || LIVE) assertRegiNo(c.regiNo, `박스${i + 1}`);
-    created.push(c);
-    if (i < boxes.length - 1) await new Promise((r) => setTimeout(r, 500));
-  }
-
-  const regiNos = created.map((c) => c.regiNo);
-  if (new Set(regiNos).size !== regiNos.length) {
-    throw new Error('운송장번호 중복 — 박스마다 별도 regiNo 필요');
-  }
-  return created;
+  const orderNo = formatPickupOrderNo('SPB202605220001', crypto.randomUUID());
+  const c = await submitBox(sizeCode, testYn, orderNo);
+  console.log(`  ✓ regiNo=${c.regiNo} price=${c.price}원 orderNo=${orderNo}`);
+  if (testYn === 'N' || LIVE) assertRegiNo(c.regiNo, '박스');
+  return c;
 }
 
 async function main() {
@@ -195,22 +188,24 @@ async function main() {
   }
 
   // 1) resolvePickupBoxList 단위 검증
-  const list3 = resolvePickupBoxList({ box_count: 3, box_size: 'SMALL' });
-  if (list3.length !== 3 || list3[0].weight !== 2) throw new Error('resolvePickupBoxList box_count 실패');
+  const list3 = resolvePickupBoxList({ box_count: 1, box_size: 'DEFAULT' });
+  if (list3.length !== 1 || list3[0].weight !== 2) throw new Error('resolvePickupBoxList DEFAULT 실패');
 
-  const mixed = resolvePickupBoxList({
-    boxes: [{ size_code: 'MICRO' }, { size_code: 'MEDIUM' }],
-  });
-  if (mixed[0].microYn !== 'N' || mixed[1].weight !== 2) throw new Error('resolvePickupBoxList boxes 실패');
+  const mixed = resolvePickupBoxList({ box_count: 1, box_size: 'MEDIUM' });
+  if (mixed[0].weight !== 10) throw new Error('resolvePickupBoxList MEDIUM 실패');
+  try {
+    resolvePickupBoxList({ boxes: [{ size_code: 'SMALL' }, { size_code: 'MEDIUM' }] });
+    throw new Error('다박스 should fail');
+  } catch (e) {
+    if (!(e instanceof Error) || !e.message.includes('1박스')) throw e;
+  }
   console.log('✓ resolvePickupBoxList OK');
 
   const testYn: 'Y' | 'N' = LIVE ? 'N' : 'Y';
   const allCreated: Created[] = [];
 
   try {
-    allCreated.push(...(await runScenario('단일 극소(MICRO)', ['MICRO'], testYn)));
-    allCreated.push(...(await runScenario('2박스 동일(MICRO×2)', ['MICRO', 'MICRO'], testYn)));
-    allCreated.push(...(await runScenario('2박스 혼합(MICRO+SMALL)', ['MICRO', 'SMALL'], testYn)));
+    allCreated.push(await runScenario('modo 기본 DEFAULT 2/60', 'DEFAULT', testYn));
 
     console.log('\n=== 결과 요약 ===');
     console.log(`총 ${allCreated.length}건 운송장 발급`);
