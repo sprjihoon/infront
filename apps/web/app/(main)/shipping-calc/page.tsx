@@ -10,6 +10,7 @@ import {
 import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
 import SidebarPricingGuide from "@/components/ui/SidebarPricingGuide";
+import SidebarShippingCalcInfo from "@/components/ui/SidebarShippingCalcInfo";
 
 const SERVICES = [
   {
@@ -228,8 +229,9 @@ export default function ShippingCalcPage() {
       </aside>
 
       {/* 모바일: 상단 인라인 */}
-      <aside className="lg:hidden px-4 pt-4">
+      <aside className="lg:hidden px-4 pt-4 space-y-4">
         <SidebarPricingGuide />
+        <SidebarShippingCalcInfo />
       </aside>
 
       <div className="px-4 py-4 space-y-4">

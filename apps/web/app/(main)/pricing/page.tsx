@@ -338,8 +338,8 @@ export default function PricingPage() {
 
   const TABS: { id: Tab; label: string; color: string; active: string }[] = [
     { id: "ems",     label: "EMS",        color: "text-blue-600",    active: "bg-blue-600 text-white" },
-    { id: "kpacket", label: "K-Packet",   color: "text-emerald-600", active: "bg-emerald-600 text-white" },
     { id: "premium", label: "EMS 프리미엄", color: "text-violet-600",  active: "bg-violet-600 text-white" },
+    { id: "kpacket", label: "K-Packet",   color: "text-emerald-600", active: "bg-emerald-600 text-white" },
     { id: "infront", label: "대행 수수료",  color: "text-gray-600",    active: "bg-gray-700 text-white" },
   ];
 

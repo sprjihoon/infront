@@ -40,11 +40,29 @@ const SERVICE_COMPARISON = [
 
 type ActiveTab = "ems" | "kpacket" | "premium";
 
+const TAB_TO_SERVICE_ID: Record<ActiveTab, string> = {
+  ems: "ems",
+  premium: "ems-premium",
+  kpacket: "kpacket",
+};
+
 interface SidebarPricingGuideProps {
   activeTab?: ActiveTab;
 }
 
+function getSortedServices(activeTab?: ActiveTab) {
+  if (!activeTab) return [...SERVICE_COMPARISON];
+  const activeId = TAB_TO_SERVICE_ID[activeTab];
+  return [...SERVICE_COMPARISON].sort((a, b) => {
+    if (a.id === activeId) return -1;
+    if (b.id === activeId) return 1;
+    const order = SERVICE_COMPARISON.map((s) => s.id);
+    return order.indexOf(a.id) - order.indexOf(b.id);
+  });
+}
+
 export default function SidebarPricingGuide({ activeTab }: SidebarPricingGuideProps) {
+  const services = getSortedServices(activeTab);
   return (
     <div className="w-72 space-y-4">
       <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white">
@@ -63,7 +81,7 @@ export default function SidebarPricingGuide({ activeTab }: SidebarPricingGuidePr
           </h3>
         </div>
         <div className="p-4 space-y-3 max-h-[calc(100vh-14rem)] overflow-y-auto">
-          {SERVICE_COMPARISON.map((service) => {
+          {services.map((service) => {
             const Icon = service.icon;
             const isActive =
               activeTab !== undefined &&
