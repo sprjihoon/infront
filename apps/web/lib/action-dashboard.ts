@@ -45,13 +45,16 @@ export function formatPickupDate(
   return "일정 확인 중";
 }
 
+const PAYMENT_STATUSES = new Set(["PENDING_PAYMENT", "QUOTE_SENT"]);
+const INSPECTION_STATUSES = new Set(["INSPECTION", "PACKAGING_REQUESTED"]);
+
 export function buildActionCards(
   parcels: DashboardParcel[],
   orders: DashboardOrder[],
 ): ActionCard[] {
   const cards: ActionCard[] = [];
 
-  const pendingPayment = orders.filter((o) => o.status === "PENDING_PAYMENT");
+  const pendingPayment = orders.filter((o) => PAYMENT_STATUSES.has(o.status));
   if (pendingPayment.length > 0) {
     const order = pendingPayment[0];
     cards.push({
@@ -102,19 +105,21 @@ export function buildActionCards(
     });
   }
 
-  const inspecting = orders.filter(
-    (o) => o.status === "INSPECTION" || o.status === "PACKAGING_REQUESTED",
+  const inspectingOrders = orders.filter((o) =>
+    INSPECTION_STATUSES.has(o.status),
   );
-  if (inspecting.length > 0) {
+  const inspectingParcels = parcels.filter((p) => p.status === "INSPECTION");
+  const inspectingCount = inspectingOrders.length + inspectingParcels.length;
+  if (inspectingCount > 0) {
     cards.push({
       id: "inspection",
       priority: 5,
       emoji: "🔍",
-      message: `검수 진행 중 ${inspecting.length}건 — 잠시만 기다려주세요`,
+      message: `검수 진행 중 ${inspectingCount}건 — 잠시만 기다려주세요`,
     });
   }
 
-  if (cards.length === 0) {
+  if (cards.length === 0 && parcels.length === 0 && orders.length === 0) {
     cards.push({
       id: "empty",
       priority: 6,

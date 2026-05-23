@@ -95,11 +95,42 @@ describe("buildActionCards", () => {
     expect(cards.map((c) => c.id)).toEqual(["payment", "inbound", "pickup"]);
   });
 
-  it("ignores completed or inactive statuses", () => {
+  it("shows payment card for QUOTE_SENT orders", () => {
+    const cards = buildActionCards([], [order("o1", "QUOTE_SENT", 9800)]);
+    expect(cards[0].id).toBe("payment");
+    expect(cards[0].message).toContain("9,800원");
+  });
+
+  it("shows inspection card for parcel INSPECTION", () => {
+    const cards = buildActionCards([parcel("p1", "INSPECTION")], []);
+    expect(cards[0].id).toBe("inspection");
+    expect(cards[0].message).toContain("1건");
+  });
+
+  it("hides empty state when user has inactive history", () => {
+    const cards = buildActionCards(
+      [parcel("p1", "PICKED_UP"), parcel("p2", "DONE")],
+      [order("o1", "DELIVERED")],
+    );
+    expect(cards).toHaveLength(0);
+  });
+
+  it("uses earliest pickup date in message", () => {
+    const cards = buildActionCards(
+      [
+        parcel("p1", "PENDING_PICKUP", "2026-05-25"),
+        parcel("p2", "PENDING_PICKUP", "2026-05-20"),
+      ],
+      [],
+    );
+    expect(cards[0].message).toMatch(/5월 20일/);
+  });
+
+  it("ignores completed or inactive statuses for empty fallback", () => {
     const cards = buildActionCards(
       [parcel("p1", "DONE"), parcel("p2", "DELIVERED")],
       [order("o1", "DELIVERED"), order("o2", "CANCELLED")],
     );
-    expect(cards[0].id).toBe("empty");
+    expect(cards).toHaveLength(0);
   });
 });
