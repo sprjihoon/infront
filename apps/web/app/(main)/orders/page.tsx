@@ -118,10 +118,11 @@ function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const newOrderNo = searchParams.get("new");
+  const expandId = searchParams.get("expand");
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(expandId);
 
   useEffect(() => {
     fetch("/api/orders", { cache: "no-store" })
@@ -136,13 +137,15 @@ function OrdersContent() {
         if (newOrderNo) {
           const found = data?.find((o) => o.order_no === newOrderNo);
           if (found) setExpandedId(found.id);
+        } else if (expandId && data?.some((o) => o.id === expandId)) {
+          setExpandedId(expandId);
         }
       })
       .catch((err: unknown) => {
         console.error("[orders]", err);
         setLoading(false);
       });
-  }, [newOrderNo]);
+  }, [newOrderNo, expandId]);
 
   return (
     <div className="px-4 py-6 pb-24">

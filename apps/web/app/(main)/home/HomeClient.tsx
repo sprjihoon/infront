@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Package, ChevronRight, Bell, Truck, Calculator, Globe, Send, BookOpen, List } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import ActionDashboard from "@/components/ActionDashboard";
 
 interface UserInfo {
   name: string;
@@ -202,6 +203,8 @@ export default function HomeClient() {
           <Bell size={22} className="text-gray-700" />
         </button>
       </div>
+
+      <ActionDashboard />
 
       {/* 서비스 안내 배너 */}
       <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white flex items-center justify-between">

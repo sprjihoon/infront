@@ -1,8 +1,10 @@
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import SidebarWrapper from "@/components/ui/SidebarWrapper";
+import QueryProvider from "@/components/QueryProvider";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
+    <QueryProvider>
     <div className="min-h-screen bg-gray-50">
       {/* ?? ??? ? mx-auto ? ?? ?? ??? ?? */}
       <div
@@ -23,5 +25,6 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       <BottomTabBar />
     </div>
+    </QueryProvider>
   );
 }
