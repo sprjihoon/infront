@@ -31,7 +31,7 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
   {
     code: "DEFAULT",
     label: "기본",
-    desc: "2kg · 60cm (계약소포 기본, modo 동일)",
+    desc: "2kg · 60cm (계약소포 기본)",
     weight: 2,
     volume: 60,
   },

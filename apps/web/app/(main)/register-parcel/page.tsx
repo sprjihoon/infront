@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Plus, Trash2,
@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
 import type { ItemCategory } from "@/lib/item-categories";
+import { useFlowMode } from "@/lib/flow-mode";
+
+const STEP_LABELS = ["발송 정보", "물품 내역"] as const;
 
 interface InvoiceItem {
   key: string;
@@ -64,7 +67,9 @@ const ORIGIN_OPTIONS = [
 
 export default function RegisterParcelPage() {
   const router = useRouter();
+  const { isSimple, isAdvanced, mode: flowMode } = useFlowMode();
   const [step, setStep] = useState(1);
+  const prevFlowMode = useRef(flowMode);
 
   // Step 1: 발송 정보
   const [trackingNo, setTrackingNo] = useState("");
@@ -122,9 +127,53 @@ export default function RegisterParcelPage() {
     );
   }
 
-  async function handleSubmit() {
-    setSubmitting(true);
+  function inferStep(): 1 | 2 {
+    if (!canStep1()) return 1;
+    if (!canStep2()) return 2;
+    return 2;
+  }
+
+  useEffect(() => {
+    if (prevFlowMode.current === "advanced" && flowMode === "simple") {
+      setStep(inferStep());
+    }
+    prevFlowMode.current = flowMode;
+  }, [flowMode, trackingNo, items]);
+
+  function handleBack() {
+    if (isSimple && step > 1) {
+      setStep(1);
+      setError("");
+    } else {
+      router.back();
+    }
+  }
+
+  function handleNext() {
     setError("");
+    if (!canStep1()) {
+      setError("국내 운송장 번호를 입력해주세요.");
+      return;
+    }
+    setStep(2);
+  }
+
+  const showStep = (n: number) => isAdvanced || step === n;
+
+  async function handleSubmit() {
+    setError("");
+    if (!canStep1()) {
+      setError("국내 운송장 번호를 입력해주세요.");
+      if (isSimple) setStep(1);
+      return;
+    }
+    if (!canStep2()) {
+      setError("모든 물품의 품목·수량·단가를 입력해주세요.");
+      if (isSimple) setStep(2);
+      return;
+    }
+
+    setSubmitting(true);
     try {
       const res = await fetch("/api/parcels", {
         method: "POST",
@@ -230,27 +279,41 @@ export default function RegisterParcelPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
-      <div className="sticky top-0 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 z-10">
-        <button onClick={() => step === 1 ? router.back() : setStep(1)} className="p-1 -ml-1">
-          <ArrowLeft size={22} className="text-gray-700" />
-        </button>
-        <div className="flex-1">
-          <p className="text-xs text-gray-400">Step {step} / 2</p>
-          <p className="text-sm font-bold text-gray-900">
-            {step === 1 ? "발송 정보 입력" : "물품 내역 입력"}
-          </p>
+      <div
+        className="sticky bg-white border-b border-gray-100 z-10"
+        style={{ top: "calc(3rem + var(--sat, 0px))" }}
+      >
+        <div className="px-4 py-3 flex items-center gap-3">
+          <button type="button" onClick={handleBack} className="p-1 -ml-1">
+            <ArrowLeft size={22} className="text-gray-700" />
+          </button>
+          <div className="flex-1 min-w-0">
+            {isSimple ? (
+              <>
+                <p className="text-xs text-gray-400">Step {step} / {STEP_LABELS.length}</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{STEP_LABELS[step - 1]}</p>
+              </>
+            ) : (
+              <h1 className="text-base font-bold text-gray-900">물품 등록</h1>
+            )}
+          </div>
         </div>
+        {isSimple && (
+          <div className="flex gap-1.5 px-4 pb-3">
+            {STEP_LABELS.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 flex-1 rounded-full transition-colors ${i + 1 <= step ? "bg-blue-600" : "bg-gray-200"}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* 진행 바 */}
-      <div className="h-1 bg-gray-100">
-        <div className="h-full bg-blue-500 transition-all duration-300" style={{ width: `${step * 50}%` }} />
-      </div>
-
-      <div className="px-4 py-5 space-y-5 max-w-[600px] mx-auto">
+      <div className="px-4 py-5 pb-28 space-y-5 max-w-[600px] mx-auto">
 
         {/* ── Step 1: 발송 정보 ── */}
-        {step === 1 && (
+        {showStep(1) && (
           <>
             {/* 안내 */}
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
@@ -356,20 +419,14 @@ export default function RegisterParcelPage() {
               />
             </div>
 
-            <button
-              disabled={!canStep1()}
-              onClick={() => setStep(2)}
-              className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
-            >
-              다음 — 물품 내역 입력 <ArrowRight size={16} />
-            </button>
           </>
         )}
 
         {/* ── Step 2: 물품 내역 ── */}
-        {step === 2 && (
+        {showStep(2) && (
           <>
-            {/* 발송 정보 요약 */}
+            {/* 발송 정보 요약 — 일반모드 2단계 */}
+            {isSimple && (
             <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3">
               <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
                 <Truck size={15} className="text-blue-600" />
@@ -378,8 +435,9 @@ export default function RegisterParcelPage() {
                 <p className="text-sm font-semibold text-gray-900 font-mono">{trackingNo}</p>
                 <p className="text-xs text-gray-400">{courier || "택배사 미선택"}{senderName ? ` · ${senderName}` : ""}</p>
               </div>
-              <button onClick={() => setStep(1)} className="text-xs text-blue-600 font-medium shrink-0">수정</button>
+              <button type="button" onClick={() => setStep(1)} className="text-xs text-blue-600 font-medium shrink-0">수정</button>
             </div>
+            )}
 
             {/* 물품 상태 선택 */}
             <div>
@@ -666,27 +724,44 @@ export default function RegisterParcelPage() {
               </ul>
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
-                <AlertCircle size={16} className="shrink-0" />
-                {error}
-              </div>
-            )}
-
-            {/* 등록 버튼 */}
-            <button
-              type="button"
-              disabled={submitting || !canStep2()}
-              onClick={handleSubmit}
-              className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-md shadow-blue-200"
-            >
-              {submitting ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <><CheckCircle size={18} /> 물품 등록 완료</>
-              )}
-            </button>
           </>
+        )}
+
+        {error && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">
+            <AlertCircle size={16} className="shrink-0" />
+            {error}
+          </div>
+        )}
+      </div>
+
+      {/* 하단 버튼 */}
+      <div
+        className="sticky bg-white border-t border-gray-100 px-4 py-3 max-w-[600px] mx-auto"
+        style={{ bottom: "calc(60px + var(--sab, 0px))" }}
+      >
+        {isSimple && step < 2 ? (
+          <button
+            type="button"
+            disabled={!canStep1()}
+            onClick={handleNext}
+            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
+          >
+            다음 <ArrowRight size={16} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={submitting || !canStep1() || !canStep2()}
+            onClick={handleSubmit}
+            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-md shadow-blue-200"
+          >
+            {submitting ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <><CheckCircle size={18} /> 물품 등록 완료</>
+            )}
+          </button>
         )}
       </div>
     </div>
