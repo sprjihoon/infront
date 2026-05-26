@@ -62,7 +62,7 @@ export function buildActionCards(
       emoji: "🔴",
       message: `견적이 도착했어요 — ${Number(order.total_amount).toLocaleString("ko-KR")}원 결제 대기 중`,
       highlight: true,
-      button: { label: "결제하기", href: `/orders?expand=${order.id}` },
+      button: { label: "결제하기", href: `/orders/${order.id}` },
     });
   }
 

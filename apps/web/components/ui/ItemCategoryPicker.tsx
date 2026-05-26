@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Search, ChevronDown, ChevronRight, Check, X } from "lucide-react";
@@ -71,7 +71,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         className={`w-full flex items-center justify-between bg-gray-50 border rounded-xl px-3 py-2.5 text-sm text-left transition-colors ${
-          open ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-100"
+          open ? "border-brand-400 ring-2 ring-brand-100" : "border-gray-100"
         }`}
       >
         <div className="flex-1 min-w-0">
@@ -79,7 +79,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
             <div>
               <span className="text-gray-900 font-medium">{selected.name_ko}</span>
               {selected.hs_code && (
-                <span className="ml-2 text-xs text-blue-500 font-mono">HS {selected.hs_code}</span>
+                <span className="ml-2 text-xs text-brand-500 font-mono">HS {selected.hs_code}</span>
               )}
             </div>
           ) : (
@@ -118,7 +118,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="한글명, 영문명, HS코드로 검색"
-                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-300"
                 />
               </div>
             </div>
@@ -143,7 +143,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
                           <span className="text-sm font-bold text-gray-700">{group}</span>
                           <span className="text-xs text-gray-400">({items.length})</span>
                           {hasSelected && !isSearching && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
                           )}
                         </div>
                         {isSearching ? null : isOpen ? (
@@ -164,11 +164,11 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
                                 type="button"
                                 onClick={() => select(cat)}
                                 className={`w-full flex items-center justify-between px-5 py-3 text-left border-t border-gray-50 transition-colors ${
-                                  isSel ? "bg-blue-50" : "bg-white hover:bg-gray-50 active:bg-blue-50"
+                                  isSel ? "bg-brand-50" : "bg-white hover:bg-gray-50 active:bg-brand-50"
                                 }`}
                               >
                                 <div className="flex-1 min-w-0">
-                                  <p className={`text-sm ${isSel ? "text-blue-700 font-semibold" : "text-gray-800"}`}>
+                                  <p className={`text-sm ${isSel ? "text-brand-700 font-semibold" : "text-gray-800"}`}>
                                     {cat.name_ko}
                                   </p>
                                   <p className="text-xs text-gray-400 mt-0.5 truncate">
@@ -178,7 +178,7 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
                                     )}
                                   </p>
                                 </div>
-                                {isSel && <Check size={16} className="text-blue-600 shrink-0 ml-2" />}
+                                {isSel && <Check size={16} className="text-brand-600 shrink-0 ml-2" />}
                               </button>
                             );
                           })}

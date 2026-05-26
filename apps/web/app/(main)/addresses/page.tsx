@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -196,7 +196,7 @@ export default function AddressesPage() {
           <h1 className="text-base font-semibold text-gray-900">주소록 관리</h1>
           <button
             onClick={openAdd}
-            className="ml-auto flex items-center gap-1 bg-blue-600 text-white text-xs font-semibold px-3 py-2 rounded-xl"
+            className="ml-auto flex items-center gap-1 bg-brand-600 text-white text-xs font-semibold px-3 py-2 rounded-xl"
           >
             <Plus size={14} /> 추가
           </button>
@@ -213,7 +213,7 @@ export default function AddressesPage() {
               className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                 tab === t
                   ? t === "pickup"
-                    ? "bg-blue-600 text-white shadow-sm"
+                    ? "bg-brand-600 text-white shadow-sm"
                     : "bg-violet-600 text-white shadow-sm"
                   : "text-gray-400"
               }`}
@@ -226,15 +226,15 @@ export default function AddressesPage() {
         {/* 주소 목록 */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center py-12 text-center px-4">
             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
-              tab === "pickup" ? "bg-blue-50" : "bg-violet-50"
+              tab === "pickup" ? "bg-brand-50" : "bg-violet-50"
             }`}>
               {tab === "pickup"
-                ? <MapPin size={28} className="text-blue-300" />
+                ? <MapPin size={28} className="text-brand-300" />
                 : <Globe size={28} className="text-violet-300" />}
             </div>
             <p className="text-base font-semibold text-gray-700 mb-1">
@@ -248,7 +248,7 @@ export default function AddressesPage() {
             <button
               onClick={openAdd}
               className={`flex items-center gap-2 text-white text-sm font-semibold px-6 py-3 rounded-2xl shadow-sm ${
-                tab === "pickup" ? "bg-blue-600" : "bg-violet-600"
+                tab === "pickup" ? "bg-brand-600" : "bg-violet-600"
               }`}
             >
               <Plus size={16} />
@@ -262,7 +262,7 @@ export default function AddressesPage() {
                 key={addr.id}
                 className={`bg-white rounded-2xl p-4 shadow-sm border-2 transition-all ${
                   addr.is_default
-                    ? tab === "pickup" ? "border-blue-200" : "border-violet-200"
+                    ? tab === "pickup" ? "border-brand-200" : "border-violet-200"
                     : "border-transparent"
                 }`}
               >
@@ -270,7 +270,7 @@ export default function AddressesPage() {
                   <div className="flex items-center gap-2">
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
                       tab === "pickup"
-                        ? "bg-blue-100 text-blue-700"
+                        ? "bg-brand-100 text-brand-700"
                         : "bg-violet-100 text-violet-700"
                     }`}>
                       {addr.label}
@@ -389,7 +389,7 @@ export default function AddressesPage() {
                     value={form.label ?? ""}
                     onChange={e => setForm(f => ({ ...f, label: e.target.value }))}
                     placeholder="예: 집, 회사, 부모님댁"
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                   />
                 </div>
 
@@ -402,7 +402,7 @@ export default function AddressesPage() {
                     value={form.name ?? ""}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     placeholder="이름 입력"
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                   />
                 </div>
 
@@ -413,7 +413,7 @@ export default function AddressesPage() {
                     value={form.phone ?? ""}
                     onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                     placeholder={tab === "pickup" ? "010-0000-0000" : "+81-90-0000-0000"}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                   />
                 </div>
 
@@ -434,7 +434,7 @@ export default function AddressesPage() {
                         <AddressSearchButton
                           label="주소 검색"
                           onSelect={(z, a) => setForm(f => ({ ...f, zipcode: z, address: a, address_detail: "" }))}
-                          className="flex-1 bg-blue-600 text-white text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
+                          className="flex-1 bg-brand-600 text-white text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
                         />
                       </div>
                       <input
@@ -447,7 +447,7 @@ export default function AddressesPage() {
                         value={form.address_detail ?? ""}
                         onChange={e => setForm(f => ({ ...f, address_detail: e.target.value }))}
                         placeholder="상세주소 (동/호수)"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                       />
                     </div>
                   </>
@@ -477,8 +477,8 @@ export default function AddressesPage() {
                                 key={c.code}
                                 type="button"
                                 onClick={() => { setForm(f => ({ ...f, country_code: c.code })); setCountryOpen(false); }}
-                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-blue-50 text-left ${
-                                  form.country_code === c.code ? "text-blue-600 font-semibold" : "text-gray-700"
+                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-brand-50 text-left ${
+                                  form.country_code === c.code ? "text-brand-600 font-semibold" : "text-gray-700"
                                 }`}
                               >
                                 {c.flag} {c.name}
@@ -498,20 +498,20 @@ export default function AddressesPage() {
                         value={form.overseas_addr3 ?? ""}
                         onChange={e => setForm(f => ({ ...f, overseas_addr3: e.target.value }))}
                         placeholder="Street / 상세주소"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200 mb-2"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200 mb-2"
                       />
                       <div className="grid grid-cols-2 gap-2">
                         <input
                           value={form.overseas_addr2 ?? ""}
                           onChange={e => setForm(f => ({ ...f, overseas_addr2: e.target.value }))}
                           placeholder="시 / City"
-                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                         />
                         <input
                           value={form.overseas_addr1 ?? ""}
                           onChange={e => setForm(f => ({ ...f, overseas_addr1: e.target.value }))}
                           placeholder="주·도 / State"
-                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                         />
                       </div>
                     </div>
@@ -521,7 +521,7 @@ export default function AddressesPage() {
                         value={form.overseas_zip ?? ""}
                         onChange={e => setForm(f => ({ ...f, overseas_zip: e.target.value }))}
                         placeholder="Postal code"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                       />
                     </div>
                     <div>
@@ -531,7 +531,7 @@ export default function AddressesPage() {
                         value={form.email ?? ""}
                         onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                         placeholder="recipient@example.com"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                       />
                     </div>
                   </>
@@ -558,7 +558,7 @@ export default function AddressesPage() {
                   onClick={save}
                   disabled={saving}
                   className={`w-full text-white font-semibold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2 ${
-                    tab === "pickup" ? "bg-blue-600" : "bg-violet-600"
+                    tab === "pickup" ? "bg-brand-600" : "bg-violet-600"
                   }`}
                 >
                   {saving ? (

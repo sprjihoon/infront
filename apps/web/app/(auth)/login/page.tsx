@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -56,7 +56,7 @@ export default function LoginPage() {
     <div className="py-12">
       {/* 로고 */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-brand-600 rounded-2xl mb-4">
           <span className="text-white text-2xl font-bold">S</span>
         </div>
         <h1 className="text-2xl font-bold text-gray-900">인프론트</h1>
@@ -72,7 +72,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="example@email.com"
             required
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
         <div>
@@ -83,7 +83,7 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="비밀번호 입력"
             required
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
 
@@ -93,7 +93,7 @@ export default function LoginPage() {
             <div
               onClick={() => setRememberMe((v) => !v)}
               className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-colors ${
-                rememberMe ? "bg-blue-600 border-blue-600" : "bg-white border-gray-300"
+                rememberMe ? "bg-brand-600 border-brand-600" : "bg-white border-gray-300"
               }`}
             >
               {rememberMe && (
@@ -113,7 +113,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-3.5 bg-blue-600 text-white font-semibold rounded-xl text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
+          className="w-full py-3.5 bg-brand-600 text-white font-semibold rounded-xl text-sm disabled:opacity-50 active:scale-[0.98] transition-transform"
         >
           {loading ? "로그인 중..." : "로그인"}
         </button>
@@ -121,7 +121,7 @@ export default function LoginPage() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         계정이 없으신가요?{" "}
-        <Link href="/signup" className="text-blue-600 font-medium">
+        <Link href="/signup" className="text-brand-600 font-medium">
           회원가입
         </Link>
       </p>

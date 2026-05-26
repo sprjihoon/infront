@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -13,10 +13,10 @@ const STEPS = [
   {
     step: 1,
     icon: Truck,
-    color: "bg-blue-600",
-    lightColor: "bg-blue-50",
-    textColor: "text-blue-600",
-    borderColor: "border-blue-200",
+    color: "bg-brand-600",
+    lightColor: "bg-brand-50",
+    textColor: "text-brand-600",
+    borderColor: "border-brand-200",
     title: "수거 신청",
     subtitle: "우체국 집배원이 직접 방문",
     desc: "앱에서 주소와 날짜를 입력하면 우체국 집배원이 직접 방문하여 수거해갑니다. 따로 우체국에 갈 필요 없이 집에서 편리하게 이용하세요.",
@@ -49,7 +49,7 @@ const STEPS = [
     icon: ClipboardList,
     color: "bg-violet-600",
     lightColor: "bg-violet-50",
-    textColor: "text-violet-600",
+    textColor: "text-brand-600",
     borderColor: "border-violet-200",
     title: "출고 신청",
     subtitle: "배송지·서비스 선택 후 결제",
@@ -93,16 +93,16 @@ const SERVICES = [
     icon: Box,
     title: "유료 부가 서비스",
     items: ["안전포장 +3,000원", "재포장 +2,000원", "합포장 +2,000원"],
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-    border: "border-blue-100",
+    color: "text-brand-600",
+    bg: "bg-brand-50",
+    border: "border-brand-100",
   },
 ];
 
 const SHIPPING_METHODS = [
   {
     name: "EMS",
-    badge: "bg-blue-600",
+    badge: "bg-brand-600",
     maxWeight: "최대 30kg",
     days: "3~8일",
     features: ["전 세계 대부분 국가", "빠른 배송", "추적 가능"],
@@ -175,7 +175,7 @@ export default function GuidePage() {
       <div className="max-w-[600px] mx-auto px-4 py-4 space-y-5">
 
         {/* 안내 배너 */}
-        <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-5 text-white">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-5 text-white">
           <p className="text-white/70 text-xs font-medium mb-1">인프론트 해외배송 대행 서비스</p>
           <p className="text-xl font-bold leading-tight mb-2">집에서 전 세계로<br />쉽고 빠르게</p>
           <p className="text-white/80 text-sm">수거 → 검품 → 포장 → 국제발송</p>
@@ -280,19 +280,19 @@ export default function GuidePage() {
         <div className="grid grid-cols-2 gap-3">
           <Link
             href="/pickup"
-            className="bg-blue-600 rounded-2xl p-4 flex flex-col gap-2 active:scale-[0.97] transition-transform"
+            className="bg-brand-600 rounded-2xl p-4 flex flex-col gap-2 active:scale-[0.97] transition-transform"
           >
             <Truck size={22} className="text-white" />
             <div>
               <p className="text-white text-sm font-semibold">수거 신청</p>
-              <p className="text-blue-200 text-xs">지금 바로 시작</p>
+              <p className="text-brand-200 text-xs">지금 바로 시작</p>
             </div>
           </Link>
           <Link
             href="/shipping-calc"
             className="bg-white rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform"
           >
-            <Calculator size={22} className="text-violet-600" />
+            <Calculator size={22} className="text-brand-600" />
             <div>
               <p className="text-gray-900 text-sm font-semibold">요금 계산</p>
               <p className="text-gray-500 text-xs">EMS · K-Packet</p>
@@ -333,8 +333,8 @@ export default function GuidePage() {
           className="flex items-center justify-between bg-white rounded-2xl shadow-sm p-4 active:scale-[0.98] transition-transform"
         >
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-              <Calculator size={20} className="text-blue-600" />
+            <div className="w-10 h-10 rounded-xl bg-brand-50 flex items-center justify-center">
+              <Calculator size={20} className="text-brand-600" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-900">자세한 요금표 보기</p>

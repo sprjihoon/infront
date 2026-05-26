@@ -1,4 +1,4 @@
-// tracker.delivery GraphQL API 클라이언트
+﻿// tracker.delivery GraphQL API 클라이언트
 // https://tracker.delivery/docs/tracking-api
 
 const GRAPHQL_ENDPOINT = "https://apis.tracker.delivery/graphql";
@@ -19,7 +19,7 @@ export const COURIER_TO_CARRIER_ID: Record<string, string> = {
 // 상태 코드 → 한국어 + 진행 단계
 export const TRACKING_STATUS: Record<string, { label: string; step: number; color: string }> = {
   INFORMATION_RECEIVED: { label: "접수 완료",   step: 1, color: "text-gray-500"  },
-  AT_PICKUP:            { label: "집하 완료",   step: 2, color: "text-blue-600"  },
+  AT_PICKUP:            { label: "집하 완료",   step: 2, color: "text-brand-600"  },
   IN_TRANSIT:           { label: "이동 중",     step: 3, color: "text-indigo-600" },
   OUT_FOR_DELIVERY:     { label: "배달 출발",   step: 4, color: "text-orange-600" },
   ATTEMPT_FAIL:         { label: "배달 실패",   step: 3, color: "text-red-600"   },

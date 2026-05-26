@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Scale, Box, FileText, Package, Info, AlertCircle } from "lucide-react";
 
@@ -14,7 +14,7 @@ const DOC_TIERS = ["300g", "500g", "750g", "1kg", "1.25kg", "1.5kg", "1.75kg", "
 export default function SidebarShippingCalcInfo() {
   return (
     <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none flex flex-col max-h-[calc(100vh-2rem)]">
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 flex items-center gap-2 shrink-0">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
         <Info size={16} className="text-white" />
         <span className="text-white font-semibold text-sm">요금 계산 안내</span>
         <span className="ml-auto text-white/60 text-xs">우체국 기준</span>
@@ -24,20 +24,20 @@ export default function SidebarShippingCalcInfo() {
         {/* 부피중량 */}
         <section>
           <h3 className="text-xs font-bold text-gray-800 flex items-center gap-1.5 mb-2">
-            <Box size={14} className="text-blue-600" />
+            <Box size={14} className="text-brand-600" />
             부피중량 계산
           </h3>
-          <div className="bg-blue-50 rounded-xl px-3 py-2.5 border border-blue-100 space-y-2">
-            <p className="text-[11px] text-blue-900 font-medium leading-relaxed">
+          <div className="bg-brand-50 rounded-xl px-3 py-2.5 border border-brand-100 space-y-2">
+            <p className="text-[11px] text-brand-900 font-medium leading-relaxed">
               가로 × 세로 × 높이 ÷ 6,000 = kg
             </p>
-            <p className="text-[10px] text-blue-700 leading-relaxed">
+            <p className="text-[10px] text-brand-700 leading-relaxed">
               크기 단위는 cm입니다. g 단위로 계산할 때는 ÷ 6을 사용합니다.
             </p>
-            <div className="bg-white rounded-lg px-2.5 py-2 border border-blue-100">
+            <div className="bg-white rounded-lg px-2.5 py-2 border border-brand-100">
               <p className="text-[10px] text-gray-500 mb-1">예시 (30 × 20 × 15 cm)</p>
               <p className="text-[11px] text-gray-800 font-medium">
-                9,000 ÷ 6,000 = <span className="text-blue-700">1.5 kg (1,500 g)</span>
+                9,000 ÷ 6,000 = <span className="text-brand-700">1.5 kg (1,500 g)</span>
               </p>
             </div>
           </div>
@@ -46,7 +46,7 @@ export default function SidebarShippingCalcInfo() {
         {/* 적용 중량 */}
         <section>
           <h3 className="text-xs font-bold text-gray-800 flex items-center gap-1.5 mb-2">
-            <Scale size={14} className="text-violet-600" />
+            <Scale size={14} className="text-brand-600" />
             적용 중량
           </h3>
           <div className="space-y-1.5">

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Package, Zap, Shield, TrendingDown } from "lucide-react";
 
@@ -65,7 +65,7 @@ export default function SidebarPricingGuide({ activeTab }: SidebarPricingGuidePr
   const services = getSortedServices(activeTab);
   return (
     <div className="w-72 space-y-4">
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-4 text-white">
         <p className="font-bold text-base mb-0.5">국제배송 요금 안내</p>
         <p className="text-white/80 text-xs leading-relaxed">
           아래 요금은 우체국 기준 참고 요금입니다 (VAT 포함).
@@ -74,7 +74,7 @@ export default function SidebarPricingGuide({ activeTab }: SidebarPricingGuidePr
       </div>
 
       <section className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3">
+        <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3">
           <h3 className="text-white font-bold text-sm flex items-center gap-2">
             <Package size={15} />
             배송 서비스 비교
@@ -90,8 +90,8 @@ export default function SidebarPricingGuide({ activeTab }: SidebarPricingGuidePr
                 (activeTab === "premium" && service.id === "ems-premium"));
 
             const colorClasses = {
-              blue: { border: "border-blue-500", bg: "bg-blue-50", icon: "text-blue-600" },
-              violet: { border: "border-violet-500", bg: "bg-violet-50", icon: "text-violet-600" },
+              blue: { border: "border-brand-500", bg: "bg-brand-50", icon: "text-brand-600" },
+              violet: { border: "border-violet-500", bg: "bg-violet-50", icon: "text-brand-600" },
               emerald: { border: "border-emerald-500", bg: "bg-emerald-50", icon: "text-emerald-600" },
             };
             const colors = colorClasses[service.color];

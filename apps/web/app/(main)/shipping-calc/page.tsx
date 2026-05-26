@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,10 +19,10 @@ const SERVICES = [
     sublabel: "비서류",
     premiumcd: "31",
     em_ee: "em",
-    color: "bg-blue-600",
-    textColor: "text-blue-700",
-    badgeBg: "bg-blue-50",
-    badgeBorder: "border-blue-200",
+    color: "bg-brand-600",
+    textColor: "text-brand-700",
+    badgeBg: "bg-brand-50",
+    badgeBorder: "border-brand-200",
     maxWeight: 30000,
   },
   {
@@ -31,8 +31,8 @@ const SERVICES = [
     sublabel: "서류",
     premiumcd: "31",
     em_ee: "ee",
-    color: "bg-blue-400",
-    textColor: "text-blue-500",
+    color: "bg-brand-400",
+    textColor: "text-brand-500",
     badgeBg: "bg-sky-50",
     badgeBorder: "border-sky-200",
     maxWeight: 2000,
@@ -214,7 +214,7 @@ export default function ShippingCalcPage() {
             <ArrowLeft size={22} className="text-gray-700" />
           </button>
           <h1 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">
-            <Calculator size={17} className="text-blue-600" />
+            <Calculator size={17} className="text-brand-600" />
             국제배송 요금 계산기
           </h1>
         </div>
@@ -269,8 +269,8 @@ export default function ShippingCalcPage() {
                   <button
                     key={c.code}
                     onClick={() => { setCountryCode(c.code); setCountryOpen(false); setResults(null); }}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-blue-50 transition-colors ${
-                      c.code === countryCode ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700"
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-brand-50 transition-colors ${
+                      c.code === countryCode ? "bg-brand-50 text-brand-700 font-medium" : "text-gray-700"
                     }`}
                   >
                     <span className="text-lg">{c.flag}</span>
@@ -336,7 +336,7 @@ export default function ShippingCalcPage() {
           </div>
 
           {volWeight > 0 && (
-            <div className="mt-3 bg-blue-50 rounded-xl px-4 py-3 text-xs space-y-1">
+            <div className="mt-3 bg-brand-50 rounded-xl px-4 py-3 text-xs space-y-1">
               <div className="flex justify-between text-gray-600">
                 <span>실중량</span>
                 <span className="font-medium">{realWeight.toLocaleString()} g</span>
@@ -345,9 +345,9 @@ export default function ShippingCalcPage() {
                 <span>부피중량 ({length}×{width}×{height}÷6)</span>
                 <span className="font-medium">{volWeight.toLocaleString()} g</span>
               </div>
-              <div className="flex justify-between border-t border-blue-100 pt-1 mt-1">
-                <span className="font-semibold text-blue-700">적용 중량</span>
-                <span className="font-bold text-blue-700">
+              <div className="flex justify-between border-t border-brand-100 pt-1 mt-1">
+                <span className="font-semibold text-brand-700">적용 중량</span>
+                <span className="font-bold text-brand-700">
                   {appliedWeight.toLocaleString()} g ({(appliedWeight / 1000).toFixed(2)}kg)
                 </span>
               </div>
@@ -364,7 +364,7 @@ export default function ShippingCalcPage() {
         <button
           onClick={calculate}
           disabled={loading}
-          className="w-full bg-blue-600 text-white rounded-2xl py-4 font-semibold text-base shadow-md active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+          className="w-full bg-brand-600 text-white rounded-2xl py-4 font-semibold text-base shadow-md active:scale-[0.98] transition-all disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading
             ? <><Loader2 size={18} className="animate-spin" /> 계산 중...</>
@@ -392,11 +392,11 @@ export default function ShippingCalcPage() {
               </div>
               <div className="p-4 space-y-3">
                 {/* 면세한도 */}
-                <div className="bg-blue-50 rounded-xl px-3 py-2.5 border border-blue-100">
-                  <p className="text-[10px] font-bold text-blue-700 mb-1">💰 면세한도</p>
-                  <p className="text-sm font-bold text-blue-900">{info.dutyFree}</p>
+                <div className="bg-brand-50 rounded-xl px-3 py-2.5 border border-brand-100">
+                  <p className="text-[10px] font-bold text-brand-700 mb-1">💰 면세한도</p>
+                  <p className="text-sm font-bold text-brand-900">{info.dutyFree}</p>
                   {info.dutyFreeNote && (
-                    <p className="text-[10px] text-blue-600 mt-0.5">{info.dutyFreeNote}</p>
+                    <p className="text-[10px] text-brand-600 mt-0.5">{info.dutyFreeNote}</p>
                   )}
                 </div>
 
@@ -427,7 +427,7 @@ export default function ShippingCalcPage() {
 
                 {/* 배터리 + 유의사항 */}
                 <div className="flex items-start gap-2 bg-violet-50 rounded-xl px-3 py-2.5 border border-violet-100">
-                  <Zap size={12} className="text-violet-600 shrink-0 mt-0.5" />
+                  <Zap size={12} className="text-brand-600 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-violet-700">
                     <span className="font-bold">리튬배터리</span> {info.batteryLimit}
                   </p>
@@ -446,7 +446,7 @@ export default function ShippingCalcPage() {
         {results && (
           <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
             {/* 헤더 */}
-            <div className="bg-blue-600 px-4 py-3 flex items-center justify-between">
+            <div className="bg-brand-600 px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="text-white/80 text-xs">
                   {country.flag} {country.name} · 적용 중량 {results.appliedWeight.toLocaleString()} g

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -341,8 +341,8 @@ export default function PricingPage() {
   }
 
   const TABS: { id: Tab; label: string; color: string; active: string }[] = [
-    { id: "ems",     label: "EMS",        color: "text-blue-600",    active: "bg-blue-600 text-white" },
-    { id: "premium", label: "EMS 프리미엄", color: "text-violet-600",  active: "bg-violet-600 text-white" },
+    { id: "ems",     label: "EMS",        color: "text-brand-600",    active: "bg-brand-600 text-white" },
+    { id: "premium", label: "EMS 프리미엄", color: "text-brand-600",  active: "bg-violet-600 text-white" },
     { id: "kpacket", label: "K-Packet",   color: "text-emerald-600", active: "bg-emerald-600 text-white" },
     { id: "infront", label: "대행 수수료",  color: "text-gray-600",    active: "bg-gray-700 text-white" },
   ];
@@ -363,7 +363,7 @@ export default function PricingPage() {
           </div>
           <Link
             href="/shipping-calc"
-            className="ml-auto flex items-center gap-1 text-xs bg-blue-600 text-white rounded-xl px-3 py-1.5 font-medium"
+            className="ml-auto flex items-center gap-1 text-xs bg-brand-600 text-white rounded-xl px-3 py-1.5 font-medium"
           >
             <Calculator size={12} />
             요금 계산
@@ -405,9 +405,9 @@ export default function PricingPage() {
         {/* EMS 요금표 */}
         {tab === "ems" && (
           <div className="space-y-3">
-            <div className="flex items-start gap-2 bg-blue-50 rounded-xl px-3 py-2.5 border border-blue-100">
-              <Info size={13} className="text-blue-500 shrink-0 mt-0.5" />
-              <div className="text-[11px] text-blue-700 space-y-0.5">
+            <div className="flex items-start gap-2 bg-brand-50 rounded-xl px-3 py-2.5 border border-brand-100">
+              <Info size={13} className="text-brand-500 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-brand-700 space-y-0.5">
                 <p>• 서류: 최대 2kg / 비서류(물품): 최대 30kg</p>
                 <p>• 실중량·부피중량(가로×세로×높이÷6,000) 중 큰 값 적용</p>
                 <p>• 출처: 우정사업본부 공식 요금표 (koreapost.go.kr)</p>
@@ -419,7 +419,7 @@ export default function PricingPage() {
               {([["pcl","📦 비서류 (물품)"],["doc","📄 서류"]] as const).map(([v,label]) => (
                 <button key={v} onClick={() => setEmsType(v)}
                   className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
-                    emsType === v ? "bg-blue-600 text-white" : "text-blue-600"}`}>
+                    emsType === v ? "bg-brand-600 text-white" : "text-brand-600"}`}>
                   {label}
                 </button>
               ))}
@@ -472,7 +472,7 @@ export default function PricingPage() {
                                 {ws.map((w, i) => (
                                   <tr key={w} className="hover:bg-gray-50/50">
                                     <td className="px-4 py-2 text-gray-600 text-sm">{w}kg</td>
-                                    <td className="px-4 py-2 text-right font-semibold text-blue-700">
+                                    <td className="px-4 py-2 text-right font-semibold text-brand-700">
                                       {rates[i].toLocaleString()}
                                     </td>
                                   </tr>
@@ -521,7 +521,7 @@ export default function PricingPage() {
                             {ws.map((w, i) => (
                               <tr key={w} className="hover:bg-gray-50/50">
                                 <td className="px-4 py-2 text-gray-600 text-sm">{w}kg</td>
-                                <td className="px-4 py-2 text-right font-semibold text-blue-700">
+                                <td className="px-4 py-2 text-right font-semibold text-brand-700">
                                   {rates[i].toLocaleString()}
                                 </td>
                               </tr>
@@ -617,9 +617,9 @@ export default function PricingPage() {
                 </div>
             ))}
 
-            <div className="bg-blue-50 rounded-xl px-4 py-3 border border-blue-100">
-              <p className="text-[11px] text-blue-700 font-semibold mb-1">📦 K-Packet 배달 소요일 (예상)</p>
-              <div className="grid grid-cols-2 gap-1 text-[11px] text-blue-600">
+            <div className="bg-brand-50 rounded-xl px-4 py-3 border border-brand-100">
+              <p className="text-[11px] text-brand-700 font-semibold mb-1">📦 K-Packet 배달 소요일 (예상)</p>
+              <div className="grid grid-cols-2 gap-1 text-[11px] text-brand-600">
                 <span>• 일본·중국·홍콩: 7~10일</span>
                 <span>• 동남아시아: 7~12일</span>
                 <span>• 미국·캐나다: 10~15일</span>
@@ -642,7 +642,7 @@ export default function PricingPage() {
                 className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
                   premiumType === "parcel"
                     ? "bg-violet-600 text-white"
-                    : "text-violet-600"
+                    : "text-brand-600"
                 }`}
               >
                 📦 비서류 (물품)
@@ -652,7 +652,7 @@ export default function PricingPage() {
                 className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
                   premiumType === "doc"
                     ? "bg-violet-600 text-white"
-                    : "text-violet-600"
+                    : "text-brand-600"
                 }`}
               >
                 📄 서류
@@ -819,7 +819,7 @@ export default function PricingPage() {
         {tab === "infront" && (
           <div className="space-y-3">
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3">
+              <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3">
                 <p className="text-white font-bold text-sm">인프론트 서비스 요금</p>
                 <p className="text-white/70 text-[10px] mt-0.5">배송 대행 수수료 안내</p>
               </div>
@@ -845,19 +845,19 @@ export default function PricingPage() {
               <p className="text-sm font-bold text-gray-800">국제배송비 결제 방법</p>
               <div className="space-y-2 text-xs text-gray-600">
                 <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
+                  <span className="w-5 h-5 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-[10px] font-bold shrink-0">1</span>
                   <p>출고 신청 시 배송 방법 (EMS / EMS 프리미엄 / K-Packet) 선택</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
+                  <span className="w-5 h-5 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-[10px] font-bold shrink-0">2</span>
                   <p>창고에서 실제 무게·크기 측정 후 정확한 요금 산출</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
+                  <span className="w-5 h-5 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-[10px] font-bold shrink-0">3</span>
                   <p>견적 확인 후 토스페이먼츠로 결제 (카드 · 간편결제 가능)</p>
                 </div>
                 <div className="flex items-start gap-2">
-                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold shrink-0">4</span>
+                  <span className="w-5 h-5 rounded-full bg-brand-100 text-brand-600 flex items-center justify-center text-[10px] font-bold shrink-0">4</span>
                   <p>결제 완료 후 우체국 EMS로 국제 발송 진행</p>
                 </div>
               </div>
@@ -893,7 +893,7 @@ export default function PricingPage() {
           </div>
           <Link
             href="/shipping-calc"
-            className="flex items-center gap-1.5 bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-semibold shrink-0"
+            className="flex items-center gap-1.5 bg-brand-600 text-white rounded-xl px-4 py-2 text-sm font-semibold shrink-0"
           >
             <Calculator size={14} />
             계산하기
@@ -910,7 +910,7 @@ export default function PricingPage() {
               href="https://ems.epost.go.kr/front.EmsDeliveryDelivery01.postal"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-0.5 text-blue-500 mt-1"
+              className="flex items-center gap-0.5 text-brand-500 mt-1"
             >
               <ExternalLink size={10} />
               우체국 EMS 공식 요금조회 바로가기

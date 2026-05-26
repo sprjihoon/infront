@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -46,7 +46,7 @@ function PaymentSuccessContent() {
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 text-center">
       {status === "loading" && (
         <>
-          <Loader2 size={48} className="text-blue-500 animate-spin mb-4" />
+          <Loader2 size={48} className="text-brand-500 animate-spin mb-4" />
           <p className="text-base font-bold text-gray-900 mb-1">결제 확인 중...</p>
           <p className="text-sm text-gray-400">잠시만 기다려주세요</p>
         </>
@@ -62,7 +62,7 @@ function PaymentSuccessContent() {
           </p>
           <button
             onClick={() => router.push("/orders")}
-            className="bg-blue-600 text-white font-bold px-8 py-3.5 rounded-2xl text-sm"
+            className="bg-brand-600 text-white font-bold px-8 py-3.5 rounded-2xl text-sm"
           >
             배송현황 보기
           </button>
@@ -95,7 +95,7 @@ export default function PaymentSuccessPage() {
   return (
     <Suspense fallback={
       <div className="flex justify-center items-center min-h-screen">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
+        <Loader2 size={32} className="animate-spin text-brand-500" />
       </div>
     }>
       <PaymentSuccessContent />

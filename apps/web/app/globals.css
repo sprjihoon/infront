@@ -14,6 +14,17 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* 중국 타겟 — 차이홍(中国红) 계열 브랜드 컬러 */
+  --color-brand-50: #fff5f5;
+  --color-brand-100: #ffe8e8;
+  --color-brand-200: #ffd0d0;
+  --color-brand-300: #ffb0b0;
+  --color-brand-400: #f06060;
+  --color-brand-500: #e83838;
+  --color-brand-600: #de2910;
+  --color-brand-700: #c41e1e;
+  --color-brand-800: #9e1818;
+  --color-brand-900: #7a1212;
 }
 
 body {

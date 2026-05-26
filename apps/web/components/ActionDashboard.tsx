@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
@@ -88,7 +88,7 @@ export default function ActionDashboard() {
                 className={`mt-3 flex w-full items-center justify-center rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition-transform ${
                   card.highlight
                     ? "bg-red-600 text-white"
-                    : "bg-blue-600 text-white"
+                    : "bg-brand-600 text-white"
                 }`}
               >
                 {card.button.label}

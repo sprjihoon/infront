@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Globe, Star, Plus, ChevronRight, ChevronDown, X, Check, Pencil } from "lucide-react";
@@ -220,7 +220,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                 <p className="text-xs text-gray-400 mt-0.5">{value.email}</p>
               )}
             </div>
-            <div className="flex items-center gap-1 shrink-0 text-violet-600 text-xs font-medium mt-0.5">
+            <div className="flex items-center gap-1 shrink-0 text-brand-600 text-xs font-medium mt-0.5">
               <Pencil size={12} />
               변경
             </div>
@@ -257,7 +257,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                 className="p-1.5 rounded-full hover:bg-gray-100 flex items-center"
               >
                 {mode === "new"
-                  ? <span className="text-xs text-blue-500 font-medium px-1">← 목록</span>
+                  ? <span className="text-xs text-brand-500 font-medium px-1">← 목록</span>
                   : <X size={18} className="text-gray-500" />}
               </button>
             </div>
@@ -357,7 +357,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                               type="button"
                               onClick={() => { setNewVal((v) => ({ ...v, countryCode: c.code })); setCountryOpen(false); }}
                               className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-violet-50 text-left ${
-                                newVal.countryCode === c.code ? "text-violet-600 font-semibold" : "text-gray-700"
+                                newVal.countryCode === c.code ? "text-brand-600 font-semibold" : "text-gray-700"
                               }`}
                             >
                               {c.flag} {c.name}

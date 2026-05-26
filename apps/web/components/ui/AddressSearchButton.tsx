@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { MapPin, X } from "lucide-react";
@@ -42,7 +42,7 @@ export function AddressSearchButton({
         onClick={() => setOpen(true)}
         className={
           className ??
-          "px-4 py-3.5 bg-blue-600 text-white text-sm font-bold rounded-xl active:opacity-80 whitespace-nowrap"
+          "px-4 py-3.5 bg-brand-600 text-white text-sm font-bold rounded-xl active:opacity-80 whitespace-nowrap"
         }
       >
         <span className="flex items-center gap-1.5">

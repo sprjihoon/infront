@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,12 +32,12 @@ export default function BottomTabBar() {
             >
               <Icon
                 size={20}
-                className={active ? "text-blue-600" : "text-gray-400"}
+                className={active ? "text-brand-600" : "text-gray-400"}
                 strokeWidth={active ? 2.5 : 1.8}
               />
               <span
                 className={`text-[9px] font-medium ${
-                  active ? "text-blue-600" : "text-gray-400"
+                  active ? "text-brand-600" : "text-gray-400"
                 }`}
               >
                 {label}

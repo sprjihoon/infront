@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText, ShieldAlert, Zap } from "lucide-react";
@@ -6,13 +6,13 @@ import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
 
 const PARCEL_SERVICES = [
-  { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-blue-600",    maxW: 30000 },
+  { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-brand-600",    maxW: 30000 },
   { id: "ems-premium", label: "EMS프리미엄", premiumcd: "32", em_ee: "em", color: "bg-violet-600",  maxW: 70000 },
   { id: "k-packet",    label: "K-Packet",   premiumcd: "14", em_ee: "rl", color: "bg-emerald-600", maxW: 2000  },
 ] as const;
 
 const DOC_SERVICES = [
-  { id: "ems-doc", label: "EMS 서류", premiumcd: "31", em_ee: "ee", color: "bg-blue-400", maxW: 2000 },
+  { id: "ems-doc", label: "EMS 서류", premiumcd: "31", em_ee: "ee", color: "bg-brand-400", maxW: 2000 },
 ] as const;
 
 const POPULAR = [
@@ -130,7 +130,7 @@ export default function SidebarCalculator() {
   return (
     <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none flex flex-col max-h-[calc(100vh-2rem)]">
       {/* 헤더 — 항상 상단 고정 */}
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 flex items-center gap-2 shrink-0">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
         <Calculator size={16} className="text-white" />
         <span className="text-white font-semibold text-sm">가견적 계산기</span>
         <span className="ml-auto text-white/60 text-xs">EMS · K-Packet</span>
@@ -148,7 +148,7 @@ export default function SidebarCalculator() {
               onClick={() => { setDocType("parcel"); reset(); }}
               className={`rounded-lg px-3 py-2 text-sm font-semibold flex items-center justify-center gap-1.5 border transition-all ${
                 docType === "parcel"
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  ? "border-brand-500 bg-brand-50 text-brand-700"
                   : "border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100"
               }`}
             >
@@ -159,7 +159,7 @@ export default function SidebarCalculator() {
               onClick={() => { setDocType("doc"); reset(); }}
               className={`rounded-lg px-3 py-2 text-sm font-semibold flex items-center justify-center gap-1.5 border transition-all ${
                 docType === "doc"
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
+                  ? "border-brand-500 bg-brand-50 text-brand-700"
                   : "border-gray-100 bg-gray-50 text-gray-500 hover:bg-gray-100"
               }`}
             >
@@ -180,7 +180,7 @@ export default function SidebarCalculator() {
                 title={c.name}
                 className={`rounded-lg py-1.5 text-center text-base transition-all border ${
                   country === c.code
-                    ? "border-blue-500 bg-blue-50 scale-105"
+                    ? "border-brand-500 bg-brand-50 scale-105"
                     : "border-gray-100 bg-gray-50 hover:bg-gray-100"
                 }`}
               >
@@ -190,7 +190,7 @@ export default function SidebarCalculator() {
           </div>
           <button
             onClick={() => setShowMore(v => !v)}
-            className="mt-1 text-[10px] text-blue-500 flex items-center gap-0.5"
+            className="mt-1 text-[10px] text-brand-500 flex items-center gap-0.5"
           >
             {showMore ? <><ChevronUp size={10} />간략히</> : <><ChevronDown size={10} />더보기</>}
           </button>
@@ -241,7 +241,7 @@ export default function SidebarCalculator() {
             ))}
           </div>
           {volWeight > 0 && (
-            <p className="text-[10px] text-blue-600 mt-1.5">
+            <p className="text-[10px] text-brand-600 mt-1.5">
               부피중량 {volWeight.toLocaleString()}g · 적용 {applied.toLocaleString()}g
             </p>
           )}
@@ -251,7 +251,7 @@ export default function SidebarCalculator() {
         <button
           onClick={calc}
           disabled={loading}
-          className="w-full bg-blue-600 text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all disabled:opacity-60"
+          className="w-full bg-brand-600 text-white rounded-xl py-2.5 text-sm font-semibold flex items-center justify-center gap-1.5 active:scale-[0.98] transition-all disabled:opacity-60"
         >
           {loading
             ? <><Loader2 size={14} className="animate-spin" />계산 중...</>
@@ -280,7 +280,7 @@ export default function SidebarCalculator() {
                 key={r.id}
                 className={`rounded-xl px-3 py-2 border flex items-center justify-between ${
                   r.fee !== null && r.fee === minFee && validFees.length > 1
-                    ? "bg-blue-50 border-blue-200"
+                    ? "bg-brand-50 border-brand-200"
                     : "bg-gray-50 border-gray-100"
                 }`}
               >
@@ -288,7 +288,7 @@ export default function SidebarCalculator() {
                   <span className={`w-2 h-2 rounded-full shrink-0 ${r.color}`} />
                   <span className="text-xs text-gray-600 truncate">{r.label}</span>
                   {r.fee !== null && r.fee === minFee && validFees.length > 1 && (
-                    <span className="text-[9px] bg-blue-500 text-white px-1 py-0.5 rounded font-bold shrink-0">최저</span>
+                    <span className="text-[9px] bg-brand-500 text-white px-1 py-0.5 rounded font-bold shrink-0">최저</span>
                   )}
                 </div>
                 {r.pending ? (
@@ -332,11 +332,11 @@ export default function SidebarCalculator() {
             {customsOpen && (
               <div className="px-4 pb-4 space-y-2.5">
                 {/* 면세한도 */}
-                <div className="bg-blue-50 rounded-xl px-3 py-2 border border-blue-100">
-                  <p className="text-[10px] font-bold text-blue-700 mb-0.5">💰 면세한도</p>
-                  <p className="text-sm font-bold text-blue-900">{customsInfo.dutyFree}</p>
+                <div className="bg-brand-50 rounded-xl px-3 py-2 border border-brand-100">
+                  <p className="text-[10px] font-bold text-brand-700 mb-0.5">💰 면세한도</p>
+                  <p className="text-sm font-bold text-brand-900">{customsInfo.dutyFree}</p>
                   {customsInfo.dutyFreeNote && (
-                    <p className="text-[10px] text-blue-600 mt-0.5 leading-relaxed">{customsInfo.dutyFreeNote}</p>
+                    <p className="text-[10px] text-brand-600 mt-0.5 leading-relaxed">{customsInfo.dutyFreeNote}</p>
                   )}
                 </div>
 

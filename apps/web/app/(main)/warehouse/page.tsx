@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,7 +35,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string 
   PRE_REGISTERED:   { label: "등록 완료",  color: "text-indigo-700 bg-indigo-50 border-indigo-200", dot: "bg-indigo-400" },
   PENDING_PICKUP:   { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
   PICKUP_CANCELLED: { label: "수거 취소", color: "text-red-600 bg-red-50 border-red-200",          dot: "bg-red-400" },
-  PICKED_UP:      { label: "수거 완료", color: "text-blue-700 bg-blue-50 border-blue-200",   dot: "bg-blue-400" },
+  PICKED_UP:      { label: "수거 완료", color: "text-brand-700 bg-brand-50 border-brand-200",   dot: "bg-brand-400" },
   INBOUND:        { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200", dot: "bg-green-400" },
   INSPECTION:     { label: "검품 중",   color: "text-purple-700 bg-purple-50 border-purple-200", dot: "bg-purple-400" },
   HOLD:           { label: "보류",      color: "text-red-700 bg-red-50 border-red-200",       dot: "bg-red-400" },
@@ -181,14 +181,14 @@ export default function WarehousePage() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-1.5 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-full text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50"
             title="추적 정보 새로고침"
           >
             <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
           </button>
           <button
             onClick={() => router.push("/register-parcel")}
-            className="flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 px-3 py-1.5 rounded-full shadow-sm shadow-blue-200"
+            className="flex items-center gap-1.5 text-xs font-bold text-white bg-brand-600 px-3 py-1.5 rounded-full shadow-sm shadow-brand-200"
           >
             <Plus size={13} />
             물품 등록
@@ -196,7 +196,7 @@ export default function WarehousePage() {
           {eligibleInFiltered.length > 0 && (
             <button
               onClick={selectAll}
-              className="flex items-center gap-1.5 text-xs font-medium text-blue-600 px-3 py-1.5 bg-blue-50 rounded-full"
+              className="flex items-center gap-1.5 text-xs font-medium text-brand-600 px-3 py-1.5 bg-brand-50 rounded-full"
             >
               {allEligibleSelected ? <CheckSquare size={13} /> : <Square size={13} />}
               {allEligibleSelected ? "선택 해제" : "전체 선택"}
@@ -212,7 +212,7 @@ export default function WarehousePage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="송장번호, 발송인, 제품명 검색"
-          className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
 
@@ -224,7 +224,7 @@ export default function WarehousePage() {
             onClick={() => setFilter(key)}
             className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
               filter === key
-                ? "bg-blue-600 text-white"
+                ? "bg-brand-600 text-white"
                 : "bg-white text-gray-500 border border-gray-200"
             }`}
           >
@@ -235,9 +235,9 @@ export default function WarehousePage() {
 
       {/* 선택 안내 */}
       {eligibleInFiltered.length > 0 && selectedIds.size === 0 && (
-        <div className="bg-blue-50 rounded-xl px-4 py-2.5 mb-3 flex items-center gap-2">
-          <CheckSquare size={14} className="text-blue-500 shrink-0" />
-          <p className="text-xs text-blue-700">
+        <div className="bg-brand-50 rounded-xl px-4 py-2.5 mb-3 flex items-center gap-2">
+          <CheckSquare size={14} className="text-brand-500 shrink-0" />
+          <p className="text-xs text-brand-700">
             입고된 물품을 선택해서 해외배송을 신청할 수 있어요
           </p>
         </div>
@@ -261,7 +261,7 @@ export default function WarehousePage() {
           </p>
           <button
             onClick={() => router.push("/register-parcel")}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl"
+            className="inline-flex items-center gap-2 bg-brand-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl"
           >
             <ClipboardList size={15} /> 물품 등록하기
           </button>
@@ -284,9 +284,9 @@ export default function WarehousePage() {
                 onClick={() => handleParcelClick(parcel)}
                 className={`bg-white rounded-2xl p-4 shadow-sm transition-all cursor-pointer ${
                   isSelected
-                    ? "ring-2 ring-blue-500 shadow-blue-100"
+                    ? "ring-2 ring-brand-500 shadow-brand-100"
                     : isSelectable
-                    ? "hover:ring-1 hover:ring-blue-200"
+                    ? "hover:ring-1 hover:ring-brand-200"
                     : ""
                 }`}
               >
@@ -296,7 +296,7 @@ export default function WarehousePage() {
                     {isSelectable && (
                       <div className="mt-0.5 shrink-0">
                         {isSelected ? (
-                          <CheckSquare size={18} className="text-blue-600" />
+                          <CheckSquare size={18} className="text-brand-600" />
                         ) : (
                           <Square size={18} className="text-gray-300" />
                         )}
@@ -338,8 +338,8 @@ export default function WarehousePage() {
                 </div>
 
                 {isReserved && (
-                  <div className="mt-2 bg-blue-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-blue-700">✈️ 배송 신청 진행 중 — 배송현황에서 취소하면 다시 출고 신청할 수 있어요</p>
+                  <div className="mt-2 bg-brand-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-brand-700">✈️ 배송 신청 진행 중 — 배송현황에서 취소하면 다시 출고 신청할 수 있어요</p>
                   </div>
                 )}
                 {parcel.status === "HOLD" && parcel.hold_reason && (
@@ -370,8 +370,8 @@ export default function WarehousePage() {
                   </div>
                 )}
                 {parcel.status === "PICKED_UP" && (
-                  <div className="mt-2 bg-blue-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-blue-700">🚛 수거 완료 · 센터로 이동 중</p>
+                  <div className="mt-2 bg-brand-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-brand-700">🚛 수거 완료 · 센터로 이동 중</p>
                   </div>
                 )}
               </div>
@@ -385,7 +385,7 @@ export default function WarehousePage() {
         <div className="fixed left-0 right-0 flex justify-center px-4 z-40" style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}>
           <button
             onClick={handleShippingRequest}
-            className="flex items-center gap-2.5 bg-blue-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-blue-200 text-sm active:scale-95 transition-transform"
+            className="flex items-center gap-2.5 bg-brand-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-brand-200 text-sm active:scale-95 transition-transform"
           >
             <Send size={16} />
             {selectedIds.size}개 물품 출고신청

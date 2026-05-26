@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { ShieldAlert, ChevronDown, ChevronUp, Zap } from "lucide-react";
@@ -90,11 +90,11 @@ export default function SidebarCustomsInfo() {
         {info ? (
           <>
             {/* 면세한도 */}
-            <div className="bg-blue-50 rounded-xl px-3 py-2.5 border border-blue-100">
-              <p className="text-[10px] font-bold text-blue-700 mb-1">💰 면세한도</p>
-              <p className="text-sm font-bold text-blue-900">{info.dutyFree}</p>
+            <div className="bg-brand-50 rounded-xl px-3 py-2.5 border border-brand-100">
+              <p className="text-[10px] font-bold text-brand-700 mb-1">💰 면세한도</p>
+              <p className="text-sm font-bold text-brand-900">{info.dutyFree}</p>
               {info.dutyFreeNote && (
-                <p className="text-[10px] text-blue-600 mt-0.5">{info.dutyFreeNote}</p>
+                <p className="text-[10px] text-brand-600 mt-0.5">{info.dutyFreeNote}</p>
               )}
             </div>
 
@@ -138,7 +138,7 @@ export default function SidebarCustomsInfo() {
 
             {/* 배터리 */}
             <div className="flex items-start gap-2 bg-violet-50 rounded-xl px-3 py-2.5 border border-violet-100">
-              <Zap size={12} className="text-violet-600 shrink-0 mt-0.5" />
+              <Zap size={12} className="text-brand-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-[10px] font-bold text-violet-700 mb-0.5">리튬배터리</p>
                 <p className="text-[11px] text-violet-700">{info.batteryLimit}</p>

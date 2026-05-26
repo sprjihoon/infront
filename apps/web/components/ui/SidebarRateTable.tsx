@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Info } from "lucide-react";
 
@@ -35,7 +35,7 @@ export default function SidebarRateTable() {
   return (
     <div className="sticky top-4 w-72 bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
       {/* 헤더 */}
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-4 py-3 flex items-center gap-2">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2">
         <Info size={15} className="text-white" />
         <span className="text-white font-semibold text-sm">요금 참고표</span>
         <span className="ml-auto text-white/60 text-xs">EMS · K-Packet</span>
@@ -59,7 +59,7 @@ export default function SidebarRateTable() {
                   <tr key={r.w} className="border-b border-gray-50 last:border-0">
                     <td className="py-1 text-gray-600">{r.w}</td>
                     <td className="py-1 text-right text-gray-900 font-medium">{r.ems}</td>
-                    <td className="py-1 text-right text-blue-600 font-medium">{r.kpkt}</td>
+                    <td className="py-1 text-right text-brand-600 font-medium">{r.kpkt}</td>
                   </tr>
                 ))}
               </tbody>

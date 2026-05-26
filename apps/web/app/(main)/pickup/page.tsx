@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -295,8 +295,8 @@ export default function PickupPage() {
 
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-5">
-          <CheckCircle className="w-9 h-9 text-blue-600" />
+        <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mb-5">
+          <CheckCircle className="w-9 h-9 text-brand-600" />
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">수거 예약 완료!</h2>
         {result.is_test && (
@@ -307,7 +307,7 @@ export default function PickupPage() {
         <div className="w-full bg-gray-50 rounded-2xl p-5 mb-6 text-left space-y-3">
           <div>
             <p className="text-xs text-gray-400">운송장번호</p>
-            <p className="text-base font-bold text-blue-600 tracking-widest">{result.tracking_no}</p>
+            <p className="text-base font-bold text-brand-600 tracking-widest">{result.tracking_no}</p>
           </div>
           {result.post_office && (
             <div>
@@ -329,7 +329,7 @@ export default function PickupPage() {
         <button
           type="button"
           onClick={() => router.push("/warehouse")}
-          className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-xl text-sm"
+          className="w-full py-3.5 bg-brand-600 text-white font-bold rounded-xl text-sm"
         >
           마이창고에서 확인
         </button>
@@ -366,7 +366,7 @@ export default function PickupPage() {
             {STEP_LABELS.map((_, i) => (
               <div
                 key={i}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${i + 1 <= step ? "bg-blue-600" : "bg-gray-200"}`}
+                className={`h-1.5 flex-1 rounded-full transition-colors ${i + 1 <= step ? "bg-brand-600" : "bg-gray-200"}`}
               />
             ))}
           </div>
@@ -377,11 +377,11 @@ export default function PickupPage() {
 
         {/* 안내 배너 — 1단계 또는 고급모드 */}
         {(showStep(1) || !isSimple) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-            <Truck className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+          <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 flex gap-3">
+            <Truck className="w-5 h-5 text-brand-600 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-bold text-blue-800">우체국 반품 수거</p>
-              <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
+              <p className="text-sm font-bold text-brand-800">우체국 반품 수거</p>
+              <p className="text-xs text-brand-600 mt-0.5 leading-relaxed">
                 계약 반품(reqType) 방문 수거입니다. 1회 신청당 박스 1개·운송장 1장이며, 박스가 여러 개면 수거 신청을 나눠 주세요.
               </p>
             </div>
@@ -393,7 +393,7 @@ export default function PickupPage() {
           <>
             <div>
               <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
-                <MapPin className="w-4 h-4 text-blue-600" />
+                <MapPin className="w-4 h-4 text-brand-600" />
                 수거 주소 <span className="text-red-500">*</span>
               </label>
               <PickupAddressPicker
@@ -405,7 +405,7 @@ export default function PickupPage() {
 
             <div>
               <label className="flex items-center gap-1.5 text-sm font-bold text-gray-700 mb-2">
-                <Calendar className="w-4 h-4 text-blue-600" />
+                <Calendar className="w-4 h-4 text-brand-600" />
                 수거 희망일 <span className="text-red-500">*</span>
               </label>
               <input
@@ -421,7 +421,7 @@ export default function PickupPage() {
                   }
                   setPickupDate(v);
                 }}
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-brand-500 transition-colors"
               />
               <p className="text-xs text-gray-400 mt-1">
                 희망일은 참고용이며 실제 수거일은 우체국 일정에 따릅니다.{" "}
@@ -432,7 +432,7 @@ export default function PickupPage() {
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <div className="px-4 py-3.5 bg-white border-b border-gray-100">
                 <div className="flex items-center gap-2">
-                  <Package className="w-4 h-4 text-blue-600" />
+                  <Package className="w-4 h-4 text-brand-600" />
                   <span className="text-sm font-bold text-gray-800">박스 크기</span>
                   <span className="text-red-500 text-xs font-semibold">*필수</span>
                 </div>
@@ -448,16 +448,16 @@ export default function PickupPage() {
                       type="button"
                       onClick={() => setBoxSize(s.code)}
                       className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
-                        boxSize === s.code ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
+                        boxSize === s.code ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"
                       }`}
                     >
                       <div className={`w-4 h-4 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
-                        boxSize === s.code ? "border-blue-500 bg-blue-500" : "border-gray-300"
+                        boxSize === s.code ? "border-brand-500 bg-brand-500" : "border-gray-300"
                       }`}>
                         {boxSize === s.code && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                       </div>
                       <div>
-                        <p className={`text-sm font-bold ${boxSize === s.code ? "text-blue-700" : "text-gray-800"}`}>
+                        <p className={`text-sm font-bold ${boxSize === s.code ? "text-brand-700" : "text-gray-800"}`}>
                           {s.label}
                           <span className="ml-1.5 text-[10px] font-normal text-gray-500">
                             {s.weight}kg · {s.volume}cm
@@ -480,7 +480,7 @@ export default function PickupPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-blue-500 transition-colors resize-none"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-brand-500 transition-colors resize-none"
               />
             </div>
           </>
@@ -496,7 +496,7 @@ export default function PickupPage() {
                   <span className="text-red-500 text-xs font-semibold">*필수</span>
                   <span className="text-xs text-gray-400 font-normal">· 인보이스·마이창고 자동 반영</span>
                   {filledItemCount > 0 && (
-                    <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-brand-100 text-brand-700 font-medium px-2 py-0.5 rounded-full">
                       {filledItemCount}종
                     </span>
                   )}
@@ -513,7 +513,7 @@ export default function PickupPage() {
                   <span className="text-red-500 text-xs font-semibold">*필수</span>
                   <span className="text-xs text-gray-400 font-normal">· 인보이스·마이창고 자동 반영</span>
                   {itemsOpen && filledItemCount > 0 && (
-                    <span className="text-xs bg-blue-100 text-blue-700 font-medium px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-brand-100 text-brand-700 font-medium px-2 py-0.5 rounded-full">
                       {filledItemCount}종
                     </span>
                   )}
@@ -528,13 +528,13 @@ export default function PickupPage() {
                   {[{ v: "NEW", l: "새 제품", s: "신품·미사용" }, { v: "USED", l: "중고품", s: "사용품·유학생 짐" }].map(opt => (
                     <button key={opt.v} type="button" onClick={() => setItemCondition(opt.v as "NEW" | "USED")}
                       className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${
-                        itemCondition === opt.v ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"}`}>
+                        itemCondition === opt.v ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>
                       <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                        itemCondition === opt.v ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
+                        itemCondition === opt.v ? "border-brand-500 bg-brand-500" : "border-gray-300"}`}>
                         {itemCondition === opt.v && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                       </div>
                       <div>
-                        <p className={`text-xs font-semibold ${itemCondition === opt.v ? "text-blue-700" : "text-gray-800"}`}>{opt.l}</p>
+                        <p className={`text-xs font-semibold ${itemCondition === opt.v ? "text-brand-700" : "text-gray-800"}`}>{opt.l}</p>
                         <p className="text-[10px] text-gray-400">{opt.s}</p>
                       </div>
                     </button>
@@ -558,7 +558,7 @@ export default function PickupPage() {
                             value={item.product_name ?? ""}
                             onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, product_name: e.target.value } : it))}
                             placeholder="예: 나이키 운동화, 화장품 세트 (선택)"
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                           />
                         </div>
                         <div>
@@ -574,7 +574,7 @@ export default function PickupPage() {
                               value={item.name_en}
                               onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
                               placeholder="품목명 직접 입력 (영문)"
-                              className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                              className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                               autoFocus
                             />
                           )}
@@ -615,7 +615,7 @@ export default function PickupPage() {
                           value={item.hs_code}
                           onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, hs_code: e.target.value.replace(/\D/g, "") } : it))}
                           placeholder="예: 630900"
-                          className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-200 ${
+                          className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-200 ${
                             item.name_en && !item.hs_code ? "border-red-300 bg-red-50" : "border-gray-100"
                           }`}
                         />
@@ -640,7 +640,7 @@ export default function PickupPage() {
                                   className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
                                     isActive
                                       ? "bg-violet-500 border-violet-500 text-white"
-                                      : "bg-white border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-600"
+                                      : "bg-white border-gray-200 text-gray-500 hover:border-violet-300 hover:text-brand-600"
                                   }`}
                                 >
                                   {opt.name}
@@ -705,7 +705,7 @@ export default function PickupPage() {
                 </div>
                 <button type="button"
                   onClick={() => setInvoiceItems(p => [...p, newItem()])}
-                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors">
+                  className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
                   <Plus size={14} /> 품목 추가
                 </button>
               </div>
@@ -761,7 +761,7 @@ export default function PickupPage() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="text-xs text-blue-600 font-semibold"
+                  className="text-xs text-brand-600 font-semibold"
                 >
                   수정하기
                 </button>
@@ -813,17 +813,17 @@ export default function PickupPage() {
               type="button"
               onClick={() => setAgreed(!agreed)}
               className={`flex items-start gap-3 w-full text-left p-4 rounded-xl border-2 transition-colors ${
-                agreed ? "border-blue-600 bg-blue-50" : "border-gray-200 bg-white"
+                agreed ? "border-brand-600 bg-brand-50" : "border-gray-200 bg-white"
               }`}
             >
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                agreed ? "bg-blue-600 border-blue-600" : "border-gray-300"
+                agreed ? "bg-brand-600 border-brand-600" : "border-gray-300"
               }`}>
                 {agreed && <CheckCircle className="w-3.5 h-3.5 text-white" />}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">
                 위 서비스 안내 내용을 확인하였으며,{" "}
-                <span className="font-bold text-blue-600">입고 후 국제 배송비 결제</span>에 동의합니다.
+                <span className="font-bold text-brand-600">입고 후 국제 배송비 결제</span>에 동의합니다.
                 <span className="text-red-400 ml-1">*필수</span>
               </p>
             </button>
@@ -853,7 +853,7 @@ export default function PickupPage() {
             <button
               type="button"
               onClick={handleNext}
-              className={`${step > 1 ? "flex-[2]" : "w-full"} flex items-center justify-center gap-1.5 py-4 rounded-xl text-sm font-bold bg-blue-600 text-white active:opacity-80`}
+              className={`${step > 1 ? "flex-[2]" : "w-full"} flex items-center justify-center gap-1.5 py-4 rounded-xl text-sm font-bold bg-brand-600 text-white active:opacity-80`}
             >
               다음
               <ArrowRight className="w-4 h-4" />
@@ -867,7 +867,7 @@ export default function PickupPage() {
             onClick={handleSubmit}
             className={`w-full py-4 rounded-xl text-sm font-bold transition-colors ${
               agreed && !loading
-                ? "bg-blue-600 text-white active:opacity-80"
+                ? "bg-brand-600 text-white active:opacity-80"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >

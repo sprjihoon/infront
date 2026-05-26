@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -260,7 +260,7 @@ export default function RegisterParcelPage() {
         </p>
         <button
           onClick={() => router.push("/warehouse")}
-          className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl"
+          className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl"
         >
           마이창고에서 확인
         </button>
@@ -307,7 +307,7 @@ export default function RegisterParcelPage() {
             {STEP_LABELS.map((_, i) => (
               <div
                 key={i}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${i + 1 <= step ? "bg-blue-600" : "bg-gray-200"}`}
+                className={`h-1.5 flex-1 rounded-full transition-colors ${i + 1 <= step ? "bg-brand-600" : "bg-gray-200"}`}
               />
             ))}
           </div>
@@ -320,11 +320,11 @@ export default function RegisterParcelPage() {
         {showStep(1) && (
           <>
             {/* 안내 */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex gap-3">
-              <Truck size={18} className="text-blue-600 shrink-0 mt-0.5" />
+            <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 flex gap-3">
+              <Truck size={18} className="text-brand-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-blue-800">직접 발송 물품 등록</p>
-                <p className="text-xs text-blue-600 mt-0.5 leading-relaxed">
+                <p className="text-sm font-bold text-brand-800">직접 발송 물품 등록</p>
+                <p className="text-xs text-brand-600 mt-0.5 leading-relaxed">
                   쇼핑몰 등에서 인프론트 창고 주소로 직접 발송한 물품을 미리 등록하세요.<br />
                   운송장 번호로 도착한 물품을 빠르게 처리할 수 있어요.
                 </p>
@@ -340,7 +340,7 @@ export default function RegisterParcelPage() {
                 value={trackingNo}
                 onChange={(e) => setTrackingNo(e.target.value)}
                 placeholder="123456789012"
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-mono"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white font-mono"
               />
               <p className="text-xs text-gray-400 mt-1.5">
                 쇼핑몰 주문내역 또는 택배사 앱에서 확인할 수 있어요
@@ -370,8 +370,8 @@ export default function RegisterParcelPage() {
                         key={c}
                         type="button"
                         onClick={() => { setCourier(c); setCourierOpen(false); }}
-                        className={`w-full text-left px-4 py-3 text-sm hover:bg-blue-50 transition-colors ${
-                          courier === c ? "text-blue-600 font-semibold bg-blue-50" : "text-gray-700"
+                        className={`w-full text-left px-4 py-3 text-sm hover:bg-brand-50 transition-colors ${
+                          courier === c ? "text-brand-600 font-semibold bg-brand-50" : "text-gray-700"
                         }`}
                       >
                         {c}
@@ -391,7 +391,7 @@ export default function RegisterParcelPage() {
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
                 placeholder="예: Zara, 무신사, 홍길동"
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
               />
             </div>
 
@@ -405,7 +405,7 @@ export default function RegisterParcelPage() {
                 onChange={(e) => setSenderPhone(e.target.value)}
                 placeholder="010-0000-0000"
                 type="tel"
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
               />
             </div>
 
@@ -419,7 +419,7 @@ export default function RegisterParcelPage() {
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="예: 의류 5벌, 조심히 취급 부탁드려요"
                 rows={2}
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
               />
             </div>
 
@@ -432,14 +432,14 @@ export default function RegisterParcelPage() {
             {/* 발송 정보 요약 — 일반모드 2단계 */}
             {isSimple && (
             <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3 flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center shrink-0">
-                <Truck size={15} className="text-blue-600" />
+              <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center shrink-0">
+                <Truck size={15} className="text-brand-600" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 font-mono">{trackingNo}</p>
                 <p className="text-xs text-gray-400">{courier || "택배사 미선택"}{senderName ? ` · ${senderName}` : ""}</p>
               </div>
-              <button type="button" onClick={() => setStep(1)} className="text-xs text-blue-600 font-medium shrink-0">수정</button>
+              <button type="button" onClick={() => setStep(1)} className="text-xs text-brand-600 font-medium shrink-0">수정</button>
             </div>
             )}
 
@@ -460,17 +460,17 @@ export default function RegisterParcelPage() {
                     onClick={() => setCondition(opt.value as "NEW" | "USED")}
                     className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border-2 transition-all text-left ${
                       condition === opt.value
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 bg-white hover:border-blue-200"
+                        ? "border-brand-500 bg-brand-50"
+                        : "border-gray-200 bg-white hover:border-brand-200"
                     }`}
                   >
                     <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                      condition === opt.value ? "border-blue-500 bg-blue-500" : "border-gray-300"
+                      condition === opt.value ? "border-brand-500 bg-brand-500" : "border-gray-300"
                     }`}>
                       {condition === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                     <div>
-                      <p className={`text-sm font-semibold ${condition === opt.value ? "text-blue-700" : "text-gray-800"}`}>{opt.label}</p>
+                      <p className={`text-sm font-semibold ${condition === opt.value ? "text-brand-700" : "text-gray-800"}`}>{opt.label}</p>
                       <p className="text-xs text-gray-400">{opt.sub}</p>
                     </div>
                   </button>
@@ -512,7 +512,7 @@ export default function RegisterParcelPage() {
                         value={item.product_name ?? ""}
                         onChange={(e) => updateItem(idx, { product_name: e.target.value })}
                         placeholder="예: 나이키 운동화, 화장품 세트 (선택)"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                       />
                     </div>
 
@@ -529,7 +529,7 @@ export default function RegisterParcelPage() {
                           value={item.name_en}
                           onChange={(e) => updateItem(idx, { name_en: e.target.value })}
                           placeholder="품목명 직접 입력 (영문)"
-                          className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                           autoFocus
                         />
                       )}
@@ -581,7 +581,7 @@ export default function RegisterParcelPage() {
                         <select
                           value={item.origin_country}
                           onChange={(e) => updateItem(idx, { origin_country: e.target.value })}
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                         >
                           {ORIGIN_OPTIONS.map((o) => (
                             <option key={o.code} value={o.code}>{o.label}</option>
@@ -598,9 +598,9 @@ export default function RegisterParcelPage() {
                             value={item.hs_code}
                             onChange={(e) => updateItem(idx, { hs_code: e.target.value })}
                             placeholder="자동 입력"
-                            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 font-mono ${
+                            className={`w-full border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 font-mono ${
                               item.hs_code && !item._isCustom
-                                ? "bg-blue-50 border-blue-100 text-blue-700"
+                                ? "bg-brand-50 border-brand-100 text-brand-700"
                                 : "bg-gray-50 border-gray-100"
                             }`}
                           />
@@ -634,7 +634,7 @@ export default function RegisterParcelPage() {
                                 className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-all ${
                                   isActive
                                     ? "bg-violet-500 border-violet-500 text-white"
-                                    : "bg-white border-gray-200 text-gray-500 hover:border-violet-300 hover:text-violet-600"
+                                    : "bg-white border-gray-200 text-gray-500 hover:border-violet-300 hover:text-brand-600"
                                 }`}
                               >
                                 {opt.name}
@@ -703,7 +703,7 @@ export default function RegisterParcelPage() {
               <button
                 type="button"
                 onClick={() => setItems((prev) => [...prev, newItem()])}
-                className="w-full mt-3 flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
+                className="w-full mt-3 flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-brand-300 hover:text-brand-600 transition-colors"
               >
                 <Plus size={15} /> 물품 추가
               </button>
@@ -749,7 +749,7 @@ export default function RegisterParcelPage() {
             type="button"
             disabled={!canStep1()}
             onClick={handleNext}
-            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
+            className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
           >
             다음 <ArrowRight size={16} />
           </button>
@@ -768,7 +768,7 @@ export default function RegisterParcelPage() {
               type="button"
               disabled={submitting || !canStep1() || !canStep2()}
               onClick={handleSubmit}
-              className={`${isSimple ? "flex-[2]" : "w-full"} bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-md shadow-blue-200`}
+              className={`${isSimple ? "flex-[2]" : "w-full"} bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-md shadow-brand-200`}
             >
               {submitting ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

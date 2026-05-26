@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useFlowMode } from "@/lib/flow-mode";
 
@@ -10,7 +10,7 @@ export default function FlowModeToggle() {
     <div className="flex items-center gap-2 shrink-0">
       <span
         className={`text-[11px] font-bold whitespace-nowrap ${
-          !isAdvanced ? "text-blue-700" : "text-gray-400"
+          !isAdvanced ? "text-brand-700" : "text-gray-400"
         }`}
       >
         일반모드
@@ -22,7 +22,7 @@ export default function FlowModeToggle() {
         aria-label="일반모드와 고급모드 전환"
         onClick={() => setMode(isAdvanced ? "simple" : "advanced")}
         className={`relative w-11 h-6 rounded-full transition-colors ${
-          isAdvanced ? "bg-blue-600" : "bg-gray-300"
+          isAdvanced ? "bg-brand-600" : "bg-gray-300"
         }`}
       >
         <span
@@ -33,7 +33,7 @@ export default function FlowModeToggle() {
       </button>
       <span
         className={`text-[11px] font-bold whitespace-nowrap ${
-          isAdvanced ? "text-blue-700" : "text-gray-400"
+          isAdvanced ? "text-brand-700" : "text-gray-400"
         }`}
       >
         고급모드

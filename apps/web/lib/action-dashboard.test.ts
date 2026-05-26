@@ -46,7 +46,7 @@ describe("buildActionCards", () => {
     expect(cards[0].id).toBe("payment");
     expect(cards[0].message).toContain("12,500원");
     expect(cards[0].highlight).toBe(true);
-    expect(cards[0].button?.href).toBe("/orders?expand=o1");
+    expect(cards[0].button?.href).toBe("/orders/o1");
     expect(cards[1].id).toBe("inbound");
   });
 

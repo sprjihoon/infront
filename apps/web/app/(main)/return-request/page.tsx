@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -100,7 +100,7 @@ function ReturnRequestContent() {
         </p>
         <button
           onClick={() => router.push("/warehouse")}
-          className="w-full bg-blue-600 text-white font-semibold py-4 rounded-2xl"
+          className="w-full bg-brand-600 text-white font-semibold py-4 rounded-2xl"
         >
           마이창고로 돌아가기
         </button>
@@ -124,7 +124,7 @@ function ReturnRequestContent() {
       {/* 진행 바 */}
       <div className="flex gap-1.5 mb-6">
         {[1, 2, 3].map((s) => (
-          <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${s <= step ? "bg-blue-600" : "bg-gray-200"}`} />
+          <div key={s} className={`h-1.5 flex-1 rounded-full transition-colors ${s <= step ? "bg-brand-600" : "bg-gray-200"}`} />
         ))}
       </div>
 
@@ -152,14 +152,14 @@ function ReturnRequestContent() {
                   onClick={() => setStage(opt.value)}
                   className={`w-full flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${
                     stage === opt.value
-                      ? "border-blue-500 bg-blue-50"
+                      ? "border-brand-500 bg-brand-50"
                       : "border-gray-200 bg-white"
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
-                    stage === opt.value ? "border-blue-500" : "border-gray-300"
+                    stage === opt.value ? "border-brand-500" : "border-gray-300"
                   }`}>
-                    {stage === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
+                    {stage === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{opt.label}</p>
@@ -179,14 +179,14 @@ function ReturnRequestContent() {
                   onClick={() => setReason(opt.value)}
                   className={`w-full flex items-start gap-3 p-3.5 rounded-xl border text-left transition-all ${
                     reason === opt.value
-                      ? "border-blue-500 bg-blue-50"
+                      ? "border-brand-500 bg-brand-50"
                       : "border-gray-200 bg-white"
                   }`}
                 >
                   <div className={`w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center ${
-                    reason === opt.value ? "border-blue-500" : "border-gray-300"
+                    reason === opt.value ? "border-brand-500" : "border-gray-300"
                   }`}>
-                    {reason === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />}
+                    {reason === opt.value && <div className="w-2.5 h-2.5 rounded-full bg-brand-500" />}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{opt.label}</p>
@@ -207,7 +207,7 @@ function ReturnRequestContent() {
                 onChange={(e) => setReasonNote(e.target.value)}
                 placeholder="구체적인 내용을 입력해 주세요"
                 rows={3}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           )}
@@ -215,7 +215,7 @@ function ReturnRequestContent() {
           <button
             disabled={!reason || !stage}
             onClick={() => setStep(2)}
-            className="w-full bg-blue-600 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform"
+            className="w-full bg-brand-600 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform"
           >
             다음 <ArrowRight size={16} />
           </button>
@@ -235,7 +235,7 @@ function ReturnRequestContent() {
               value={sellerName}
               onChange={(e) => setSellerName(e.target.value)}
               placeholder="예: Zara, ASOS, 유니클로"
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -246,7 +246,7 @@ function ReturnRequestContent() {
               onChange={(e) => setSellerAddress(e.target.value)}
               placeholder="판매자의 반품 접수 주소를 영문으로 입력해 주세요"
               rows={3}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -256,7 +256,7 @@ function ReturnRequestContent() {
               value={sellerPhone}
               onChange={(e) => setSellerPhone(e.target.value)}
               placeholder="선택사항"
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -268,7 +268,7 @@ function ReturnRequestContent() {
               value={prepaidLabel}
               onChange={(e) => setPrepaidLabel(e.target.value)}
               placeholder="판매자가 제공한 반품 라벨 URL"
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -280,7 +280,7 @@ function ReturnRequestContent() {
           <button
             disabled={!sellerName || !sellerAddress}
             onClick={() => setStep(3)}
-            className="w-full bg-blue-600 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform"
+            className="w-full bg-brand-600 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-transform"
           >
             다음 <ArrowRight size={16} />
           </button>
@@ -302,7 +302,7 @@ function ReturnRequestContent() {
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800">
+          <div className="bg-brand-50 border border-brand-200 rounded-xl p-3 text-xs text-brand-800">
             <p className="font-medium mb-1">반품 처리 안내</p>
             <ul className="space-y-0.5 list-disc list-inside">
               <li>반품 접수 후 담당자가 확인 연락을 드립니다</li>
@@ -321,7 +321,7 @@ function ReturnRequestContent() {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform shadow"
+            className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60 active:scale-[0.98] transition-transform shadow"
           >
             {submitting ? (
               <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -349,7 +349,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export default function ReturnRequestPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>}>
+    <Suspense fallback={<div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" /></div>}>
       <ReturnRequestContent />
     </Suspense>
   );

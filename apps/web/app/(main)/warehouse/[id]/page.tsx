@@ -94,13 +94,13 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   PRE_REGISTERED:    { label: "등록 완료",    color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200",   step: 0 },
   PENDING_PICKUP:    { label: "수거 신청 완료", color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200", step: 1 },
   PICKUP_CANCELLED:  { label: "수거 취소",    color: "text-red-600",    bg: "bg-red-50 border-red-200",         step: 0 },
-  PICKED_UP:         { label: "수거 완료",    color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",       step: 2 },
+  PICKED_UP:         { label: "수거 완료",    color: "text-brand-700",   bg: "bg-brand-50 border-brand-200",       step: 2 },
   INBOUND:         { label: "창고 입고",       color: "text-green-700",  bg: "bg-green-50 border-green-200",   step: 3 },
   INSPECTION:      { label: "검품 진행 중",    color: "text-purple-700", bg: "bg-purple-50 border-purple-200", step: 4 },
   PACKING:         { label: "포장 작업 중",    color: "text-orange-700", bg: "bg-orange-50 border-orange-200", step: 5 },
   HOLD:            { label: "보류",            color: "text-red-700",    bg: "bg-red-50 border-red-200",       step: 3 },
   PAYMENT_WAIT:    { label: "결제 대기",       color: "text-amber-700",  bg: "bg-amber-50 border-amber-200",   step: 5 },
-  SHIPPING:        { label: "국제 발송 중",    color: "text-blue-800",   bg: "bg-blue-100 border-blue-300",    step: 6 },
+  SHIPPING:        { label: "국제 발송 중",    color: "text-brand-800",   bg: "bg-brand-100 border-brand-300",    step: 6 },
   DONE:            { label: "배송 완료",       color: "text-gray-700",   bg: "bg-gray-50 border-gray-200",     step: 7 },
 };
 
@@ -282,7 +282,7 @@ export default function ParcelDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-brand-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -341,7 +341,7 @@ export default function ParcelDetailPage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <Navigation size={15} className="text-blue-500" />
+              <Navigation size={15} className="text-brand-500" />
               국내 배송 추적
             </h2>
             <div className="flex items-center gap-2">
@@ -353,7 +353,7 @@ export default function ParcelDetailPage() {
               <button
                 onClick={refreshTracking}
                 disabled={syncing}
-                className="p-1 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                className="p-1 rounded-full text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50"
                 title="추적 정보 새로고침"
               >
                 <RefreshCw size={13} className={syncing ? "animate-spin" : ""} />
@@ -367,7 +367,7 @@ export default function ParcelDetailPage() {
           {parcel.tracking_last_event ? (
             <>
               {/* 최신 이벤트 강조 */}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+              <div className="bg-brand-50 border border-brand-100 rounded-xl p-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-xs font-bold ${TRACKING_STATUS[parcel.tracking_last_event.statusCode]?.color ?? "text-gray-600"}`}>
                     {parcel.tracking_last_event.statusLabel || TRACKING_STATUS[parcel.tracking_last_event.statusCode]?.label || parcel.tracking_last_event.statusCode}
@@ -388,7 +388,7 @@ export default function ParcelDetailPage() {
                   {parcel.tracking_events.slice(0, 6).map((ev, idx) => (
                     <div key={idx} className="flex gap-3 py-2 border-b border-gray-50 last:border-0">
                       <div className="flex flex-col items-center mt-1 shrink-0">
-                        <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-blue-500" : "bg-gray-200"}`} />
+                        <div className={`w-2 h-2 rounded-full ${idx === 0 ? "bg-brand-500" : "bg-gray-200"}`} />
                         {idx < (parcel.tracking_events?.length ?? 0) - 1 && (
                           <div className="w-px flex-1 bg-gray-100 mt-1" />
                         )}
@@ -415,7 +415,7 @@ export default function ParcelDetailPage() {
                   <button
                     onClick={refreshTracking}
                     disabled={syncing}
-                    className="inline-flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs text-brand-500 hover:text-brand-700 disabled:opacity-50"
                   >
                     <RefreshCw size={12} className={syncing ? "animate-spin" : ""} />
                     {syncing ? "갱신 중..." : "지금 새로고침"}
@@ -437,7 +437,7 @@ export default function ParcelDetailPage() {
             {canEditItems && !editingItems && (
               <button
                 onClick={() => openEditItems(parcel)}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium"
               >
                 <Edit3 size={12} /> 수정
               </button>
@@ -450,7 +450,7 @@ export default function ParcelDetailPage() {
               {parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 ? (
                 <>
                   <div className="flex items-center gap-2">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${parcel.item_condition === "USED" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}>
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${parcel.item_condition === "USED" ? "bg-orange-100 text-orange-700" : "bg-brand-100 text-brand-700"}`}>
                       {parcel.item_condition === "USED" ? "중고품" : "새 제품"}
                     </span>
                     <span className="text-xs text-gray-400">총 {parcel.pre_invoice_items.length}종</span>
@@ -491,12 +491,12 @@ export default function ParcelDetailPage() {
               <div className="grid grid-cols-2 gap-2">
                 {([["NEW", "새 제품", "신품·미사용"], ["USED", "중고품", "사용품·유학생 짐"]] as const).map(([v, l, s]) => (
                   <button key={v} type="button" onClick={() => setEditCondition(v)}
-                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${editCondition === v ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"}`}>
-                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${editCondition === v ? "border-blue-500 bg-blue-500" : "border-gray-300"}`}>
+                    className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border-2 transition-all text-left ${editCondition === v ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"}`}>
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${editCondition === v ? "border-brand-500 bg-brand-500" : "border-gray-300"}`}>
                       {editCondition === v && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
                     <div>
-                      <p className={`text-xs font-semibold ${editCondition === v ? "text-blue-700" : "text-gray-800"}`}>{l}</p>
+                      <p className={`text-xs font-semibold ${editCondition === v ? "text-brand-700" : "text-gray-800"}`}>{l}</p>
                       <p className="text-[10px] text-gray-400">{s}</p>
                     </div>
                   </button>
@@ -518,7 +518,7 @@ export default function ParcelDetailPage() {
                       value={item.product_name ?? ""}
                       onChange={e => setEditItems(p => p.map((it, i) => i === idx ? { ...it, product_name: e.target.value } : it))}
                       placeholder="제품명 (예: 나이키 운동화)"
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                     />
                     <ItemCategoryPicker
                       value={item._isCustom ? "Other Goods" : item.name_en}
@@ -530,7 +530,7 @@ export default function ParcelDetailPage() {
                       <input value={item.name_en}
                         onChange={e => setEditItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
                         placeholder="품목명 직접 입력 (영문)"
-                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                        className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200" />
                     )}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
@@ -559,7 +559,7 @@ export default function ParcelDetailPage() {
 
               <button type="button"
                 onClick={() => setEditItems(p => [...p, newInvoiceItem()])}
-                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors">
+                className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
                 <Plus size={12} /> 품목 추가
               </button>
               <p className="text-[11px] text-gray-400 text-center leading-snug">
@@ -574,7 +574,7 @@ export default function ParcelDetailPage() {
                   <X size={14} /> 취소
                 </button>
                 <button type="button" onClick={saveItems} disabled={saving}
-                  className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1 disabled:opacity-50">
+                  className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-bold flex items-center justify-center gap-1 disabled:opacity-50">
                   {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={14} /> 저장</>}
                 </button>
               </div>
@@ -590,7 +590,7 @@ export default function ParcelDetailPage() {
           {canEdit && !editingTracking && !parcel.pickup_tracking_no && (
             <button
               onClick={() => openEditTracking(parcel)}
-              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+              className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium"
             >
               <Edit3 size={12} /> 송장 수정
             </button>
@@ -631,7 +631,7 @@ export default function ParcelDetailPage() {
                 value={editTracking}
                 onChange={e => setEditTracking(e.target.value)}
                 placeholder="운송장 번호 입력"
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
               />
             </div>
             <div>
@@ -641,7 +641,7 @@ export default function ParcelDetailPage() {
               <select
                 value={editCourier}
                 onChange={e => setEditCourier(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 bg-white"
               >
                 <option value="">택배사 선택</option>
                 <option value="kr.cjlogistics">CJ대한통운</option>
@@ -663,7 +663,7 @@ export default function ParcelDetailPage() {
                 <X size={14} /> 취소
               </button>
               <button type="button" onClick={saveTracking} disabled={saving}
-                className="flex-1 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1 disabled:opacity-50">
+                className="flex-1 py-2.5 rounded-xl bg-brand-600 text-white text-sm font-bold flex items-center justify-center gap-1 disabled:opacity-50">
                 {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={14} /> 저장</>}
               </button>
             </div>
@@ -678,7 +678,7 @@ export default function ParcelDetailPage() {
           <div className="grid grid-cols-2 gap-3">
             {parcel.weight_actual && (
               <div className="bg-gray-50 rounded-xl p-3 text-center">
-                <Weight size={20} className="text-blue-500 mx-auto mb-1" />
+                <Weight size={20} className="text-brand-500 mx-auto mb-1" />
                 <p className="text-lg font-bold text-gray-900">{parcel.weight_actual}g</p>
                 <p className="text-xs text-gray-500">실측 무게</p>
               </div>
@@ -804,7 +804,7 @@ export default function ParcelDetailPage() {
         {canShip && (
           <Link
             href={`/shipping-request?parcels=${parcel.id}`}
-            className="flex items-center justify-center gap-2 w-full bg-blue-600 text-white font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform shadow"
+            className="flex items-center justify-center gap-2 w-full bg-brand-600 text-white font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform shadow"
           >
             <Send size={18} />
             출고신청
@@ -916,15 +916,15 @@ function TrackingProgressBar({ statusCode }: { statusCode: string | null }) {
         return (
           <div key={step.code} className="flex-1 flex flex-col items-center gap-1">
             <div className="w-full flex items-center">
-              <div className={`w-full h-1 ${idx === 0 ? "invisible" : done ? "bg-blue-500" : "bg-gray-100"}`} />
+              <div className={`w-full h-1 ${idx === 0 ? "invisible" : done ? "bg-brand-500" : "bg-gray-100"}`} />
               <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
-                done ? (active ? "bg-blue-600 text-white ring-2 ring-blue-200" : "bg-blue-500 text-white") : "bg-gray-100 text-gray-400"
+                done ? (active ? "bg-brand-600 text-white ring-2 ring-brand-200" : "bg-brand-500 text-white") : "bg-gray-100 text-gray-400"
               }`}>
                 {done && !active ? <CheckCircle size={12} className="text-white" /> : stepNum}
               </div>
-              <div className={`w-full h-1 ${idx === TRACK_STEPS.length - 1 ? "invisible" : done && currentStep > stepNum ? "bg-blue-500" : "bg-gray-100"}`} />
+              <div className={`w-full h-1 ${idx === TRACK_STEPS.length - 1 ? "invisible" : done && currentStep > stepNum ? "bg-brand-500" : "bg-gray-100"}`} />
             </div>
-            <span className={`text-[10px] text-center leading-tight ${done ? (active ? "text-blue-600 font-bold" : "text-blue-500") : "text-gray-400"}`}>
+            <span className={`text-[10px] text-center leading-tight ${done ? (active ? "text-brand-600 font-bold" : "text-brand-500") : "text-gray-400"}`}>
               {step.label}
             </span>
           </div>

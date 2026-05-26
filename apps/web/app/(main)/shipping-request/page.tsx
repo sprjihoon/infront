@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useMemo, useCallback, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -69,7 +69,7 @@ interface BoxSetup {
 
 // ── 상수 ────────────────────────────────────────────────────
 const SHIPPING_METHODS = [
-  { code: "EMS",         name: "EMS",         desc: "일반 국제우편 · 3-7일",  premiumcd: "31", em_ee: "em", badge: "bg-blue-600" },
+  { code: "EMS",         name: "EMS",         desc: "일반 국제우편 · 3-7일",  premiumcd: "31", em_ee: "em", badge: "bg-brand-600" },
   { code: "EMS_PREMIUM", name: "EMS 프리미엄", desc: "빠른 국제우편 · 2-4일", premiumcd: "32", em_ee: "em", badge: "bg-violet-600" },
   { code: "KPACKET",     name: "K-Packet",    desc: "소형 경량 · 7-15일 · 2kg 이하", premiumcd: "14", em_ee: "rl", badge: "bg-emerald-600" },
 ] as const;
@@ -437,7 +437,7 @@ function ShippingRequestContent() {
               <div
                 key={i}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  i + 1 <= (selectingForBoxId !== null ? 1 : flowStep) ? "bg-blue-600" : "bg-gray-200"
+                  i + 1 <= (selectingForBoxId !== null ? 1 : flowStep) ? "bg-brand-600" : "bg-gray-200"
                 }`}
               />
             ))}
@@ -529,7 +529,7 @@ function ShippingRequestContent() {
 
         <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-4 pb-40">
           {preflowLoading ? (
-            <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
+            <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-brand-500" /></div>
           ) : shippableParcels.length === 0 ? (
             <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
               <Package size={36} className="text-gray-200 mx-auto mb-3" />
@@ -564,7 +564,7 @@ function ShippingRequestContent() {
                     return (
                       <div
                         key={item.key}
-                        className={`flex items-center gap-3 px-4 py-3 transition-colors ${isActive ? "bg-blue-50" : "bg-white"}`}
+                        className={`flex items-center gap-3 px-4 py-3 transition-colors ${isActive ? "bg-brand-50" : "bg-white"}`}
                       >
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
@@ -592,7 +592,7 @@ function ShippingRequestContent() {
                           >
                             –
                           </button>
-                          <span className={`w-8 text-center text-sm font-bold ${isActive ? "text-blue-600" : "text-gray-300"}`}>
+                          <span className={`w-8 text-center text-sm font-bold ${isActive ? "text-brand-600" : "text-gray-300"}`}>
                             {currentQty}
                           </span>
                           <button
@@ -604,7 +604,7 @@ function ShippingRequestContent() {
                               })
                             }
                             disabled={currentQty >= maxQty}
-                            className="w-8 h-8 rounded-lg border-2 border-blue-300 bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
+                            className="w-8 h-8 rounded-lg border-2 border-brand-300 bg-brand-50 flex items-center justify-center text-brand-600 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
                           >
                             +
                           </button>
@@ -623,7 +623,7 @@ function ShippingRequestContent() {
             <button
               onClick={confirmItemSelect}
               disabled={totalSelected === 0}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               <CheckCircle size={16} />
               {totalSelected}{"\uac1c \ub2f4\uae30 \uc644\ub8cc"}
@@ -659,13 +659,13 @@ function ShippingRequestContent() {
 
         <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-5 pb-40">
           {preflowLoading ? (
-            <div className="flex justify-center py-10"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
+            <div className="flex justify-center py-10"><Loader2 size={28} className="animate-spin text-brand-500" /></div>
           ) : shippableParcels.length === 0 ? (
             <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
               <Package size={36} className="text-gray-200 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-500">{"\ucd9c\uace0 \uac00\ub2a5\ud55c \ubb3c\ud488\uc774 \uc5c6\uc2b5\ub2c8\ub2e4"}</p>
               <p className="text-xs text-gray-400 mt-1">{"\uc785\uace0 \uc644\ub8cc\ub41c \ubb3c\ud488\uc774 \uc5c6\uc73c\uba74 \ucd9c\uace0\uc2e0\uccad\uc744 \ud560 \uc218 \uc5c6\uc5b4\uc694"}</p>
-              <button onClick={() => router.push("/warehouse")} className="mt-5 bg-blue-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">
+              <button onClick={() => router.push("/warehouse")} className="mt-5 bg-brand-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">
                 {"\ub9c8\uc774\ucc3d\uace0 \ubcf4\uae30"}
               </button>
             </div>
@@ -680,12 +680,12 @@ function ShippingRequestContent() {
               return (
                 <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
                   {/* 박스 헤더 */}
-                  <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
+                  <div className="flex items-center justify-between px-4 py-3 bg-brand-600">
                     <div className="flex items-center gap-2">
                       <Package size={16} className="text-white" />
                       <p className="text-sm font-bold text-white">{box.id}{"\ubc88 \ubc15\uc2a4"}</p>
                       {totalBoxQty > 0 && (
-                        <span className="text-xs text-blue-200">{totalBoxQty}{"\uac1c"}</span>
+                        <span className="text-xs text-brand-200">{totalBoxQty}{"\uac1c"}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
@@ -710,7 +710,7 @@ function ShippingRequestContent() {
 
                   {/* 주소 피커 (펼침) */}
                   {isAddressOpen && (
-                    <div className="px-4 py-4 bg-blue-50 border-b border-blue-100">
+                    <div className="px-4 py-4 bg-brand-50 border-b border-brand-100">
                       <OverseasAddressPicker
                         value={box.address}
                         onChange={(addr) => setBoxes((prev) => prev.map((b) => b.id === box.id ? { ...b, address: addr } : b))}
@@ -733,7 +733,7 @@ function ShippingRequestContent() {
                               {item.unit_price_usd > 0 ? ` · $${item.unit_price_usd}` : ""}
                             </p>
                           </div>
-                          <span className="text-sm font-bold text-blue-600 shrink-0">{bi.qty}{"\uac1c"}</span>
+                          <span className="text-sm font-bold text-brand-600 shrink-0">{bi.qty}{"\uac1c"}</span>
                         </div>
                       ))
                     )}
@@ -743,7 +743,7 @@ function ShippingRequestContent() {
                   <div className="px-4 pb-4 pt-2">
                     <button
                       onClick={() => openItemSelect(box.id)}
-                      className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl hover:bg-blue-50 active:scale-[0.98] transition-all"
+                      className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-brand-300 text-brand-600 text-sm font-bold py-3 rounded-xl hover:bg-brand-50 active:scale-[0.98] transition-all"
                     >
                       <span className="text-lg leading-none">+</span>
                       {box.items.length > 0 ? "\ub0b4\ud488 \uc218\uc815" : "\ubc15\uc2a4\uc5d0 \ub2f4\uae30"}
@@ -758,7 +758,7 @@ function ShippingRequestContent() {
           {!preflowLoading && shippableParcels.length > 0 && (
             <button
               onClick={handleAddBox}
-              className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 text-gray-500 text-sm font-bold py-4 rounded-2xl hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 active:scale-[0.98] transition-all"
+              className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 text-gray-500 text-sm font-bold py-4 rounded-2xl hover:border-brand-300 hover:text-brand-600 hover:bg-brand-50 active:scale-[0.98] transition-all"
             >
               <span className="text-lg leading-none">+</span>
               {"\ubc15\uc2a4 \ucd94\uac00"}
@@ -773,7 +773,7 @@ function ShippingRequestContent() {
               type="button"
               onClick={handleFlowNext}
               disabled={totalAssigned === 0}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
+              className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               <CheckCircle size={16} />
               {totalAssigned > 0 ? `${totalAssigned}개 내품 — ` : ""}다음
@@ -805,7 +805,7 @@ function ShippingRequestContent() {
           <section className="space-y-4">
             <p className="text-sm font-bold text-gray-800">박스 구성</p>
             {preflowLoading ? (
-              <div className="flex justify-center py-10"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
+              <div className="flex justify-center py-10"><Loader2 size={28} className="animate-spin text-brand-500" /></div>
             ) : shippableParcels.length === 0 ? (
               <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
                 <p className="text-sm text-gray-500">출고 가능한 물품이 없습니다</p>
@@ -817,19 +817,19 @@ function ShippingRequestContent() {
                   const isAddressOpen = expandedBoxAddress === box.id;
                   return (
                     <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                      <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
+                      <div className="flex items-center justify-between px-4 py-3 bg-brand-600">
                         <p className="text-sm font-bold text-white">{box.id}번 박스 {totalBoxQty > 0 ? `· ${totalBoxQty}개` : ""}</p>
                         <button type="button" onClick={() => setExpandedBoxAddress(isAddressOpen ? null : box.id)} className="text-xs text-white/90 bg-white/20 px-2 py-1 rounded-full">
                           {box.address ? "배송지 ✓" : "배송지"}
                         </button>
                       </div>
                       {isAddressOpen && (
-                        <div className="px-4 py-4 bg-blue-50 border-b border-blue-100">
+                        <div className="px-4 py-4 bg-brand-50 border-b border-brand-100">
                           <OverseasAddressPicker value={box.address} onChange={(addr) => setBoxes((prev) => prev.map((b) => b.id === box.id ? { ...b, address: addr } : b))} customerId={customerId} />
                         </div>
                       )}
                       <div className="p-4">
-                        <button type="button" onClick={() => openItemSelect(box.id)} className="w-full border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl">
+                        <button type="button" onClick={() => openItemSelect(box.id)} className="w-full border-2 border-dashed border-brand-300 text-brand-600 text-sm font-bold py-3 rounded-xl">
                           + {box.items.length > 0 ? "내품 수정" : "박스에 담기"}
                         </button>
                       </div>
@@ -855,7 +855,7 @@ function ShippingRequestContent() {
                   onClick={() => setShippingMethod(m.code)}
                   className={`w-full text-left flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
                     shippingMethod === m.code
-                      ? "border-blue-500 bg-blue-50"
+                      ? "border-brand-500 bg-brand-50"
                       : "border-gray-100 bg-white"
                   }`}
                 >
@@ -863,7 +863,7 @@ function ShippingRequestContent() {
                     {m.name}
                   </span>
                   <p className="text-xs text-gray-500">{m.desc}</p>
-                  {shippingMethod === m.code && <CheckCircle size={16} className="text-blue-500 ml-auto shrink-0" />}
+                  {shippingMethod === m.code && <CheckCircle size={16} className="text-brand-500 ml-auto shrink-0" />}
                 </button>
               ))}
             </div>
@@ -877,11 +877,11 @@ function ShippingRequestContent() {
                     key={o.code}
                     onClick={() => setPackOpts((p) => ({ ...p, [o.code]: !p[o.code as keyof typeof packOpts] }))}
                     className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                      checked ? "border-blue-500 bg-blue-50" : "border-gray-100 bg-white"
+                      checked ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white"
                     }`}
                   >
                     <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                      checked ? "bg-blue-600 border-blue-600" : "border-gray-300"
+                      checked ? "bg-brand-600 border-brand-600" : "border-gray-300"
                     }`}>
                       {checked && <span className="text-white text-xs font-bold">✓</span>}
                     </div>
@@ -889,7 +889,7 @@ function ShippingRequestContent() {
                       <p className="text-sm font-semibold text-gray-800">{o.name}</p>
                       <p className="text-xs text-gray-400">{o.desc}</p>
                     </div>
-                    <span className="text-xs font-semibold text-blue-600 shrink-0">
+                    <span className="text-xs font-semibold text-brand-600 shrink-0">
                       +{o.price.toLocaleString()}원
                     </span>
                   </button>
@@ -940,7 +940,7 @@ function ShippingRequestContent() {
                 onChange={(e) => setPackNote(e.target.value)}
                 rows={3}
                 placeholder="포장·처리 관련 특별 요청사항을 입력해주세요"
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-200"
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-brand-200"
               />
             </div>
           </>
@@ -965,11 +965,11 @@ function ShippingRequestContent() {
                 <p className="text-sm text-gray-500">박스별 수취인 주소를 확인·수정해주세요</p>
                 {boxes.map((box) => (
                   <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                    <div className="flex items-center gap-2 px-4 py-3 bg-blue-600">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-brand-600">
                       <Globe size={14} className="text-white" />
                       <p className="text-sm font-bold text-white">{box.id}번 박스 배송지</p>
                       {box.address?.name && (
-                        <span className="text-xs text-blue-200 ml-1">— {box.address.name}</span>
+                        <span className="text-xs text-brand-200 ml-1">— {box.address.name}</span>
                       )}
                     </div>
                     <div className="px-4 py-4">
@@ -1023,7 +1023,7 @@ function ShippingRequestContent() {
                 <div key={box.id} className="space-y-3">
                   {boxes.length > 1 && (
                     <div className="flex items-center gap-2 pt-1">
-                      <Package size={14} className="text-blue-500 shrink-0" />
+                      <Package size={14} className="text-brand-500 shrink-0" />
                       <p className="text-sm font-bold text-gray-800">
                         {box.id}번 박스 인보이스
                         {box.address?.name ? (
@@ -1054,7 +1054,7 @@ function ShippingRequestContent() {
                               value={item.name_en}
                               onChange={(e) => updateItem(idx, { name_en: e.target.value })}
                               placeholder="e.g. Clothing, Cosmetics, Electronics"
-                              className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                              className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
@@ -1065,7 +1065,7 @@ function ShippingRequestContent() {
                                 min={1}
                                 value={item.quantity}
                                 onChange={(e) => updateItem(idx, { quantity: parseInt(e.target.value) || 1 })}
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                               />
                             </div>
                             <div>
@@ -1076,7 +1076,7 @@ function ShippingRequestContent() {
                                 step={0.01}
                                 value={item.unit_price_usd}
                                 onChange={(e) => updateItem(idx, { unit_price_usd: parseFloat(e.target.value) || 0 })}
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                               />
                             </div>
                           </div>
@@ -1087,7 +1087,7 @@ function ShippingRequestContent() {
                                 value={item.hs_code}
                                 onChange={(e) => updateItem(idx, { hs_code: e.target.value })}
                                 placeholder="6단위"
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                               />
                             </div>
                             <div>
@@ -1096,7 +1096,7 @@ function ShippingRequestContent() {
                                 value={item.origin_country}
                                 onChange={(e) => updateItem(idx, { origin_country: e.target.value })}
                                 placeholder="KR"
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                               />
                             </div>
                           </div>
@@ -1107,7 +1107,7 @@ function ShippingRequestContent() {
 
                   <button
                     onClick={addItem}
-                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-blue-300 hover:text-blue-600 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed border-gray-200 text-sm text-gray-500 hover:border-brand-300 hover:text-brand-600 transition-colors"
                   >
                     <Plus size={15} /> {boxes.length > 1 ? `${box.id}번 박스 물품 추가` : "물품 추가"}
                   </button>
@@ -1150,7 +1150,7 @@ function ShippingRequestContent() {
                 type="button"
                 onClick={handleFlowNext}
                 disabled={!canProceed()}
-                className={`${mainFlowStep > 1 ? "flex-[2]" : "w-full"} flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-40`}
+                className={`${mainFlowStep > 1 ? "flex-[2]" : "w-full"} flex items-center justify-center gap-2 bg-brand-600 text-white font-bold py-4 rounded-2xl disabled:opacity-40`}
               >
                 다음 <ArrowRight size={16} />
               </button>
@@ -1170,7 +1170,7 @@ function ShippingRequestContent() {
                 submit();
               }}
               disabled={submitting || (hasBoxSetupStep && totalAssigned === 0 && isAdvanced)}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60"
+              className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
               {submitting ? "신청 중..." : "해외배송 신청하기"}
@@ -1186,7 +1186,7 @@ export default function ShippingRequestPage() {
   return (
     <Suspense fallback={
       <div className="flex justify-center items-center min-h-screen">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
+        <Loader2 size={32} className="animate-spin text-brand-500" />
       </div>
     }>
       <ShippingRequestContent />

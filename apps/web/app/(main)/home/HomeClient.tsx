@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -32,7 +32,7 @@ interface Order {
 }
 
 const ORDER_STATUS: Record<string, { label: string; color: string; dot: string }> = {
-  DRAFT:               { label: "신청 완료",   color: "text-blue-700 bg-blue-50 border-blue-200",     dot: "bg-blue-400" },
+  DRAFT:               { label: "신청 완료",   color: "text-brand-700 bg-brand-50 border-brand-200",     dot: "bg-brand-400" },
   PACKAGING_REQUESTED: { label: "포장 요청",   color: "text-orange-700 bg-orange-50 border-orange-200", dot: "bg-orange-400" },
   PACKAGING_DONE:      { label: "포장 완료",   color: "text-teal-700 bg-teal-50 border-teal-200",       dot: "bg-teal-400" },
   QUOTE_SENT:          { label: "견적 발송",   color: "text-amber-700 bg-amber-50 border-amber-200",    dot: "bg-amber-400" },
@@ -66,13 +66,13 @@ interface Parcel {
 const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
   PRE_REGISTERED: { label: "등록 완료",  color: "text-indigo-700 bg-indigo-50 border-indigo-200", dot: "bg-indigo-400" },
   PENDING_PICKUP: { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
-  PICKED_UP:      { label: "수거 완료", color: "text-blue-700 bg-blue-50 border-blue-200",       dot: "bg-blue-400" },
+  PICKED_UP:      { label: "수거 완료", color: "text-brand-700 bg-brand-50 border-brand-200",       dot: "bg-brand-400" },
   INBOUND:        { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200",    dot: "bg-green-400" },
   INSPECTION:     { label: "검품 중",   color: "text-purple-700 bg-purple-50 border-purple-200", dot: "bg-purple-400" },
   PACKING:        { label: "포장 작업", color: "text-orange-700 bg-orange-50 border-orange-200", dot: "bg-orange-400" },
   HOLD:           { label: "보류",      color: "text-red-700 bg-red-50 border-red-200",           dot: "bg-red-400" },
   PAYMENT_WAIT:   { label: "결제 대기", color: "text-amber-700 bg-amber-50 border-amber-200",     dot: "bg-amber-400" },
-  SHIPPING:       { label: "국제 발송", color: "text-blue-800 bg-blue-100 border-blue-300",       dot: "bg-blue-600" },
+  SHIPPING:       { label: "국제 발송", color: "text-brand-800 bg-brand-100 border-brand-300",       dot: "bg-brand-600" },
   DONE:           { label: "배송 완료", color: "text-gray-600 bg-gray-50 border-gray-200",        dot: "bg-gray-400" },
 };
 
@@ -82,13 +82,13 @@ const QUICK_ACTIONS = [
     icon: <Truck size={24} className="text-white" />,
     label: "수거 신청",
     sub: "우체국 방문수거",
-    className: "bg-blue-600",
+    className: "bg-brand-600",
     labelClass: "text-white",
-    subClass: "text-blue-200",
+    subClass: "text-brand-200",
   },
   {
     href: "/shipping-calc",
-    icon: <Calculator size={24} className="text-violet-600" />,
+    icon: <Calculator size={24} className="text-brand-600" />,
     label: "요금 계산",
     sub: "EMS · K-Packet",
     className: "bg-white",
@@ -135,6 +135,7 @@ export default function HomeClient() {
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [parcels,  setParcels]  = useState<Parcel[]>([]);
   const [orders,   setOrders]   = useState<Order[]>([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   useEffect(() => {
     const supabase = createClient();
@@ -147,6 +148,13 @@ export default function HomeClient() {
         .eq("id", user.id)
         .maybeSingle()
         .then(({ data }) => setUserInfo(data));
+
+      // 미읽음 알림
+      supabase
+        .from("notifications")
+        .select("id", { count: "exact", head: true })
+        .eq("is_read", false)
+        .then(({ count }) => setUnreadNotifications(count ?? 0));
 
       const fetchParcels = () =>
         supabase
@@ -187,16 +195,21 @@ export default function HomeClient() {
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           <FlowModeToggle />
-          <button type="button" className="relative p-2" aria-label="알림">
+          <Link href="/notifications" className="relative p-2" aria-label="알림">
             <Bell size={22} className="text-gray-700" />
-          </button>
+            {unreadNotifications > 0 && (
+              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadNotifications > 99 ? "99+" : unreadNotifications}
+              </span>
+            )}
+          </Link>
         </div>
       </div>
 
       <ActionDashboard />
 
       {/* 서비스 안내 배너 */}
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl px-5 py-5 sm:py-6 text-white flex items-center justify-between gap-4 min-h-[108px]">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl px-5 py-5 sm:py-6 text-white flex items-center justify-between gap-4 min-h-[108px]">
         <div className="min-w-0 flex-1">
           <p className="text-white/70 text-xs font-medium mb-1">인프론트 해외배송 대행</p>
           <p className="text-lg font-bold leading-snug">
@@ -206,7 +219,7 @@ export default function HomeClient() {
         </div>
         <Link
           href="/pickup"
-          className="shrink-0 inline-flex items-center gap-1.5 bg-white text-blue-600 rounded-xl px-4 py-2.5 text-sm font-semibold active:scale-95 transition-transform shadow-sm"
+          className="shrink-0 inline-flex items-center gap-1.5 bg-white text-brand-600 rounded-xl px-4 py-2.5 text-sm font-semibold active:scale-95 transition-transform shadow-sm"
         >
           <Truck size={15} />
           수거 신청
@@ -234,7 +247,7 @@ export default function HomeClient() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-gray-900">최근 물품 현황</h2>
-          <Link href="/warehouse" className="text-xs text-blue-600 font-medium flex items-center gap-0.5">
+          <Link href="/warehouse" className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
             전체보기 <ChevronRight size={14} />
           </Link>
         </div>
@@ -248,7 +261,7 @@ export default function HomeClient() {
             </p>
             <Link
               href="/pickup"
-              className="mt-4 inline-flex items-center gap-1 bg-blue-600 text-white rounded-xl px-4 py-2 text-sm font-medium"
+              className="mt-4 inline-flex items-center gap-1 bg-brand-600 text-white rounded-xl px-4 py-2 text-sm font-medium"
             >
               <Truck size={14} /> 수거 신청
             </Link>
@@ -302,8 +315,8 @@ export default function HomeClient() {
                     </div>
                   )}
                   {parcel.status === "PICKED_UP" && (
-                    <div className="mt-2 bg-blue-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-blue-700">🚛 수거 완료 · 센터로 이동 중</p>
+                    <div className="mt-2 bg-brand-50 rounded-lg px-3 py-2">
+                      <p className="text-xs text-brand-700">🚛 수거 완료 · 센터로 이동 중</p>
                     </div>
                   )}
                 </Link>
@@ -317,7 +330,7 @@ export default function HomeClient() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-bold text-gray-900">최근 배송 현황</h2>
-          <Link href="/orders" className="text-xs text-blue-600 font-medium flex items-center gap-0.5">
+          <Link href="/orders" className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
             전체보기 <ChevronRight size={14} />
           </Link>
         </div>

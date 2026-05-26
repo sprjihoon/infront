@@ -162,7 +162,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
         onClick={() => { setMode("list"); setSheet(true); }}
         className={`w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98] ${
           value
-            ? "bg-white border-blue-200 shadow-sm"
+            ? "bg-white border-brand-200 shadow-sm"
             : "bg-gray-50 border-dashed border-gray-300"
         }`}
       >
@@ -171,7 +171,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1.5">
                 {value.label && (
-                  <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full shrink-0">
+                  <span className="text-xs font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full shrink-0">
                     {value.label}
                   </span>
                 )}
@@ -183,15 +183,15 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                 {value.addressDetail ? ` ${value.addressDetail}` : ""}
               </p>
             </div>
-            <div className="flex items-center gap-1 shrink-0 text-blue-600 text-xs font-medium mt-0.5">
+            <div className="flex items-center gap-1 shrink-0 text-brand-600 text-xs font-medium mt-0.5">
               <Pencil size={12} />
               변경
             </div>
           </div>
         ) : (
           <div className="flex items-center gap-3 py-1">
-            <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
-              <MapPin size={18} className="text-blue-500" />
+            <div className="w-9 h-9 rounded-xl bg-brand-100 flex items-center justify-center shrink-0">
+              <MapPin size={18} className="text-brand-500" />
             </div>
             <div>
               <p className="text-sm font-semibold text-gray-700">수거지를 선택해주세요</p>
@@ -220,7 +220,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                 className="p-1.5 rounded-full hover:bg-gray-100"
               >
                 {mode === "new" ? (
-                  <span className="text-xs text-blue-500 font-medium px-1">← 목록</span>
+                  <span className="text-xs text-brand-500 font-medium px-1">← 목록</span>
                 ) : (
                   <X size={18} className="text-gray-500" />
                 )}
@@ -244,13 +244,13 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                         onClick={() => selectSaved(a)}
                         className={`w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98] ${
                           value?.savedId === a.id
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-gray-100 bg-gray-50 hover:border-blue-200 hover:bg-blue-50"
+                            ? "border-brand-500 bg-brand-50"
+                            : "border-gray-100 bg-gray-50 hover:border-brand-200 hover:bg-brand-50"
                         }`}
                       >
                         <div className="flex items-center justify-between mb-1.5">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                            <span className="text-xs font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full">
                               {a.label}
                             </span>
                             {a.is_default && (
@@ -260,7 +260,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                             )}
                           </div>
                           {value?.savedId === a.id && (
-                            <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-brand-500 flex items-center justify-center">
                               <Check size={12} className="text-white" />
                             </div>
                           )}
@@ -279,7 +279,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                   <button
                     type="button"
                     onClick={() => { resetNewForm(); setMode("new"); }}
-                    className="w-full flex items-center gap-3 rounded-2xl border-2 border-dashed border-gray-200 p-4 text-left hover:border-blue-300 hover:bg-blue-50 transition-all active:scale-[0.98]"
+                    className="w-full flex items-center gap-3 rounded-2xl border-2 border-dashed border-gray-200 p-4 text-left hover:border-brand-300 hover:bg-brand-50 transition-all active:scale-[0.98]"
                   >
                     <div className="w-9 h-9 rounded-xl bg-gray-100 flex items-center justify-center shrink-0">
                       <Plus size={18} className="text-gray-500" />
@@ -302,7 +302,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       placeholder="황길동"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                     />
                   </div>
 
@@ -315,7 +315,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       onChange={(e) => setNewPhone(e.target.value)}
                       placeholder="010-1234-5678"
                       type="tel"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                     />
                   </div>
 
@@ -333,7 +333,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       <AddressSearchButton
                         label="주소 검색"
                         onSelect={(z, a) => { setNewZip(z); setNewAddr(a); setNewDetail(""); }}
-                        className="flex-1 bg-blue-600 text-white text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
+                        className="flex-1 bg-brand-600 text-white text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
                       />
                     </div>
                     <input
@@ -346,7 +346,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       value={newDetail}
                       onChange={(e) => setNewDetail(e.target.value)}
                       placeholder="상세 주소 (동/호수)"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                     />
                   </div>
 
@@ -357,11 +357,11 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       type="button"
                       onClick={() => setSaveOption("save")}
                       className={`w-full flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all ${
-                        saveOption === "save" ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white hover:border-gray-300"
+                        saveOption === "save" ? "border-brand-400 bg-brand-50" : "border-gray-200 bg-white hover:border-gray-300"
                       }`}
                     >
                       <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                        saveOption === "save" ? "border-blue-500 bg-blue-500" : "border-gray-300"
+                        saveOption === "save" ? "border-brand-500 bg-brand-500" : "border-gray-300"
                       }`}>
                         {saveOption === "save" && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                       </div>
@@ -421,7 +421,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                           value={newLabel}
                           onChange={(e) => setNewLabel(e.target.value)}
                           placeholder={saveOption === "default" ? "기본주소" : "집"}
-                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                         />
                       </div>
                     )}
@@ -436,7 +436,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                   type="button"
                   disabled={saving || !newName || !newPhone || !newAddr || !newZip}
                   onClick={confirmNew}
-                  className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
+                  className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
                 >
                   {saving ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
