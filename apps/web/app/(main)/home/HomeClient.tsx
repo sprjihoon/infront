@@ -6,6 +6,10 @@ import { ChevronRight, Bell, Truck, Calculator, Send, BookOpen, List } from "luc
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { createClient } from "@/lib/supabase/client";
 import ActionDashboard from "@/components/ActionDashboard";
+import {
+  formatParcelItemTitle,
+  normalizeParcelItems,
+} from "@/lib/parcel-item-display";
 
 interface UserInfo {
   name: string;
@@ -15,10 +19,6 @@ interface InvoiceItem {
   name_en: string;
   product_name?: string;
   quantity: number;
-}
-
-function parcelItemDisplayName(item: InvoiceItem): string {
-  return item.product_name || item.name_en;
 }
 
 interface Order {
@@ -60,7 +60,6 @@ interface Parcel {
   weight_actual: number | null;
   hold_reason: string | null;
   notes: string | null;
-  tracking_last_event: { statusLabel: string; description: string; location: string } | null;
   pre_invoice_items: InvoiceItem[] | null;
 }
 
@@ -152,7 +151,7 @@ export default function HomeClient() {
       const fetchParcels = () =>
         supabase
           .from("parcels")
-          .select("id, tracking_no, pickup_tracking_no, status, sender_name, created_at, inbound_at, weight_actual, hold_reason, notes, tracking_last_event, pre_invoice_items")
+          .select("id, tracking_no, pickup_tracking_no, status, sender_name, created_at, inbound_at, weight_actual, hold_reason, notes, pre_invoice_items")
           .eq("customer_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -197,19 +196,19 @@ export default function HomeClient() {
       <ActionDashboard />
 
       {/* 서비스 안내 배너 */}
-      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl p-4 text-white flex items-center justify-between">
-        <div>
-          <p className="text-white/70 text-xs font-medium mb-0.5">인프론트 해외배송 대행</p>
-          <p className="text-base font-bold leading-snug">
+      <div className="bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl px-5 py-5 sm:py-6 text-white flex items-center justify-between gap-4 min-h-[108px]">
+        <div className="min-w-0 flex-1">
+          <p className="text-white/70 text-xs font-medium mb-1">인프론트 해외배송 대행</p>
+          <p className="text-lg font-bold leading-snug">
             수거 → 검품 → 포장 → 국제발송
           </p>
-          <p className="text-white/80 text-xs mt-0.5">EMS · EMS 프리미엄 · K-Packet</p>
+          <p className="text-white/80 text-sm mt-1.5">EMS · EMS 프리미엄 · K-Packet</p>
         </div>
         <Link
           href="/pickup"
-          className="shrink-0 ml-3 inline-flex items-center gap-1.5 bg-white text-blue-600 rounded-xl px-3.5 py-2 text-sm font-semibold active:scale-95 transition-transform"
+          className="shrink-0 inline-flex items-center gap-1.5 bg-white text-blue-600 rounded-xl px-4 py-2.5 text-sm font-semibold active:scale-95 transition-transform shadow-sm"
         >
-          <Truck size={14} />
+          <Truck size={15} />
           수거 신청
         </Link>
       </div>
@@ -258,7 +257,8 @@ export default function HomeClient() {
           <div className="space-y-3">
             {parcels.map((parcel) => {
               const cfg = STATUS_CONFIG[parcel.status] ?? STATUS_CONFIG.DONE;
-              const items = parcel.pre_invoice_items ?? [];
+              const items = normalizeParcelItems(parcel.pre_invoice_items);
+              const itemTitle = formatParcelItemTitle(items);
               const trackingNo = parcel.tracking_no || parcel.pickup_tracking_no;
               return (
                 <Link
@@ -269,15 +269,9 @@ export default function HomeClient() {
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0 pr-2">
                       {/* 내품 제목 */}
-                      {items.length > 0 ? (
-                        <p className="text-sm font-semibold text-gray-900 flex items-center min-w-0 gap-1">
-                          <span className="truncate">{parcelItemDisplayName(items[0])}</span>
-                          {items.length === 1 && items[0].quantity > 1 && (
-                            <span className="shrink-0 text-gray-500 font-medium">×{items[0].quantity}</span>
-                          )}
-                          {items.length > 1 && (
-                            <span className="shrink-0 text-gray-500 font-medium">외{items.length - 1}</span>
-                          )}
+                      {itemTitle ? (
+                        <p className="text-sm font-semibold text-gray-900 truncate" title={itemTitle}>
+                          {itemTitle}
                         </p>
                       ) : (
                         <p className="text-sm font-semibold text-gray-400">물품 미등록</p>
@@ -300,18 +294,6 @@ export default function HomeClient() {
                   {parcel.status === "HOLD" && parcel.hold_reason && (
                     <div className="mt-2 bg-red-50 rounded-lg px-3 py-2">
                       <p className="text-xs text-red-600">⚠️ {parcel.hold_reason}</p>
-                    </div>
-                  )}
-                  {parcel.status === "PRE_REGISTERED" && (
-                    <div className="mt-2 bg-indigo-50 rounded-lg px-3 py-2">
-                      {parcel.tracking_last_event ? (
-                        <p className="text-xs text-indigo-700">
-                          🚚 {parcel.tracking_last_event.statusLabel || parcel.tracking_last_event.description}
-                          {parcel.tracking_last_event.location ? ` · ${parcel.tracking_last_event.location}` : ""}
-                        </p>
-                      ) : (
-                        <p className="text-xs text-indigo-600">📬 센터 도착 대기 중 · 도착 후 입고 처리됩니다</p>
-                      )}
                     </div>
                   )}
                   {parcel.status === "PENDING_PICKUP" && (

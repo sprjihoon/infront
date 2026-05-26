@@ -69,7 +69,7 @@ export default function ActionDashboard() {
 
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-bold text-gray-900">지금 할 일</h2>
+      <h2 className="text-base font-bold text-gray-900">진행현황</h2>
       <div className="space-y-3">
         {cards.map((card) => (
           <div

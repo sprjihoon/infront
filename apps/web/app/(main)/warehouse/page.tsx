@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
+import { formatParcelItemTitle, normalizeParcelItems } from "@/lib/parcel-item-display";
 
 interface InvoiceItem {
   product_name?: string;
@@ -269,6 +270,7 @@ export default function WarehousePage() {
         <div className="space-y-3">
           {filtered.map((parcel) => {
             const cfg = STATUS_CONFIG[parcel.status] ?? STATUS_CONFIG.DONE;
+            const itemTitle = formatParcelItemTitle(parcel.pre_invoice_items);
             const isReserved = reservedParcelIds.has(parcel.id);
             const isSelectable =
               SHIPPABLE_STATUSES.has(parcel.status) &&
@@ -308,11 +310,9 @@ export default function WarehousePage() {
                         {parcel.sender_name ?? "발송인 미확인"}
                         {parcel.notes ? ` · ${parcel.notes}` : ""}
                       </p>
-                      {parcel.pre_invoice_items && parcel.pre_invoice_items.length > 0 && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          {parcel.pre_invoice_items[0].product_name || parcel.pre_invoice_items[0].name_en}
-                          {parcel.pre_invoice_items.length > 1 && ` 외 ${parcel.pre_invoice_items.length - 1}종`}
-                          {" · "}총 {parcel.pre_invoice_items.reduce((s, i) => s + i.quantity, 0)}개
+                      {itemTitle && (
+                        <p className="text-xs text-gray-500 mt-1 truncate" title={itemTitle}>
+                          {itemTitle}
                         </p>
                       )}
                     </div>

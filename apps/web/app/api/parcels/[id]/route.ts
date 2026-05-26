@@ -57,6 +57,7 @@ export async function PATCH(
     courier?: string;
     item_condition?: "NEW" | "USED";
     pre_invoice_items?: Array<{
+      product_name?: string;
       name_en: string;
       quantity: number;
       unit_price_usd: number;
@@ -79,10 +80,18 @@ export async function PATCH(
       return NextResponse.json({ error: "물품 내역을 하나 이상 입력해주세요" }, { status: 400 });
     }
     for (const item of body.pre_invoice_items) {
-      if (!item.name_en?.trim()) return NextResponse.json({ error: "품목명(영문)을 입력해주세요" }, { status: 400 });
-      if (!item.quantity || item.quantity < 1) return NextResponse.json({ error: "수량을 1개 이상 입력해주세요" }, { status: 400 });
+      if (!item.name_en?.trim()) {
+        return NextResponse.json({ error: "모든 품목에 영문 품목(카테고리)을 선택해 주세요." }, { status: 400 });
+      }
+      if (!item.quantity || item.quantity < 1) {
+        return NextResponse.json({ error: "수량을 1개 이상 입력해주세요" }, { status: 400 });
+      }
     }
-    update.pre_invoice_items = body.pre_invoice_items;
+    update.pre_invoice_items = body.pre_invoice_items.map((item) => ({
+      ...item,
+      product_name: item.product_name?.trim() || undefined,
+      name_en: item.name_en.trim(),
+    }));
   }
 
   if (Object.keys(update).length === 0) {

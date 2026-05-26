@@ -228,9 +228,25 @@ export default function ParcelDetailPage() {
 
   async function saveItems() {
     if (!parcel) return;
-    const items = editItems.filter(i => i.name_en.trim());
-    if (items.length === 0) { setEditError("품목명을 입력해주세요"); return; }
-    setSaving(true); setEditError("");
+    const touched = editItems.filter(
+      (i) => i.name_en.trim() || (i.product_name?.trim() ?? ""),
+    );
+    const incomplete = touched.filter((i) => !i.name_en.trim());
+    if (incomplete.length > 0) {
+      setEditError(
+        incomplete.length === 1
+          ? "추가한 품목에 영문 품목(카테고리)을 선택해 주세요."
+          : `추가한 품목 ${incomplete.length}개에 영문 품목(카테고리)을 선택해 주세요.`,
+      );
+      return;
+    }
+    const items = editItems.filter((i) => i.name_en.trim());
+    if (items.length === 0) {
+      setEditError("품목명(영문)을 입력해 주세요.");
+      return;
+    }
+    setSaving(true);
+    setEditError("");
     const res = await fetch(`/api/parcels/${parcel.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -546,6 +562,9 @@ export default function ParcelDetailPage() {
                 className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border-2 border-dashed border-gray-200 text-xs text-gray-400 hover:border-blue-300 hover:text-blue-500 transition-colors">
                 <Plus size={12} /> 품목 추가
               </button>
+              <p className="text-[11px] text-gray-400 text-center leading-snug">
+                추가 품목은 제품명과 함께 <span className="font-semibold">영문 품목(카테고리)</span>까지 선택해야 저장됩니다.
+              </p>
 
               {editError && <p className="text-xs text-red-500">{editError}</p>}
 

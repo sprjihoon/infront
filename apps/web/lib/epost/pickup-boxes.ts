@@ -58,7 +58,7 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
   },
   {
     code: "XL",
-    label: "극대형",
+    label: "특대형",
     desc: "30kg · 160cm",
     weight: 30,
     volume: 160,

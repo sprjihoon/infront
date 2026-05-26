@@ -187,7 +187,9 @@ export default function RegisterParcelPage() {
           sender_address: senderAddress || undefined,
           notes: notes || undefined,
           item_condition: condition,
-          pre_invoice_items: items.map(({ key: _k, _isCustom: _c, _categoryLabel: _l, inspection: _i, specials: _s, ...rest }) => rest),
+          pre_invoice_items: items
+            .filter((it) => it.name_en.trim() || it.product_name?.trim())
+            .map(({ key: _k, _isCustom: _c, _categoryLabel: _l, inspection: _i, specials: _s, ...rest }) => rest),
         }),
       });
       const json = await res.json();
