@@ -17,6 +17,10 @@ interface InvoiceItem {
   quantity: number;
 }
 
+function parcelItemDisplayName(item: InvoiceItem): string {
+  return item.product_name || item.name_en;
+}
+
 interface Order {
   id: string;
   order_no: string;
@@ -266,9 +270,14 @@ export default function HomeClient() {
                     <div className="flex-1 min-w-0 pr-2">
                       {/* 내품 제목 */}
                       {items.length > 0 ? (
-                        <p className="text-sm font-semibold text-gray-900 truncate">
-                          {items[0].product_name || items[0].name_en}
-                          {items.length > 1 && <span className="text-gray-400 font-normal"> 외 {items.length - 1}종</span>}
+                        <p className="text-sm font-semibold text-gray-900 flex items-center min-w-0 gap-1">
+                          <span className="truncate">{parcelItemDisplayName(items[0])}</span>
+                          {items.length === 1 && items[0].quantity > 1 && (
+                            <span className="shrink-0 text-gray-500 font-medium">×{items[0].quantity}</span>
+                          )}
+                          {items.length > 1 && (
+                            <span className="shrink-0 text-gray-500 font-medium">외{items.length - 1}</span>
+                          )}
                         </p>
                       ) : (
                         <p className="text-sm font-semibold text-gray-400">물품 미등록</p>
@@ -280,8 +289,11 @@ export default function HomeClient() {
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-4 text-xs text-gray-400">
+                  <div className="flex items-center gap-3 flex-wrap text-xs text-gray-400">
                     <span>입고: {parcel.inbound_at ? new Date(parcel.inbound_at).toLocaleDateString("ko-KR") : "대기중"}</span>
+                    {trackingNo && (
+                      <span className="font-mono text-gray-300 tracking-tight truncate max-w-[140px]">{trackingNo}</span>
+                    )}
                     {parcel.weight_actual && <span>무게: {(parcel.weight_actual / 1000).toFixed(2)}kg</span>}
                   </div>
 
