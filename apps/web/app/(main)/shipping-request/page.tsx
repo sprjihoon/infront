@@ -9,6 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import OverseasAddressPicker, { OverseasAddressValue } from "@/components/ui/OverseasAddressPicker";
 import { useFlowMode } from "@/lib/flow-mode";
+import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
 
 const MAIN_FLOW_STEP_LABELS = ["배송 옵션", "해외 배송지", "인보이스"] as const;
@@ -406,7 +407,7 @@ function ShippingRequestContent() {
     return (
       <div
         className="bg-white border-b border-gray-100 sticky z-10"
-        style={{ top: "calc(3rem + var(--sat, 0px))" }}
+        style={{ top: "var(--sat, 0px)" }}
       >
         <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
           <button type="button" onClick={handleFlowBack} className="p-1 -ml-1">
@@ -428,6 +429,7 @@ function ShippingRequestContent() {
               </>
             )}
           </div>
+          <FlowModeToggle />
         </div>
         {isSimple && (
           <div className="max-w-[600px] mx-auto flex gap-1.5 px-4 pb-3">

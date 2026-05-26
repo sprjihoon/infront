@@ -2,7 +2,6 @@
 
 import BottomTabBar from "@/components/ui/BottomTabBar";
 import SidebarWrapper from "@/components/ui/SidebarWrapper";
-import MainFlowHeader from "@/components/layout/MainFlowHeader";
 import { FlowModeProvider } from "@/lib/flow-mode";
 
 export default function MainLayoutClient({ children }: { children: React.ReactNode }) {
@@ -13,7 +12,6 @@ export default function MainLayoutClient({ children }: { children: React.ReactNo
           className="w-full max-w-[600px] mx-auto min-h-screen pb-[calc(60px+var(--sab,0px))]"
           style={{ paddingTop: "var(--sat, 0px)" }}
         >
-          <MainFlowHeader />
           {children}
         </div>
 

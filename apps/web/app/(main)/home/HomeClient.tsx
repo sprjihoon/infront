@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, ChevronRight, Bell, Truck, Calculator, Globe, Send, BookOpen, List } from "lucide-react";
+import { ChevronRight, Bell, Truck, Calculator, Send, BookOpen, List } from "lucide-react";
+import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { createClient } from "@/lib/supabase/client";
 import ActionDashboard from "@/components/ActionDashboard";
 
@@ -81,24 +82,6 @@ const QUICK_ACTIONS = [
     className: "bg-blue-600",
     labelClass: "text-white",
     subClass: "text-blue-200",
-  },
-  {
-    href: "/warehouse",
-    icon: <Package size={24} className="text-blue-600" />,
-    label: "내 물품",
-    sub: "창고 입고 현황",
-    className: "bg-white",
-    labelClass: "text-gray-900",
-    subClass: "text-gray-500",
-  },
-  {
-    href: "/orders",
-    icon: <Globe size={24} className="text-green-600" />,
-    label: "배송 현황",
-    sub: "해외 배송 추적",
-    className: "bg-white",
-    labelClass: "text-gray-900",
-    subClass: "text-gray-500",
   },
   {
     href: "/shipping-calc",
@@ -199,9 +182,12 @@ export default function HomeClient() {
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">무엇을 도와드릴까요?</p>
         </div>
-        <button className="relative p-2">
-          <Bell size={22} className="text-gray-700" />
-        </button>
+        <div className="flex items-center gap-0.5 shrink-0">
+          <FlowModeToggle />
+          <button type="button" className="relative p-2" aria-label="알림">
+            <Bell size={22} className="text-gray-700" />
+          </button>
+        </div>
       </div>
 
       <ActionDashboard />

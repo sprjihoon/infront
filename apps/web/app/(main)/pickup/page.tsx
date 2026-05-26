@@ -15,6 +15,7 @@ import {
   type PickupBoxSizeCode,
 } from "@/lib/epost/pickup-boxes";
 import { useFlowMode } from "@/lib/flow-mode";
+import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
 const STEP_LABELS = ["수거 정보", "물품 내역", "확인 및 신청"] as const;
 
@@ -341,7 +342,7 @@ export default function PickupPage() {
       {/* 헤더 */}
       <div
         className="sticky bg-white border-b border-gray-100 z-10"
-        style={{ top: "calc(3rem + var(--sat, 0px))" }}
+        style={{ top: "var(--sat, 0px)" }}
       >
         <div className="px-4 py-3 flex items-center gap-3">
           <button type="button" onClick={handleBack}>
@@ -357,6 +358,7 @@ export default function PickupPage() {
               <h1 className="text-base font-bold text-gray-900">우체국 수거 신청</h1>
             )}
           </div>
+          <FlowModeToggle />
         </div>
 
         {isSimple && (
