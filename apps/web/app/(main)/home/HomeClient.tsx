@@ -273,18 +273,6 @@ export default function HomeClient() {
                       ) : (
                         <p className="text-sm font-semibold text-gray-400">물품 미등록</p>
                       )}
-                      {/* 발송인 · 메모 */}
-                      <p className="text-xs text-gray-400 mt-0.5 truncate">
-                        {parcel.sender_name ?? "발송인 미확인"}
-                        {parcel.notes ? ` · ${parcel.notes}` : ""}
-                      </p>
-                      {/* 내품 수량 */}
-                      {items.length > 0 && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          총 {items.reduce((s, i) => s + i.quantity, 0)}개
-                          {trackingNo && <span className="text-gray-300 font-mono ml-2 tracking-tight">{trackingNo}</span>}
-                        </p>
-                      )}
                     </div>
                     <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${cfg.color}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />

@@ -69,16 +69,6 @@ describe("buildActionCards", () => {
     expect(cards[0].message).toBe("배송 중 1건");
   });
 
-  it("shows inspection card without button", () => {
-    const cards = buildActionCards(
-      [],
-      [order("o1", "INSPECTION"), order("o2", "PACKAGING_REQUESTED")],
-    );
-    expect(cards[0].id).toBe("inspection");
-    expect(cards[0].message).toContain("2건");
-    expect(cards[0].button).toBeUndefined();
-  });
-
   it("limits to top 3 cards by priority", () => {
     const cards = buildActionCards(
       [
@@ -101,10 +91,12 @@ describe("buildActionCards", () => {
     expect(cards[0].message).toContain("9,800원");
   });
 
-  it("shows inspection card for parcel INSPECTION", () => {
-    const cards = buildActionCards([parcel("p1", "INSPECTION")], []);
-    expect(cards[0].id).toBe("inspection");
-    expect(cards[0].message).toContain("1건");
+  it("does not show card for inspection-only activity", () => {
+    const cards = buildActionCards(
+      [parcel("p1", "INSPECTION")],
+      [order("o1", "INSPECTION"), order("o2", "PACKAGING_REQUESTED")],
+    );
+    expect(cards).toHaveLength(0);
   });
 
   it("hides empty state when user has inactive history", () => {

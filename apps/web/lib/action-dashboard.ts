@@ -46,7 +46,6 @@ export function formatPickupDate(
 }
 
 const PAYMENT_STATUSES = new Set(["PENDING_PAYMENT", "QUOTE_SENT"]);
-const INSPECTION_STATUSES = new Set(["INSPECTION", "PACKAGING_REQUESTED"]);
 
 export function buildActionCards(
   parcels: DashboardParcel[],
@@ -102,20 +101,6 @@ export function buildActionCards(
       emoji: "✈️",
       message: `배송 중 ${inTransit.length}건`,
       button: { label: "배송현황 보기", href: "/orders" },
-    });
-  }
-
-  const inspectingOrders = orders.filter((o) =>
-    INSPECTION_STATUSES.has(o.status),
-  );
-  const inspectingParcels = parcels.filter((p) => p.status === "INSPECTION");
-  const inspectingCount = inspectingOrders.length + inspectingParcels.length;
-  if (inspectingCount > 0) {
-    cards.push({
-      id: "inspection",
-      priority: 5,
-      emoji: "🔍",
-      message: `검수 진행 중 ${inspectingCount}건 — 잠시만 기다려주세요`,
     });
   }
 
