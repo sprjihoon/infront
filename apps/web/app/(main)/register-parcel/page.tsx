@@ -750,18 +750,29 @@ export default function RegisterParcelPage() {
             다음 <ArrowRight size={16} />
           </button>
         ) : (
-          <button
-            type="button"
-            disabled={submitting || !canStep1() || !canStep2()}
-            onClick={handleSubmit}
-            className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-md shadow-blue-200"
-          >
-            {submitting ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <><CheckCircle size={18} /> 물품 등록 완료</>
+          <div className={`flex gap-2 ${isSimple ? "" : ""}`}>
+            {isSimple && (
+              <button
+                type="button"
+                onClick={() => { setStep(1); setError(""); }}
+                className="flex-1 py-4 rounded-2xl text-sm font-bold border border-gray-200 text-gray-700 active:bg-gray-50"
+              >
+                이전
+              </button>
             )}
-          </button>
+            <button
+              type="button"
+              disabled={submitting || !canStep1() || !canStep2()}
+              onClick={handleSubmit}
+              className={`${isSimple ? "flex-[2]" : "w-full"} bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform shadow-md shadow-blue-200`}
+            >
+              {submitting ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <><CheckCircle size={18} /> 물품 등록 완료</>
+              )}
+            </button>
+          </div>
         )}
       </div>
     </div>

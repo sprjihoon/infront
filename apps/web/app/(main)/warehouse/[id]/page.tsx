@@ -274,7 +274,13 @@ export default function ParcelDetailPage() {
   if (!parcel) return null;
 
   const statusCfg = STATUS_CONFIG[parcel.status] ?? { label: parcel.status, color: "text-gray-700", bg: "bg-gray-50 border-gray-200", step: 0 };
-  const canShip = SHIPPABLE_STATUSES.has(parcel.status) && parcel.is_shippable !== false;
+  const linkedActiveOrder = (linkedOrders ?? []).find(
+    (lo) => lo.orders && !["CANCELLED", "DELIVERED"].includes(lo.orders.status)
+  );
+  const canShip =
+    SHIPPABLE_STATUSES.has(parcel.status) &&
+    parcel.is_shippable !== false &&
+    !linkedActiveOrder;
   const canReturn = RETURNABLE_STATUSES.has(parcel.status);
   const canEdit = ["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"].includes(parcel.status);
   // 제품명·가격은 SHIPPING·DONE 전 단계까지 고객이 수정 가능

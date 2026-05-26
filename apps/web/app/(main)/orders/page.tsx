@@ -3,7 +3,8 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { FileText, Package, Globe, CreditCard, CheckCircle, Clock, Truck, Loader2 } from "lucide-react";
+import { FileText, Package, Globe, CreditCard, CheckCircle, Clock, Truck, Loader2, X } from "lucide-react";
+import { canCustomerCancelOrder } from "@/lib/order-reservation";
 import { createClient } from "@/lib/supabase/client";
 
 interface ShippingBox {
@@ -123,14 +124,38 @@ function OrdersContent() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(expandId);
+  const [cancelTarget, setCancelTarget] = useState<Order | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+
+  async function loadOrders() {
+    const r = await fetch("/api/orders", { cache: "no-store" });
+    const body = await r.json();
+    if (!r.ok) throw new Error(body.error ?? "주문 목록을 불러오지 못했습니다.");
+    return body.orders as Order[] | undefined;
+  }
+
+  async function confirmCancel() {
+    if (!cancelTarget) return;
+    setCancelling(true);
+    setCancelError("");
+    try {
+      const res = await fetch(`/api/orders/${cancelTarget.id}/cancel`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "취소에 실패했습니다.");
+      const data2 = await loadOrders();
+      setOrders(data2 ?? []);
+      setCancelTarget(null);
+      if (expandedId === cancelTarget.id) setExpandedId(null);
+    } catch (e: unknown) {
+      setCancelError(e instanceof Error ? e.message : "취소 중 오류가 발생했습니다.");
+    } finally {
+      setCancelling(false);
+    }
+  }
 
   useEffect(() => {
-    fetch("/api/orders", { cache: "no-store" })
-      .then(async (r) => {
-        const body = await r.json();
-        if (!r.ok) throw new Error(body.error ?? "주문 목록을 불러오지 못했습니다.");
-        return body.orders as Order[] | undefined;
-      })
+    loadOrders()
       .then((data) => {
         setOrders(data ?? []);
         setLoading(false);
@@ -214,6 +239,23 @@ function OrdersContent() {
                     <span>·</span>
                     <span>{new Date(order.created_at).toLocaleDateString("ko-KR")}</span>
                   </div>
+
+                  {canCustomerCancelOrder(order.status, order.payment_status) && (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCancelError("");
+                          setCancelTarget(order);
+                        }}
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-semibold bg-white"
+                      >
+                        <X size={14} />
+                        신청 취소
+                      </button>
+                    </div>
+                  )}
 
                   {/* 결제 대기 상태일 때 버튼 표시 */}
                   {(order.status === "QUOTE_SENT" || order.status === "PENDING_PAYMENT") && (
@@ -311,6 +353,45 @@ function OrdersContent() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center">
+          <div className="w-full max-w-[380px] bg-white rounded-2xl p-5 shadow-xl">
+            <p className="text-base font-bold text-gray-900 mb-1">해외배송 신청을 취소할까요?</p>
+            <p className="text-sm text-gray-500 mb-1">
+              주문번호 {cancelTarget.order_no}
+            </p>
+            <p className="text-sm text-gray-500 mb-5">
+              취소하면 담았던 물품 {cancelTarget.order_parcels?.length ?? 0}개가 마이창고에서 다시 출고 신청할 수 있는 상태로 돌아갑니다.
+            </p>
+            {cancelError && (
+              <p className="text-xs text-red-600 mb-3">{cancelError}</p>
+            )}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelling}
+                className="flex-1 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl"
+              >
+                닫기
+              </button>
+              <button
+                type="button"
+                onClick={confirmCancel}
+                disabled={cancelling}
+                className="flex-1 py-3 bg-red-500 text-white text-sm font-semibold rounded-xl disabled:opacity-60 flex items-center justify-center gap-1"
+              >
+                {cancelling ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  "신청 취소"
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { parcelIdsInActiveOrders } from '@/lib/order-reservation';
 
 function createSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -93,6 +94,29 @@ export async function POST(req: NextRequest) {
 
     if (parcelsErr || !parcels || parcels.length !== parcel_ids.length) {
       return NextResponse.json({ error: '유효하지 않은 물품이 포함되어 있습니다.' }, { status: 400 });
+    }
+
+    const shippableStatuses = new Set(['INBOUND', 'INSPECTION']);
+    const notShippable = parcels.filter((p) => !shippableStatuses.has(p.status));
+    if (notShippable.length > 0) {
+      return NextResponse.json(
+        { error: '입고·검수 완료된 물품만 출고 신청할 수 있습니다.' },
+        { status: 400 }
+      );
+    }
+
+    const { data: reservedLinks } = await supabase
+      .from('order_parcels')
+      .select('parcel_id, orders!inner(status, customer_id)')
+      .in('parcel_id', parcel_ids)
+      .eq('orders.customer_id', user.id);
+
+    const reservedIds = parcelIdsInActiveOrders(reservedLinks, user.id);
+    if (reservedIds.size > 0) {
+      return NextResponse.json(
+        { error: '이미 다른 배송 신청에 포함된 물품이 있습니다. 기존 신청을 취소한 뒤 다시 시도해 주세요.' },
+        { status: 409 }
+      );
     }
 
     // 주문번호 생성

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
 
 interface InvoiceItem {
   product_name?: string;
@@ -62,17 +63,25 @@ export default function WarehousePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [reservedParcelIds, setReservedParcelIds] = useState<Set<string>>(new Set());
 
   const loadParcels = useCallback(async () => {
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data } = await supabase
-      .from("parcels")
-      .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event, pre_invoice_items")
-      .eq("customer_id", user.id)
-      .neq("status", "DONE")
-      .order("created_at", { ascending: false });
+    const [{ data }, { data: reservedLinks }] = await Promise.all([
+      supabase
+        .from("parcels")
+        .select("id, tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_status, tracking_last_event, pre_invoice_items")
+        .eq("customer_id", user.id)
+        .neq("status", "DONE")
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("order_parcels")
+        .select("parcel_id, orders!inner(status, customer_id)")
+        .eq("orders.customer_id", user.id),
+    ]);
+    setReservedParcelIds(parcelIdsInActiveOrders(reservedLinks, user.id));
     setParcels(data ?? []);
     setLoading(false);
   }, []);
@@ -118,7 +127,7 @@ export default function WarehousePage() {
 
   function selectAll() {
     const eligibleIds = filtered
-      .filter((p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false)
+      .filter((p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false && !reservedParcelIds.has(p.id))
       .map((p) => p.id);
     const allSelected = eligibleIds.every((id) => selectedIds.has(id));
     if (allSelected) {
@@ -143,14 +152,17 @@ export default function WarehousePage() {
   }
 
   const eligibleInFiltered = filtered.filter(
-    (p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false
+    (p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false && !reservedParcelIds.has(p.id)
   );
   const allEligibleSelected =
     eligibleInFiltered.length > 0 &&
     eligibleInFiltered.every((p) => selectedIds.has(p.id));
 
   function handleParcelClick(parcel: Parcel) {
-    const isSelectable = SHIPPABLE_STATUSES.has(parcel.status) && parcel.is_shippable !== false;
+    const isSelectable =
+      SHIPPABLE_STATUSES.has(parcel.status) &&
+      parcel.is_shippable !== false &&
+      !reservedParcelIds.has(parcel.id);
     // 선택 중인 항목이 있으면 선택 토글, 없으면 상세 페이지로
     if (selectedIds.size > 0 && isSelectable) {
       toggleSelect(parcel.id, isSelectable);
@@ -257,8 +269,11 @@ export default function WarehousePage() {
         <div className="space-y-3">
           {filtered.map((parcel) => {
             const cfg = STATUS_CONFIG[parcel.status] ?? STATUS_CONFIG.DONE;
+            const isReserved = reservedParcelIds.has(parcel.id);
             const isSelectable =
-              SHIPPABLE_STATUSES.has(parcel.status) && parcel.is_shippable !== false;
+              SHIPPABLE_STATUSES.has(parcel.status) &&
+              parcel.is_shippable !== false &&
+              !isReserved;
             const isSelected = selectedIds.has(parcel.id);
 
             return (
@@ -322,6 +337,11 @@ export default function WarehousePage() {
                   )}
                 </div>
 
+                {isReserved && (
+                  <div className="mt-2 bg-blue-50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-blue-700">✈️ 배송 신청 진행 중 — 배송현황에서 취소하면 다시 출고 신청할 수 있어요</p>
+                  </div>
+                )}
                 {parcel.status === "HOLD" && parcel.hold_reason && (
                   <div className="mt-2 bg-red-50 rounded-lg px-3 py-2">
                     <p className="text-xs text-red-600">⚠️ {parcel.hold_reason}</p>

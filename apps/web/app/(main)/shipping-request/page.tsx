@@ -1,13 +1,19 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, Suspense } from "react";
+import { useEffect, useState, useMemo, useCallback, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Globe,
   Plus, Trash2, CheckCircle, Loader2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import OverseasAddressPicker, { OverseasAddressValue, COUNTRIES } from "@/components/ui/OverseasAddressPicker";
+import OverseasAddressPicker, { OverseasAddressValue } from "@/components/ui/OverseasAddressPicker";
+import { useFlowMode } from "@/lib/flow-mode";
+import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
+
+const MAIN_FLOW_STEP_LABELS = ["배송 옵션", "해외 배송지", "인보이스"] as const;
+const MAIN_FLOW_STEP_COUNT = MAIN_FLOW_STEP_LABELS.length;
+const BOX_FLOW_STEP_LABEL = "박스 구성";
 
 // ── 타입 ────────────────────────────────────────────────────
 interface PreInvoiceItem {
@@ -79,8 +85,6 @@ const ADDON_SERVICES = [
   { code: "OVERPACK_REMOVE",  name: "과포장 제거",          desc: "불필요한 박스·완충재 제거 (무게 절감)", price: 0, badge: "무료" },
 ];
 
-const STEP_LABELS = ["물품 확인", "배송 옵션", "해외 배송지", "인보이스"];
-
 function newItem(): InvoiceItem {
   return { key: Math.random().toString(36).slice(2), name_en: "", quantity: 1, unit_price_usd: 0, hs_code: "", origin_country: "KR" };
 }
@@ -93,10 +97,16 @@ function ShippingRequestContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlParcelIds = useMemo(() => searchParams.get("parcels")?.split(",").filter(Boolean) ?? [], [searchParams]);
+  const { isSimple, isAdvanced, mode: flowMode } = useFlowMode();
+  const hasBoxSetupStep = urlParcelIds.length === 0;
+  const flowStepLabels = useMemo(
+    () => (hasBoxSetupStep ? [BOX_FLOW_STEP_LABEL, ...MAIN_FLOW_STEP_LABELS] : [...MAIN_FLOW_STEP_LABELS]),
+    [hasBoxSetupStep],
+  );
+  const totalFlowSteps = flowStepLabels.length;
 
-  // ── pre-flow 상태 (URL params 없을 때) ─────────────────────
-  type Phase = "box_config" | "item_select" | "main_flow";
-  const [phase, setPhase] = useState<Phase>(urlParcelIds.length > 0 ? "main_flow" : "box_config");
+  const [flowStep, setFlowStep] = useState(1);
+  const prevFlowMode = useRef(flowMode);
   const [shippableParcels, setShippableParcels] = useState<Parcel[]>([]);
   const [preflowLoading, setPreflowLoading] = useState(false);
   const [defaultOverseasAddress, setDefaultOverseasAddress] = useState<OverseasAddressValue | null>(null);
@@ -109,46 +119,44 @@ function ShippingRequestContent() {
   const [selectingForBoxId, setSelectingForBoxId] = useState<number | null>(null);
   const [tempQty, setTempQty] = useState<Map<string, number>>(new Map());
 
+  const isBoxFlowStep = hasBoxSetupStep && flowStep === 1;
+  const mainFlowStep = hasBoxSetupStep ? flowStep - 1 : flowStep;
+  const inMainFlowContent = !isBoxFlowStep && mainFlowStep >= 1;
+
   // parcelIds: URL 직접 or 박스 구성 완료 후
   const parcelIds = useMemo(() => {
     if (urlParcelIds.length > 0) return urlParcelIds;
-    if (phase !== "main_flow") return [];
+    if (!inMainFlowContent && !(isAdvanced && hasBoxSetupStep)) return [];
     const ids = new Set<string>();
     for (const b of boxes) {
       for (const bi of b.items) ids.add(bi.key.split("__")[0]);
     }
     return Array.from(ids);
-  }, [urlParcelIds, phase, boxes]);
-
-  const [step, setStep] = useState(1);
-  const [parcels, setParcels] = useState<Parcel[]>([]);
-  const [loading, setLoading] = useState(false);
+  }, [urlParcelIds, inMainFlowContent, isAdvanced, hasBoxSetupStep, boxes]);
   const [customerId, setCustomerId] = useState<string | null>(null);
 
-  // Step 2
+  // 배송 옵션
   const [shippingMethod, setShippingMethod] = useState<"EMS" | "EMS_PREMIUM" | "KPACKET">("EMS");
   const [packOpts, setPackOpts] = useState({ safe_pack: false, repack: false, consolidate: false });
   const [packNote, setPackNote] = useState("");
   const [addonServiceSet, setAddonServiceSet] = useState<Set<string>>(new Set());
 
-  // Step 3 — 박스별 주소는 boxes[i].address 를 직접 사용
+  // 해외 배송지 — boxes[i].address
 
-  // Step 4 — 박스별 인보이스 (boxes 배열과 인덱스 동기)
+  // 인보이스 (boxes 배열과 인덱스 동기)
   const [boxInvoices, setBoxInvoices] = useState<InvoiceItem[][]>([[newItem()]]);
-
-  // Step 5
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  // pre-flow: 출고 가능 물품 + 기본 해외배송지 로드
+  // pre-flow: 출고 가능 물품 + 기본 해외배송지 로드 (박스 구성 플로우)
   useEffect(() => {
-    if (phase === "main_flow") return;
+    if (!hasBoxSetupStep) return;
     setPreflowLoading(true);
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       setCustomerId(user.id);
-      const [{ data: parcelData }, { data: addrData }] = await Promise.all([
+      const [{ data: parcelData }, { data: addrData }, { data: reservedLinks }] = await Promise.all([
         supabase
           .from("parcels")
           .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items")
@@ -162,8 +170,13 @@ function ShippingRequestContent() {
           .eq("type", "overseas")
           .order("is_default", { ascending: false })
           .limit(5),
+        supabase
+          .from("order_parcels")
+          .select("parcel_id, orders!inner(status, customer_id)")
+          .eq("orders.customer_id", user.id),
       ]);
-      setShippableParcels(parcelData ?? []);
+      const reserved = parcelIdsInActiveOrders(reservedLinks, user.id);
+      setShippableParcels((parcelData ?? []).filter((p) => !reserved.has(p.id)));
       const defaultAddr = (addrData ?? []).find((a) => a.is_default) ?? addrData?.[0];
       if (defaultAddr) {
         const addr: OverseasAddressValue = {
@@ -179,7 +192,7 @@ function ShippingRequestContent() {
       }
       setPreflowLoading(false);
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [hasBoxSetupStep]);
 
   // parcel 목록 → 개별 내품 아이템 목록으로 플랫화
   const selectableItems = useMemo<SelectableItem[]>(() => {
@@ -256,7 +269,6 @@ function ShippingRequestContent() {
     (box?.items ?? []).forEach((bi) => initMap.set(bi.key, bi.qty));
     setTempQty(initMap);
     setSelectingForBoxId(boxId);
-    setPhase("item_select");
   }, [boxes]);
 
   // 아이템 선택 완료 → 박스에 반영 (qty > 0인 것만)
@@ -271,15 +283,12 @@ function ShippingRequestContent() {
         return b;
       })
     );
-    setPhase("box_config");
     setSelectingForBoxId(null);
   }, [selectingForBoxId, tempQty]);
 
-  // 박스 구성 완료 → 실제 4단계 플로우 시작
-  const handleBoxConfigConfirm = useCallback(() => {
+  const prepareMainFlowFromBoxes = useCallback(() => {
     const totalQty = boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0);
-    if (totalQty === 0) return;
-    // 박스별 인보이스 초기화 (각 박스의 아이템을 qty 반영)
+    if (totalQty === 0) return false;
     const newBoxInvoices: InvoiceItem[][] = boxes.map((box) => {
       const preItems = box.items
         .map((bi) => {
@@ -298,49 +307,142 @@ function ShippingRequestContent() {
       return preItems.length > 0 ? preItems : [newItem()];
     });
     setBoxInvoices(newBoxInvoices);
-    // 주소는 boxes[i].address 에 그대로 유지 — 별도 복사 불필요
-    setPhase("main_flow");
+    return true;
   }, [boxes, selectableItems]);
 
-  // 물품 로드 (main_flow 진입 후)
   useEffect(() => {
-    if (phase !== "main_flow" || parcelIds.length === 0) return;
-    setLoading(true);
+    if (!inMainFlowContent && !isAdvanced) return;
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setCustomerId(user.id);
     });
-    supabase
-      .from("parcels")
-      .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items")
-      .in("id", parcelIds)
-      .then(({ data }) => {
-        setParcels((data ?? []) as Parcel[]);
-        setLoading(false);
-      });
-  }, [phase, parcelIds]);
-
+  }, [inMainFlowContent, isAdvanced]);
 
   // ── 계산 ──────────────────────────────────────────────────
   const packagingFee = PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).reduce((s, o) => s + o.price, 0);
   const customsValue = boxInvoices.flatMap((inv) => inv).reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
-  const totalWeightKg = parcels.reduce((s, p) => s + (p.weight_actual ?? 0), 0) / 1000;
-
-  const country = boxes[0]?.address
-    ? COUNTRIES.find((c) => c.code === boxes[0].address!.countryCode)
-    : null;
 
   // ── 유효성 검사 ───────────────────────────────────────────
-  function canProceed(): boolean {
-    if (step === 3) {
+  function canProceedForMainStep(ms: number): boolean {
+    if (ms === 2) {
       return boxes.every((b) => !!(b.address?.name?.trim() && b.address?.addr3?.trim()));
     }
-    if (step === 4) {
+    if (ms === 3) {
       return boxInvoices.every((inv) =>
         inv.every((i) => i.name_en.trim() && i.quantity > 0 && i.unit_price_usd >= 0)
       );
     }
     return true;
+  }
+
+  function canProceed(): boolean {
+    if (isBoxFlowStep) {
+      return boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0) > 0;
+    }
+    return canProceedForMainStep(mainFlowStep);
+  }
+
+  function handleFlowBack() {
+    if (selectingForBoxId !== null) {
+      setTempQty(new Map());
+      setSelectingForBoxId(null);
+      return;
+    }
+    if (isBoxFlowStep) {
+      router.back();
+      return;
+    }
+    if (mainFlowStep <= 1) {
+      if (hasBoxSetupStep) setFlowStep(1);
+      else router.back();
+      return;
+    }
+    setFlowStep(flowStep - 1);
+    setError("");
+  }
+
+  function handleFlowNext() {
+    setError("");
+    if (isBoxFlowStep) {
+      if (!prepareMainFlowFromBoxes()) {
+        setError("박스에 담을 내품을 선택해주세요.");
+        return;
+      }
+      setFlowStep(2);
+      return;
+    }
+    if (mainFlowStep < MAIN_FLOW_STEP_COUNT) setFlowStep(flowStep + 1);
+  }
+
+  function inferFlowStep(): number {
+    if (hasBoxSetupStep) {
+      const totalQty = boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0);
+      if (totalQty === 0) return 1;
+      if (!canProceedForMainStep(2)) return 3;
+      if (!canProceedForMainStep(3)) return 4;
+      return 2;
+    }
+    if (!canProceedForMainStep(2)) return 2;
+    if (!canProceedForMainStep(3)) return 3;
+    return 1;
+  }
+
+  useEffect(() => {
+    if (prevFlowMode.current === "advanced" && flowMode === "simple") {
+      setFlowStep(inferFlowStep());
+    }
+    prevFlowMode.current = flowMode;
+  }, [flowMode]);
+
+  useEffect(() => {
+    if (isAdvanced && hasBoxSetupStep) prepareMainFlowFromBoxes();
+  }, [isAdvanced, hasBoxSetupStep, boxes, prepareMainFlowFromBoxes]);
+
+  function renderFlowHeader(extra?: { subtitle?: string }) {
+    const label = selectingForBoxId !== null
+      ? `${selectingForBoxId}번 박스에 담기`
+      : flowStepLabels[flowStep - 1];
+
+    return (
+      <div
+        className="bg-white border-b border-gray-100 sticky z-10"
+        style={{ top: "calc(3rem + var(--sat, 0px))" }}
+      >
+        <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
+          <button type="button" onClick={handleFlowBack} className="p-1 -ml-1">
+            <ArrowLeft size={22} className="text-gray-700" />
+          </button>
+          <div className="flex-1 min-w-0">
+            {isSimple ? (
+              <>
+                <p className="text-xs text-gray-400">
+                  Step {selectingForBoxId !== null ? 1 : flowStep} / {totalFlowSteps}
+                </p>
+                <p className="text-sm font-bold text-gray-900 truncate">{label}</p>
+                {extra?.subtitle && <p className="text-xs text-gray-400 mt-0.5">{extra.subtitle}</p>}
+              </>
+            ) : (
+              <>
+                <p className="text-base font-bold text-gray-900">출고신청</p>
+                <p className="text-xs text-gray-400">고급모드 · 한 페이지에 입력</p>
+              </>
+            )}
+          </div>
+        </div>
+        {isSimple && (
+          <div className="max-w-[600px] mx-auto flex gap-1.5 px-4 pb-3">
+            {flowStepLabels.map((_, i) => (
+              <div
+                key={i}
+                className={`h-1.5 flex-1 rounded-full transition-colors ${
+                  i + 1 <= (selectingForBoxId !== null ? 1 : flowStep) ? "bg-blue-600" : "bg-gray-200"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
   }
 
   // ── 주문 제출 ─────────────────────────────────────────────
@@ -407,8 +509,8 @@ function ShippingRequestContent() {
     }
   }
 
-  // ── phase: item_select — 특정 박스에 담을 내품 선택 (수량 스테퍼) ─
-  if (phase === "item_select" && selectingForBoxId !== null) {
+  // ── 박스에 담기 (수량 스테퍼) ─
+  if (selectingForBoxId !== null) {
     const parcelGroups = shippableParcels.map((p) => ({
       parcel: p,
       items: selectableItems.filter((it) => it.parcelId === p.id),
@@ -417,28 +519,11 @@ function ShippingRequestContent() {
 
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
-        <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-          <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
-            <button
-              onClick={() => {
-                setTempQty(new Map()); // 선택 취소 — 박스에 반영 안 됨
-                setPhase("box_config");
-              }}
-              className="p-1 -ml-1"
-            >
-              <ArrowLeft size={22} className="text-gray-700" />
-            </button>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-gray-900">{selectingForBoxId}{"\ubc88 \ubc15\uc2a4\uc5d0 \ub2f4\uc744 \ub0b4\ud488"}</p>
-              <p className="text-xs text-gray-400">{"\uc218\ub7c9\uc744 \uc124\uc815\ud574\uc8fc\uc138\uc694 \u2014 \uac19\uc740 \ud488\ubaa9\uc744 \uc5ec\ub7ec \ubc15\uc2a4\uc5d0 \ub098\ub220 \ub2f4\uc744 \uc218 \uc788\uc5b4\uc694"}</p>
-            </div>
-            {totalSelected > 0 && (
-              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full shrink-0">
-                {totalSelected}{"\uac1c"}
-              </span>
-            )}
-          </div>
-        </div>
+        {renderFlowHeader({
+          subtitle: isSimple
+            ? "수량을 설정해주세요 — 같은 품목을 여러 박스에 나눠 담을 수 있어요"
+            : undefined,
+        })}
 
         <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-4 pb-40">
           {preflowLoading ? (
@@ -547,33 +632,27 @@ function ShippingRequestContent() {
     );
   }
 
-  // ── phase: box_config — 박스 구성 ────────────────────────────
-  if (phase === "box_config") {
+  // ── 일반모드 Step 1: 박스 구성 ────────────────────────────────
+  if (isSimple && isBoxFlowStep && selectingForBoxId === null) {
     const totalAssigned = boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0);
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
-        <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-          <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
-            <button onClick={() => router.back()} className="p-1 -ml-1">
-              <ArrowLeft size={22} className="text-gray-700" />
+        <div className="relative">
+          {renderFlowHeader({ subtitle: "박스 개수를 정하고 내품을 담아주세요" })}
+          {totalAssigned > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("박스 구성을 모두 초기화할까요?\n선택한 내품은 자동으로 원복됩니다.")) {
+                  setBoxes(boxes.map((b) => ({ ...b, items: [] })));
+                }
+              }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-400 border border-gray-200 px-2.5 py-1 rounded-full hover:text-red-500 hover:border-red-200 transition-colors z-20"
+              style={{ top: "calc(1.5rem + var(--sat, 0px))" }}
+            >
+              초기화
             </button>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-gray-900">{"\ucd9c\uace0\uc2e0\uccad"}</p>
-              <p className="text-xs text-gray-400">{"\ubc15\uc2a4 \uac1c\uc218\ub97c \uc815\ud558\uace0 \ub0b4\ud488\uc744 \ub2f4\uc544\uc8fc\uc138\uc694"}</p>
-            </div>
-            {totalAssigned > 0 && (
-              <button
-                onClick={() => {
-                  if (confirm("\ubc15\uc2a4 \uad6c\uc131\uc744 \ubaa8\ub450 \ucd08\uae30\ud654\ud560\uae4c\uc694?\n\uc120\ud0dd\ud55c \ub0b4\ud488\uc740 \uc790\ub3d9\uc73c\ub85c \uc6d0\ubcf5\ub429\ub2c8\ub2e4.")) {
-                    setBoxes(boxes.map((b) => ({ ...b, items: [] })));
-                  }
-                }}
-                className="text-xs text-gray-400 border border-gray-200 px-2.5 py-1 rounded-full hover:text-red-500 hover:border-red-200 transition-colors"
-              >
-                {"\ucd08\uae30\ud654"}
-              </button>
-            )}
-          </div>
+          )}
         </div>
 
         <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-5 pb-40">
@@ -689,12 +768,13 @@ function ShippingRequestContent() {
         <div className="fixed left-0 right-0 px-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}>
           <div className="max-w-[600px] mx-auto">
             <button
-              onClick={handleBoxConfigConfirm}
+              type="button"
+              onClick={handleFlowNext}
               disabled={totalAssigned === 0}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               <CheckCircle size={16} />
-              {totalAssigned > 0 ? `${totalAssigned}\uac1c \ub0b4\ud488 \u2014 ` : ""}{"\ucd9c\uace0\uc2e0\uccad \uc9c4\ud589\ud558\uae30"}
+              {totalAssigned > 0 ? `${totalAssigned}개 내품 — ` : ""}다음
               <ArrowRight size={15} />
             </button>
           </div>
@@ -703,96 +783,67 @@ function ShippingRequestContent() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Loader2 size={32} className="animate-spin text-blue-500" />
-      </div>
-    );
+  const showMainStep = (n: number) => isAdvanced || mainFlowStep === n;
+
+  if ((!inMainFlowContent && !isAdvanced) || selectingForBoxId !== null) {
+    return null;
   }
+
+  const totalAssigned = boxes.reduce((s, b) => s + b.items.reduce((q, bi) => q + bi.qty, 0), 0);
+  const showMainSections = !hasBoxSetupStep || isAdvanced || parcelIds.length > 0;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      {/* 헤더 */}
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-[600px] mx-auto flex items-center gap-3 px-4 py-3">
-          <button
-            onClick={() => {
-              if (step === 1 && urlParcelIds.length === 0) {
-                // box_config로 복귀 (파슬 상태는 변경된 것 없음 — 재고 자동 원복)
-                setPhase("box_config");
-                setStep(1);
-              } else if (step === 1) {
-                router.back();
-              } else {
-                setStep(step - 1);
-              }
-            }}
-            className="p-1 -ml-1"
-          >
-            <ArrowLeft size={22} className="text-gray-700" />
-          </button>
-          <div className="flex-1">
-            <p className="text-xs text-gray-400">Step {step} / {STEP_LABELS.length}</p>
-            <p className="text-sm font-bold text-gray-900">{STEP_LABELS[step - 1]}</p>
-          </div>
-        </div>
-        {/* 진행 바 */}
-        <div className="h-1 bg-gray-100">
-          <div
-            className="h-full bg-blue-500 transition-all duration-300"
-            style={{ width: `${(step / STEP_LABELS.length) * 100}%` }}
-          />
-        </div>
-      </div>
+      {renderFlowHeader()}
 
-      <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-4">
+      <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-6">
 
-        {/* ── Step 1: 물품 확인 ─────────────────────────────── */}
-        {step === 1 && (
-          <>
-            <div className="bg-blue-50 rounded-2xl p-4">
-              <p className="text-xs text-blue-700 font-semibold mb-1">선택한 물품 {parcels.length}개</p>
-              {totalWeightKg > 0 ? (
-                <p className="text-xs text-blue-600">총 예상 무게: {totalWeightKg.toFixed(2)}kg (실측 후 확정)</p>
-              ) : (
-                <p className="text-xs text-blue-600">무게는 창고 검수 후 확정됩니다</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              {parcels.map((p) => (
-                <div key={p.id} className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
-                  <div className="w-9 h-9 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                    <Package size={18} className="text-blue-500" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {p.tracking_no ?? "송장번호 미등록"}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {p.sender_name ?? "발송인 미확인"}
-                      {p.notes ? ` · ${p.notes}` : ""}
-                    </p>
-                  </div>
-                  {p.weight_actual ? (
-                    <span className="text-xs text-gray-500 shrink-0">{(p.weight_actual / 1000).toFixed(2)}kg</span>
-                  ) : (
-                    <span className="text-xs text-gray-300 shrink-0">미측정</span>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="bg-amber-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-amber-700 leading-relaxed">
-                실제 배송비는 물품 입고 후 실측 무게 기준으로 확정됩니다.
-                지금 입력하는 정보를 바탕으로 포장 완료 후 실제 비용을 안내해드립니다.
-              </p>
-            </div>
-          </>
+        {/* 고급모드: 박스 구성 (Step 1에 해당) */}
+        {isAdvanced && hasBoxSetupStep && (
+          <section className="space-y-4">
+            <p className="text-sm font-bold text-gray-800">박스 구성</p>
+            {preflowLoading ? (
+              <div className="flex justify-center py-10"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
+            ) : shippableParcels.length === 0 ? (
+              <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+                <p className="text-sm text-gray-500">출고 가능한 물품이 없습니다</p>
+              </div>
+            ) : (
+              <>
+                {boxes.map((box) => {
+                  const totalBoxQty = box.items.reduce((s, bi) => s + bi.qty, 0);
+                  const isAddressOpen = expandedBoxAddress === box.id;
+                  return (
+                    <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                      <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
+                        <p className="text-sm font-bold text-white">{box.id}번 박스 {totalBoxQty > 0 ? `· ${totalBoxQty}개` : ""}</p>
+                        <button type="button" onClick={() => setExpandedBoxAddress(isAddressOpen ? null : box.id)} className="text-xs text-white/90 bg-white/20 px-2 py-1 rounded-full">
+                          {box.address ? "배송지 ✓" : "배송지"}
+                        </button>
+                      </div>
+                      {isAddressOpen && (
+                        <div className="px-4 py-4 bg-blue-50 border-b border-blue-100">
+                          <OverseasAddressPicker value={box.address} onChange={(addr) => setBoxes((prev) => prev.map((b) => b.id === box.id ? { ...b, address: addr } : b))} customerId={customerId} />
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <button type="button" onClick={() => openItemSelect(box.id)} className="w-full border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl">
+                          + {box.items.length > 0 ? "내품 수정" : "박스에 담기"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <button type="button" onClick={handleAddBox} className="w-full border-2 border-dashed border-gray-200 text-gray-500 text-sm font-bold py-3 rounded-2xl">+ 박스 추가</button>
+              </>
+            )}
+          </section>
         )}
 
-        {/* ── Step 2: 배송 옵션 ─────────────────────────────── */}
-        {step === 2 && (
+        {showMainSections && (
+        <>
+        {/* ── 배송 옵션 ─────────────────────────────── */}
+        {showMainStep(1) && (
           <>
             <p className="text-sm font-bold text-gray-800">배송 방법 선택</p>
             <div className="space-y-2">
@@ -893,8 +944,8 @@ function ShippingRequestContent() {
           </>
         )}
 
-        {/* ── Step 3: 해외 배송지 ───────────────────────────── */}
-        {step === 3 && (
+        {/* ── 해외 배송지 ───────────────────────────── */}
+        {showMainStep(2) && (
           <>
             {boxes.length === 1 ? (
               <>
@@ -935,8 +986,8 @@ function ShippingRequestContent() {
           </>
         )}
 
-        {/* ── Step 4: 인보이스 ──────────────────────────────── */}
-        {step === 4 && (
+        {/* ── 인보이스 ──────────────────────────────── */}
+        {showMainStep(3) && (
           <>
             <div className="bg-amber-50 rounded-xl px-4 py-3">
               <p className="text-xs text-amber-700 leading-relaxed">
@@ -1074,24 +1125,49 @@ function ShippingRequestContent() {
             )}
           </>
         )}
+        </>
+        )}
 
       </div>
 
       {/* 하단 버튼 */}
       <div className="fixed left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px))" }}>
         <div className="max-w-[600px] mx-auto">
-          {step < 4 ? (
-            <button
-              onClick={() => setStep(step + 1)}
-              disabled={!canProceed()}
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-40 transition-opacity"
-            >
-              다음 단계 <ArrowRight size={16} />
-            </button>
+          {isSimple && mainFlowStep < MAIN_FLOW_STEP_COUNT ? (
+            <div className="flex gap-2">
+              {mainFlowStep > 1 && (
+                <button
+                  type="button"
+                  onClick={() => { setFlowStep(flowStep - 1); setError(""); }}
+                  className="flex-1 py-4 rounded-2xl text-sm font-bold border border-gray-200 text-gray-700"
+                >
+                  이전
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleFlowNext}
+                disabled={!canProceed()}
+                className={`${mainFlowStep > 1 ? "flex-[2]" : "w-full"} flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-40`}
+              >
+                다음 <ArrowRight size={16} />
+              </button>
+            </div>
           ) : (
             <button
-              onClick={submit}
-              disabled={submitting}
+              type="button"
+              onClick={() => {
+                if (isAdvanced && hasBoxSetupStep && !prepareMainFlowFromBoxes()) {
+                  setError("박스에 담을 내품을 선택해주세요.");
+                  return;
+                }
+                if (!canProceedForMainStep(2) || !canProceedForMainStep(3)) {
+                  setError("배송지·인보이스 정보를 확인해주세요.");
+                  return;
+                }
+                submit();
+              }}
+              disabled={submitting || (hasBoxSetupStep && totalAssigned === 0 && isAdvanced)}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60"
             >
               {submitting ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />}
