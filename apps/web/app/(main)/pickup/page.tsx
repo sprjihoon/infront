@@ -437,7 +437,7 @@ export default function PickupPage() {
                   <span className="text-red-500 text-xs font-semibold">*필수</span>
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
-                  중량·크기는 우체국 소형~특대형 구간(5/10/20/30kg)과 같습니다. 여러 박스는 각각 따로 신청해 주세요.
+                  극소형~특대형(2/5/10/20/30kg · 세변의 합). 여러 박스는 각각 따로 신청해 주세요.
                 </p>
               </div>
               <div className="px-4 py-4 bg-gray-50">

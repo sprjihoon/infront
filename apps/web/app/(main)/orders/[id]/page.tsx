@@ -13,7 +13,9 @@ const ORDER_SELECT = `
   packaging_fee, shipping_fee, extra_fee, total_amount, payment_status,
   recipient_name, recipient_phone, recipient_address, recipient_country,
   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-  customs_value, item_list, intl_tracking_no,
+  customs_value, insurance_enabled, insurance_amount, item_list, intl_tracking_no,
+  intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
+  intl_tracking_synced_at, delivered_at,
   actual_weight, chargeable_weight,
   created_at, updated_at,
   order_parcels (
@@ -66,6 +68,15 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     loadOrder();
   }, [loadOrder]);
+
+  useEffect(() => {
+    if (!orderId || !order) return;
+    if (order.status !== "IN_TRANSIT" && order.status !== "CUSTOMS_FILING") return;
+
+    fetch(`/api/orders/sync-intl-tracking?order_id=${orderId}`, { method: "POST" })
+      .then(() => loadOrder())
+      .catch(() => {});
+  }, [orderId, order?.status]);
 
   async function confirmCancel() {
     if (!cancelTarget) return;

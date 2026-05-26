@@ -28,6 +28,9 @@ interface Order {
   shipping_fee: number | null;
   packaging_fee: number | null;
   total_amount: number;
+  customs_value: number | null;
+  insurance_enabled: boolean | null;
+  insurance_amount: number | null;
   tracking_no: string | null;
   carrier: string | null;
   created_at: string;
@@ -394,6 +397,14 @@ export default function OrderDetailPage() {
               <span className="text-gray-500">배송방법</span>
               <span className="font-medium">{order.shipping_method}</span>
             </div>
+            {order.insurance_enabled && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">보험 가입</span>
+                <span className="font-medium text-brand-700">
+                  USD {(order.insurance_amount ?? order.customs_value ?? 0).toFixed(2)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">포장 수수료</span>
               <span>{(order.packaging_fee ?? 0).toLocaleString()}원</span>

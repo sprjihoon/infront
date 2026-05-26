@@ -23,6 +23,14 @@ export interface OrderItem {
   unit_price_usd: number;
 }
 
+export interface IntlTrackingEvent {
+  time: string;
+  statusLabel: string;
+  description: string;
+  location: string;
+  source?: string;
+}
+
 export interface OrderSummary {
   id: string;
   order_no: string;
@@ -36,8 +44,15 @@ export interface OrderSummary {
   recipient_name: string | null;
   recipient_country: string | null;
   customs_value: number | null;
+  insurance_enabled?: boolean | null;
+  insurance_amount?: number | null;
   item_list: OrderItem[];
   intl_tracking_no: string | null;
+  intl_tracking_status?: string | null;
+  intl_tracking_last_event?: IntlTrackingEvent | null;
+  intl_tracking_events?: IntlTrackingEvent[] | null;
+  intl_tracking_synced_at?: string | null;
+  delivered_at?: string | null;
   created_at: string;
   order_parcels: Array<{ parcel_id: string }>;
   shipping_boxes: ShippingBox[];

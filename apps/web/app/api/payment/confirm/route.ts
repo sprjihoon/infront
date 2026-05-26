@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { applyEms, mockApplyEms, type EmsApplyParams } from '@/lib/ems/client';
+import { getOrderInsuranceParams } from '@/lib/ems/insurance';
 
 export const preferredRegion = 'icn1'; // EMS API 접근을 위해 서울 리전 고정
 
@@ -89,7 +90,8 @@ export async function POST(req: NextRequest) {
         id, customer_id, order_no, total_amount, shipping_method,
         recipient_name, recipient_phone, recipient_email,
         recipient_country, recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip,
-        item_list, ems_regino
+        item_list, ems_regino,
+        insurance_enabled, insurance_amount, customs_value
       `)
       .eq('order_no', orderId)
       .eq('customer_id', user.id)
@@ -164,6 +166,8 @@ export async function POST(req: NextRequest) {
             i < items.length - 1 ? each : totweightG - each * (items.length - 1)
           );
 
+          const ins = getOrderInsuranceParams(order);
+
           const emsParams: EmsApplyParams = {
             premiumcd:   method.premiumcd,
             em_ee:       method.em_ee,
@@ -197,7 +201,8 @@ export async function POST(req: NextRequest) {
             origin:     items.map((it) => it.origin_country ?? 'KR').join(';'),
             currunitcd: 'USD',
             orderno:    `IFT-${order.id}`,
-            boyn:       'N',
+            boyn:       ins.boyn,
+            boprc:      ins.boprc,
           };
 
           const result = USE_MOCK ? mockApplyEms(emsParams) : await applyEms(emsParams);

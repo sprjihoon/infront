@@ -63,91 +63,83 @@ function getSortedServices(activeTab?: ActiveTab) {
 
 export default function SidebarPricingGuide({ activeTab }: SidebarPricingGuideProps) {
   const services = getSortedServices(activeTab);
+
   return (
-    <div className="w-72 space-y-4">
-      <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl p-4 text-white">
-        <p className="font-bold text-base mb-0.5">국제배송 요금 안내</p>
-        <p className="text-white/80 text-xs leading-relaxed">
-          아래 요금은 우체국 기준 참고 요금입니다 (VAT 포함).
-          정확한 요금은 요금 계산기로 확인하세요.
-        </p>
+    <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
+        <Package size={16} className="text-white shrink-0" />
+        <span className="text-white font-semibold text-sm">배송 서비스 비교</span>
       </div>
 
-      <section className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-        <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3">
-          <h3 className="text-white font-bold text-sm flex items-center gap-2">
-            <Package size={15} />
-            배송 서비스 비교
-          </h3>
-        </div>
-        <div className="p-4 space-y-3 max-h-[calc(100vh-14rem)] overflow-y-auto">
-          {services.map((service) => {
-            const Icon = service.icon;
-            const isActive =
-              activeTab !== undefined &&
-              ((activeTab === "ems" && service.id === "ems") ||
-                (activeTab === "kpacket" && service.id === "kpacket") ||
-                (activeTab === "premium" && service.id === "ems-premium"));
+      <div className="overflow-y-auto p-4 space-y-3">
+        {services.map((service) => {
+          const Icon = service.icon;
+          const isActive =
+            activeTab !== undefined &&
+            ((activeTab === "ems" && service.id === "ems") ||
+              (activeTab === "kpacket" && service.id === "kpacket") ||
+              (activeTab === "premium" && service.id === "ems-premium"));
 
-            const colorClasses = {
-              blue: { border: "border-brand-500", bg: "bg-brand-50", icon: "text-brand-600" },
-              violet: { border: "border-violet-500", bg: "bg-violet-50", icon: "text-brand-600" },
-              emerald: { border: "border-emerald-500", bg: "bg-emerald-50", icon: "text-emerald-600" },
-            };
-            const colors = colorClasses[service.color];
+          const colorClasses = {
+            blue: { border: "border-brand-500", bg: "bg-brand-50", icon: "text-brand-600" },
+            violet: { border: "border-violet-500", bg: "bg-violet-50", icon: "text-violet-600" },
+            emerald: { border: "border-emerald-500", bg: "bg-emerald-50", icon: "text-emerald-600" },
+          };
+          const colors = colorClasses[service.color];
 
-            return (
-              <div
-                key={service.id}
-                className={`rounded-xl p-3 border-2 transition-all ${
-                  isActive
-                    ? `${colors.border} ${colors.bg}`
-                    : "border-gray-100 bg-gray-50"
-                }`}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon size={16} className={colors.icon} />
-                  <h4 className="text-sm font-bold text-gray-800">{service.name}</h4>
+          return (
+            <div
+              key={service.id}
+              className={`rounded-xl p-3 border transition-all ${
+                isActive
+                  ? `${colors.border} ${colors.bg}`
+                  : "border-gray-100 bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Icon size={16} className={colors.icon} />
+                <h4 className="text-sm font-bold text-gray-800">{service.name}</h4>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 mb-1 text-[10px]">
+                <div className="bg-white rounded-lg px-2 py-1 border border-gray-100">
+                  <div className="text-gray-400">속도</div>
+                  <div className="font-medium text-gray-700">{service.speed}</div>
                 </div>
-
-                <div className="grid grid-cols-2 gap-1 mb-1 text-[10px]">
-                  <div className="bg-white rounded px-2 py-1">
-                    <div className="text-gray-400">속도</div>
-                    <div className="font-medium text-gray-700">{service.speed}</div>
-                  </div>
-                  <div className="bg-white rounded px-2 py-1">
-                    <div className="text-gray-400">중량</div>
-                    <div className="font-medium text-gray-700">{service.weight}</div>
-                  </div>
-                </div>
-                {service.speedNote && (
-                  <p className="text-[9px] text-gray-400 mb-2">{service.speedNote}</p>
-                )}
-
-                <div className="space-y-1.5">
-                  <div>
-                    <p className="text-[9px] font-semibold text-green-600 mb-0.5">✓ 장점</p>
-                    <ul className="space-y-0.5">
-                      {service.pros.slice(0, 2).map((pro, i) => (
-                        <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
-                          <span className="shrink-0">•</span><span>{pro}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="pt-1 border-t border-gray-200">
-                    <p className="text-[9px] text-gray-400">추천</p>
-                    <p className="text-[10px] font-medium text-gray-700">{service.bestFor}</p>
-                  </div>
+                <div className="bg-white rounded-lg px-2 py-1 border border-gray-100">
+                  <div className="text-gray-400">중량</div>
+                  <div className="font-medium text-gray-700">{service.weight}</div>
                 </div>
               </div>
-            );
-          })}
-        </div>
-        <p className="px-4 pb-3 text-[9px] text-gray-400 leading-relaxed">
+              {service.speedNote && (
+                <p className="text-[9px] text-gray-400 mb-2">{service.speedNote}</p>
+              )}
+
+              <div className="space-y-1.5">
+                <div>
+                  <p className="text-[9px] font-semibold text-green-600 mb-0.5">✓ 장점</p>
+                  <ul className="space-y-0.5">
+                    {service.pros.slice(0, 2).map((pro, i) => (
+                      <li key={i} className="text-[10px] text-gray-600 flex items-start gap-1">
+                        <span className="shrink-0">•</span>
+                        <span>{pro}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="pt-1 border-t border-gray-200/80">
+                  <p className="text-[9px] text-gray-400">추천</p>
+                  <p className="text-[10px] font-medium text-gray-700">{service.bestFor}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        <p className="text-[10px] text-gray-400 leading-relaxed pt-0.5">
           ※ 표시된 배송일은 참고 범위이며, 도착 국가·통관·품목에 따라 달라질 수 있습니다.
         </p>
-      </section>
+      </div>
     </div>
   );
 }

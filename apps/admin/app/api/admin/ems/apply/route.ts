@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/supabase/server';
 import { applyEms, mockApplyEms, type EmsApplyParams } from '@/lib/ems/client';
+import { getOrderInsuranceParams } from '@/lib/ems/insurance';
 
 export const preferredRegion = 'icn1';
 
@@ -69,7 +70,8 @@ export async function POST(req: NextRequest) {
         recipient_name, recipient_phone, recipient_email,
         recipient_country,
         recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip,
-        item_list, ems_regino
+        item_list, ems_regino,
+        insurance_enabled, insurance_amount, customs_value
       `)
       .eq('id', order_id)
       .single();
@@ -124,6 +126,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const ins = getOrderInsuranceParams(order);
+
     const applyParams: EmsApplyParams = {
       premiumcd:   method.premiumcd,
       em_ee:       method.em_ee,
@@ -157,7 +161,8 @@ export async function POST(req: NextRequest) {
       origin:     items.map(it => it.origin_country ?? 'KR').join(';'),
       currunitcd: 'USD',
       orderno:    `SPB-${order_id}`,
-      boyn:       'N',
+      boyn:       ins.boyn,
+      boprc:      ins.boprc,
     };
 
     const result = USE_MOCK ? mockApplyEms(applyParams) : await applyEms(applyParams);

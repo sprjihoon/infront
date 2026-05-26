@@ -44,6 +44,8 @@ export interface CreateOrderBody {
   }>;
   estimated_shipping_fee: number;
   packaging_fee: number;
+  insurance_enabled?: boolean;
+  insurance_amount?: number;
 }
 
 /**
@@ -69,6 +71,8 @@ export async function POST(req: NextRequest) {
       item_list,
       estimated_shipping_fee,
       packaging_fee,
+      insurance_enabled,
+      insurance_amount,
     } = body;
 
     // 필수 검증
@@ -131,6 +135,10 @@ export async function POST(req: NextRequest) {
       (sum, item) => sum + item.unit_price_usd * item.quantity,
       0
     );
+    const insuranceEnabled = Boolean(insurance_enabled);
+    const insuranceAmount = insuranceEnabled
+      ? (insurance_amount ?? customs_value)
+      : 0;
 
     // packaging_type 결정
     let packaging_type = 'NONE';
@@ -167,6 +175,8 @@ export async function POST(req: NextRequest) {
         recipient_zip:     overseas_address.overseas_zip   || null,
         recipient_email:   overseas_address.email          || null,
         customs_value,
+        insurance_enabled: insuranceEnabled,
+        insurance_amount: insuranceAmount,
         item_list,
       })
       .select()
@@ -268,6 +278,7 @@ export async function GET(req: NextRequest) {
       packaging_fee, shipping_fee, total_amount, payment_status,
       recipient_name, recipient_country,
       customs_value, item_list, intl_tracking_no,
+      intl_tracking_status, intl_tracking_last_event, delivered_at,
       created_at, updated_at,
       order_parcels (parcel_id)
     `;

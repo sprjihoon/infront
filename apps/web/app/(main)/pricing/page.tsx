@@ -373,7 +373,7 @@ export default function PricingPage() {
 
       {/* 데스크톱: 600px 영역 왼쪽 밖 고정 (계산기 위젯과 대칭) */}
       <aside
-        className="hidden lg:block fixed top-4 max-h-[calc(100vh-2rem)] overflow-y-auto z-[1]"
+        className="hidden lg:block fixed top-4 bottom-[calc(60px+var(--sab,0px)+0.5rem)] w-72 overflow-y-auto z-[1]"
         style={{ right: "calc(50% + 300px + 24px)" }}
       >
         {sidebarContent}

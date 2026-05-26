@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { applyEms, mockApplyEms, type EmsApplyParams } from '@/lib/ems/client';
+import { getOrderInsuranceParams } from '@/lib/ems/insurance';
 
 export const preferredRegion = 'icn1'; // 우체국 API 접근을 위해 서울 리전 고정
 
@@ -76,7 +77,8 @@ export async function POST(req: NextRequest) {
           recipient_name, recipient_phone, recipient_email,
           recipient_country,
           recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip,
-          item_list
+          item_list, customs_value,
+          insurance_enabled, insurance_amount
         `)
         .eq('id', order_id)
         .single();
@@ -138,6 +140,8 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      const ins = getOrderInsuranceParams(order);
+
       const applyParams: EmsApplyParams = {
         premiumcd:   method.premiumcd,
         em_ee:       method.em_ee,
@@ -174,7 +178,8 @@ export async function POST(req: NextRequest) {
         origin:     items.map((it) => it.origin_country ?? 'KR').join(';'),
         currunitcd: 'USD',
         orderno:    `SPB-${order_id}`,
-        boyn:       'N',
+        boyn:       ins.boyn,
+        boprc:      ins.boprc,
       };
 
       const result = USE_MOCK ? mockApplyEms(applyParams) : await applyEms(applyParams);

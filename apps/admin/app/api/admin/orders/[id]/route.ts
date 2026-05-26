@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
 import { getShippingQuote, EmsApiError } from "@/lib/ems/client";
+import { getOrderInsuranceParams } from "@/lib/ems/insurance";
 
 export const preferredRegion = "icn1"; // EMS 요금 계산 API 접근을 위해 서울 리전
 
@@ -59,6 +60,13 @@ export async function PATCH(
     if (!method) return NextResponse.json({ error: `지원하지 않는 배송방법: ${shipping_method}` }, { status: 400 });
 
     try {
+      const { data: orderForIns } = await adminDb
+        .from("orders")
+        .select("insurance_enabled, insurance_amount, customs_value")
+        .eq("id", id)
+        .single();
+      const ins = getOrderInsuranceParams(orderForIns ?? {});
+
       const result = await getShippingQuote({
         premiumcd: method.premiumcd,
         em_ee:     method.em_ee,
@@ -67,8 +75,10 @@ export async function PATCH(
         boxlength: boxlength ? Number(boxlength) : undefined,
         boxwidth:  boxwidth  ? Number(boxwidth)  : undefined,
         boxheight: boxheight ? Number(boxheight) : undefined,
+        boyn: ins.boyn,
+        boprc: ins.boprc,
       });
-      return NextResponse.json({ fee: result.totalFee });
+      return NextResponse.json({ fee: result.totalFee, insurance: ins });
     } catch (e: unknown) {
       if (e instanceof EmsApiError) return NextResponse.json({ error: e.message }, { status: 400 });
       return NextResponse.json({ error: String(e) }, { status: 500 });

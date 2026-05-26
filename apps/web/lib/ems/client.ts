@@ -423,3 +423,9 @@ export async function cancelEms(params: {
     notcancelreason: parseXml(xml, 'notcancelreason') ?? '',
   };
 }
+
+// ─────────────────────────────────────────────────────────────
+// 7. 라벨 출력
+// eship 계약 OpenAPI에는 라벨 PDF 전용 API가 문서화되어 있지 않음.
+// → admin: lib/ems/label.ts + GET /api/admin/ems/label
+// ─────────────────────────────────────────────────────────────

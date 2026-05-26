@@ -252,6 +252,52 @@ export default function OrderDetailView({
         </div>
       ) : null}
 
+      {/* 국제 배송 행방 */}
+      {(order.intl_tracking_last_event || (order.intl_tracking_events?.length ?? 0) > 0) && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1.5">
+            <Truck size={12} /> 국제 배송 추적
+            {order.intl_tracking_status === "DELIVERED" && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-600">
+                배달완료
+              </span>
+            )}
+          </p>
+          {order.intl_tracking_last_event && (
+            <div className="bg-brand-50 border border-brand-100 rounded-xl px-3 py-2 mb-2">
+              <p className="text-xs font-semibold text-brand-800">
+                {order.intl_tracking_last_event.statusLabel}
+              </p>
+              <p className="text-xs text-brand-600 mt-0.5">
+                {order.intl_tracking_last_event.description}
+              </p>
+              {(order.intl_tracking_last_event.location || order.intl_tracking_last_event.time) && (
+                <p className="text-[10px] text-brand-400 mt-1">
+                  {[order.intl_tracking_last_event.location, order.intl_tracking_last_event.time]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+            </div>
+          )}
+          {(order.intl_tracking_events?.length ?? 0) > 1 && (
+            <div className="space-y-1 max-h-40 overflow-y-auto">
+              {order.intl_tracking_events!.slice(1, 8).map((ev, i) => (
+                <div key={i} className="flex gap-2 text-[11px] text-gray-500 py-1 border-t border-gray-50">
+                  <span className="shrink-0 text-gray-400 w-16 truncate">{ev.time}</span>
+                  <span className="text-gray-700">{ev.statusLabel || ev.description}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {order.delivered_at && (
+            <p className="text-[10px] text-gray-400 mt-2 text-center">
+              배달완료 {new Date(order.delivered_at).toLocaleString("ko-KR")}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* 실측 무게 */}
       {showWeights && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -295,6 +341,12 @@ export default function OrderDetailView({
             <div className="flex justify-between text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
               <span>세관신고 합계</span>
               <span>USD {Number(order.customs_value).toFixed(2)}</span>
+            </div>
+          )}
+          {order.insurance_enabled && (
+            <div className="flex justify-between text-xs text-brand-700 mt-1">
+              <span>보험 가입 신고가액</span>
+              <span>USD {Number(order.insurance_amount ?? order.customs_value ?? 0).toFixed(2)}</span>
             </div>
           )}
         </div>

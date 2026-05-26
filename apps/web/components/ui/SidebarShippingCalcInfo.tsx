@@ -3,8 +3,8 @@
 import { Scale, Box, FileText, Package, Info, AlertCircle } from "lucide-react";
 
 const WEIGHT_LIMITS = [
-  { name: "EMS (비서류)", limit: "30kg", note: "부피중량 적용" },
   { name: "EMS (서류)", limit: "2kg", note: "실중량만 · 구간 요금" },
+  { name: "EMS (비서류)", limit: "30kg", note: "부피중량 적용" },
   { name: "EMS 프리미엄", limit: "70kg", note: "부피중량 적용" },
   { name: "K-Packet", limit: "2kg", note: "부피중량 적용" },
 ] as const;
@@ -13,14 +13,14 @@ const DOC_TIERS = ["300g", "500g", "750g", "1kg", "1.25kg", "1.5kg", "1.75kg", "
 
 export default function SidebarShippingCalcInfo() {
   return (
-    <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none flex flex-col max-h-[calc(100vh-2rem)]">
+    <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
         <Info size={16} className="text-white" />
         <span className="text-white font-semibold text-sm">요금 계산 안내</span>
         <span className="ml-auto text-white/60 text-xs">우체국 기준</span>
       </div>
 
-      <div className="overflow-y-auto flex-1 min-h-0 p-4 space-y-4">
+      <div className="overflow-y-auto p-4 space-y-4">
         {/* 부피중량 */}
         <section>
           <h3 className="text-xs font-bold text-gray-800 flex items-center gap-1.5 mb-2">
@@ -51,15 +51,6 @@ export default function SidebarShippingCalcInfo() {
           </h3>
           <div className="space-y-1.5">
             <div className="flex items-start gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-              <Package size={12} className="text-gray-500 shrink-0 mt-0.5" />
-              <div>
-                <p className="text-[11px] font-semibold text-gray-800">비서류 (EMS · K-Packet)</p>
-                <p className="text-[10px] text-gray-600 mt-0.5">
-                  실중량과 부피중량 중 <span className="font-bold text-violet-700">큰 값</span>이 요금에 적용됩니다.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
               <FileText size={12} className="text-gray-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-[11px] font-semibold text-gray-800">서류 (EMS)</p>
@@ -68,6 +59,15 @@ export default function SidebarShippingCalcInfo() {
                 </p>
                 <p className="text-[9px] text-gray-400 mt-1 leading-relaxed">
                   {DOC_TIERS.join(" · ")}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-start gap-2 bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+              <Package size={12} className="text-gray-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[11px] font-semibold text-gray-800">비서류 (EMS · K-Packet)</p>
+                <p className="text-[10px] text-gray-600 mt-0.5">
+                  실중량과 부피중량 중 <span className="font-bold text-violet-700">큰 값</span>이 요금에 적용됩니다.
                 </p>
               </div>
             </div>
@@ -105,7 +105,8 @@ export default function SidebarShippingCalcInfo() {
             <li>• 표시 요금은 VAT 포함 예상 금액입니다.</li>
             <li>• 실제 접수 시 창고 실측 무게·크기로 재계산됩니다.</li>
             <li>• 가볍고 부피가 큰 물품은 부피중량이 적용될 수 있습니다.</li>
-            <li>• 보험·추가운송수수료 등은 별도입니다.</li>
+            <li>• 보험 미선택 시 배송비만 표시됩니다. 보험 포함 견적은 옵션에서 선택할 수 있습니다.</li>
+            <li>• 추가운송수수료 등은 별도일 수 있습니다.</li>
           </ul>
         </section>
       </div>

@@ -40,11 +40,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: '필수 파라미터: premiumcd, em_ee, countrycd, totweight' }, { status: 400 });
     }
 
+    const boynParam = s.get('boyn');
+    const boprcParam = s.get('boprc');
+
     const params: QuoteParams = {
       premiumcd, em_ee, countrycd, totweight,
       boxlength: s.get('boxlength') ? parseFloat(s.get('boxlength')!) : undefined,
       boxwidth:  s.get('boxwidth')  ? parseFloat(s.get('boxwidth')!)  : undefined,
       boxheight: s.get('boxheight') ? parseFloat(s.get('boxheight')!) : undefined,
+      boyn: boynParam === 'Y' ? 'Y' : boynParam === 'N' ? 'N' : undefined,
+      boprc: boprcParam ? parseInt(boprcParam, 10) : undefined,
     };
     const result = await getShippingQuote(params);
     return NextResponse.json(result);

@@ -30,8 +30,8 @@ export interface PickupBoxSizeSpec {
 export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
   {
     code: "DEFAULT",
-    label: "기본",
-    desc: "2kg · 60cm (계약소포 기본)",
+    label: "극소형",
+    desc: "2kg · 60cm (세변의 합)",
     weight: 2,
     volume: 60,
   },
@@ -45,21 +45,21 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
   {
     code: "MEDIUM",
     label: "중형",
-    desc: "10kg · 100cm",
+    desc: "10kg · 100cm (세변의 합)",
     weight: 10,
     volume: 100,
   },
   {
     code: "LARGE",
     label: "대형",
-    desc: "20kg · 120cm",
+    desc: "20kg · 120cm (세변의 합)",
     weight: 20,
     volume: 120,
   },
   {
     code: "XL",
     label: "특대형",
-    desc: "30kg · 160cm",
+    desc: "30kg · 160cm (세변의 합)",
     weight: 30,
     volume: 160,
   },

@@ -9,22 +9,12 @@ import {
 } from "lucide-react";
 import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
+import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
 import SidebarPricingGuide from "@/components/ui/SidebarPricingGuide";
 import SidebarShippingCalcInfo from "@/components/ui/SidebarShippingCalcInfo";
+import InsuranceQuoteFields from "@/components/ui/InsuranceQuoteFields";
 
 const SERVICES = [
-  {
-    id: "ems-parcel",
-    label: "EMS",
-    sublabel: "비서류",
-    premiumcd: "31",
-    em_ee: "em",
-    color: "bg-brand-600",
-    textColor: "text-brand-700",
-    badgeBg: "bg-brand-50",
-    badgeBorder: "border-brand-200",
-    maxWeight: 30000,
-  },
   {
     id: "ems-doc",
     label: "EMS",
@@ -36,6 +26,18 @@ const SERVICES = [
     badgeBg: "bg-sky-50",
     badgeBorder: "border-sky-200",
     maxWeight: 2000,
+  },
+  {
+    id: "ems-parcel",
+    label: "EMS",
+    sublabel: "비서류",
+    premiumcd: "31",
+    em_ee: "em",
+    color: "bg-brand-600",
+    textColor: "text-brand-700",
+    badgeBg: "bg-brand-50",
+    badgeBorder: "border-brand-200",
+    maxWeight: 30000,
   },
   {
     id: "ems-premium",
@@ -122,6 +124,8 @@ export default function ShippingCalcPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Results | null>(null);
   const [inputError, setInputError] = useState<string | null>(null);
+  const [insuranceEnabled, setInsuranceEnabled] = useState(false);
+  const [insuranceUsd, setInsuranceUsd] = useState("");
 
   const country = COUNTRIES.find(c => c.code === countryCode)!;
   const filtered = COUNTRIES.filter(c =>
@@ -140,6 +144,7 @@ export default function ShippingCalcPage() {
     wg: number,
     cc: string,
     l?: string, w?: string, h?: string,
+    insurance?: { enabled: boolean; usd: number },
   ): Promise<ServiceResult> {
     if (wg > svc.maxWeight) return { status: "overweight" };
     const params = new URLSearchParams({
@@ -151,6 +156,9 @@ export default function ShippingCalcPage() {
       ...(w ? { boxwidth: w } : {}),
       ...(h ? { boxheight: h } : {}),
     });
+    if (insurance) {
+      appendInsuranceQuoteParams(params, insurance.enabled, insurance.usd);
+    }
     const res = await fetch(`/api/ems/quote?${params}`);
     const data = await res.json();
     if (!res.ok) return { status: "error", message: data.error ?? "조회 실패" };
@@ -164,6 +172,15 @@ export default function ShippingCalcPage() {
       setInputError("무게를 입력해주세요.");
       return;
     }
+    if (insuranceEnabled && !(parseFloat(insuranceUsd) > 0)) {
+      setInputError("보험 신고가액(USD)을 입력해주세요.");
+      return;
+    }
+
+    const insurance = {
+      enabled: insuranceEnabled,
+      usd: parseFloat(insuranceUsd) || 0,
+    };
 
     setLoading(true);
     try {
@@ -180,6 +197,7 @@ export default function ShippingCalcPage() {
           isDoc ? undefined : length,
           isDoc ? undefined : width,
           isDoc ? undefined : height,
+          insurance,
         );
       }
       setResults({ countryCode, appliedWeight, services });
@@ -195,6 +213,8 @@ export default function ShippingCalcPage() {
     setLength("");
     setWidth("");
     setHeight("");
+    setInsuranceEnabled(false);
+    setInsuranceUsd("");
   }
 
   const cheapestFee = results
@@ -222,7 +242,7 @@ export default function ShippingCalcPage() {
 
       {/* 데스크톱: 600px 영역 왼쪽 — 요금 안내 위젯 */}
       <aside
-        className="hidden lg:block fixed top-4 max-h-[calc(100vh-2rem)] overflow-y-auto z-[1]"
+        className="hidden lg:block fixed top-4 bottom-[calc(60px+var(--sab,0px)+0.5rem)] w-72 overflow-y-auto z-[1]"
         style={{ right: "calc(50% + 300px + 24px)" }}
       >
         <SidebarPricingGuide />
@@ -360,6 +380,15 @@ export default function ShippingCalcPage() {
           </div>
         </section>
 
+        <section className="bg-white rounded-2xl p-4 shadow-sm">
+          <InsuranceQuoteFields
+            enabled={insuranceEnabled}
+            onEnabledChange={(v) => { setInsuranceEnabled(v); setResults(null); }}
+            usdAmount={insuranceUsd}
+            onUsdAmountChange={(v) => { setInsuranceUsd(v); setResults(null); }}
+          />
+        </section>
+
         {/* 계산 버튼 */}
         <button
           onClick={calculate}
@@ -451,7 +480,9 @@ export default function ShippingCalcPage() {
                 <p className="text-white/80 text-xs">
                   {country.flag} {country.name} · 적용 중량 {results.appliedWeight.toLocaleString()} g
                 </p>
-                <p className="text-white font-bold text-sm mt-0.5">서비스별 예상 배송비</p>
+                <p className="text-white font-bold text-sm mt-0.5">
+                  서비스별 예상 배송비{insuranceEnabled ? " (보험 포함)" : ""}
+                </p>
               </div>
               <button onClick={reset} className="text-white/70 hover:text-white">
                 <RotateCcw size={16} />
@@ -465,7 +496,7 @@ export default function ShippingCalcPage() {
                 return (
                   <div
                     key={svc.id}
-                    className={`flex items-center gap-3 px-4 py-3.5 ${
+                    className={`flex items-start gap-3 px-4 py-3.5 ${
                       isCheapest ? "bg-green-50" : ""
                     }`}
                   >
@@ -485,15 +516,24 @@ export default function ShippingCalcPage() {
                           </span>
                         )}
                       </div>
-                      {svc.maxWeight <= 2000 && (
+                      {svc.em_ee === "ee" ? (
+                        <>
+                          <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
+                            최대 {svc.maxWeight / 1000}kg · 실중량 기준
+                          </p>
+                          <p className="text-[10px] text-amber-700 mt-1 ml-3.5 leading-snug">
+                            서류·페이퍼류만 발송 가능합니다. 일반 물품·현금·상품권·수표 등은 서류로 보낼 수 없습니다.
+                          </p>
+                        </>
+                      ) : svc.maxWeight <= 2000 ? (
                         <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
-                          최대 {svc.maxWeight / 1000}kg{svc.em_ee === "ee" ? " · 실중량 기준" : ""}
+                          최대 {svc.maxWeight / 1000}kg
                         </p>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* 금액 / 상태 */}
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 pt-0.5">
                       {r.status === "ok" && (
                         <div className="flex items-center gap-1">
                           <CheckCircle2 size={13} className="text-green-500" />
@@ -528,7 +568,9 @@ export default function ShippingCalcPage() {
               <div className="flex gap-2 bg-yellow-50 rounded-xl p-3 text-[11px] text-yellow-800">
                 <Info size={13} className="shrink-0 mt-0.5" />
                 <span>
-                  VAT 포함 예상 금액입니다. 실제 접수 시 창고 실측 무게·크기로 재계산될 수 있습니다.
+                  VAT 포함 예상 금액입니다.
+                  {insuranceEnabled ? " 보험 수수료가 포함된 견적입니다." : ""}
+                  {" "}실제 접수 시 창고 실측 무게·크기로 재계산될 수 있습니다.
                 </span>
               </div>
             </div>

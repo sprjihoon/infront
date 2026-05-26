@@ -11,6 +11,7 @@ import OverseasAddressPicker, { OverseasAddressValue } from "@/components/ui/Ove
 import { useFlowMode } from "@/lib/flow-mode";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
+import { usdToBoprcKrw } from "@/lib/ems/insurance";
 
 const MAIN_FLOW_STEP_LABELS = ["배송 옵션", "해외 배송지", "인보이스"] as const;
 const MAIN_FLOW_STEP_COUNT = MAIN_FLOW_STEP_LABELS.length;
@@ -141,6 +142,7 @@ function ShippingRequestContent() {
   const [packOpts, setPackOpts] = useState({ safe_pack: false, repack: false, consolidate: false });
   const [packNote, setPackNote] = useState("");
   const [addonServiceSet, setAddonServiceSet] = useState<Set<string>>(new Set());
+  const [insuranceEnabled, setInsuranceEnabled] = useState(false);
 
   // 해외 배송지 — boxes[i].address
 
@@ -458,6 +460,7 @@ function ShippingRequestContent() {
         const box = boxes[i];
         const addr = box.address!;
         const inv = boxInvoices[i] ?? [newItem()];
+        const boxCustomsValue = inv.reduce((s, item) => s + item.unit_price_usd * item.quantity, 0);
         // URL 직접 진입(단일박스) → parcelIds 전체, 박스구성 진입 → 해당 박스의 parcel만
         const boxParcelIds =
           urlParcelIds.length > 0
@@ -484,6 +487,8 @@ function ShippingRequestContent() {
             item_list: inv.map(({ key: _k, ...rest }) => rest),
             estimated_shipping_fee: 0,
             packaging_fee: packagingFee,
+            insurance_enabled: insuranceEnabled,
+            insurance_amount: insuranceEnabled ? boxCustomsValue : 0,
           }),
         });
         const data = await res.json();
@@ -897,6 +902,27 @@ function ShippingRequestContent() {
               })}
             </div>
 
+            <p className="text-sm font-bold text-gray-800 pt-2">국제우편 보험 (선택)</p>
+            <button
+              type="button"
+              onClick={() => setInsuranceEnabled((v) => !v)}
+              className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                insuranceEnabled ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white"
+              }`}
+            >
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                insuranceEnabled ? "bg-brand-600 border-brand-600" : "border-gray-300"
+              }`}>
+                {insuranceEnabled && <span className="text-white text-xs font-bold">✓</span>}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-800">보험 가입</p>
+                <p className="text-xs text-gray-400">
+                  인보이스 신고가액(USD) 합계를 보험가액으로 적용합니다. 실제 보험료는 창고 견적 후 확정됩니다.
+                </p>
+              </div>
+            </button>
+
             <p className="text-sm font-bold text-gray-800 pt-2">부가서비스 (선택)</p>
             <div className="space-y-2">
               {ADDON_SERVICES.map((o) => {
@@ -1119,6 +1145,18 @@ function ShippingRequestContent() {
               <span className="text-sm text-gray-600">총 신고 금액</span>
               <span className="text-sm font-bold text-gray-900">USD {customsValue.toFixed(2)}</span>
             </div>
+
+            {insuranceEnabled && (
+              <div className="bg-brand-50 border border-brand-100 rounded-xl px-4 py-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-brand-800">보험 가입 신고가액</span>
+                  <span className="text-sm font-bold text-brand-900">USD {customsValue.toFixed(2)}</span>
+                </div>
+                <p className="text-xs text-brand-700/80">
+                  EMS 보험가액(원화 환산): 약 {usdToBoprcKrw(customsValue).toLocaleString()}원
+                </p>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 rounded-xl px-4 py-3">

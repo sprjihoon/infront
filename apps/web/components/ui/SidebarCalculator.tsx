@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText, ShieldAlert, Zap } from "lucide-react";
 import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
+import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
+import InsuranceQuoteFields from "@/components/ui/InsuranceQuoteFields";
 
 const PARCEL_SERVICES = [
   { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-brand-600",    maxW: 30000 },
@@ -48,6 +50,8 @@ export default function SidebarCalculator() {
   const [height,  setHeight]  = useState("");
   const [showMore, setShowMore] = useState(false);
   const [customsOpen, setCustomsOpen] = useState(false);
+  const [insuranceEnabled, setInsuranceEnabled] = useState(false);
+  const [insuranceUsd, setInsuranceUsd] = useState("");
 
   const [loading, setLoading]   = useState(false);
   const [results, setResults]   = useState<ServiceResult[] | null>(null);
@@ -72,6 +76,10 @@ export default function SidebarCalculator() {
     setError(null);
     setResults(null);
     if (!weight || parseFloat(weight) <= 0) { setError("무게를 입력해주세요."); return; }
+    if (insuranceEnabled && !(parseFloat(insuranceUsd) > 0)) {
+      setError("보험 신고가액(USD)을 입력해주세요.");
+      return;
+    }
 
     setLoading(true);
     // 모든 서비스를 pending 상태로 초기화해 즉시 표시
@@ -103,6 +111,7 @@ export default function SidebarCalculator() {
           ...(!isDoc && width  ? { boxwidth:  width  } : {}),
           ...(!isDoc && height ? { boxheight: height } : {}),
         });
+        appendInsuranceQuoteParams(p, insuranceEnabled, parseFloat(insuranceUsd) || 0);
         try {
           const res  = await fetch(`/api/ems/quote?${p}`);
           const data = await res.json();
@@ -128,7 +137,7 @@ export default function SidebarCalculator() {
   const customsInfo = getCustomsInfo(country);
 
   return (
-    <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none flex flex-col max-h-[calc(100vh-2rem)]">
+    <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
       {/* 헤더 — 항상 상단 고정 */}
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
         <Calculator size={16} className="text-white" />
@@ -137,7 +146,6 @@ export default function SidebarCalculator() {
       </div>
 
       {/* 스크롤 영역 */}
-      <div className="overflow-y-auto flex-1 min-h-0 scrollbar-thin scrollbar-thumb-gray-200">
       <div className="p-4 space-y-3">
 
         {/* 서류 / 비서류 */}
@@ -247,6 +255,14 @@ export default function SidebarCalculator() {
           )}
         </details>
 
+        <InsuranceQuoteFields
+          compact
+          enabled={insuranceEnabled}
+          onEnabledChange={(v) => { setInsuranceEnabled(v); reset(); }}
+          usdAmount={insuranceUsd}
+          onUsdAmountChange={(v) => { setInsuranceUsd(v); reset(); }}
+        />
+
         {/* 계산 버튼 */}
         <button
           onClick={calc}
@@ -300,7 +316,10 @@ export default function SidebarCalculator() {
                 )}
               </div>
             ))}
-            <p className="text-[10px] text-gray-400 text-center pt-0.5">가견적 · 실제 접수 시 우체국 요금 기준으로 확정</p>
+            <p className="text-[10px] text-gray-400 text-center pt-0.5">
+              {insuranceEnabled ? "보험 수수료 포함 가견적 · " : ""}
+              실제 접수 시 우체국 요금 기준으로 확정
+            </p>
           </div>
         )}
       </div>
@@ -359,7 +378,6 @@ export default function SidebarCalculator() {
             )}
           </div>
         )}
-      </div>{/* /스크롤 영역 */}
     </div>
   );
 }

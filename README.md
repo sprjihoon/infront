@@ -516,6 +516,8 @@ Next.js 웹앱
 | `EPOST_CUSTOMER_ID` | 우체국 고객 ID |
 | `EPOST_APPROVAL_NO` | 우체국 승인번호 |
 | `EPOST_SECURITY_KEY` | 우체국 SEED128 암호화 키 |
+| `EPOST_TRACE_SERVICE_KEY` | 우체국 EMS 행방조회 OpenAPI 서비스키 (공공데이터포털) |
+| `CRON_SECRET` | Vercel Cron 인증 (`Authorization: Bearer …`) |
 | `INFRONT_CENTER_NAME` | 물류센터 이름 |
 | `INFRONT_CENTER_ZIPCODE` | 물류센터 우편번호 |
 | `INFRONT_CENTER_ADDR1` | 물류센터 주소 |
