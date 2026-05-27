@@ -545,7 +545,7 @@ Next.js 웹앱
 | `INFRONT_CENTER_ZIPCODE` | **수거 도착지** 우편번호 (modo 동일, 기본 `41142`) |
 | `INFRONT_CENTER_ADDR1` | **수거 도착지** 주소 (기본 `대구광역시 동구 동촌로 1` — 동대구우체국) |
 | `INFRONT_CENTER_ADDR2` | **수거 도착지** 상세 (기본 `동대구우체국 2층 소포실`, modo `CENTER_ADDRESS2`) |
-| `INFRONT_CENTER_PHONE` | 센터 연락처 (modo `CENTER_PHONE`) |
+| `INFRONT_CENTER_PHONE` | 센터 연락처 (modo `CENTER_PHONE`) — **숫자만** `01027239490` (공백·하이픈은 코드에서 제거, 문자 포함 시 ERR-522) |
 
 > **우체국 수거(reqType=2)**: `ord*` = 동대구우체국 소포실(도착), `rec*` = 고객 수거지. 회사 소재지(안심로)는 사용하지 않습니다. modo `shipments-book` 과 동일합니다.
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |

@@ -1,8 +1,14 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { MapPin, Star, Plus, ChevronRight, X, Check, Pencil } from "lucide-react";
-import { normalizeEpostZip, normalizeEpostAddr1, inferPickupAddressDetail } from "@/lib/epost/client";
+import {
+  normalizeEpostZip,
+  normalizeEpostAddr1,
+  inferPickupAddressDetail,
+  validatePickupAddressDetail,
+  isValidPickupAddressDetail,
+} from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "./AddressSearchButton";
 
@@ -31,6 +37,20 @@ interface Props {
   value: PickupAddressValue | null;
   onChange: (v: PickupAddressValue) => void;
   customerId: string | null;
+}
+
+function savedAddressDetailLabel(a: SavedAddress): ReactNode {
+  const effective = inferPickupAddressDetail(a.address, a.address_detail);
+  if (isValidPickupAddressDetail(effective)) {
+    return effective;
+  }
+  const raw = (a.address_detail ?? "").trim();
+  if (raw) {
+    return (
+      <span className="text-amber-600">(상세주소 부족 — 예: {raw}층)</span>
+    );
+  }
+  return <span className="text-amber-600">(상세주소 없음 — 선택 후 입력)</span>;
 }
 
 function toPickupAddressValue(a: SavedAddress): PickupAddressValue | null {
@@ -108,13 +128,20 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
   }
 
   async function confirmNew() {
-    if (
-      !newName ||
-      !newPhone ||
-      normalizeEpostAddr1(newAddr).length < 2 ||
-      normalizeEpostZip(newZip).length !== 5 ||
-      newDetail.trim().length < 2
-    ) {
+    if (!newName || !newPhone) {
+      alert("이름과 연락처를 입력해주세요.");
+      return;
+    }
+    if (normalizeEpostAddr1(newAddr).length < 2 || normalizeEpostZip(newZip).length !== 5) {
+      alert("주소 검색으로 우편번호·도로명 주소를 입력해주세요.");
+      return;
+    }
+    const effectiveDetail = inferPickupAddressDetail(newAddr, newDetail);
+    const detailErr = validatePickupAddressDetail(
+      isValidPickupAddressDetail(effectiveDetail) ? effectiveDetail : newDetail,
+    );
+    if (detailErr) {
+      alert(detailErr);
       return;
     }
     setSaving(true);
@@ -292,10 +319,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                         </div>
                         <p className="text-sm font-semibold text-gray-900">{a.name}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          [{a.zipcode}] {a.address}{" "}
-                          {a.address_detail?.trim() ? a.address_detail : (
-                            <span className="text-amber-600">(상세주소 없음 — 선택 후 입력)</span>
-                          )}
+                          [{a.zipcode}] {a.address} {savedAddressDetailLabel(a)}
                         </p>
                         {a.phone && (
                           <p className="text-xs text-gray-400 mt-0.5">{a.phone}</p>
@@ -374,9 +398,20 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                       value={newDetail}
                       onChange={(e) => setNewDetail(e.target.value)}
                       placeholder="예: 101동 1203호, 3층"
-                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                      className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                        newDetail.trim().length > 0 && !isValidPickupAddressDetail(newDetail)
+                          ? "border-red-300 ring-1 ring-red-100"
+                          : "border-gray-100"
+                      }`}
                     />
-                    <p className="text-xs text-gray-400 mt-1">우체국 수거에 필수입니다.</p>
+                    {newDetail.trim().length > 0 && validatePickupAddressDetail(newDetail) && (
+                      <p className="text-xs text-red-500 mt-1">
+                        {validatePickupAddressDetail(newDetail)}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-400 mt-1">
+                      우체국 수거에 필수 · 2글자 이상 (숫자만 1개는 불가)
+                    </p>
                   </div>
 
                   <div className="space-y-2">

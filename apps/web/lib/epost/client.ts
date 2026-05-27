@@ -31,10 +31,32 @@ export function resolveEpostCenterAddr2(detail?: string | null): string {
   return trimmed && trimmed.length >= 2 ? trimmed : '없음';
 }
 
+/** 우체국 수거 상세주소(recAddr2) 최소 길이 */
+export const EPOST_PICKUP_DETAIL_MIN_LEN = 2;
+
+export function isValidPickupAddressDetail(detail?: string | null): boolean {
+  return (detail ?? '').trim().length >= EPOST_PICKUP_DETAIL_MIN_LEN;
+}
+
+/** null이면 통과, 아니면 저장/신청 전에 alert 등에 쓸 메시지 */
+export function validatePickupAddressDetail(detail?: string | null): string | null {
+  const trimmed = (detail ?? '').trim();
+  if (!trimmed) {
+    return '상세주소(동·호수, 층)를 입력해주세요. 우체국 수거에 필요합니다.';
+  }
+  if (trimmed.length < EPOST_PICKUP_DETAIL_MIN_LEN) {
+    if (/^\d$/.test(trimmed)) {
+      return `"${trimmed}"만으로는 부족합니다. 예: ${trimmed}층, 302호`;
+    }
+    return '상세주소는 2글자 이상 입력해주세요. (예: 3층, 302호)';
+  }
+  return null;
+}
+
 /** 고객 수거지 recAddr2 — 미입력 시 빈 문자열 (modo shipments-book 동일) */
 export function resolveEpostPickupAddr2(detail?: string | null): string {
   const trimmed = detail?.trim();
-  return trimmed && trimmed.length >= 2 ? trimmed : '';
+  return trimmed && trimmed.length >= EPOST_PICKUP_DETAIL_MIN_LEN ? trimmed : '';
 }
 
 /**
@@ -75,10 +97,31 @@ export function resolveEpostRecAddr2(detail?: string | null): string {
   return resolveEpostCenterAddr2(detail);
 }
 
-/** 우체국 API — 전화번호는 숫자만 허용 */
+/** 우체국 API — 전화번호는 숫자만 허용 (공백·하이픈·+82 등 제거) */
 export function normalizeEpostPhone(phone?: string, maxLen = 12): string {
   if (!phone) return '';
-  return phone.replace(/\D/g, '').substring(0, maxLen);
+  let digits = String(phone).replace(/\D/g, '');
+  if (digits.startsWith('82') && digits.length >= 11) {
+    digits = `0${digits.slice(2)}`;
+  }
+  return digits.substring(0, maxLen);
+}
+
+const EPOST_PHONE_RE = /^\d{9,12}$/;
+
+/** ordMob/recTel 등 — 우체국 ERR-522 방지 */
+export function requireEpostPhone(
+  phone: string | undefined | null,
+  fieldLabel: string,
+): string {
+  const digits = normalizeEpostPhone(phone);
+  if (!EPOST_PHONE_RE.test(digits)) {
+    throw new Error(
+      `${fieldLabel}는 숫자 9~12자리여야 합니다. (현재: "${(phone ?? '').trim() || '(비어 있음)'}") ` +
+        'Vercel INFRONT_CENTER_PHONE·수거 연락처를 01012345678 형식으로 설정해주세요.',
+    );
+  }
+  return digits;
 }
 
 /** UTF-8 바이트 기준 문자열 절단 (우체국 API 필드 길이 제한) */
@@ -120,6 +163,21 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
       body[key] = normalizeEpostPhone(String(body[key]));
     }
   }
+  const reqType = String(body.reqType ?? '');
+  if (reqType === '2') {
+    if ('ordMob' in body) {
+      body.ordMob = requireEpostPhone(String(body.ordMob ?? ''), '주문자 휴대폰(ordMob)');
+    }
+    if ('recTel' in body) {
+      body.recTel = requireEpostPhone(
+        String(body.recTel ?? body.recMob ?? ''),
+        '수취인 연락처(recTel)',
+      );
+    }
+    if (body.inqTelCn != null && body.inqTelCn !== '') {
+      body.inqTelCn = requireEpostPhone(String(body.inqTelCn), '문의전화(inqTelCn)');
+    }
+  }
   if (typeof body.ordCompNm === 'string') {
     body.ordCompNm = truncateUtf8Bytes(body.ordCompNm, EPOST_ORD_COMP_NM_MAX_BYTES);
   }
@@ -150,7 +208,12 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   if (!body.orderNo || String(body.orderNo).trim() === '') {
     throw new Error('orderNo가 비어 있습니다.');
   }
-  if (typeof body.recAddr2 === 'string' && body.recAddr2.trim() === '') {
+  // 반품 수거(reqType=2) recAddr2는 고객 상세 — '없음' 대체 금지 (ERR-311)
+  if (
+    reqType !== '2' &&
+    typeof body.recAddr2 === 'string' &&
+    body.recAddr2.trim() === ''
+  ) {
     body.recAddr2 = '없음';
   }
   if (typeof body.ordAddr2 === 'string' && body.ordAddr2.trim() === '') {
@@ -296,9 +359,14 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
   if (!body.recAddr1 || normalizeEpostAddr1(String(body.recAddr1)).length < 2) {
     throw new Error('수취인 주소(recAddr1)가 없습니다.');
   }
-  const recTel = String(body.recTel ?? body.recMob ?? '');
-  if (!recTel || recTel.length < 9) {
-    throw new Error('수취인 연락처(recTel)가 없습니다.');
+  if (String(body.reqType ?? '') === '2') {
+    requireEpostPhone(String(body.ordMob ?? ''), '주문자 휴대폰(ordMob)');
+    requireEpostPhone(String(body.recTel ?? body.recMob ?? ''), '수취인 연락처(recTel)');
+  } else {
+    const recTel = String(body.recTel ?? body.recMob ?? '');
+    if (!recTel || recTel.length < 9) {
+      throw new Error('수취인 연락처(recTel)가 없습니다.');
+    }
   }
 
   const xml = await callEPost('api.InsertOrder.jparcel', body, testYn);

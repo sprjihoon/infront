@@ -1,3 +1,5 @@
+import { normalizeEpostPhone } from './client';
+
 /**
  * 우체국 반품소포(수거) 도착지 — modo CENTER_* 와 동일
  *
@@ -21,7 +23,7 @@ export function resolveInfrontCenterFromEnv(env: NodeJS.ProcessEnv = process.env
     zip: (env.INFRONT_CENTER_ZIPCODE ?? EPOST_CENTER_DEFAULTS.zip).replace(/\D/g, ''),
     addr1: (env.INFRONT_CENTER_ADDR1 ?? EPOST_CENTER_DEFAULTS.addr1).trim(),
     addr2: (env.INFRONT_CENTER_ADDR2 ?? EPOST_CENTER_DEFAULTS.addr2).trim(),
-    phone: env.INFRONT_CENTER_PHONE ?? '',
+    phone: normalizeEpostPhone(env.INFRONT_CENTER_PHONE ?? ''),
     displayName: env.INFRONT_CENTER_NAME ?? EPOST_CENTER_DEFAULTS.ordNm,
   };
 }

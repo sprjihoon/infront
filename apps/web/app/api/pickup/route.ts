@@ -12,6 +12,7 @@ import {
   normalizeEpostAddr1,
   inferPickupAddressDetail,
   resolveEpostPickupAddr2,
+  requireEpostPhone,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import {
@@ -34,7 +35,7 @@ const CENTER_ADDR2   = centerConfig.addr2;
 const OFFICE_SER     = '260537802';
 
 function centerPhone() {
-  return normalizeEpostPhone(centerConfig.phone);
+  return centerConfig.phone;
 }
 
 async function rollbackEpostOrder(
@@ -271,11 +272,18 @@ export async function POST(req: NextRequest) {
     const isTest = test_mode === true || !hasEpostCreds;
 
     if (!isTest && (recAddr2Raw ?? '').trim().length < 2) {
+      const short = (recAddr2Raw ?? '').trim();
       const hint = pickup_address_id
-        ? '마이페이지 → 주소록 관리 → 수거배송지에서 상세주소(동·호수)를 입력·저장한 뒤 다시 선택해주세요.'
-        : '수거 신청 화면에서 상세주소(동·호수, 층)를 입력해주세요.';
+        ? '마이페이지 → 주소록 관리 → 수거배송지에서 상세주소(2글자 이상, 예: 3층·302호)를 입력·저장한 뒤 다시 선택해주세요.'
+        : '수거 신청 화면에서 상세주소(동·호수, 층)를 2글자 이상 입력해주세요.';
+      const tooShort =
+        short.length === 1 && /^\d$/.test(short)
+          ? `상세주소 "${short}"만으로는 부족합니다. 예: ${short}층, ${short}02호. `
+          : short.length === 1
+            ? '상세주소는 2글자 이상이어야 합니다. '
+            : '';
       return NextResponse.json(
-        { error: `수거지 상세주소가 없습니다. ${hint}` },
+        { error: `${tooShort}수거지 상세주소가 없습니다. ${hint}` },
         { status: 400 }
       );
     }
@@ -292,12 +300,23 @@ export async function POST(req: NextRequest) {
 
     const recAddr2 = resolveEpostPickupAddr2(recAddr2Raw);
 
-    const centerMob = centerPhone();
-    if (!isTest && !centerMob) {
-      return NextResponse.json(
-        { error: '물류센터 연락처(INFRONT_CENTER_PHONE)가 설정되지 않았습니다.' },
-        { status: 500 }
-      );
+    let centerMob = '';
+    let recPhoneEpost = '';
+    if (!isTest) {
+      try {
+        centerMob = requireEpostPhone(
+          centerPhone() || process.env.INFRONT_CENTER_PHONE,
+          '센터 연락처(INFRONT_CENTER_PHONE)',
+        );
+        recPhoneEpost = requireEpostPhone(recPhoneRaw, '수거 연락처');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : '연락처 형식 오류';
+        const status = msg.includes('INFRONT_CENTER') ? 500 : 400;
+        return NextResponse.json({ error: msg }, { status });
+      }
+    } else {
+      centerMob = centerPhone() || '01000000000';
+      recPhoneEpost = normalizeEpostPhone(recPhoneRaw) || '01000000000';
     }
 
     const pickupZip = recZip;
@@ -335,7 +354,7 @@ export async function POST(req: NextRequest) {
         zip: recZip,
         addr1: recAddr1,
         addr2: recAddr2Raw,
-        phone: recPhoneRaw,
+        phone: recPhoneEpost,
       },
       goodsNm,
       weight: spec.weight,
@@ -349,9 +368,11 @@ export async function POST(req: NextRequest) {
         ordZip: epostParams.ordZip,
         ordAddr1: epostParams.ordAddr1,
         ordAddr2: epostParams.ordAddr2,
+        ordMob: epostParams.ordMob,
         recZip: epostParams.recZip,
         recAddr1: epostParams.recAddr1,
         recAddr2: epostParams.recAddr2,
+        recTel: epostParams.recTel,
         recNm: epostParams.recNm,
       });
     }

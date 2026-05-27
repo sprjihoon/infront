@@ -6,7 +6,13 @@ import {
   ArrowLeft, Plus, MapPin, Globe, Star, Pencil, Trash2,
   Phone, Mail, X, Check, ChevronDown,
 } from "lucide-react";
-import { normalizeEpostZip, normalizeEpostAddr1 } from "@/lib/epost/client";
+import {
+  normalizeEpostZip,
+  normalizeEpostAddr1,
+  inferPickupAddressDetail,
+  validatePickupAddressDetail,
+  isValidPickupAddressDetail,
+} from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 
@@ -139,9 +145,18 @@ export default function AddressesPage() {
       alert("우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.");
       return;
     }
-    if (tab === "pickup" && !(form.address_detail ?? "").trim()) {
-      alert("상세주소(동·호수, 층)를 입력해주세요. 우체국 수거에 필요합니다.");
-      return;
+    if (tab === "pickup") {
+      const effectiveDetail = inferPickupAddressDetail(
+        form.address,
+        form.address_detail,
+      );
+      const detailErr = validatePickupAddressDetail(
+        effectiveDetail.length >= 2 ? effectiveDetail : form.address_detail,
+      );
+      if (detailErr) {
+        alert(detailErr);
+        return;
+      }
     }
     if (tab === "overseas" && !form.overseas_addr3?.trim()) { alert("상세주소를 입력해주세요."); return; }
 
@@ -468,9 +483,20 @@ export default function AddressesPage() {
                       <input
                         value={form.address_detail ?? ""}
                         onChange={e => setForm(f => ({ ...f, address_detail: e.target.value }))}
-                        placeholder="상세주소 (동·호수, 층) *"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                        placeholder="상세주소 (동·호수, 층) * — 예: 3층, 302호"
+                        className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200 ${
+                          (form.address_detail ?? "").trim().length > 0 &&
+                          !isValidPickupAddressDetail(form.address_detail)
+                            ? "border-red-300 ring-1 ring-red-100"
+                            : "border-gray-100"
+                        }`}
                       />
+                      {(form.address_detail ?? "").trim().length > 0 &&
+                        validatePickupAddressDetail(form.address_detail) && (
+                        <p className="text-xs text-red-500 mt-1">
+                          {validatePickupAddressDetail(form.address_detail)}
+                        </p>
+                      )}
                     </div>
                   </>
                 )}

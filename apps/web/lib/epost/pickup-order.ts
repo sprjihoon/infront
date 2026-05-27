@@ -11,11 +11,14 @@
 import type { InsertOrderParams } from './types';
 import {
   normalizeEpostAddr1,
-  normalizeEpostPhone,
   normalizeEpostZip,
+  requireEpostPhone,
   resolveEpostCenterAddr2,
   resolveEpostPickupAddr2,
 } from './client';
+
+/** ordCompNm 12byte 초과 시 regData 필드 밀림 → ordMob ERR-522 유발 가능 */
+const EPOST_ORD_COMP_NM = '인프론트';
 
 export interface ReturnPickupLocation {
   name: string;
@@ -49,8 +52,8 @@ export interface ReturnPickupOrderInput {
 
 /** modo 반품소포(수거) — ord*=센터, rec*=고객 */
 export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): InsertOrderParams {
-  const pickupPhone = normalizeEpostPhone(input.pickup.phone);
-  const centerPhone = normalizeEpostPhone(input.center.phone);
+  const pickupPhone = requireEpostPhone(input.pickup.phone, '수거 연락처');
+  const centerPhone = requireEpostPhone(input.center.phone, '센터 연락처(ordMob)');
 
   return {
     custNo: input.custNo,
@@ -60,7 +63,7 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     officeSer: input.officeSer,
     orderNo: input.orderNo,
     // 주문자(물류센터) → ord*
-    ordCompNm: input.center.ordNm,
+    ordCompNm: EPOST_ORD_COMP_NM,
     ordNm:     input.center.ordNm,
     ordZip:    normalizeEpostZip(input.center.zip),
     ordAddr1:  normalizeEpostAddr1(input.center.addr1),

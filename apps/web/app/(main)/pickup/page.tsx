@@ -5,7 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package,
 } from "lucide-react";
-import { normalizeEpostZip, normalizeEpostAddr1, inferPickupAddressDetail } from "@/lib/epost/client";
+import {
+  normalizeEpostZip,
+  normalizeEpostAddr1,
+  inferPickupAddressDetail,
+  validatePickupAddressDetail,
+  isValidPickupAddressDetail,
+} from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
@@ -144,10 +150,12 @@ export default function PickupPage() {
       pickupAddress.address,
       pickupAddress.addressDetail,
     );
-    if (effectiveDetail.length < 2) {
+    if (!isValidPickupAddressDetail(effectiveDetail)) {
+      const typedErr = validatePickupAddressDetail(pickupAddress.addressDetail);
+      if (typedErr && (pickupAddress.addressDetail ?? '').trim()) return typedErr;
       return pickupAddress.savedId
-        ? "주소록에 상세주소가 없습니다. 마이페이지 → 주소록 관리에서 수거배송지 상세주소를 저장하거나, 아래 칸에 입력해주세요."
-        : "수거지 상세주소(동·호수, 층 등)를 입력해주세요.";
+        ? "주소록에 상세주소가 없습니다. 마이페이지 → 주소록 관리에서 수거배송지 상세주소(2글자 이상, 예: 3층)를 저장하거나, 아래 칸에 입력해주세요."
+        : "수거지 상세주소(동·호수, 층 등)를 2글자 이상 입력해주세요. (예: 3층, 302호)";
     }
     if (disabledDates.includes(pickupDate)) return "토·일요일 및 공휴일은 수거가 불가합니다.";
     return null;
@@ -478,10 +486,21 @@ export default function PickupPage() {
                       setPickupAddress({ ...pickupAddress, addressDetail: e.target.value })
                     }
                     placeholder="예: 101동 1203호, 3층"
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                    className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                      (pickupAddress.addressDetail ?? '').trim().length > 0 &&
+                      !isValidPickupAddressDetail(pickupAddress.addressDetail)
+                        ? "border-red-300 ring-1 ring-red-100"
+                        : "border-gray-100"
+                    }`}
                   />
+                  {(pickupAddress.addressDetail ?? '').trim().length > 0 &&
+                    validatePickupAddressDetail(pickupAddress.addressDetail) && (
+                    <p className="text-xs text-red-500 mt-1">
+                      {validatePickupAddressDetail(pickupAddress.addressDetail)}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-400 mt-1">
-                    우체국 수거 기사가 방문할 상세 위치입니다. 저장된 주소에 없으면 여기서 입력하세요.
+                    우체국 수거 기사가 방문할 상세 위치입니다. 2글자 이상 입력 (숫자만 1개는 불가).
                   </p>
                 </div>
               )}
