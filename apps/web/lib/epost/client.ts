@@ -349,8 +349,10 @@ async function callEPost(
   if (testYn === 'Y') url += '&testYn=Y';
 
   const plainText = buildEpostParams(params);
+  const isInsertOrder = endpoint.includes('InsertOrder');
 
-  if (String(params.reqType) === '2') {
+  // 반품소포 접수(InsertOrder)에만 recAddr2 검증 — 취소/GetResInfo 등은 recAddr2 없음
+  if (isInsertOrder && String(params.reqType) === '2') {
     const fields: Record<string, string> = {};
     for (const pair of plainText.split('&')) {
       const idx = pair.indexOf('=');
@@ -365,8 +367,8 @@ async function callEPost(
     }
   }
 
-  // 진단용 로그 — recAddr1 실제 전송값 확인
-  {
+  // 진단용 로그 — InsertOrder 접수 시에만
+  if (isInsertOrder) {
     const dbg: Record<string, string> = {};
     for (const pair of plainText.split('&')) {
       const idx = pair.indexOf('=');
