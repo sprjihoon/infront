@@ -207,40 +207,76 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
     setSaveOption("save"); setMode("list");
   }
 
+  const effectiveDetail = value
+    ? inferPickupAddressDetail(value.address, value.addressDetail)
+    : "";
+  const detailNeedsInput = value && !isValidPickupAddressDetail(effectiveDetail);
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => { setMode("list"); setSheet(true); loadSaved(); }}
-        className={`w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98] ${
-          value
-            ? "bg-white border-brand-200 shadow-sm"
-            : "bg-gray-50 border-dashed border-gray-300"
-        }`}
-      >
-        {value ? (
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1.5">
-                {value.label && (
-                  <span className="text-xs font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full shrink-0">
-                    {value.label}
-                  </span>
-                )}
-                <span className="text-sm font-semibold text-gray-900 truncate">{value.name}</span>
-                <span className="text-sm text-gray-500 shrink-0">{value.phone}</span>
+      {value ? (
+        <div className="rounded-2xl border-2 border-brand-200 bg-white shadow-sm overflow-hidden">
+          <button
+            type="button"
+            onClick={() => { setMode("list"); setSheet(true); loadSaved(); }}
+            className="w-full text-left p-4 transition-all active:scale-[0.98] hover:bg-brand-50/50"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1.5">
+                  {value.label && (
+                    <span className="text-xs font-bold bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full shrink-0">
+                      {value.label}
+                    </span>
+                  )}
+                  <span className="text-sm font-semibold text-gray-900 truncate">{value.name}</span>
+                  <span className="text-sm text-gray-500 shrink-0">{value.phone}</span>
+                </div>
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  [{value.zipcode}] {value.address}
+                  {isValidPickupAddressDetail(effectiveDetail) ? ` ${effectiveDetail}` : ""}
+                </p>
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                [{value.zipcode}] {value.address}
-                {value.addressDetail ? ` ${value.addressDetail}` : ""}
+              <div className="flex items-center gap-1 shrink-0 text-brand-600 text-xs font-medium mt-0.5">
+                <Pencil size={12} />
+                변경
+              </div>
+            </div>
+          </button>
+          {detailNeedsInput && (
+            <div className="px-4 pb-4 pt-0 border-t border-brand-100">
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                상세주소 (동·호수, 층) <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={value.addressDetail}
+                onChange={(e) => onChange({ ...value, addressDetail: e.target.value })}
+                placeholder="예: 101동 1203호, 3층"
+                className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                  (value.addressDetail ?? "").trim().length > 0 &&
+                  !isValidPickupAddressDetail(value.addressDetail)
+                    ? "border-red-300 ring-1 ring-red-100"
+                    : "border-gray-100"
+                }`}
+              />
+              {(value.addressDetail ?? "").trim().length > 0 &&
+                validatePickupAddressDetail(value.addressDetail) && (
+                <p className="text-xs text-red-500 mt-1">
+                  {validatePickupAddressDetail(value.addressDetail)}
+                </p>
+              )}
+              <p className="text-xs text-gray-400 mt-1">
+                우체국 수거 기사가 방문할 상세 위치입니다. 2글자 이상 입력 (숫자만 1개는 불가).
               </p>
             </div>
-            <div className="flex items-center gap-1 shrink-0 text-brand-600 text-xs font-medium mt-0.5">
-              <Pencil size={12} />
-              변경
-            </div>
-          </div>
-        ) : (
+          )}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => { setMode("list"); setSheet(true); loadSaved(); }}
+          className="w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98] bg-gray-50 border-dashed border-gray-300"
+        >
           <div className="flex items-center gap-3 py-1">
             <div className="w-9 h-9 rounded-xl bg-brand-100 flex items-center justify-center shrink-0">
               <MapPin size={18} className="text-brand-500" />
@@ -251,8 +287,8 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
             </div>
             <ChevronRight size={16} className="text-gray-300 ml-auto" />
           </div>
-        )}
-      </button>
+        </button>
+      )}
 
       {sheet && (
         <div

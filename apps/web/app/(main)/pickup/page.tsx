@@ -154,7 +154,7 @@ export default function PickupPage() {
       const typedErr = validatePickupAddressDetail(pickupAddress.addressDetail);
       if (typedErr && (pickupAddress.addressDetail ?? '').trim()) return typedErr;
       return pickupAddress.savedId
-        ? "주소록에 상세주소가 없습니다. 마이페이지 → 주소록 관리에서 수거배송지 상세주소(2글자 이상, 예: 3층)를 저장하거나, 아래 칸에 입력해주세요."
+        ? "주소록에 상세주소가 없습니다. 마이페이지 → 주소록 관리에서 저장하거나, 선택한 수거지 카드에서 상세주소를 입력해주세요."
         : "수거지 상세주소(동·호수, 층 등)를 2글자 이상 입력해주세요. (예: 3층, 302호)";
     }
     if (disabledDates.includes(pickupDate)) return "토·일요일 및 공휴일은 수거가 불가합니다.";
@@ -475,35 +475,6 @@ export default function PickupPage() {
                 onChange={setPickupAddress}
                 customerId={customerId}
               />
-              {pickupAddress && (
-                <div className="mt-3">
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                    상세주소 (동·호수, 층) <span className="text-red-400">*</span>
-                  </label>
-                  <input
-                    value={pickupAddress.addressDetail}
-                    onChange={(e) =>
-                      setPickupAddress({ ...pickupAddress, addressDetail: e.target.value })
-                    }
-                    placeholder="예: 101동 1203호, 3층"
-                    className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
-                      (pickupAddress.addressDetail ?? '').trim().length > 0 &&
-                      !isValidPickupAddressDetail(pickupAddress.addressDetail)
-                        ? "border-red-300 ring-1 ring-red-100"
-                        : "border-gray-100"
-                    }`}
-                  />
-                  {(pickupAddress.addressDetail ?? '').trim().length > 0 &&
-                    validatePickupAddressDetail(pickupAddress.addressDetail) && (
-                    <p className="text-xs text-red-500 mt-1">
-                      {validatePickupAddressDetail(pickupAddress.addressDetail)}
-                    </p>
-                  )}
-                  <p className="text-xs text-gray-400 mt-1">
-                    우체국 수거 기사가 방문할 상세 위치입니다. 2글자 이상 입력 (숫자만 1개는 불가).
-                  </p>
-                </div>
-              )}
             </div>
 
             <div>
