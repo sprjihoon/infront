@@ -293,7 +293,50 @@ export function seed128Encrypt(plainText: string, key: string): string {
   return byteArrayToHex(out);
 }
 
-export function buildEpostParams(params: Record<string, unknown>): string {
+function buildKeyedPlaintext(
+  params: Record<string, unknown>,
+  orderedKeys: string[],
+  required = new Set<string>(),
+): string {
+  const pairs: string[] = [];
+  for (const key of orderedKeys) {
+    if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
+    const val = params[key];
+    const isReq = required.has(key);
+    if (val === null || val === undefined) continue;
+    let sv: string;
+    if (typeof val === 'boolean') sv = val ? 'Y' : 'N';
+    else if (typeof val === 'number') sv = String(Math.floor(val));
+    else sv = String(val);
+    if (!isReq && sv === '') continue;
+    if (isReq && sv.trim() === '') {
+      throw new Error(`[EPost] 필수 파라미터 '${key}'가 비어 있습니다.`);
+    }
+    pairs.push(`${key}=${sv}`);
+  }
+  return pairs.join('&');
+}
+
+export function buildEpostParams(
+  params: Record<string, unknown>,
+  endpoint = '',
+): string {
+  if (endpoint.includes('GetResCancelCmd') || endpoint.includes('CancelOrder')) {
+    // live 검증: regiNo가 reqNo 앞에 와야 함 (뒤에 두면 ERR-211 reqNo 누락)
+    return buildKeyedPlaintext(
+      params,
+      ['custNo', 'apprNo', 'payType', 'reqType', 'regiNo', 'reqNo', 'resNo', 'reqYmd', 'delYn'],
+      new Set(['custNo', 'apprNo', 'reqType', 'reqNo', 'resNo', 'regiNo', 'reqYmd']),
+    );
+  }
+  if (endpoint.includes('GetResInfo')) {
+    return buildKeyedPlaintext(
+      params,
+      ['custNo', 'reqType', 'orderNo', 'reqYmd'],
+      new Set(['custNo', 'reqType', 'orderNo', 'reqYmd']),
+    );
+  }
+
   const orderedKeys = [
     'custNo','apprNo','payType','reqType','officeSer',
     'weight','volume','microYn','packngMtrCd','orderNo',

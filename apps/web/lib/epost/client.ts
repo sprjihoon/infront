@@ -338,6 +338,18 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   }
 }
 
+function formatEpostHttpError(status: number, body: string, endpoint: string): string {
+  const trimmed = body.trim();
+  if (trimmed.startsWith('<') || trimmed.includes('<!DOCTYPE')) {
+    return (
+      `우체국 API 서버 오류(HTTP ${status}, ${endpoint}). ` +
+      '잠시 후 다시 시도하거나 우체국 계약 포털에서 직접 취소해주세요.'
+    );
+  }
+  const snippet = trimmed.replace(/\s+/g, ' ').slice(0, 200);
+  return `우체국 API 오류(HTTP ${status}): ${snippet}`;
+}
+
 function parseXml(xml: string, tag: string): string | null {
   const cdata = new RegExp(`<${tag}>\\s*<!\\[CDATA\\[(.*?)\\]\\]>\\s*</${tag}>`, 's').exec(xml);
   if (cdata) return cdata[1].trim();
@@ -359,7 +371,7 @@ async function callEPost(
   let url = `${EPOST_BASE_URL}/${endpoint}?key=${apiKey}`;
   if (testYn === 'Y') url += '&testYn=Y';
 
-  const plainText = buildEpostParams(params);
+  const plainText = buildEpostParams(params, endpoint);
   const isInsertOrder = endpoint.includes('InsertOrder');
 
   // 반품소포 접수(InsertOrder)에만 recAddr2 검증 — 취소/GetResInfo 등은 recAddr2 없음
@@ -476,7 +488,7 @@ async function callEPost(
 
   if (!resp.ok) {
     const txt = await resp.text();
-    throw new Error(`EPost HTTP ${resp.status}: ${txt}`);
+    throw new Error(formatEpostHttpError(resp.status, txt, endpoint));
   }
 
   const xml = await resp.text();
@@ -642,7 +654,7 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{
     regiNo: payload.regiNo,
     reqYmd: payload.reqYmd,
     delYn: payload.delYn,
-    plainPreview: buildEpostParams(payload),
+    plainPreview: buildEpostParams(payload, 'api.GetResCancelCmd.jparcel'),
   });
 
   const parseCancel = (xml: string) => ({
@@ -663,18 +675,23 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{
     );
   };
 
-  // modo: api.GetResCancelCmd.jparcel (SHPAPI-U02-01)
-  try {
-    const xml = await callEPost('api.GetResCancelCmd.jparcel', payload);
-    return assertCanceled(parseCancel(xml), 'GetResCancelCmd');
-  } catch (firstErr) {
+  const delAttempts: Array<'Y' | 'N'> =
+    params.delYn === 'Y' ? ['Y', 'N'] : [params.delYn];
+
+  let lastErr: unknown;
+  for (const delYn of delAttempts) {
     try {
-      const xml = await callEPost('api.CancelOrder.jparcel', payload);
-      return assertCanceled(parseCancel(xml), 'CancelOrder');
-    } catch (secondErr) {
-      throw secondErr instanceof Error ? secondErr : firstErr;
+      const xml = await callEPost('api.GetResCancelCmd.jparcel', { ...payload, delYn });
+      return assertCanceled(parseCancel(xml), 'api.GetResCancelCmd.jparcel');
+    } catch (err) {
+      lastErr = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('ERR-123') || msg.includes('예약된 정보가 없')) {
+        throw err;
+      }
     }
   }
+  throw lastErr instanceof Error ? lastErr : new Error('우체국 취소 API 호출 실패');
 }
 
 export function mockInsertOrder(): InsertOrderResponse {
