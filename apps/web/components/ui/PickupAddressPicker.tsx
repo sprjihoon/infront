@@ -251,7 +251,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
               <input
                 value={value.addressDetail}
                 onChange={(e) => onChange({ ...value, addressDetail: e.target.value })}
-                placeholder="예: 101동 1203호, 3층"
+                placeholder="예: 201호, 제3층 (3층만은 불가)"
                 className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
                   (value.addressDetail ?? "").trim().length > 0 &&
                   !isValidPickupAddressDetail(value.addressDetail)
@@ -433,7 +433,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     <input
                       value={newDetail}
                       onChange={(e) => setNewDetail(e.target.value)}
-                      placeholder="예: 101동 1203호, 3층"
+                      placeholder="예: 201호, 제3층 (3층만은 불가)"
                       className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
                         newDetail.trim().length > 0 && !isValidPickupAddressDetail(newDetail)
                           ? "border-red-300 ring-1 ring-red-100"

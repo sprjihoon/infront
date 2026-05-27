@@ -14,6 +14,7 @@ import {
   resolveEpostPickupAddr2,
   requireEpostPhone,
   splitPickupAddressForEpost,
+  normalizeEpostPickupAddr2,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import {
@@ -265,7 +266,13 @@ export async function POST(req: NextRequest) {
 
     const pickupSplit = splitPickupAddressForEpost(recAddr1, recAddr2Raw);
     recAddr1 = pickupSplit.addr1;
-    const recAddr2ForEpost = pickupSplit.addr2;
+    const recAddr2ForEpost = normalizeEpostPickupAddr2(pickupSplit.addr2);
+    if (recAddr2ForEpost !== pickupSplit.addr2.trim()) {
+      console.log('[PICKUP] recAddr2 normalized for EPOST', {
+        from: pickupSplit.addr2,
+        to: recAddr2ForEpost,
+      });
+    }
 
     const custNo = (process.env.EPOST_CUSTOMER_ID ?? '').trim();
     const apprNo = (process.env.EPOST_APPROVAL_NO ?? '').trim();

@@ -66,7 +66,11 @@ export function validatePickupAddressDetail(detail?: string | null): string | nu
     if (/^\d$/.test(trimmed)) {
       return `"${trimmed}"만으로는 부족합니다. 예: ${trimmed}층, 302호`;
     }
-    return '상세주소는 2글자 이상 입력해주세요. (예: 3층, 302호)';
+    return '상세주소는 2글자 이상 입력해주세요. (예: 201호, 제3층)';
+  }
+  const compact = trimmed.replace(/\s+/g, '');
+  if (/^\d+층$/.test(compact)) {
+    return `"${trimmed}"만 입력하면 우체국 접수가 거절될 수 있습니다. 예: 제${compact}, 201호`;
   }
   return null;
 }
@@ -75,6 +79,18 @@ export function validatePickupAddressDetail(detail?: string | null): string | nu
 export function resolveEpostPickupAddr2(detail?: string | null): string {
   const trimmed = detail?.trim();
   return trimmed && trimmed.length >= EPOST_PICKUP_DETAIL_MIN_LEN ? trimmed : '';
+}
+
+/**
+ * 우체국 반품소포 recAddr2 — "3층"처럼 숫자+층만 2글자면 파서가 recTel 등을 밀어 ERR-311/522 발생.
+ * 라이브 검증: "3층" 실패, "제3층"/"201호" 성공.
+ */
+export function normalizeEpostPickupAddr2(detail: string): string {
+  const t = sanitizeEpostPlainField(detail.trim());
+  if (!t) return t;
+  const compact = t.replace(/\s+/g, '');
+  if (/^\d+층$/.test(compact)) return `제${compact}`;
+  return t;
 }
 
 /**
