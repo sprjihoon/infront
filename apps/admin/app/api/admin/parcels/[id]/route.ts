@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
+import { mapParcelForClient } from "@/lib/parcels/fields";
 
 export async function GET(
   _req: NextRequest,
@@ -26,5 +27,8 @@ export async function GET(
 
   if (!parcel) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  return NextResponse.json({ parcel, inspections: inspections ?? [] });
+  return NextResponse.json({
+    parcel: mapParcelForClient(parcel),
+    inspections: inspections ?? [],
+  });
 }

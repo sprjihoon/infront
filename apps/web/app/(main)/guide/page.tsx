@@ -141,7 +141,7 @@ const FAQS = [
   },
   {
     q: "실제 요금은 견적과 다를 수 있나요?",
-    a: "요금 계산기는 입력한 무게·크기 기준으로 계산됩니다. 실제 창고에서 측정한 실중량과 부피중량 중 큰 값이 적용되므로 최종 요금이 달라질 수 있습니다.",
+    a: "해외배송 계산기는 입력한 무게·크기 기준으로 예상 배송비를 보여줍니다. 실제 창고에서 측정한 실중량과 부피중량 중 큰 값이 적용되므로 최종 요금이 달라질 수 있습니다.",
   },
   {
     q: "결제 후 배송지 변경이 가능한가요?",
@@ -294,7 +294,7 @@ export default function GuidePage() {
           >
             <Calculator size={22} className="text-brand-600" />
             <div>
-              <p className="text-gray-900 text-sm font-semibold">요금 계산</p>
+              <p className="text-gray-900 text-sm font-semibold">해외배송 계산기</p>
               <p className="text-gray-500 text-xs">EMS · K-Packet</p>
             </div>
           </Link>

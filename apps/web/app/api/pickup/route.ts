@@ -272,6 +272,7 @@ export async function POST(req: NextRequest) {
         tracking_no: epostResult.regiNo,
         courier: '우체국택배',
         tracking_carrier_id: 'kr.epost',
+        inbound_source: 'PICKUP',
         pickup_address,
         pickup_address_detail: pickup_address_detail ?? null,
         pickup_zipcode,

@@ -7,6 +7,7 @@ import {
   Plus, Trash2, CheckCircle, Loader2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { isParcelShippable } from "@/lib/parcel-shippable";
 import OverseasAddressPicker, { OverseasAddressValue } from "@/components/ui/OverseasAddressPicker";
 import { useFlowMode } from "@/lib/flow-mode";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
@@ -92,8 +93,6 @@ function newItem(): InvoiceItem {
 }
 
 // 출고 가능 상태
-const SHIPPABLE_STATUSES = ["INBOUND", "INSPECTION"];
-
 // ── 메인 컴포넌트 ─────────────────────────────────────────────
 function ShippingRequestContent() {
   const router = useRouter();
@@ -162,9 +161,10 @@ function ShippingRequestContent() {
       const [{ data: parcelData }, { data: addrData }, { data: reservedLinks }] = await Promise.all([
         supabase
           .from("parcels")
-          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items")
+          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable")
           .eq("customer_id", user.id)
-          .in("status", SHIPPABLE_STATUSES)
+          .eq("status", "INBOUND")
+          .eq("is_shippable", true)
           .order("inbound_at", { ascending: false }),
         supabase
           .from("customer_addresses")

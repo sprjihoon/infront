@@ -10,10 +10,15 @@ export async function makeUserClient() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: (list) =>
-          list.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          ),
+        setAll: (list) => {
+          try {
+            list.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Server Component에서는 쿠키 수정 불가 — proxy.ts에서 세션 갱신
+          }
+        },
       },
     }
   );

@@ -41,7 +41,18 @@ export default async function OrdersPage({
     .limit(100);
 
   if (status) query = query.eq("status", status);
-  if (q) query = query.or(`order_no.ilike.%${q}%,recipient_name.ilike.%${q}%`);
+  if (q) {
+    const { data: custMatches } = await adminDb
+      .from("customers")
+      .select("id")
+      .or(`name.ilike.%${q}%,customer_code.ilike.%${q}%,email.ilike.%${q}%`);
+    const custIds = (custMatches ?? []).map((c) => c.id);
+    if (custIds.length > 0) {
+      query = query.or(`order_no.ilike.%${q}%,recipient_name.ilike.%${q}%,customer_id.in.(${custIds.join(",")})`);
+    } else {
+      query = query.or(`order_no.ilike.%${q}%,recipient_name.ilike.%${q}%`);
+    }
+  }
 
   const { data: orders } = await query;
 
@@ -63,7 +74,7 @@ export default async function OrdersPage({
           <input
             name="q"
             defaultValue={q}
-            placeholder="주문번호 또는 수취인 검색"
+            placeholder="주문번호, 수취인, 고객명·고객번호 검색"
             className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {status && <input type="hidden" name="status" value={status} />}

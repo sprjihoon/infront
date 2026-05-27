@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/sync-intl-tracking",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-inbound",
+      "schedule": "0 0-9 * * *"
     }
   ]
 }

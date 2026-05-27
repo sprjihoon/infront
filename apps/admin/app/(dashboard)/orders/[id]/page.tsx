@@ -26,6 +26,8 @@ interface Order {
   item_list: Array<{ name: string; qty: number; price: number; origin: string }>;
   est_shipping_fee: number | null;
   shipping_fee: number | null;
+  quote_ems_cost: number | null;
+  shipping_margin: number | null;
   packaging_fee: number | null;
   total_amount: number;
   customs_value: number | null;
@@ -136,6 +138,8 @@ export default function OrderDetailPage() {
 
   // 견적 폼
   const [finalFee, setFinalFee] = useState("");
+  const [emsCost, setEmsCost] = useState("");
+  const [margin, setMargin] = useState("");
   const [quoteNote, setQuoteNote] = useState("");
   const [showQuoteForm, setShowQuoteForm] = useState(false);
 
@@ -169,6 +173,11 @@ export default function OrderDetailPage() {
     setOrderServices(json.orderServices);
     setShippingBoxes(json.shippingBoxes);
     if (json.order.est_shipping_fee) setFinalFee(String(json.order.est_shipping_fee));
+    if (json.order.quote_ems_cost) setEmsCost(String(json.order.quote_ems_cost));
+    if (json.order.shipping_margin) setMargin(String(json.order.shipping_margin));
+    if (json.order.shipping_fee && !json.order.quote_ems_cost) {
+      setEmsCost(String(json.order.shipping_fee));
+    }
     setLoading(false);
   }
 
@@ -224,7 +233,9 @@ export default function OrderDetailPage() {
       const json = await res.json();
       if (!res.ok) { setCalcError(json.error ?? "계산 실패"); return; }
       setCalcFee(json.fee);
-      setFinalFee(String(json.fee));
+      setEmsCost(String(json.fee));
+      const m = margin ? parseInt(margin) : 0;
+      setFinalFee(String(json.fee + m));
     } catch {
       setCalcError("네트워크 오류");
     } finally {
@@ -237,6 +248,8 @@ export default function OrderDetailPage() {
     const ok = await callApi({
       action: "confirm_quote",
       final_shipping_fee: finalFee,
+      quote_ems_cost: emsCost || calcFee,
+      shipping_margin: margin || "0",
       note: quoteNote,
       ...(totweight && boxlength && boxwidth && boxheight && {
         totweight: Number(totweight),
@@ -362,15 +375,16 @@ export default function OrderDetailPage() {
 
       {/* 고객 정보 */}
       {customer && (
-        <div className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3">
+        <Link href={`/customers/${encodeURIComponent(customer.customer_code)}`}
+          className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3 hover:ring-1 hover:ring-blue-200 transition-all">
           <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
             <User size={18} className="text-blue-600" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="font-semibold text-gray-900">{customer.name}</p>
             <p className="text-xs text-gray-400">{customer.email} · {customer.customer_code}</p>
           </div>
-        </div>
+        </Link>
       )}
 
       <div className="grid grid-cols-2 gap-4">
@@ -941,19 +955,52 @@ export default function OrderDetailPage() {
                 )}
               </div>
 
-              {/* ── 최종 배송비 + 메모 ── */}
-              <div>
-                <label className="text-xs font-medium text-gray-500 block mb-1">
-                  최종 국제 배송비 (원) *
-                  {calcFee !== null && <span className="text-indigo-500 ml-1">← EMS 계산값 자동 반영됨</span>}
-                </label>
-                <input
-                  type="number" value={finalFee}
-                  onChange={(e) => setFinalFee(e.target.value)}
-                  placeholder="예: 25000"
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              {/* ── EMS 원가 / 마진 / 청구가 ── */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">EMS 원가 (원)</label>
+                  <input
+                    type="number" value={emsCost}
+                    onChange={(e) => {
+                      setEmsCost(e.target.value);
+                      const cost = parseInt(e.target.value) || 0;
+                      const m = parseInt(margin) || 0;
+                      setFinalFee(String(cost + m));
+                    }}
+                    placeholder="EMS API"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">마진 (원)</label>
+                  <input
+                    type="number" value={margin}
+                    onChange={(e) => {
+                      setMargin(e.target.value);
+                      const cost = parseInt(emsCost) || calcFee || 0;
+                      const m = parseInt(e.target.value) || 0;
+                      setFinalFee(String(cost + m));
+                    }}
+                    placeholder="0"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">청구 배송비 (원) *</label>
+                  <input
+                    type="number" value={finalFee}
+                    onChange={(e) => setFinalFee(e.target.value)}
+                    placeholder="원가+마진"
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
+              {emsCost && margin && (
+                <p className="text-xs text-gray-400">
+                  원가 {parseInt(emsCost).toLocaleString()}원 + 마진 {parseInt(margin).toLocaleString()}원
+                  = {(parseInt(emsCost) + parseInt(margin)).toLocaleString()}원
+                </p>
+              )}
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">메모 (선택)</label>
                 <input

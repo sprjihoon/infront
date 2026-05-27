@@ -141,7 +141,7 @@ export default function SidebarCalculator() {
       {/* 헤더 — 항상 상단 고정 */}
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
         <Calculator size={16} className="text-white" />
-        <span className="text-white font-semibold text-sm">가견적 계산기</span>
+        <span className="text-white font-semibold text-sm">해외배송 계산기</span>
         <span className="ml-auto text-white/60 text-xs">EMS · K-Packet</span>
       </div>
 
@@ -271,7 +271,7 @@ export default function SidebarCalculator() {
         >
           {loading
             ? <><Loader2 size={14} className="animate-spin" />계산 중...</>
-            : <><Calculator size={14} />견적 계산</>
+            : <><Calculator size={14} />배송비 계산</>
           }
         </button>
 
@@ -317,7 +317,7 @@ export default function SidebarCalculator() {
               </div>
             ))}
             <p className="text-[10px] text-gray-400 text-center pt-0.5">
-              {insuranceEnabled ? "보험 수수료 포함 가견적 · " : ""}
+              {insuranceEnabled ? "보험 수수료 포함 예상 요금 · " : ""}
               실제 접수 시 우체국 요금 기준으로 확정
             </p>
           </div>

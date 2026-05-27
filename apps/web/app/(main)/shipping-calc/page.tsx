@@ -235,7 +235,7 @@ export default function ShippingCalcPage() {
           </button>
           <h1 className="text-base font-semibold text-gray-900 flex items-center gap-1.5">
             <Calculator size={17} className="text-brand-600" />
-            국제배송 요금 계산기
+            해외배송 계산기
           </h1>
         </div>
       </div>
@@ -569,7 +569,7 @@ export default function ShippingCalcPage() {
                 <Info size={13} className="shrink-0 mt-0.5" />
                 <span>
                   VAT 포함 예상 금액입니다.
-                  {insuranceEnabled ? " 보험 수수료가 포함된 견적입니다." : ""}
+                  {insuranceEnabled ? " 보험 수수료가 포함된 예상 요금입니다." : ""}
                   {" "}실제 접수 시 창고 실측 무게·크기로 재계산될 수 있습니다.
                 </span>
               </div>

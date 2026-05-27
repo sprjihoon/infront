@@ -10,6 +10,7 @@ import {
   formatParcelItemTitle,
   normalizeParcelItems,
 } from "@/lib/parcel-item-display";
+import { getParcelDisplaySummary } from "@/lib/parcel-display";
 
 interface UserInfo {
   name: string;
@@ -60,21 +61,10 @@ interface Parcel {
   weight_actual: number | null;
   hold_reason: string | null;
   notes: string | null;
+  is_shippable: boolean | null;
+  tracking_last_event: { statusLabel: string; description: string; location: string; time: string } | null;
   pre_invoice_items: InvoiceItem[] | null;
 }
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  PRE_REGISTERED: { label: "등록 완료",  color: "text-indigo-700 bg-indigo-50 border-indigo-200", dot: "bg-indigo-400" },
-  PENDING_PICKUP: { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
-  PICKED_UP:      { label: "수거 완료", color: "text-brand-700 bg-brand-50 border-brand-200",       dot: "bg-brand-400" },
-  INBOUND:        { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200",    dot: "bg-green-400" },
-  INSPECTION:     { label: "검품 중",   color: "text-purple-700 bg-purple-50 border-purple-200", dot: "bg-purple-400" },
-  PACKING:        { label: "포장 작업", color: "text-orange-700 bg-orange-50 border-orange-200", dot: "bg-orange-400" },
-  HOLD:           { label: "보류",      color: "text-red-700 bg-red-50 border-red-200",           dot: "bg-red-400" },
-  PAYMENT_WAIT:   { label: "결제 대기", color: "text-amber-700 bg-amber-50 border-amber-200",     dot: "bg-amber-400" },
-  SHIPPING:       { label: "국제 발송", color: "text-brand-800 bg-brand-100 border-brand-300",       dot: "bg-brand-600" },
-  DONE:           { label: "배송 완료", color: "text-gray-600 bg-gray-50 border-gray-200",        dot: "bg-gray-400" },
-};
 
 const QUICK_ACTIONS = [
   {
@@ -89,7 +79,7 @@ const QUICK_ACTIONS = [
   {
     href: "/shipping-calc",
     icon: <Calculator size={24} className="text-brand-600" />,
-    label: "요금 계산",
+    label: "해외배송 계산기",
     sub: "EMS · K-Packet",
     className: "bg-white",
     labelClass: "text-gray-900",
@@ -159,7 +149,7 @@ export default function HomeClient() {
       const fetchParcels = () =>
         supabase
           .from("parcels")
-          .select("id, tracking_no, pickup_tracking_no, status, sender_name, created_at, inbound_at, weight_actual, hold_reason, notes, pre_invoice_items")
+          .select("id, tracking_no, pickup_tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_last_event, pre_invoice_items")
           .eq("customer_id", user.id)
           .order("created_at", { ascending: false })
           .limit(1)
@@ -269,55 +259,36 @@ export default function HomeClient() {
         ) : (
           <div className="space-y-3">
             {parcels.map((parcel) => {
-              const cfg = STATUS_CONFIG[parcel.status] ?? STATUS_CONFIG.DONE;
               const items = normalizeParcelItems(parcel.pre_invoice_items);
               const itemTitle = formatParcelItemTitle(items);
               const trackingNo = parcel.tracking_no || parcel.pickup_tracking_no;
+              const title = itemTitle || trackingNo || "물품 미등록";
+              const summary = getParcelDisplaySummary(parcel);
               return (
                 <Link
                   key={parcel.id}
                   href={`/warehouse/${parcel.id}`}
                   className="block bg-white rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-transform"
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0 pr-2">
-                      {/* 내품 제목 */}
-                      {itemTitle ? (
-                        <p className="text-sm font-semibold text-gray-900 truncate" title={itemTitle}>
-                          {itemTitle}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-900 truncate" title={title}>
+                        {title}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">{summary.subtitle}</p>
+                      {(trackingNo && itemTitle) || summary.meta ? (
+                        <p className="text-xs text-gray-400 mt-1 truncate">
+                          {[trackingNo && itemTitle ? trackingNo : null, summary.meta].filter(Boolean).join(" · ")}
                         </p>
-                      ) : (
-                        <p className="text-sm font-semibold text-gray-400">물품 미등록</p>
-                      )}
+                      ) : null}
                     </div>
-                    <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${cfg.color}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                      {cfg.label}
+                    <span className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border shrink-0 ${summary.badgeClass}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${summary.dotClass}`} />
+                      {summary.badgeLabel}
                     </span>
                   </div>
-
-                  <div className="flex items-center gap-3 flex-wrap text-xs text-gray-400">
-                    <span>입고: {parcel.inbound_at ? new Date(parcel.inbound_at).toLocaleDateString("ko-KR") : "대기중"}</span>
-                    {trackingNo && (
-                      <span className="font-mono text-gray-300 tracking-tight truncate max-w-[140px]">{trackingNo}</span>
-                    )}
-                    {parcel.weight_actual && <span>무게: {(parcel.weight_actual / 1000).toFixed(2)}kg</span>}
-                  </div>
-
-                  {parcel.status === "HOLD" && parcel.hold_reason && (
-                    <div className="mt-2 bg-red-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-red-600">⚠️ {parcel.hold_reason}</p>
-                    </div>
-                  )}
-                  {parcel.status === "PENDING_PICKUP" && (
-                    <div className="mt-2 bg-yellow-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-yellow-700">📦 우체국 수거 예약 완료 · 집배원 방문 예정</p>
-                    </div>
-                  )}
-                  {parcel.status === "PICKED_UP" && (
-                    <div className="mt-2 bg-brand-50 rounded-lg px-3 py-2">
-                      <p className="text-xs text-brand-700">🚛 수거 완료 · 센터로 이동 중</p>
-                    </div>
+                  {summary.alert && (
+                    <p className="text-xs text-red-600 mt-2">{summary.alert}</p>
                   )}
                 </Link>
               );

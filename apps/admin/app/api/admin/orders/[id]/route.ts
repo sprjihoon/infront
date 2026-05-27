@@ -86,17 +86,26 @@ export async function PATCH(
   }
 
   if (action === "confirm_quote") {
-    const { final_shipping_fee, note, totweight, boxlength, boxwidth, boxheight } = body;
+    const { final_shipping_fee, quote_ems_cost, shipping_margin, note, totweight, boxlength, boxwidth, boxheight } = body;
     if (!final_shipping_fee) return NextResponse.json({ error: "최종 배송비가 필요합니다" }, { status: 400 });
 
     const { data: order } = await adminDb.from("orders").select("*").eq("id", id).single();
     if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+    const emsCost = quote_ems_cost ? parseInt(String(quote_ems_cost)) : 0;
+    const marginAmt = shipping_margin ? parseInt(String(shipping_margin)) : 0;
     const newTotal = (order.packaging_fee ?? 0) + parseInt(final_shipping_fee);
 
     const { data, error } = await adminDb
       .from("orders")
-      .update({ status: "QUOTE_SENT", shipping_fee: parseInt(final_shipping_fee), total_amount: newTotal, updated_at: new Date().toISOString() })
+      .update({
+        status: "QUOTE_SENT",
+        shipping_fee: parseInt(final_shipping_fee),
+        quote_ems_cost: emsCost || null,
+        shipping_margin: marginAmt || null,
+        total_amount: newTotal,
+        updated_at: new Date().toISOString(),
+      })
       .eq("id", id).select().single();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

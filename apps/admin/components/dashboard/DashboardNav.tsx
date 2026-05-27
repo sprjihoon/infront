@@ -8,6 +8,7 @@ import {
   Package,
   ShoppingBag,
   RotateCcw,
+  Users,
   Search,
   ChevronDown,
   ChevronRight,
@@ -42,8 +43,9 @@ const NAV_GROUPS: NavGroup[] = [
     title: "운영",
     icon: Package,
     items: [
-      { title: "입고 물품", href: "/parcels", icon: Package },
+      { title: "수거·입고", href: "/parcels", icon: Package },
       { title: "배송 주문", href: "/orders", icon: ShoppingBag },
+      { title: "고객", href: "/customers", icon: Users },
       { title: "반품 관리", href: "/returns", icon: RotateCcw },
     ],
   },

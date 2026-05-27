@@ -19,6 +19,8 @@ async function makeSupabase() {
   );
 }
 
+import { COURIER_TO_CARRIER_ID } from "@/lib/tracking/client";
+
 interface InvoiceItem {
   name_en: string;
   quantity: number;
@@ -128,6 +130,7 @@ export async function POST(req: NextRequest) {
       customer_id: user.id,
       tracking_no: tracking_no.trim(),
       courier: courier?.trim() || null,
+      tracking_carrier_id: courier?.trim() ? (COURIER_TO_CARRIER_ID[courier.trim()] ?? null) : null,
       sender_name: sender_name?.trim() || null,
       sender_phone: sender_phone?.trim() || null,
       sender_address: sender_address?.trim() || null,
@@ -136,6 +139,7 @@ export async function POST(req: NextRequest) {
       pre_invoice_items: pre_invoice_items,
       status: "PRE_REGISTERED",
       registered_by: "CUSTOMER",
+      inbound_source: "DIRECT",
     })
     .select()
     .single();

@@ -41,7 +41,7 @@ export default function InsuranceQuoteFields({
         </div>
         <div className="flex-1 min-w-0">
           <p className={`font-semibold text-gray-800 ${compact ? "text-xs" : "text-sm"}`}>
-            보험료 포함 견적
+            보험료 포함 계산
           </p>
           <p className={`text-gray-400 mt-0.5 ${compact ? "text-[10px]" : "text-xs"}`}>
             신고가액(USD) 기준으로 EMS 보험 수수료를 합산합니다.
@@ -72,7 +72,7 @@ export default function InsuranceQuoteFields({
             </p>
           ) : (
             <p className={`text-brand-600/80 ${compact ? "text-[10px]" : "text-xs"}`}>
-              신고가액을 입력하면 보험 수수료가 포함된 견적을 조회합니다.
+              신고가액을 입력하면 보험 수수료가 포함된 예상 요금을 조회합니다.
             </p>
           )}
         </div>

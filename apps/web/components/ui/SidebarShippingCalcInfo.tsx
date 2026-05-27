@@ -16,7 +16,7 @@ export default function SidebarShippingCalcInfo() {
     <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
         <Info size={16} className="text-white" />
-        <span className="text-white font-semibold text-sm">요금 계산 안내</span>
+        <span className="text-white font-semibold text-sm">해외배송 계산 안내</span>
         <span className="ml-auto text-white/60 text-xs">우체국 기준</span>
       </div>
 
@@ -105,7 +105,7 @@ export default function SidebarShippingCalcInfo() {
             <li>• 표시 요금은 VAT 포함 예상 금액입니다.</li>
             <li>• 실제 접수 시 창고 실측 무게·크기로 재계산됩니다.</li>
             <li>• 가볍고 부피가 큰 물품은 부피중량이 적용될 수 있습니다.</li>
-            <li>• 보험 미선택 시 배송비만 표시됩니다. 보험 포함 견적은 옵션에서 선택할 수 있습니다.</li>
+            <li>• 보험 미선택 시 배송비만 표시됩니다. 보험 포함 계산은 옵션에서 선택할 수 있습니다.</li>
             <li>• 추가운송수수료 등은 별도일 수 있습니다.</li>
           </ul>
         </section>

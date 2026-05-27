@@ -160,7 +160,9 @@ infront/
 │   │   ├── android/      # Android 프로젝트
 │   │   └── capacitor.config.ts
 │   ├── edge/             # Supabase Edge Functions (Deno) — 예정
-│   └── sql/              # Postgres DDL 및 마이그레이션 (001~014)
+│   └── sql/              # Postgres DDL 및 마이그레이션 (001~021)
+├── docs/                 # 개발 현황·설계 문서
+│   └── DEVELOPMENT_STATUS.md
 ├── vercel.json
 └── README.md
 ```
@@ -208,7 +210,7 @@ infront/
 | 분류 | 기술 |
 |------|------|
 | Database & Auth | Supabase (Postgres + RLS + Auth) |
-| 물류 (국내) | 우체국 ePost API — 방문수거, 취소, 상태조회 (SEED128 암호화) |
+| 물류 (국내) | 우체국 ePost API — 방문수거, 취소, 상태조회 (SEED128) · tracker.delivery (타택배 추적) |
 | 물류 (국제) | EMS / EMS프리미엄 / K-Packet API |
 | 주소 검색 | 다음 우편번호 API |
 | 결제 | Toss Payments |
@@ -222,7 +224,7 @@ infront/
 
 | 경로 | 페이지 | 설명 |
 |------|--------|------|
-| `/home` | 홈 | 최근 주문 현황, 창고 요약, 빠른 링크 |
+| `/home` | 홈 | 액션 대시보드, 최근 배송 현황, 창고 요약, 빠른 링크 |
 | `/pickup` | 수거 신청 | 우체국 ePost 방문수거 신청, 주소 선택 |
 | `/warehouse` | 마이창고 | 입고 물품 목록, 상태 필터, 다중 선택 |
 | `/warehouse/[id]` | 물품 상세 | 인라인 수정, 추적, 부가 서비스 |
@@ -233,6 +235,8 @@ infront/
 | `/register-parcel` | 물품 등록 | 수동 물품 등록 |
 | `/return-request` | 반품 신청 | 반품 요청 UI |
 | `/shipping-calc` | 배송비 계산 | 해외 배송비 예상 계산기 |
+| `/pricing` | 요금표 | 우체국 공식 EMS/K-Packet 요금표 |
+| `/guide` | 이용 가이드 | 서비스 이용 안내 |
 | `/postcode` | 주소 검색 | 다음 우편번호 검색 래퍼 |
 | `/payment/success` | 결제 성공 | Toss 결제 결과 처리 |
 | `/payment/fail` | 결제 실패 | Toss 결제 실패 처리 |
@@ -259,8 +263,10 @@ infront/
 | `/api/ems/nations` | GET | EMS 배송 가능 국가 목록 |
 | `/api/ems/quote` | GET, POST | EMS/K-Packet 배송비 견적 |
 | `/api/ems/apply` | POST | EMS 접수 등록 |
-| `/api/payment/confirm` | POST | Toss 결제 승인 |
+| `/api/payment/confirm` | POST | Toss 결제 승인 + EMS 자동 접수 |
 | `/api/return-requests` | GET, POST | 반품 신청 |
+| `/api/cron/sync-inbound` | GET | 입고 전 구간 자동 동기화 (Vercel Cron) |
+| `/api/cron/sync-intl-tracking` | GET | 국제 운송장 추적 동기화 (Vercel Cron) |
 
 ---
 
@@ -269,11 +275,14 @@ infront/
 | 경로 | 페이지 | 상태 |
 |------|--------|------|
 | `/login` | 관리자 로그인 | ✅ |
-| `/parcels` | 입고 물품 목록 | ✅ (상태 필터, 검색) |
+| `/dashboard` | 대시보드 | ✅ (입고·주문·반품 집계) |
+| `/parcels` | 입고 물품 목록 | ✅ (상태 필터, 검색, 입고 동기화) |
 | `/parcels/[id]` | 물품 상세 | ✅ |
 | `/orders` | 국제 주문 목록 | ✅ |
 | `/orders/[id]` | 주문 상세 | ✅ |
-| `/orders/[id]/label` | 배송 라벨 | ✅ |
+| `/orders/[id]/label` | 배송 라벨 | ✅ (보험·세관 필드) |
+| `/customers` | 고객 관리 | 🔄 (고객별 물품·주문 조회) |
+| `/customers/[code]` | 고객 상세 | 🔄 |
 | `/returns` | 반품 신청 목록 | ✅ |
 
 ---
@@ -323,7 +332,7 @@ infront/
 
 ---
 
-## 🗄 DB 스키마 (마이그레이션 001~014)
+## 🗄 DB 스키마 (마이그레이션 001~021)
 
 | 파일 | 내용 |
 |------|------|
@@ -341,6 +350,15 @@ infront/
 | `012_orders_ems_fields.sql` | orders: EMS 관련 필드 추가 |
 | `013_return_requests_v2.sql` | 반품 요청 v2 스키마 |
 | `014_epost_order_no.sql` | epost_order_no 컬럼 (GetResInfo 상태 조회용) |
+| `015_pickup_box_specs.sql` | 수거 다박스·박스 규격 컬럼 |
+| `016_orders_insurance.sql` | orders: 국제우편 보험 옵션 (insurance_enabled, insurance_amount) |
+| `017_orders_intl_tracking.sql` | orders: 국제 운송장 추적 필드 |
+| `018_fix_handle_new_user.sql` | handle_new_user 트리거 중복 호출 수정 |
+| `019_orders_quote_margin.sql` | orders: 견적 EMS 원가·마진 (quote_ems_cost, shipping_margin) |
+| `020_parcel_inbound_source.sql` | parcels.inbound_source (PICKUP / DIRECT) — 🔄 적용 예정 |
+| `021_inbound_sync_schedule.sql` | admin_config 입고 동기화 스케줄 — 🔄 적용 예정 |
+
+> 상세 개발 현황: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
 ### 핵심 테이블 관계
 
@@ -398,19 +416,26 @@ parcels/orders ──< parcel_media            사진/영상 미디어
 | 회원가입 / 로그인 | ✅ 완료 | 이메일, Supabase Auth |
 | 고객번호 발급 | ✅ 완료 | 가입 시 자동 발급 (예: `IFT-20260518-0001`) |
 | 개인 입고주소 제공 | ✅ 완료 | 고객번호 기반 전용 입고주소 |
-| 수거 신청 | ✅ 완료 | 우체국 방문수거 API, 저장된 주소 선택 |
+| 수거 신청 | ✅ 완료 | 우체국 방문수거 API, 다박스·박스 규격, 저장된 주소 선택 |
 | 수거 취소 | ✅ 완료 | ePost API 연동 취소 + DB 상태 업데이트 |
 | 수거 상태 조회 | ✅ 완료 | GetResInfo API 실시간 상태 폴링 |
+| 일반/고급 입력 모드 | ✅ 완료 | 수거·등록 단계별 UI 전환 |
+| 홈 액션 대시보드 | ✅ 완료 | 지금 할 일 카드 (결제·검수·출고 안내) |
 | 즉시배송 옵션 | ✅ 완료 | 수거 신청 시 해외배송 플로우 바로 진입 |
 | 마이창고 | ✅ 완료 | 입고 물품 목록, 상태 필터, 검색 |
-| 물품 직접 등록 | ✅ 완료 | 수동 물품 등록 폼 |
+| 물품 직접 등록 | ✅ 완료 | 수동 물품 등록 폼 (타택배 경로) |
 | 물품 선택 + 배송 신청 | ✅ 완료 | 체크박스 다중 선택 → FAB 버튼 |
 | 해외배송 신청 (다단계) | ✅ 완료 | 배송옵션→배송지→인보이스 + 다중 박스 지원 |
 | 해외 배송지 주소록 | ✅ 완료 | 저장/수정/삭제, 기본 주소 설정 |
 | 배송비 계산기 | ✅ 완료 | 사이드바 위젯 + 전용 페이지, 국가·무게별 EMS 견적 |
+| 요금표·이용 가이드 | ✅ 완료 | `/pricing`, `/guide` |
 | 배송현황 (orders) | ✅ 완료 | 주문 목록, 상태 표시, 운송장 조회 |
-| 결제 (Toss) | ✅ 완료 | 카드 결제, 결제 확인 API |
-| 반품 신청 (UI) | ✅ 완료 | 반품 신청 폼 (백엔드 연동 진행 중) |
+| 신청 완료 주문 취소 | ✅ 완료 | 출고 신청 후 취소 |
+| 결제 (Toss) | ✅ 완료 | 카드 결제, confirm API, 결제 후 EMS 자동 접수 |
+| EMS 보험 옵션 | ✅ 완료 | 견적·접수 시 보험 가입 연동 |
+| 고객 알림 | ✅ 완료 | 단계별 in-app 알림 |
+| 반품 신청 (UI) | ✅ 완료 | 반품 신청 폼 (백엔드 워크플로우 진행 중) |
+| 입고 전 구간 자동 동기화 | 🔄 진행 중 | Cron + GetResInfo / tracker.delivery |
 | 검수검품 서비스 신청 | 🔲 예정 | 의류/일반 검수 옵션 선택 |
 | 빈 박스 배송 신청 | 🔲 예정 | 소/중/대 박스 국내 배송 |
 | 물품 사진/영상 확인 | 🔲 예정 | 입고영상·검품사진·출고영상 타임라인 |
@@ -423,23 +448,27 @@ parcels/orders ──< parcel_media            사진/영상 미디어
 | 기능 | 상태 | 설명 |
 |---|---|---|
 | 관리자 로그인 | ✅ 완료 | 이메일 화이트리스트 인증 |
-| 입고 물품 목록 | ✅ 완료 | 상태별 필터, 검색 |
+| 대시보드 | ✅ 완료 | 입고·주문·반품 집계 카드 |
+| 입고 물품 목록 | ✅ 완료 | 상태별 필터, 검색, 입고 동기화 버튼 |
 | 물품 상세 조회 | ✅ 완료 | 물품 정보, 상태 변경 |
 | 국제 주문 목록 | ✅ 완료 | 주문 목록, 상태 표시 |
 | 주문 상세 조회 | ✅ 완료 | 주문 정보, 물품 목록 |
-| 배송 라벨 조회 | ✅ 완료 | 라벨 출력 페이지 |
+| 배송 라벨 조회 | ✅ 완료 | 라벨 출력 (보험·세관 필드) |
+| EMS/K-Packet 접수 | ✅ 완료 | 세관신고 매핑 + 결제 후 자동 접수 |
+| 견적 원가·마진 | ✅ 완료 | DB 필드 (019), UI 연동 예정 |
 | 반품 신청 목록 | ✅ 완료 | 반품 현황 조회 |
-| EMS 접수 API | ✅ 완료 | 세관신고 데이터 자동 매핑 |
+| 고객 관리 | 🔄 진행 중 | 고객 검색, 고객별 물품·주문 조회 |
+| 입고 자동 동기화 | 🔄 진행 중 | GetResInfo + tracker.delivery, Cron·스케줄 설정 |
 | 접수건 벌크 상태 변경 | 🔲 예정 | 다중 선택 상태 변경 |
 | 국내 송장 매칭 | 🔲 예정 | 스캔 → 고객 자동 매칭 |
 | 오픈박스 영상 업로드 | 🔲 예정 | Cloudflare Stream tus 청크 업로드 |
 | 검수 결과 입력 | 🔲 예정 | 체크리스트 + 사진 업로드 |
 | 발송 가능/불가/보류 처리 | 🔲 예정 | 보류 사유 → 고객 자동 알림 |
 | 실측 무게/부피 입력 | 🔲 예정 | 부피중량 자동 계산 |
-| 견적 확정 + 결제 요청 | 🔲 예정 | QUOTE_SENT → 고객 알림 |
+| 견적 확정 + 결제 요청 | 🔄 부분 완료 | 실측→결제 플로우 완료, QUOTE_SENT 알림·마진 UI 예정 |
 | 반품 처리 워크플로우 | 🔲 예정 | 검수→포장→발송→완료 |
 | 국제 운송장 등록 | 🔲 예정 | 등록 즉시 고객 알림 |
-| 통계 대시보드 | 🔲 예정 | 접수건수, 매출, 국가별, 서비스별 |
+| 통계 대시보드 (상세) | 🔲 예정 | 매출, 국가별, 서비스별 분석 |
 
 ---
 
@@ -462,9 +491,9 @@ Next.js 웹앱
 
 ### Phase 1 — 고객 핵심 플로우 ✅ 완료
 
-- [x] Supabase 스키마 + RLS (001~014.sql, 107+ 커밋)
+- [x] Supabase 스키마 + RLS (001~017.sql, 129+ 커밋)
 - [x] 회원가입 → 고객번호/입고주소 자동 발급
-- [x] 수거 신청 (우체국 ePost API 연동)
+- [x] 수거 신청 (우체국 ePost API 연동, 다박스·박스 규격)
 - [x] 수거 취소 + 상태 조회 (GetResInfo)
 - [x] 마이창고 (입고현황, 물품 선택, 상태 필터)
 - [x] 물품 직접 등록
@@ -483,24 +512,37 @@ Next.js 웹앱
 - [x] 관리자: 입고/주문/반품 기본 CRUD 화면
 - [x] 관리자: EMS 접수 API
 
+### Phase 1.5 — 결제·운영 자동화 ✅ 완료
+
+- [x] 실측값 기반 견적 확정 → 고객 결제 플로우
+- [x] 결제 후 EMS/K-Packet 자동 접수 (`payment/confirm`)
+- [x] EMS 보험 옵션 (016) · 배송 라벨 출력
+- [x] 견적 EMS 원가·마진 분리 (019)
+- [x] 홈 액션 대시보드 · 일반/고급 입력 모드
+- [x] 요금표(`/pricing`) · 이용 가이드(`/guide`)
+- [x] 고객 in-app 알림 · 주문 취소 · 마이페이지 보완
+- [x] 국제 추적 Cron (`sync-intl-tracking`, 6시간)
+- [x] 관리자 대시보드 통계 카드
+
 ### Phase 2 — 부가 서비스 + 관리자 워크플로우
 
+- [ ] **입고 자동 동기화** 🔄 — GetResInfo + tracker.delivery, Cron·스케줄 (020~021)
+- [ ] **고객 관리** 🔄 — 고객별 물품·주문 조회
 - [ ] 검수검품 서비스 신청 UI
 - [ ] 빈 박스 배송 신청 UI + 관리자 처리
 - [ ] 반품 신청 전체 플로우 (시점별 처리)
 - [ ] 관리자: 입고 처리 + 오픈박스 영상 업로드 (Cloudflare Stream)
 - [ ] 관리자: 검수 결과 입력 + 사진 업로드 (Supabase Storage)
-- [ ] 관리자: 실측 → 견적 확정 → 결제 요청 알림
+- [ ] 관리자: 실측 → 견적 확정 → 결제 요청 알림 (QUOTE_SENT)
 - [ ] 관리자: 반품 처리 워크플로우
 - [ ] 고객: 물품 사진/영상 타임라인 확인
 
 ### Phase 3 — 완성도 + 앱
 
 - [ ] FCM 푸시 알림 전체 연동
-- [ ] 관리자: EMS/K-Packet 자동 접수 + 운송장 등록
-- [ ] 국내 운송장 추적 완전 연동
+- [ ] 국내 운송장 추적 완전 연동 (입고 동기화 완료 후)
 - [ ] Capacitor WebView 앱 빌드 (iOS/Android)
-- [ ] 통계 대시보드 (접수건수, 매출, 국가별, 서비스별)
+- [ ] 통계 대시보드 (매출, 국가별, 서비스별)
 
 ---
 
@@ -531,6 +573,7 @@ Next.js 웹앱
 
 ## 🧭 개발 규칙
 
+- **개발 현황**: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md) — 기능별 상세 일지 (README 로드맵과 동기화)
 - **커밋 메시지**: Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`)
 - **보안**: 모든 시크릿은 `.env.local`에만 보관, Git 커밋 금지
 - **DB 접근**: 관리자 서버 라우트는 `SUPABASE_SERVICE_ROLE_KEY` 사용, 고객 웹은 RLS 의존

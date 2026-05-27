@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     // 선택한 parcel들이 본인 것인지 검증
     const { data: parcels, error: parcelsErr } = await supabase
       .from('parcels')
-      .select('id, status')
+      .select('id, status, is_shippable')
       .in('id', parcel_ids)
       .eq('customer_id', user.id);
 
@@ -100,8 +100,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '유효하지 않은 물품이 포함되어 있습니다.' }, { status: 400 });
     }
 
-    const shippableStatuses = new Set(['INBOUND', 'INSPECTION']);
-    const notShippable = parcels.filter((p) => !shippableStatuses.has(p.status));
+    const notShippable = parcels.filter((p) => !(p.status === 'INBOUND' && p.is_shippable === true));
     if (notShippable.length > 0) {
       return NextResponse.json(
         { error: '입고·검수 완료된 물품만 출고 신청할 수 있습니다.' },

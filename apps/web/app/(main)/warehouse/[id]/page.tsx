@@ -10,6 +10,7 @@ import {
   Edit3, X, Check, Plus, Trash2, Lock,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { isParcelShippable } from "@/lib/parcel-shippable";
 import { TRACKING_STATUS } from "@/lib/tracking/client";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
 import type { ItemCategory } from "@/lib/item-categories";
@@ -117,7 +118,6 @@ const GRADE_CONFIG: Record<string, { label: string; color: string }> = {
   RETURN_RECOMMENDED:   { label: "반품 권장", color: "text-red-700 bg-red-100" },
 };
 
-const SHIPPABLE_STATUSES = new Set(["INBOUND", "INSPECTION"]);
 const RETURNABLE_STATUSES = new Set(["INBOUND", "INSPECTION", "HOLD"]);
 
 export default function ParcelDetailPage() {
@@ -293,10 +293,7 @@ export default function ParcelDetailPage() {
   const linkedActiveOrder = (linkedOrders ?? []).find(
     (lo) => lo.orders && !["CANCELLED", "DELIVERED"].includes(lo.orders.status)
   );
-  const canShip =
-    SHIPPABLE_STATUSES.has(parcel.status) &&
-    parcel.is_shippable !== false &&
-    !linkedActiveOrder;
+  const canShip = isParcelShippable(parcel) && !linkedActiveOrder;
   const canReturn = RETURNABLE_STATUSES.has(parcel.status);
   const canEdit = ["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"].includes(parcel.status);
   // 제품명·가격은 SHIPPING·DONE 전 단계까지 고객이 수정 가능

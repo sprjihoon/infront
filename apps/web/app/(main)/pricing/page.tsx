@@ -366,7 +366,7 @@ export default function PricingPage() {
             className="ml-auto flex items-center gap-1 text-xs bg-brand-600 text-white rounded-xl px-3 py-1.5 font-medium"
           >
             <Calculator size={12} />
-            요금 계산
+            해외배송 계산기
           </Link>
         </div>
       </div>

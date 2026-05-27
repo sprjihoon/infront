@@ -1,11 +1,29 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Search, CheckSquare, Square, Send, Plus, ClipboardList, RefreshCw } from "lucide-react";
+import {
+  Package,
+  Search,
+  CheckSquare,
+  Square,
+  Send,
+  Plus,
+  ClipboardList,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
-import { formatParcelItemTitle, normalizeParcelItems } from "@/lib/parcel-item-display";
+import { formatParcelItemTitle } from "@/lib/parcel-item-display";
+import { isParcelShippable } from "@/lib/parcel-shippable";
+import {
+  getParcelDisplaySummary,
+  getWarehouseEmptyMessage,
+  matchesWarehouseFilter,
+  WAREHOUSE_FILTER_TABS,
+  type WarehouseFilterKey,
+} from "@/lib/parcel-display";
 
 interface InvoiceItem {
   product_name?: string;
@@ -31,38 +49,14 @@ interface Parcel {
   pre_invoice_items: InvoiceItem[] | null;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; dot: string }> = {
-  PRE_REGISTERED:   { label: "등록 완료",  color: "text-indigo-700 bg-indigo-50 border-indigo-200", dot: "bg-indigo-400" },
-  PENDING_PICKUP:   { label: "수거 신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200", dot: "bg-yellow-400" },
-  PICKUP_CANCELLED: { label: "수거 취소", color: "text-red-600 bg-red-50 border-red-200",          dot: "bg-red-400" },
-  PICKED_UP:      { label: "수거 완료", color: "text-brand-700 bg-brand-50 border-brand-200",   dot: "bg-brand-400" },
-  INBOUND:        { label: "입고 완료", color: "text-green-700 bg-green-50 border-green-200", dot: "bg-green-400" },
-  INSPECTION:     { label: "검품 중",   color: "text-purple-700 bg-purple-50 border-purple-200", dot: "bg-purple-400" },
-  HOLD:           { label: "보류",      color: "text-red-700 bg-red-50 border-red-200",       dot: "bg-red-400" },
-  DONE:           { label: "처리 완료", color: "text-gray-600 bg-gray-50 border-gray-200",    dot: "bg-gray-400" },
-};
-
-const FILTER_TABS = [
-  { key: "ALL",            label: "전체" },
-  { key: "PRE_REGISTERED",   label: "등록완료" },
-  { key: "PENDING_PICKUP",   label: "수거신청" },
-  { key: "PICKUP_CANCELLED", label: "수거취소" },
-  { key: "PICKED_UP",      label: "수거완료" },
-  { key: "INBOUND",        label: "입고완료" },
-  { key: "INSPECTION",     label: "검품중" },
-  { key: "HOLD",           label: "보류" },
-];
-
-// 배송 신청 가능한 상태
-const SHIPPABLE_STATUSES = new Set(["INBOUND", "INSPECTION"]);
-
 export default function WarehousePage() {
   const router = useRouter();
   const [parcels, setParcels] = useState<Parcel[]>([]);
-  const [filter, setFilter] = useState("ALL");
+  const [filter, setFilter] = useState<WarehouseFilterKey>("ALL");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reservedParcelIds, setReservedParcelIds] = useState<Set<string>>(new Set());
 
@@ -91,6 +85,29 @@ export default function WarehousePage() {
     loadParcels();
   }, [loadParcels]);
 
+  const shippableParcels = useMemo(
+    () => parcels.filter((p) => isParcelShippable(p) && !reservedParcelIds.has(p.id)),
+    [parcels, reservedParcelIds],
+  );
+
+  const filterCounts = useMemo(() => {
+    const counts: Record<WarehouseFilterKey, number> = {
+      ALL: parcels.length,
+      IN_TRANSIT: 0,
+      AT_WAREHOUSE: 0,
+      READY_TO_SHIP: 0,
+      ATTENTION: 0,
+    };
+    for (const parcel of parcels) {
+      for (const tab of WAREHOUSE_FILTER_TABS) {
+        if (tab.key !== "ALL" && matchesWarehouseFilter(parcel, tab.key)) {
+          counts[tab.key] += 1;
+        }
+      }
+    }
+    return counts;
+  }, [parcels]);
+
   async function handleRefresh() {
     if (refreshing) return;
     setRefreshing(true);
@@ -102,22 +119,23 @@ export default function WarehousePage() {
   }
 
   const filtered = parcels.filter((p) => {
-    const matchStatus = filter === "ALL" || p.status === filter;
+    if (selectMode && !isParcelShippable(p)) return false;
+    if (selectMode && reservedParcelIds.has(p.id)) return false;
+    if (!matchesWarehouseFilter(p, filter)) return false;
     const q = search.trim();
-    const matchSearch =
-      !q ||
+    if (!q) return true;
+    return (
       p.tracking_no?.includes(q) ||
       p.sender_name?.includes(q) ||
       p.pre_invoice_items?.some(
         (item) =>
           item.product_name?.includes(q) ||
-          item.name_en?.toLowerCase().includes(q.toLowerCase())
-      );
-    return matchStatus && matchSearch;
+          item.name_en?.toLowerCase().includes(q.toLowerCase()),
+      ) ?? false
+    );
   });
 
-  function toggleSelect(id: string, shippable: boolean) {
-    if (!shippable) return;
+  function toggleSelect(id: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -127,85 +145,96 @@ export default function WarehousePage() {
   }
 
   function selectAll() {
-    const eligibleIds = filtered
-      .filter((p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false && !reservedParcelIds.has(p.id))
-      .map((p) => p.id);
+    const eligibleIds = filtered.map((p) => p.id);
     const allSelected = eligibleIds.every((id) => selectedIds.has(id));
-    if (allSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        eligibleIds.forEach((id) => next.delete(id));
-        return next;
-      });
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        eligibleIds.forEach((id) => next.add(id));
-        return next;
-      });
-    }
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) eligibleIds.forEach((id) => next.delete(id));
+      else eligibleIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  function enterSelectMode() {
+    setSelectMode(true);
+    setFilter("READY_TO_SHIP");
+    setSelectedIds(new Set());
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelectedIds(new Set());
   }
 
   function handleShippingRequest() {
     if (selectedIds.size === 0) return;
-    const ids = Array.from(selectedIds).join(",");
-    router.push(`/shipping-request?parcels=${ids}`);
+    router.push(`/shipping-request?parcels=${Array.from(selectedIds).join(",")}`);
   }
 
-  const eligibleInFiltered = filtered.filter(
-    (p) => SHIPPABLE_STATUSES.has(p.status) && p.is_shippable !== false && !reservedParcelIds.has(p.id)
-  );
   const allEligibleSelected =
-    eligibleInFiltered.length > 0 &&
-    eligibleInFiltered.every((p) => selectedIds.has(p.id));
+    filtered.length > 0 && filtered.every((p) => selectedIds.has(p.id));
 
   function handleParcelClick(parcel: Parcel) {
-    const isSelectable =
-      SHIPPABLE_STATUSES.has(parcel.status) &&
-      parcel.is_shippable !== false &&
-      !reservedParcelIds.has(parcel.id);
-    // 선택 중인 항목이 있으면 선택 토글, 없으면 상세 페이지로
-    if (selectedIds.size > 0 && isSelectable) {
-      toggleSelect(parcel.id, isSelectable);
-    } else {
-      router.push(`/warehouse/${parcel.id}`);
+    if (selectMode) {
+      toggleSelect(parcel.id);
+      return;
     }
+    router.push(`/warehouse/${parcel.id}`);
   }
+
+  const emptyMessage = getWarehouseEmptyMessage(filter);
 
   return (
     <div className="px-4 py-6 pb-36">
-      {/* 헤더 */}
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-xl font-bold text-gray-900">📦 마이창고</h1>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">
+            {selectMode ? "출고 물품 선택" : "📦 마이창고"}
+          </h1>
+          {selectMode && (
+            <p className="text-xs text-gray-500 mt-0.5">출고할 물품을 선택하세요</p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-1.5 rounded-full text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50"
-            title="추적 정보 새로고침"
-          >
-            <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
-          </button>
-          <button
-            onClick={() => router.push("/register-parcel")}
-            className="flex items-center gap-1.5 text-xs font-bold text-white bg-brand-600 px-3 py-1.5 rounded-full shadow-sm shadow-brand-200"
-          >
-            <Plus size={13} />
-            물품 등록
-          </button>
-          {eligibleInFiltered.length > 0 && (
+          {selectMode ? (
             <button
-              onClick={selectAll}
-              className="flex items-center gap-1.5 text-xs font-medium text-brand-600 px-3 py-1.5 bg-brand-50 rounded-full"
+              onClick={exitSelectMode}
+              className="flex items-center gap-1 text-xs font-medium text-gray-600 px-3 py-1.5 bg-gray-100 rounded-full"
             >
-              {allEligibleSelected ? <CheckSquare size={13} /> : <Square size={13} />}
-              {allEligibleSelected ? "선택 해제" : "전체 선택"}
+              <X size={13} />
+              취소
             </button>
+          ) : (
+            <>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-1.5 rounded-full text-gray-400 hover:text-brand-600 hover:bg-brand-50 transition-colors disabled:opacity-50"
+                title="추적 정보 새로고침"
+              >
+                <RefreshCw size={15} className={refreshing ? "animate-spin" : ""} />
+              </button>
+              <button
+                onClick={() => router.push("/register-parcel")}
+                className="flex items-center gap-1.5 text-xs font-bold text-white bg-brand-600 px-3 py-1.5 rounded-full shadow-sm shadow-brand-200"
+              >
+                <Plus size={13} />
+                물품 등록
+              </button>
+              {shippableParcels.length > 0 && (
+                <button
+                  onClick={enterSelectMode}
+                  className="flex items-center gap-1.5 text-xs font-bold text-brand-700 px-3 py-1.5 bg-brand-50 rounded-full"
+                >
+                  <Send size={13} />
+                  출고 신청
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* 검색 */}
       <div className="relative mb-4">
         <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
@@ -216,34 +245,57 @@ export default function WarehousePage() {
         />
       </div>
 
-      {/* 필터 탭 */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
-        {FILTER_TABS.map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              filter === key
-                ? "bg-brand-600 text-white"
-                : "bg-white text-gray-500 border border-gray-200"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* 선택 안내 */}
-      {eligibleInFiltered.length > 0 && selectedIds.size === 0 && (
-        <div className="bg-brand-50 rounded-xl px-4 py-2.5 mb-3 flex items-center gap-2">
-          <CheckSquare size={14} className="text-brand-500 shrink-0" />
-          <p className="text-xs text-brand-700">
-            입고된 물품을 선택해서 해외배송을 신청할 수 있어요
-          </p>
+      {!selectMode && (
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-none">
+          {WAREHOUSE_FILTER_TABS.map(({ key, label }) => {
+            const count = filterCounts[key];
+            return (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  filter === key
+                    ? "bg-brand-600 text-white"
+                    : "bg-white text-gray-500 border border-gray-200"
+                }`}
+              >
+                {label}
+                {key !== "ALL" && count > 0 ? ` ${count}` : ""}
+              </button>
+            );
+          })}
         </div>
       )}
 
-      {/* 목록 */}
+      {selectMode && filtered.length > 0 && (
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-brand-700">
+            출고 가능 {filtered.length}건
+          </p>
+          <button
+            onClick={selectAll}
+            className="flex items-center gap-1 text-xs font-medium text-brand-600"
+          >
+            {allEligibleSelected ? <CheckSquare size={13} /> : <Square size={13} />}
+            {allEligibleSelected ? "전체 해제" : "전체 선택"}
+          </button>
+        </div>
+      )}
+
+      {!selectMode && shippableParcels.length > 0 && filter === "ALL" && (
+        <div className="bg-green-50 rounded-xl px-4 py-2.5 mb-3 flex items-center justify-between gap-2">
+          <p className="text-xs text-green-800">
+            출고 가능 {shippableParcels.length}건 · 해외배송을 신청할 수 있어요
+          </p>
+          <button
+            onClick={enterSelectMode}
+            className="shrink-0 text-xs font-bold text-green-700 underline underline-offset-2"
+          >
+            선택하기
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
@@ -253,30 +305,33 @@ export default function WarehousePage() {
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-10 text-center">
           <Package size={44} className="text-gray-200 mx-auto mb-3" />
-          <p className="text-gray-500 text-sm font-medium mb-1">
-            {filter === "PRE_REGISTERED" ? "등록된 물품이 없어요" : "입고된 물품이 없어요"}
+          <p className="text-gray-500 text-sm font-medium mb-1 whitespace-pre-line">
+            {emptyMessage.title}
           </p>
-          <p className="text-xs text-gray-400 mb-5">
-            쇼핑몰에서 창고 주소로 발송한 물품을<br />미리 등록해두세요
+          <p className="text-xs text-gray-400 mb-5 whitespace-pre-line">
+            {emptyMessage.desc}
           </p>
-          <button
-            onClick={() => router.push("/register-parcel")}
-            className="inline-flex items-center gap-2 bg-brand-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl"
-          >
-            <ClipboardList size={15} /> 물품 등록하기
-          </button>
+          {!selectMode && (
+            <button
+              onClick={() => router.push("/register-parcel")}
+              className="inline-flex items-center gap-2 bg-brand-600 text-white text-sm font-bold px-5 py-2.5 rounded-xl"
+            >
+              <ClipboardList size={15} /> 물품 등록하기
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
           {filtered.map((parcel) => {
-            const cfg = STATUS_CONFIG[parcel.status] ?? STATUS_CONFIG.DONE;
             const itemTitle = formatParcelItemTitle(parcel.pre_invoice_items);
             const isReserved = reservedParcelIds.has(parcel.id);
-            const isSelectable =
-              SHIPPABLE_STATUSES.has(parcel.status) &&
-              parcel.is_shippable !== false &&
-              !isReserved;
             const isSelected = selectedIds.has(parcel.id);
+            const summary = getParcelDisplaySummary(parcel, { isReserved });
+            const title = itemTitle || parcel.tracking_no || "물품 미등록";
+            const secondary =
+              itemTitle && parcel.tracking_no
+                ? parcel.tracking_no
+                : parcel.sender_name ?? null;
 
             return (
               <div
@@ -285,15 +340,14 @@ export default function WarehousePage() {
                 className={`bg-white rounded-2xl p-4 shadow-sm transition-all cursor-pointer ${
                   isSelected
                     ? "ring-2 ring-brand-500 shadow-brand-100"
-                    : isSelectable
+                    : selectMode
                     ? "hover:ring-1 hover:ring-brand-200"
-                    : ""
+                    : "active:scale-[0.99]"
                 }`}
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-start gap-3">
-                    {/* 체크박스 */}
-                    {isSelectable && (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {selectMode && (
                       <div className="mt-0.5 shrink-0">
                         {isSelected ? (
                           <CheckSquare size={18} className="text-brand-600" />
@@ -302,77 +356,28 @@ export default function WarehousePage() {
                         )}
                       </div>
                     )}
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {parcel.tracking_no ?? "송장번호 미등록"}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900 truncate" title={title}>
+                        {title}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {parcel.sender_name ?? "발송인 미확인"}
-                        {parcel.notes ? ` · ${parcel.notes}` : ""}
-                      </p>
-                      {itemTitle && (
-                        <p className="text-xs text-gray-500 mt-1 truncate" title={itemTitle}>
-                          {itemTitle}
+                      <p className="text-xs text-gray-500 mt-1">{summary.subtitle}</p>
+                      {(secondary || summary.meta) && (
+                        <p className="text-xs text-gray-400 mt-1 truncate">
+                          {[secondary, summary.meta].filter(Boolean).join(" · ")}
                         </p>
                       )}
                     </div>
                   </div>
                   <span
-                    className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${cfg.color}`}
+                    className={`shrink-0 flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${summary.badgeClass}`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                    {cfg.label}
+                    <span className={`w-1.5 h-1.5 rounded-full ${summary.dotClass}`} />
+                    {summary.badgeLabel}
                   </span>
                 </div>
 
-                <div className={`flex items-center gap-4 text-xs text-gray-400 ${isSelectable ? "pl-7" : ""}`}>
-                  <span>
-                    입고:{" "}
-                    {parcel.inbound_at
-                      ? new Date(parcel.inbound_at).toLocaleDateString("ko-KR")
-                      : "대기중"}
-                  </span>
-                  {parcel.weight_actual && (
-                    <span>무게: {(parcel.weight_actual / 1000).toFixed(2)}kg</span>
-                  )}
-                </div>
-
-                {isReserved && (
-                  <div className="mt-2 bg-brand-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-brand-700">✈️ 배송 신청 진행 중 — 배송현황에서 취소하면 다시 출고 신청할 수 있어요</p>
-                  </div>
-                )}
-                {parcel.status === "HOLD" && parcel.hold_reason && (
-                  <div className="mt-2 bg-red-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-red-600">⚠️ {parcel.hold_reason}</p>
-                  </div>
-                )}
-                {parcel.status === "PRE_REGISTERED" && (
-                  <div className="mt-2 bg-indigo-50 rounded-lg px-3 py-2">
-                    {parcel.tracking_last_event ? (
-                      <p className="text-xs text-indigo-700">
-                        🚚 {parcel.tracking_last_event.statusLabel || parcel.tracking_last_event.description}
-                        {parcel.tracking_last_event.location ? ` · ${parcel.tracking_last_event.location}` : ""}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-indigo-600">📬 센터 도착 대기 중 · 도착 후 입고 처리됩니다</p>
-                    )}
-                  </div>
-                )}
-                {parcel.status === "PENDING_PICKUP" && (
-                  <div className="mt-2 bg-yellow-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-yellow-700">📦 우체국 수거 예약 완료 · 집배원 방문 예정</p>
-                  </div>
-                )}
-                {parcel.status === "PICKUP_CANCELLED" && (
-                  <div className="mt-2 bg-red-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-red-600">❌ 수거 신청이 취소되었습니다 · 다시 수거 신청하세요</p>
-                  </div>
-                )}
-                {parcel.status === "PICKED_UP" && (
-                  <div className="mt-2 bg-brand-50 rounded-lg px-3 py-2">
-                    <p className="text-xs text-brand-700">🚛 수거 완료 · 센터로 이동 중</p>
-                  </div>
+                {summary.alert && (
+                  <p className="text-xs text-red-600 mt-2 pl-0">{summary.alert}</p>
                 )}
               </div>
             );
@@ -380,9 +385,11 @@ export default function WarehousePage() {
         </div>
       )}
 
-      {/* 해외배송 신청 FAB */}
-      {selectedIds.size > 0 && (
-        <div className="fixed left-0 right-0 flex justify-center px-4 z-40" style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}>
+      {selectMode && selectedIds.size > 0 && (
+        <div
+          className="fixed left-0 right-0 flex justify-center px-4 z-40"
+          style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}
+        >
           <button
             onClick={handleShippingRequest}
             className="flex items-center gap-2.5 bg-brand-600 text-white font-bold px-6 py-4 rounded-2xl shadow-lg shadow-brand-200 text-sm active:scale-95 transition-transform"
