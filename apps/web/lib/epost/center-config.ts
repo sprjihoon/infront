@@ -19,14 +19,17 @@ export const EPOST_CENTER_DEFAULTS = {
   addr2: '동대구우체국 2층 소포실',
 } as const;
 
-/** Vercel env 한글 깨짐(?????) 시 계약 기본 주소로 대체 */
+/** Vercel env 한글 깨짐(?????)·Latin-1 깨짐 시 계약 기본 주소로 대체 */
 export function sanitizeCenterAddr1(addr1: string): string {
   const t = addr1.trim();
-  if (t.length < 2) return EPOST_CENTER_DEFAULTS.addr1;
+  if (t.length < 2) {
+    console.warn('[EPOST] INFRONT_CENTER_ADDR1 비어 있음 — 기본 주소 사용');
+    return EPOST_CENTER_DEFAULTS.addr1;
+  }
   const hasHangul = /[가-힣]/.test(t);
   const mostlyQuestion = (t.match(/\?/g)?.length ?? 0) >= 3;
-  if (!hasHangul && mostlyQuestion) {
-    console.warn('[EPOST] INFRONT_CENTER_ADDR1 인코딩 오류 — 기본 주소 사용');
+  if (!hasHangul || mostlyQuestion) {
+    console.warn('[EPOST] INFRONT_CENTER_ADDR1 인코딩 오류 — 기본 주소 사용', { raw: t.slice(0, 40) });
     return EPOST_CENTER_DEFAULTS.addr1;
   }
   return t;

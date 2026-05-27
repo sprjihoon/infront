@@ -32,15 +32,11 @@ import { resolveInfrontCenterFromEnv } from '@/lib/epost/center-config';
 
 export const preferredRegion = 'icn1';
 
-const centerConfig = resolveInfrontCenterFromEnv();
-const CENTER_ORD_NM  = centerConfig.ordNm;
-const CENTER_ZIPCODE = normalizeEpostZip(centerConfig.zip);
-const CENTER_ADDR1   = centerConfig.addr1;
-const CENTER_ADDR2   = centerConfig.addr2;
-const OFFICE_SER     = '260537802';
+const OFFICE_SER = '260537802';
 
-function centerPhone() {
-  return centerConfig.phone;
+/** 요청마다 env 재조회 — 모듈 로드 시점/인코딩 깨짐 방지 */
+function getCenterConfig() {
+  return resolveInfrontCenterFromEnv();
 }
 
 async function rollbackEpostOrder(
@@ -138,8 +134,11 @@ export async function POST(req: NextRequest) {
     }
 
     const spec = boxSpecs[0];
+    const center = getCenterConfig();
+    const centerZip = normalizeEpostZip(center.zip);
+    const centerAddr1 = normalizeEpostAddr1(center.addr1);
 
-    if (CENTER_ZIPCODE.length !== 5 || CENTER_ADDR1.length < 2) {
+    if (centerZip.length !== 5 || centerAddr1.length < 2) {
       return NextResponse.json(
         { error: '물류센터(동대구우체국) 주소가 올바르지 않습니다. INFRONT_CENTER_* 환경변수를 확인해주세요.' },
         { status: 500 }
@@ -335,7 +334,7 @@ export async function POST(req: NextRequest) {
     if (!isTest) {
       try {
         centerMob = requireEpostPhone(
-          centerPhone() || process.env.INFRONT_CENTER_PHONE,
+          center.phone || process.env.INFRONT_CENTER_PHONE,
           '센터 연락처(INFRONT_CENTER_PHONE)',
         );
         recPhoneEpost = requireEpostPhone(recPhoneRaw, '수거 연락처(recTel)');
@@ -345,16 +344,15 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: msg }, { status });
       }
     } else {
-      centerMob = centerPhone() || '01000000000';
+      centerMob = center.phone || '01000000000';
       recPhoneEpost = normalizeEpostPhone(recPhoneRaw) || '01000000000';
     }
 
     const pickupZip = recZip;
-    const centerZip = CENTER_ZIPCODE;
     if (
       !isTest &&
       pickupZip === centerZip &&
-      recAddr1 === normalizeEpostAddr1(CENTER_ADDR1)
+      recAddr1 === centerAddr1
     ) {
       return NextResponse.json(
         { error: '수거 주소는 물류센터 주소와 달라야 합니다. 고객님 댁 주소를 입력해주세요.' },
@@ -373,9 +371,9 @@ export async function POST(req: NextRequest) {
       officeSer: OFFICE_SER,
       orderNo,
       center: {
-        ordNm: CENTER_ORD_NM,
-        zip: CENTER_ZIPCODE,
-        addr1: CENTER_ADDR1,
+        ordNm: center.ordNm,
+        zip: centerZip,
+        addr1: centerAddr1,
         addr2: '',
         phone: centerMob,
       },

@@ -397,6 +397,20 @@ async function callEPost(
     }
   }
 
+  if (endpoint.includes('GetResInfo')) {
+    const dbg: Record<string, string> = {};
+    for (const pair of plainText.split('&')) {
+      const idx = pair.indexOf('=');
+      if (idx > 0) dbg[pair.slice(0, idx)] = pair.slice(idx + 1);
+    }
+    console.log('[EPOST] getResInfo plain:', {
+      reqType: dbg.reqType,
+      orderNo: dbg.orderNo,
+      reqYmd: dbg.reqYmd,
+      plainLen: plainText.length,
+    });
+  }
+
   // 진단용 로그 — InsertOrder 접수 시에만
   if (isInsertOrder) {
     const dbg: Record<string, string> = {};
