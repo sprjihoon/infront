@@ -203,17 +203,21 @@ export async function POST(req: NextRequest) {
       if (savedZip.length === 5) recZip = savedZip;
       if (savedAddr.name?.trim()) recNm = savedAddr.name.trim();
       if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone.trim();
-      // 주소록 DB 우선, 단 상세주소는 화면에서 보완 입력한 값이 있으면 그것을 사용
+      // 주소록 DB가 기준 — 화면 값은 DB에 상세주소가 없을 때만 보완
       const detailFromDb = (savedAddr.address_detail ?? '').trim();
       const detailFromClient = (pickup_address_detail ?? '').trim();
-      recAddr2Raw = detailFromClient || detailFromDb || recAddr2Raw;
+      recAddr2Raw = detailFromDb || detailFromClient || (recAddr2Raw ?? '').trim();
+    } else {
+      recAddr2Raw = (pickup_address_detail ?? recAddr2Raw ?? '').trim();
     }
 
     console.log('[PICKUP] 최종 수거지 값', {
       recAddr1,
       recZip,
       recNm,
+      recAddr2: (recAddr2Raw ?? '').trim(),
       hasPhone: !!recPhoneRaw,
+      pickup_address_id: pickup_address_id ?? null,
     });
 
     if (recZip.length !== 5) {
@@ -239,10 +243,23 @@ export async function POST(req: NextRequest) {
     const isTest = test_mode === true || !hasEpostCreds;
 
     if (!isTest && (recAddr2Raw ?? '').trim().length < 2) {
+      const hint = pickup_address_id
+        ? '마이페이지 → 주소록 관리 → 수거배송지에서 상세주소(동·호수)를 입력·저장한 뒤 다시 선택해주세요.'
+        : '수거 신청 화면에서 상세주소(동·호수, 층)를 입력해주세요.';
       return NextResponse.json(
-        { error: '수거지 상세주소(동·호수, 층 등)를 입력해주세요. 우체국 수거에 필수입니다.' },
+        { error: `수거지 상세주소가 없습니다. ${hint}` },
         { status: 400 }
       );
+    }
+
+    // 수거 화면에서 보완 입력한 상세주소를 주소록에 반영 (다음 접수부터 그대로 사용)
+    if (pickup_address_id && (recAddr2Raw ?? '').trim().length >= 2) {
+      await supabase
+        .from('customer_addresses')
+        .update({ address_detail: (recAddr2Raw ?? '').trim() })
+        .eq('id', pickup_address_id)
+        .eq('customer_id', user.id)
+        .eq('type', 'pickup');
     }
 
     const recAddr2 = resolveEpostPickupAddr2(recAddr2Raw);

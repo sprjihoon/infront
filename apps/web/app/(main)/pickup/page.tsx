@@ -141,7 +141,9 @@ export default function PickupPage() {
       return "연락처 형식을 확인해주세요. (예: 010-1234-5678)";
     }
     if ((pickupAddress.addressDetail ?? "").trim().length < 2) {
-      return "수거지 상세주소(동·호수, 층 등)를 입력해주세요. 우체국 수거에 필수입니다.";
+      return pickupAddress.savedId
+        ? "주소록에 상세주소가 없습니다. 마이페이지 → 주소록 관리에서 수거배송지 상세주소를 저장하거나, 아래 칸에 입력해주세요."
+        : "수거지 상세주소(동·호수, 층 등)를 입력해주세요.";
     }
     if (disabledDates.includes(pickupDate)) return "토·일요일 및 공휴일은 수거가 불가합니다.";
     return null;
@@ -183,7 +185,9 @@ export default function PickupPage() {
       phone: data.phone ?? addr.phone,
       zipcode: zip.length === 5 ? zip : addr.zipcode,
       address,
-      addressDetail: (data.address_detail ?? '').trim() || (addr.addressDetail ?? '').trim(),
+      addressDetail:
+        (data.address_detail ?? '').trim() ||
+        (addr.addressDetail ?? '').trim(),
     };
   }
 

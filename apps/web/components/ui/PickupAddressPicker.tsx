@@ -44,7 +44,7 @@ function toPickupAddressValue(a: SavedAddress): PickupAddressValue | null {
     phone: a.phone ?? "",
     zipcode: zip,
     address,
-    addressDetail: a.address_detail ?? "",
+    addressDetail: (a.address_detail ?? "").trim(),
   };
 }
 
@@ -86,7 +86,8 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
         onChange({
           ...refreshed,
           address: refreshed.address || normalizeEpostAddr1(value.address),
-          addressDetail: refreshed.addressDetail || value.addressDetail,
+          addressDetail:
+            refreshed.addressDetail.trim() || (value.addressDetail ?? "").trim(),
         });
       }
     } else if (!value && data && data.length > 0) {
