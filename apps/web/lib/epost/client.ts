@@ -639,7 +639,6 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{
     custNo,
     apprNo,
     reqType: params.reqType,
-    payType: params.payType ?? '2',
     reqNo,
     resNo,
     regiNo,
@@ -649,7 +648,6 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{
 
   console.log('[EPOST] cancel payload:', {
     reqType: payload.reqType,
-    payType: payload.payType,
     reqNo: payload.reqNo,
     resNo: payload.resNo,
     regiNo: payload.regiNo,
@@ -676,23 +674,8 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{
     );
   };
 
-  const delAttempts: Array<'Y' | 'N'> =
-    params.delYn === 'Y' ? ['Y', 'N'] : [params.delYn];
-
-  let lastErr: unknown;
-  for (const delYn of delAttempts) {
-    try {
-      const xml = await callEPost('api.GetResCancelCmd.jparcel', { ...payload, delYn });
-      return assertCanceled(parseCancel(xml), 'api.GetResCancelCmd.jparcel');
-    } catch (err) {
-      lastErr = err;
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('ERR-123') || msg.includes('예약된 정보가 없')) {
-        throw err;
-      }
-    }
-  }
-  throw lastErr instanceof Error ? lastErr : new Error('우체국 취소 API 호출 실패');
+  const xml = await callEPost('api.GetResCancelCmd.jparcel', payload);
+  return assertCanceled(parseCancel(xml), 'api.GetResCancelCmd.jparcel');
 }
 
 export function mockInsertOrder(): InsertOrderResponse {

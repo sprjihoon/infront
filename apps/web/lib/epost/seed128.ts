@@ -325,11 +325,11 @@ export function buildEpostParams(
   endpoint = '',
 ): string {
   if (endpoint.includes('GetResCancelCmd') || endpoint.includes('CancelOrder')) {
-    // live 검증: regiNo가 reqNo 앞에 와야 함 (뒤에 두면 ERR-211 reqNo 누락)
+    // 매뉴얼 SHPAPI-U02-01: payType 없음 — 포함 시 ERR-211(resNo 누락) 필드 밀림
     return buildKeyedPlaintext(
       params,
-      ['custNo', 'apprNo', 'payType', 'reqType', 'regiNo', 'reqNo', 'resNo', 'reqYmd', 'delYn'],
-      new Set(['custNo', 'apprNo', 'reqType', 'reqNo', 'resNo', 'regiNo', 'reqYmd']),
+      ['custNo', 'apprNo', 'reqType', 'reqNo', 'resNo', 'regiNo', 'reqYmd', 'delYn'],
+      new Set(['custNo', 'apprNo', 'reqType', 'reqNo', 'resNo', 'regiNo', 'delYn']),
     );
   }
   if (endpoint.includes('GetResInfo')) {

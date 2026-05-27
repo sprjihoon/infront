@@ -105,10 +105,9 @@ export async function DELETE(
       console.error('[PICKUP CANCEL] 우체국 API 취소 실패:', message, { reqNo, resNo, regiNo, reqYmd });
       const isNoReservation =
         message.includes('ERR-123') ||
-        message.includes('ERR-211') ||
         message.includes('예약된 정보가 없') ||
         message.includes('접수정보로 예약') ||
-        message.includes('필수항목누락');
+        message.includes('신청정보가 존재하지 않');
       if (!isNoReservation) {
         return NextResponse.json(
           {
@@ -117,7 +116,7 @@ export async function DELETE(
           { status: 502 },
         );
       }
-      console.warn('[PICKUP CANCEL] 우체국 취소 불가(ERR-123/211/필수항목 등) — DB만 취소 처리', { message, reqNo });
+      console.warn('[PICKUP CANCEL] 우체국 예약 없음 — DB만 취소 처리', { message, reqNo });
     }
   }
 
