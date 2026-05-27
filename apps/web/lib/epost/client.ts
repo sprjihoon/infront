@@ -20,6 +20,11 @@ export function normalizeEpostZip(zip?: string | number | null): string {
   return String(zip).replace(/\D/g, '').slice(0, 5);
 }
 
+/** 우체국 recAddr1/ordAddr1 — 앞뒤 공백 제거 */
+export function normalizeEpostAddr1(addr?: string | null): string {
+  return addr?.trim() ?? '';
+}
+
 /** 우체국 recAddr2 — 미입력 시 API 관례값 */
 export function resolveEpostRecAddr2(detail?: string | null): string {
   const trimmed = detail?.trim();
@@ -49,6 +54,7 @@ export function formatEpostOrderNo(prefix = 'SPB', seq = 1): string {
 
 /** 우체국 API — ordCompNm 실측 12byte 초과 시 regData 필드 밀림 */
 const EPOST_ORD_COMP_NM_MAX_BYTES = 12;
+const EPOST_ADDR_MAX_BYTES = 100;
 
 const INSERT_ORDER_KEYS = new Set([
   'custNo', 'apprNo', 'payType', 'reqType', 'officeSer',
@@ -78,6 +84,11 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   }
   if (typeof body.recNm === 'string') {
     body.recNm = truncateUtf8Bytes(body.recNm, 40);
+  }
+  for (const key of ['ordAddr1', 'ordAddr2', 'recAddr1', 'recAddr2'] as const) {
+    if (typeof body[key] === 'string') {
+      body[key] = truncateUtf8Bytes(normalizeEpostAddr1(body[key]), EPOST_ADDR_MAX_BYTES);
+    }
   }
   if (typeof body.goodsNm === 'string') {
     body.goodsNm = truncateUtf8Bytes(body.goodsNm, 200);
@@ -178,6 +189,9 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
 
   if (!body.recZip || String(body.recZip).length !== 5) {
     throw new Error('수취인 우편번호(recZip)가 없습니다.');
+  }
+  if (!body.recAddr1 || normalizeEpostAddr1(String(body.recAddr1)).length < 2) {
+    throw new Error('수취인 주소(recAddr1)가 없습니다. 주소 검색으로 다시 선택해주세요.');
   }
 
   const xml = await callEPost('api.InsertOrder.jparcel', body, testYn);

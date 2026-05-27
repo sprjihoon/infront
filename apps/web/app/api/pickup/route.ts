@@ -9,6 +9,7 @@ import {
   getResInfo,
   normalizeEpostPhone,
   normalizeEpostZip,
+  normalizeEpostAddr1,
   resolveEpostRecAddr2,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
@@ -19,6 +20,7 @@ import {
   type PickupBoxInput,
   type PickupBoxSizeCode,
 } from '@/lib/epost/pickup-boxes';
+import { buildReturnPickupOrderParams } from '@/lib/epost/pickup-order';
 
 export const preferredRegion = 'icn1';
 
@@ -64,6 +66,7 @@ export async function POST(req: NextRequest) {
       pickup_zipcode,
       pickup_phone,
       pickup_name,
+      pickup_address_id,
       pickup_date,
       pickup_notes,
       goods_name,
@@ -74,11 +77,12 @@ export async function POST(req: NextRequest) {
       box_count,
       box_size,
     } = body as {
-      pickup_address: string;
+      pickup_address?: string;
       pickup_address_detail?: string;
-      pickup_zipcode: string;
-      pickup_phone: string;
+      pickup_zipcode?: string;
+      pickup_phone?: string;
       pickup_name?: string;
+      pickup_address_id?: string;
       pickup_date: string;
       pickup_notes?: string;
       goods_name?: string;
@@ -90,17 +94,9 @@ export async function POST(req: NextRequest) {
       box_count?: number;
     };
 
-    if (!pickup_address || !pickup_phone || !pickup_date) {
+    if (!pickup_phone?.trim() || !pickup_date) {
       return NextResponse.json(
-        { error: '수거 주소, 연락처, 수거 희망일은 필수입니다.' },
-        { status: 400 }
-      );
-    }
-
-    const recZip = normalizeEpostZip(pickup_zipcode);
-    if (recZip.length !== 5) {
-      return NextResponse.json(
-        { error: '수거지 우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.' },
+        { error: '수거 연락처, 수거 희망일은 필수입니다.' },
         { status: 400 }
       );
     }
@@ -162,6 +158,45 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '고객 정보를 찾을 수 없습니다.' }, { status: 404 });
     }
 
+    let recAddr1 = normalizeEpostAddr1(pickup_address);
+    let recZip = normalizeEpostZip(pickup_zipcode);
+    let recAddr2Raw = pickup_address_detail;
+    let recNm = pickup_name?.trim() || customer.name || '고객';
+    let recPhoneRaw = pickup_phone;
+
+    if (pickup_address_id) {
+      const { data: savedAddr } = await supabase
+        .from('customer_addresses')
+        .select('name, phone, zipcode, address, address_detail')
+        .eq('id', pickup_address_id)
+        .eq('customer_id', user.id)
+        .eq('type', 'pickup')
+        .maybeSingle();
+
+      if (savedAddr) {
+        const savedAddr1 = normalizeEpostAddr1(savedAddr.address);
+        if (savedAddr1.length >= 2) recAddr1 = savedAddr1;
+        const savedZip = normalizeEpostZip(savedAddr.zipcode);
+        if (savedZip.length === 5) recZip = savedZip;
+        if (savedAddr.address_detail != null) recAddr2Raw = savedAddr.address_detail;
+        if (savedAddr.name?.trim()) recNm = savedAddr.name.trim();
+        if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone;
+      }
+    }
+
+    if (recZip.length !== 5) {
+      return NextResponse.json(
+        { error: '수거지 우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.' },
+        { status: 400 }
+      );
+    }
+    if (recAddr1.length < 2) {
+      return NextResponse.json(
+        { error: '수거지 도로명/지번 주소가 없습니다. 주소록에서 주소 검색 후 다시 저장해주세요.' },
+        { status: 400 }
+      );
+    }
+
     const custNo = (process.env.EPOST_CUSTOMER_ID ?? '').trim();
     const apprNo = (process.env.EPOST_APPROVAL_NO ?? '').trim();
     const hasEpostCreds =
@@ -171,9 +206,8 @@ export async function POST(req: NextRequest) {
       !!apprNo;
     const isTest = test_mode === true || !hasEpostCreds;
 
-    const recAddr2 = resolveEpostRecAddr2(pickup_address_detail);
+    const recAddr2 = resolveEpostRecAddr2(recAddr2Raw);
 
-    const pickupPhone = normalizeEpostPhone(pickup_phone);
     const centerMob = centerPhone();
     if (!isTest && !centerMob) {
       return NextResponse.json(
@@ -187,7 +221,7 @@ export async function POST(req: NextRequest) {
     if (
       !isTest &&
       pickupZip === centerZip &&
-      pickup_address.trim() === CENTER_ADDR1.trim()
+      recAddr1 === normalizeEpostAddr1(CENTER_ADDR1)
     ) {
       return NextResponse.json(
         { error: '수거 주소는 물류센터 주소와 달라야 합니다. 고객님 댁 주소를 입력해주세요.' },
@@ -200,35 +234,41 @@ export async function POST(req: NextRequest) {
     const goodsNm = goods_name?.trim() || '해외배송 물품';
     const boxNote = pickupBoxSummary(spec);
 
-    const epostParams = {
+    const epostParams = buildReturnPickupOrderParams({
       custNo: custNo || 'TEST',
       apprNo: apprNo || '0000000000',
-      payType: '2' as const,
-      reqType: '2' as const,
       officeSer: OFFICE_SER,
       orderNo,
-      ordCompNm: CENTER_ORD_NM,
-      ordNm: CENTER_ORD_NM,
-      ordZip: CENTER_ZIPCODE,
-      ordAddr1: CENTER_ADDR1,
-      ordAddr2: CENTER_ADDR2 || '없음',
-      ordMob: centerMob,
-      recNm: pickup_name?.trim() || customer.name || '고객',
-      recZip,
-      recAddr1: pickup_address,
-      recAddr2,
-      recTel: pickupPhone,
-      recMob: pickupPhone,
-      contCd: '025',
+      center: {
+        ordNm: CENTER_ORD_NM,
+        zip: CENTER_ZIPCODE,
+        addr1: CENTER_ADDR1,
+        addr2: CENTER_ADDR2,
+        phone: centerMob,
+      },
+      pickup: {
+        name: recNm,
+        zip: recZip,
+        addr1: recAddr1,
+        addr2: recAddr2Raw,
+        phone: recPhoneRaw,
+      },
       goodsNm,
       weight: spec.weight,
       volume: spec.volume,
-      microYn: 'N' as const,
       delivMsg: pickup_notes,
-      testYn: isTest ? ('Y' as const) : ('N' as const),
-      printYn: 'Y' as const,
-      inqTelCn: pickupPhone,
-    };
+      testYn: isTest ? 'Y' : 'N',
+    });
+
+    if (!isTest) {
+      console.log('[PICKUP] epost 반품소포', {
+        ordZip: epostParams.ordZip,
+        ordAddr1: epostParams.ordAddr1,
+        recZip: epostParams.recZip,
+        recAddr1: epostParams.recAddr1,
+        recNm: epostParams.recNm,
+      });
+    }
 
     let epostResult: InsertOrderResponse;
     let orderNoUsed = orderNo;
@@ -280,10 +320,10 @@ export async function POST(req: NextRequest) {
         courier: '우체국택배',
         tracking_carrier_id: 'kr.epost',
         inbound_source: 'PICKUP',
-        pickup_address,
+        pickup_address: recAddr1,
         pickup_address_detail: recAddr2 === '없음' ? null : recAddr2,
         pickup_zipcode: recZip,
-        pickup_phone,
+        pickup_phone: recPhoneRaw,
         pickup_date,
         pickup_notes: pickup_notes ?? null,
         pickup_requested_at: new Date().toISOString(),

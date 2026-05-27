@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package,
 } from "lucide-react";
-import { normalizeEpostZip } from "@/lib/epost/client";
+import { normalizeEpostZip, normalizeEpostAddr1 } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
@@ -129,7 +129,10 @@ export default function PickupPage() {
   }, []);
 
   const validateStep1 = useCallback((): string | null => {
-    if (!pickupAddress?.address) return "수거 주소를 선택해주세요.";
+    if (!pickupAddress) return "수거 주소를 선택해주세요.";
+    if (normalizeEpostAddr1(pickupAddress.address).length < 2) {
+      return "수거 주소를 선택해주세요. 주소 검색으로 도로명 주소가 채워져야 합니다.";
+    }
     if (normalizeEpostZip(pickupAddress.zipcode).length !== 5) {
       return "우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.";
     }
@@ -169,13 +172,14 @@ export default function PickupPage() {
       .maybeSingle();
     if (!data) return addr;
     const zip = normalizeEpostZip(data.zipcode);
+    const address = normalizeEpostAddr1(data.address) || normalizeEpostAddr1(addr.address);
     return {
       savedId: data.id,
       label: data.label,
       name: data.name,
       phone: data.phone ?? addr.phone,
       zipcode: zip.length === 5 ? zip : addr.zipcode,
-      address: data.address ?? addr.address,
+      address,
       addressDetail: data.address_detail ?? addr.addressDetail,
     };
   }
@@ -228,19 +232,24 @@ export default function PickupPage() {
     try {
       const resolved = await resolvePickupAddress(pickupAddress!);
       const zip = normalizeEpostZip(resolved.zipcode);
+      const address = normalizeEpostAddr1(resolved.address);
       if (zip.length !== 5) {
         throw new Error("우편번호가 없습니다. 주소록에서 저장 후 수거지를 다시 선택해주세요.");
+      }
+      if (address.length < 2) {
+        throw new Error("도로명/지번 주소가 없습니다. 주소록에서 주소 검색 후 다시 저장해주세요.");
       }
 
       const resp = await fetch("/api/pickup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pickup_address: resolved.address,
+          pickup_address: address,
           pickup_address_detail: resolved.addressDetail?.trim() || undefined,
           pickup_zipcode: zip,
           pickup_phone: resolved.phone,
           pickup_name: resolved.name,
+          pickup_address_id: resolved.savedId,
           pickup_date: pickupDate,
           pickup_notes: notes.trim() || undefined,
           box_count: 1,

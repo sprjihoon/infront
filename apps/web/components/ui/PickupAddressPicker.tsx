@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { MapPin, Star, Plus, ChevronRight, X, Check, Pencil } from "lucide-react";
-import { normalizeEpostZip } from "@/lib/epost/client";
+import { normalizeEpostZip, normalizeEpostAddr1 } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "./AddressSearchButton";
 
@@ -35,14 +35,15 @@ interface Props {
 
 function toPickupAddressValue(a: SavedAddress): PickupAddressValue | null {
   const zip = normalizeEpostZip(a.zipcode);
-  if (zip.length !== 5) return null;
+  const address = normalizeEpostAddr1(a.address);
+  if (zip.length !== 5 || address.length < 2) return null;
   return {
     savedId: a.id,
     label: a.label,
     name: a.name,
     phone: a.phone ?? "",
     zipcode: zip,
-    address: a.address ?? "",
+    address,
     addressDetail: a.address_detail ?? "",
   };
 }
@@ -81,7 +82,13 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
     if (value?.savedId && data) {
       const current = data.find((a) => a.id === value.savedId);
       const refreshed = current ? toPickupAddressValue(current) : null;
-      if (refreshed) onChange(refreshed);
+      if (refreshed) {
+        onChange({
+          ...refreshed,
+          address: refreshed.address || normalizeEpostAddr1(value.address),
+          addressDetail: refreshed.addressDetail || value.addressDetail,
+        });
+      }
     } else if (!value && data && data.length > 0) {
       const def = data.find((a) => a.is_default) ?? data[0];
       const picked = toPickupAddressValue(def);
@@ -92,7 +99,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
   function selectSaved(a: SavedAddress) {
     const picked = toPickupAddressValue(a);
     if (!picked) {
-      alert("우편번호가 없는 주소입니다. 주소를 수정하거나 다시 검색해주세요.");
+      alert("우편번호 또는 도로명 주소가 없는 주소입니다. 주소를 수정하거나 다시 검색해주세요.");
       return;
     }
     onChange(picked);
@@ -100,8 +107,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
   }
 
   async function confirmNew() {
-    if (!newName || !newPhone || !newAddr || !newZip) return;
-    if (normalizeEpostZip(newZip).length !== 5) return;
+    if (!newName || !newPhone || normalizeEpostAddr1(newAddr).length < 2 || normalizeEpostZip(newZip).length !== 5) return;
     setSaving(true);
 
     try {
@@ -126,7 +132,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
             name: newName,
             phone: newPhone,
             zipcode: normalizeEpostZip(newZip),
-            address: newAddr,
+            address: normalizeEpostAddr1(newAddr),
             address_detail: newDetail,
             is_default: isDefault,
           })
@@ -139,7 +145,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
           name: newName,
           phone: newPhone,
           zipcode: normalizeEpostZip(newZip),
-          address: newAddr,
+          address: normalizeEpostAddr1(newAddr),
           addressDetail: newDetail,
         });
         await loadSaved();
@@ -148,7 +154,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
           name: newName,
           phone: newPhone,
           zipcode: normalizeEpostZip(newZip),
-          address: newAddr,
+          address: normalizeEpostAddr1(newAddr),
           addressDetail: newDetail,
         });
       }

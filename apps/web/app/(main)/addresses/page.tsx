@@ -6,7 +6,7 @@ import {
   ArrowLeft, Plus, MapPin, Globe, Star, Pencil, Trash2,
   Phone, Mail, X, Check, ChevronDown,
 } from "lucide-react";
-import { normalizeEpostZip } from "@/lib/epost/client";
+import { normalizeEpostZip, normalizeEpostAddr1 } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 
@@ -131,7 +131,10 @@ export default function AddressesPage() {
     if (!customerId) return;
     if (!form.label?.trim()) { alert("표시명을 입력해주세요."); return; }
     if (!form.name?.trim())  { alert("이름을 입력해주세요."); return; }
-    if (tab === "pickup" && !form.address?.trim()) { alert("주소를 검색해주세요."); return; }
+    if (tab === "pickup" && normalizeEpostAddr1(form.address).length < 2) {
+      alert("주소를 검색해주세요.");
+      return;
+    }
     if (tab === "pickup" && normalizeEpostZip(form.zipcode).length !== 5) {
       alert("우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.");
       return;
@@ -143,7 +146,12 @@ export default function AddressesPage() {
       ...form,
       customer_id: customerId,
       type: tab,
-      ...(tab === "pickup" ? { zipcode: normalizeEpostZip(form.zipcode) } : {}),
+      ...(tab === "pickup"
+        ? {
+            zipcode: normalizeEpostZip(form.zipcode),
+            address: normalizeEpostAddr1(form.address),
+          }
+        : {}),
     };
 
     if (form.is_default) {

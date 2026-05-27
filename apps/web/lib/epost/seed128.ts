@@ -308,16 +308,18 @@ export function buildEpostParams(params: Record<string, unknown>): string {
   const pairs: string[] = [];
 
   for (const key of orderedKeys) {
-    if (!(key in params)) continue;
+    if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
     const val = params[key];
-    if (val === null || val === undefined) continue;
     const isReq = required.has(key);
+    if (val === null || val === undefined) continue;
     let sv: string;
     if (typeof val === 'boolean') sv = val ? 'Y' : 'N';
     else if (typeof val === 'number') sv = String(Math.floor(val));
     else sv = String(val);
     if (!isReq && sv === '') continue;
-    if (isReq && sv.trim() === '' && key === 'recAddr2') sv = '없음';
+    if (isReq && sv.trim() === '') {
+      if (key === 'recAddr2' || key === 'ordAddr2') sv = '없음';
+    }
     pairs.push(`${key}=${sv}`);
   }
   return pairs.join('&');
