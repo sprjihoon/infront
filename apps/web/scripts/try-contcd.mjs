@@ -15,7 +15,8 @@ const LIVE = process.argv.includes('--live');
 const testYn = LIVE ? 'N' : 'Y';
 const codes = ['011', '021', '025', '031', '003', '001'];
 
-// reqType=2 방문반품: ord*=고객(수거지), rec*=물류센터(우체국 등록 수취처)
+// reqType=2 방문반품 (인프론트 계약 기준 — regiNo 발급 확인된 매핑)
+// ord* = 고객(수거지), rec* = 물류센터(수취처)
 const base = {
   custNo: process.env.EPOST_CUSTOMER_ID.trim(),
   apprNo: process.env.EPOST_APPROVAL_NO.trim(),
@@ -27,18 +28,17 @@ const base = {
   microYn: 'N',
   // ord* = 고객 (수거 요청자, 반품인)
   ordCompNm: '홍길동',
-  ordNm: '홍길동',
-  ordZip: '41100',
-  ordAddr1: '대구광역시 동구 범심로 188',
-  ordAddr2: '201호',
-  ordMob: '01012345678',
+  ordNm:     '홍길동',
+  ordZip:    '41100',
+  ordAddr1:  '대구광역시 동구 범심로 188',
+  ordAddr2:  '201호',
+  ordMob:    '01012345678',
   // rec* = 물류센터 (우체국 계약 등록 수취처)
-  // INFRONT_CENTER_ORD_NM 미설정 시 기본값 '인프론트' (route.ts 와 동일)
-  recNm: (process.env.INFRONT_CENTER_ORD_NM ?? '인프론트').trim(),
-  recZip: process.env.INFRONT_CENTER_ZIPCODE.replace(/\D/g, ''),
+  recNm:    (process.env.INFRONT_CENTER_ORD_NM ?? '인프론트').trim(),
+  recZip:   process.env.INFRONT_CENTER_ZIPCODE.replace(/\D/g, ''),
   recAddr1: process.env.INFRONT_CENTER_ADDR1,
   recAddr2: '없음',
-  recTel: phone,
+  recTel:   phone,
   goodsNm: '수거테스트',
   printYn: 'Y',
   inqTelCn: '01012345678',

@@ -1,12 +1,12 @@
 /**
  * 반품소포(수거) InsertOrder 파라미터
  *
- * reqType=2 방문반품 필드 매핑:
- *   ord* = 주문자/발신자 = 고객 (수거를 요청한 반품인, 소포의 출발지)
- *   rec* = 수취인       = 물류센터 (우체국 계약에 등록된 반품 수취 주소)
+ * reqType=2 방문반품 필드 매핑 (로컬 테스트로 regiNo 발급 확인된 기준):
+ *   ord* = 주문자/발신자 = 고객 (수거 요청자, 반품인)
+ *   rec* = 수취인       = 물류센터 (우체국 계약 등록 수취처)
  *
- * 주의: rec*에 고객 주소를 넣으면 ERR-311(recAddr1 없음) 발생.
- *       우체국 시스템은 rec*가 계약에 등록된 센터 주소인지 검증한다.
+ * 주의: 인프론트 계약은 rec*=고객 방향이면 ERR-322(recTel 비숫자) 오류 발생.
+ *       modo(모두의수선) 계약과 필드 방향이 다름 — 계약 등록 방식 차이.
  */
 
 import type { InsertOrderParams } from './types';
@@ -52,6 +52,8 @@ export interface ReturnPickupOrderInput {
  *
  * ord* ← 고객 (수거지, 반품인)
  * rec* ← 물류센터 (우체국 등록 수취처)
+ *
+ * contCd=025 + 이 매핑으로 regiNo 발급 확인됨 (2026-05-27 로컬 테스트)
  */
 export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): InsertOrderParams {
   const pickupPhone = normalizeEpostPhone(input.pickup.phone);
@@ -75,7 +77,7 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     recNm:    input.center.ordNm,
     recZip:   normalizeEpostZip(input.center.zip),
     recAddr1: normalizeEpostAddr1(input.center.addr1),
-    recAddr2: '없음',  // 우체국 계약 등록 수취처는 상세주소 없음(로컬 테스트 확인)
+    recAddr2: '없음',  // 계약 등록 시 상세주소 없음으로 등록됨 (로컬 테스트 확인)
     recTel:   centerPhone,
     contCd: '025',
     goodsNm: input.goodsNm,

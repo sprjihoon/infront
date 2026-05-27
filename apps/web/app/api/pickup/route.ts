@@ -265,7 +265,7 @@ export async function POST(req: NextRequest) {
         ordNm: CENTER_ORD_NM,
         zip: CENTER_ZIPCODE,
         addr1: CENTER_ADDR1,
-        addr2: '',  // 우체국 계약에 recAddr2='없음'으로 등록됨 — CENTER_ADDR2는 라벨 출력용
+        addr2: '',  // 우체국 계약에 recAddr2='없음'으로 등록됨
         phone: centerMob,
       },
       pickup: {
