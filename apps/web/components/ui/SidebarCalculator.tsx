@@ -38,7 +38,8 @@ type ServiceResult = {
   id: string;
   label: string;
   color: string;
-  fee: number | null;
+  shippingFee: number | null;
+  insuranceFee: number | null;
   err: string | null;
   pending?: boolean;
 };
@@ -86,23 +87,24 @@ export default function SidebarCalculator() {
     setLoading(true);
     // 모든 서비스를 pending 상태로 초기화해 즉시 표시
     const initial: ServiceResult[] = services.map(s => ({
-      id: s.id, label: s.label, color: s.color, fee: null, err: null, pending: true,
+      id: s.id, label: s.label, color: s.color, shippingFee: null, insuranceFee: null, err: null, pending: true,
     }));
     setResults([...initial]);
 
     // 동시 요청 시 우체국 EMS 서버가 오류를 반환하므로 순차 처리
     const out: ServiceResult[] = [...initial];
     const isDoc = docType === "doc";
+    const insUsd = parseFloat(insuranceUsd) || 0;
     try {
       for (let i = 0; i < services.length; i++) {
         const s = services[i];
         if (isDoc && realWeight > s.maxW) {
-          out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
+          out[i] = { id: s.id, label: s.label, color: s.color, shippingFee: null, insuranceFee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
           setResults([...out]);
           continue;
         }
         if (applied > s.maxW) {
-          out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
+          out[i] = { id: s.id, label: s.label, color: s.color, shippingFee: null, insuranceFee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
           setResults([...out]);
           continue;
         }
@@ -116,26 +118,39 @@ export default function SidebarCalculator() {
             boxheight: parseFloat(height),
           });
           if (dimErr) {
-            out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: dimErr };
+            out[i] = { id: s.id, label: s.label, color: s.color, shippingFee: null, insuranceFee: null, err: dimErr };
             setResults([...out]);
             continue;
           }
         }
-        const p = new URLSearchParams({
+        const baseP = new URLSearchParams({
           premiumcd: s.premiumcd, em_ee: s.em_ee,
           countrycd: country, totweight: String(Math.round(applied)),
           ...(!isDoc && length ? { boxlength: length } : {}),
           ...(!isDoc && width  ? { boxwidth:  width  } : {}),
           ...(!isDoc && height ? { boxheight: height } : {}),
         });
-        appendInsuranceQuoteParams(p, insuranceEnabled, parseFloat(insuranceUsd) || 0);
         try {
-          const res  = await fetch(`/api/ems/quote?${p}`);
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error ?? "조회 실패");
-          out[i] = { id: s.id, label: s.label, color: s.color, fee: data.totalFee as number, err: null };
+          // 기본 배송료 (보험 미포함)
+          const res1  = await fetch(`/api/ems/quote?${baseP}`);
+          const data1 = await res1.json();
+          if (!res1.ok) throw new Error(data1.error ?? "조회 실패");
+          const shippingFee = data1.totalFee as number;
+
+          // 보험 수수료 = (보험 포함 총액) − 배송료
+          let insuranceFee = 0;
+          if (insuranceEnabled && insUsd > 0) {
+            const insP = new URLSearchParams(baseP);
+            appendInsuranceQuoteParams(insP, true, insUsd);
+            const res2  = await fetch(`/api/ems/quote?${insP}`);
+            const data2 = await res2.json();
+            if (!res2.ok) throw new Error(data2.error ?? "조회 실패");
+            insuranceFee = Math.max(0, (data2.totalFee as number) - shippingFee);
+          }
+
+          out[i] = { id: s.id, label: s.label, color: s.color, shippingFee, insuranceFee, err: null };
         } catch (e) {
-          out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: e instanceof Error ? e.message : "오류" };
+          out[i] = { id: s.id, label: s.label, color: s.color, shippingFee: null, insuranceFee: null, err: e instanceof Error ? e.message : "오류" };
         }
         setResults([...out]);
         // 서비스 간 짧은 간격으로 EMS 서버 부하 완화
@@ -149,7 +164,7 @@ export default function SidebarCalculator() {
   }
 
   const selectedCountry = POPULAR.find(c => c.code === country);
-  const validFees = results?.filter(r => r.fee !== null).map(r => r.fee!) ?? [];
+  const validFees = results?.filter(r => r.shippingFee !== null).map(r => r.shippingFee! + (r.insuranceFee ?? 0)) ?? [];
   const minFee = validFees.length ? Math.min(...validFees) : null;
   const customsInfo = getCustomsInfo(country);
 
@@ -308,33 +323,46 @@ export default function SidebarCalculator() {
                 <RotateCcw size={12} />
               </button>
             </div>
-            {results.map(r => (
-              <div
-                key={r.id}
-                className={`rounded-xl px-3 py-2 border flex items-center justify-between ${
-                  r.fee !== null && r.fee === minFee && validFees.length > 1
-                    ? "bg-brand-50 border-brand-200"
-                    : "bg-gray-50 border-gray-100"
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${r.color}`} />
-                  <span className="text-xs text-gray-600 truncate">{r.label}</span>
-                  {r.fee !== null && r.fee === minFee && validFees.length > 1 && (
-                    <span className="text-[9px] bg-brand-500 text-white px-1 py-0.5 rounded font-bold shrink-0">최저</span>
+            {results.map(r => {
+              const total = r.shippingFee !== null ? r.shippingFee + (r.insuranceFee ?? 0) : null;
+              const isCheapest = total !== null && total === minFee && validFees.length > 1;
+              return (
+                <div
+                  key={r.id}
+                  className={`rounded-xl px-3 py-2 border flex items-center justify-between ${
+                    isCheapest ? "bg-brand-50 border-brand-200" : "bg-gray-50 border-gray-100"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${r.color}`} />
+                    <span className="text-xs text-gray-600 truncate">{r.label}</span>
+                    {isCheapest && (
+                      <span className="text-[9px] bg-brand-500 text-white px-1 py-0.5 rounded font-bold shrink-0">최저</span>
+                    )}
+                  </div>
+                  {r.pending ? (
+                    <Loader2 size={13} className="animate-spin text-gray-300 shrink-0 ml-2" />
+                  ) : r.err ? (
+                    <span className="text-[10px] text-gray-400 shrink-0 ml-2">{r.err}</span>
+                  ) : r.insuranceFee! > 0 ? (
+                    <div className="text-right shrink-0 ml-2 space-y-0.5">
+                      <div className="flex items-center justify-end gap-1 text-[10px] text-gray-500">
+                        <span>배송료</span>
+                        <span className="font-bold text-gray-900">{r.shippingFee!.toLocaleString()}원</span>
+                      </div>
+                      <div className="flex items-center justify-end gap-1 text-[10px] text-blue-500">
+                        <span>보험료</span>
+                        <span className="font-bold">{r.insuranceFee!.toLocaleString()}원</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-bold text-gray-900 shrink-0 ml-2">{r.shippingFee!.toLocaleString()}원</span>
                   )}
                 </div>
-                {r.pending ? (
-                  <Loader2 size={13} className="animate-spin text-gray-300 shrink-0 ml-2" />
-                ) : r.err ? (
-                  <span className="text-[10px] text-gray-400 shrink-0 ml-2">{r.err}</span>
-                ) : (
-                  <span className="text-sm font-bold text-gray-900 shrink-0 ml-2">{r.fee!.toLocaleString()}원</span>
-                )}
-              </div>
-            ))}
+              );
+            })}
             <p className="text-[10px] text-gray-400 text-center pt-0.5">
-              {insuranceEnabled ? "보험 수수료 포함 예상 요금 · " : ""}
+              {insuranceEnabled ? "배송료 · 보험료 별도 표시 · " : ""}
               실제 접수 시 우체국 요금 기준으로 확정
             </p>
           </div>

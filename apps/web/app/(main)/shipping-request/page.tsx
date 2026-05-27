@@ -377,7 +377,7 @@ function ShippingRequestContent() {
     }
     if (ms === 3) {
       return boxInvoices.every((inv) =>
-        inv.every((i) => i.name_en.trim() && i.quantity > 0 && i.unit_price_usd >= 0)
+        inv.every((i) => i.name_en.trim() && i.quantity > 0 && i.unit_price_usd > 0)
       );
     }
     return true;
@@ -1175,13 +1175,20 @@ function ShippingRequestContent() {
                         </div>
                         <div className="space-y-2.5">
                           <div>
-                            <label className="block text-xs font-semibold text-gray-500 mb-1">품목명 (영문) *</label>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1">
+                              품목명 (영문) <span className="text-red-400">*</span>
+                            </label>
                             <input
                               value={item.name_en}
                               onChange={(e) => updateItem(idx, { name_en: e.target.value })}
                               placeholder="e.g. Clothing, Cosmetics, Electronics"
-                              className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                              className={`w-full bg-gray-50 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                                !item.name_en.trim() ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
+                              }`}
                             />
+                            {!item.name_en.trim() && (
+                              <p className="text-[10px] text-red-500 mt-0.5">품목명을 입력해주세요</p>
+                            )}
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
@@ -1195,15 +1202,26 @@ function ShippingRequestContent() {
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-semibold text-gray-500 mb-1">단가 (USD) *</label>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                value={item.unit_price_usd}
-                                onChange={(e) => updateItem(idx, { unit_price_usd: parseFloat(e.target.value) || 0 })}
-                                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                              />
+                              <label className="block text-xs font-semibold text-gray-500 mb-1">
+                                단가 (USD) <span className="text-red-400">*</span>
+                              </label>
+                              <div className={`flex items-center bg-gray-50 border rounded-xl px-3 py-2 ${
+                                item.unit_price_usd <= 0 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
+                              }`}>
+                                <span className="text-xs text-gray-400 mr-1.5 shrink-0">$</span>
+                                <input
+                                  type="number"
+                                  min={0.01}
+                                  step={0.01}
+                                  value={item.unit_price_usd || ""}
+                                  placeholder="0.00"
+                                  onChange={(e) => updateItem(idx, { unit_price_usd: parseFloat(e.target.value) || 0 })}
+                                  className="flex-1 bg-transparent text-sm text-gray-900 outline-none min-w-0"
+                                />
+                              </div>
+                              {item.unit_price_usd <= 0 && (
+                                <p className="text-[10px] text-red-500 mt-0.5">금액을 입력해주세요</p>
+                              )}
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-2">

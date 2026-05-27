@@ -99,7 +99,7 @@ const COUNTRIES = [
 ];
 
 type ServiceResult =
-  | { status: "ok"; fee: number }
+  | { status: "ok"; shippingFee: number; insuranceFee: number }
   | { status: "error"; message: string }
   | { status: "overweight" };
 
@@ -158,7 +158,7 @@ export default function ShippingCalcPage() {
       });
       if (dimErr) return { status: "error", message: dimErr };
     }
-    const params = new URLSearchParams({
+    const baseParams = new URLSearchParams({
       premiumcd: svc.premiumcd,
       em_ee: svc.em_ee,
       countrycd: cc,
@@ -167,13 +167,25 @@ export default function ShippingCalcPage() {
       ...(w ? { boxwidth: w } : {}),
       ...(h ? { boxheight: h } : {}),
     });
-    if (insurance) {
-      appendInsuranceQuoteParams(params, insurance.enabled, insurance.usd);
+
+    // 기본 배송료 (보험 미포함)
+    const baseRes = await fetch(`/api/ems/quote?${baseParams}`);
+    const baseData = await baseRes.json();
+    if (!baseRes.ok) return { status: "error", message: baseData.error ?? "조회 실패" };
+    const shippingFee = baseData.totalFee as number;
+
+    // 보험 수수료 = (보험 포함 총액) − 배송료
+    if (insurance?.enabled && insurance.usd > 0) {
+      const insParams = new URLSearchParams(baseParams);
+      appendInsuranceQuoteParams(insParams, true, insurance.usd);
+      const insRes = await fetch(`/api/ems/quote?${insParams}`);
+      const insData = await insRes.json();
+      if (!insRes.ok) return { status: "error", message: insData.error ?? "조회 실패" };
+      const insuranceFee = Math.max(0, (insData.totalFee as number) - shippingFee);
+      return { status: "ok", shippingFee, insuranceFee };
     }
-    const res = await fetch(`/api/ems/quote?${params}`);
-    const data = await res.json();
-    if (!res.ok) return { status: "error", message: data.error ?? "조회 실패" };
-    return { status: "ok", fee: data.totalFee };
+
+    return { status: "ok", shippingFee, insuranceFee: 0 };
   }
 
   async function calculate() {
@@ -231,8 +243,8 @@ export default function ShippingCalcPage() {
   const cheapestFee = results
     ? Math.min(
         ...Object.values(results.services)
-          .filter((r): r is { status: "ok"; fee: number } => r.status === "ok")
-          .map(r => r.fee)
+          .filter((r): r is { status: "ok"; shippingFee: number; insuranceFee: number } => r.status === "ok")
+          .map(r => r.shippingFee + r.insuranceFee)
       )
     : Infinity;
 
@@ -412,6 +424,132 @@ export default function ShippingCalcPage() {
           </div>
         )}
 
+        {/* 결과 비교표 */}
+        {results && (
+          <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
+            {/* 헤더 */}
+            <div className="bg-brand-600 px-4 py-3 flex items-center justify-between">
+              <div>
+                <p className="text-white/80 text-xs">
+                  {country.flag} {country.name} · 적용 중량 {results.appliedWeight.toLocaleString()} g
+                </p>
+                <p className="text-white font-bold text-sm mt-0.5">
+                  서비스별 예상 배송비{insuranceEnabled ? " (배송료·보험료 별도)" : ""}
+                </p>
+              </div>
+              <button onClick={reset} className="text-white/70 hover:text-white">
+                <RotateCcw size={16} />
+              </button>
+            </div>
+
+            <div className="divide-y divide-gray-50">
+              {SERVICES.map(svc => {
+                const r = results.services[svc.id];
+                const isCheapest = r.status === "ok" && (r.shippingFee + r.insuranceFee) === cheapestFee;
+                return (
+                  <div
+                    key={svc.id}
+                    className={`flex items-start gap-3 px-4 py-3.5 ${
+                      isCheapest ? "bg-green-50" : ""
+                    }`}
+                  >
+                    {/* 서비스명 */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${svc.color} shrink-0`} />
+                        <span className="text-sm font-semibold text-gray-800">{svc.label}</span>
+                        {svc.sublabel && (
+                          <span className="text-[10px] bg-gray-100 text-gray-500 rounded px-1">
+                            {svc.sublabel}
+                          </span>
+                        )}
+                        {isCheapest && (
+                          <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-semibold">
+                            최저가
+                          </span>
+                        )}
+                      </div>
+                      {svc.em_ee === "ee" ? (
+                        <>
+                          <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
+                            최대 {svc.maxWeight / 1000}kg · 실중량 기준
+                          </p>
+                          <p className="text-[10px] text-amber-700 mt-1 ml-3.5 leading-snug">
+                            서류·페이퍼류만 발송 가능합니다. 일반 물품·현금·상품권·수표 등은 서류로 보낼 수 없습니다.
+                          </p>
+                        </>
+                      ) : svc.maxWeight <= 2000 ? (
+                        <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
+                          최대 {svc.maxWeight / 1000}kg
+                        </p>
+                      ) : null}
+                    </div>
+
+                    {/* 금액 / 상태 */}
+                    <div className="text-right shrink-0 pt-0.5">
+                      {r.status === "ok" && (
+                        r.insuranceFee > 0 ? (
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1 justify-end">
+                              <CheckCircle2 size={13} className="text-green-500" />
+                              <span className="text-[11px] text-gray-400">배송료</span>
+                              <span className={`text-base font-bold ${isCheapest ? "text-green-700" : "text-gray-900"}`}>
+                                {r.shippingFee.toLocaleString()}
+                                <span className="text-xs font-normal text-gray-400 ml-0.5">원</span>
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1 justify-end">
+                              <span className="text-[11px] text-blue-500">보험료</span>
+                              <span className="text-sm font-bold text-blue-600">
+                                {r.insuranceFee.toLocaleString()}
+                                <span className="text-xs font-normal ml-0.5">원</span>
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <CheckCircle2 size={13} className="text-green-500" />
+                            <span className={`text-base font-bold ${isCheapest ? "text-green-700" : "text-gray-900"}`}>
+                              {r.shippingFee.toLocaleString()}
+                              <span className="text-xs font-normal text-gray-400 ml-0.5">원</span>
+                            </span>
+                          </div>
+                        )
+                      )}
+                      {r.status === "overweight" && (
+                        <div className="flex items-center gap-1">
+                          <XCircle size={13} className="text-orange-400" />
+                          <span className="text-xs text-orange-500 font-medium">중량 초과</span>
+                        </div>
+                      )}
+                      {r.status === "error" && (
+                        <div className="flex items-center gap-1 max-w-[140px]">
+                          <XCircle size={13} className="text-red-400 shrink-0" />
+                          <span className="text-[11px] text-red-500 text-right leading-tight">
+                            {r.message}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* 안내 */}
+            <div className="px-4 pb-4 pt-2">
+              <div className="flex gap-2 bg-yellow-50 rounded-xl p-3 text-[11px] text-yellow-800">
+                <Info size={13} className="shrink-0 mt-0.5" />
+                <span>
+                  VAT 포함 예상 금액입니다.
+                  {insuranceEnabled ? " 배송료와 보험료를 별도 표시합니다." : ""}
+                  {" "}실제 접수 시 창고 실측 무게·크기로 재계산될 수 있습니다.
+                </span>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* 통관 정보 */}
         {(() => {
           const info = getCustomsInfo(countryCode);
@@ -475,112 +613,6 @@ export default function ShippingCalcPage() {
             </section>
           );
         })()}
-
-        {/* 결과 비교표 */}
-        {results && (
-          <section className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            {/* 헤더 */}
-            <div className="bg-brand-600 px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-white/80 text-xs">
-                  {country.flag} {country.name} · 적용 중량 {results.appliedWeight.toLocaleString()} g
-                </p>
-                <p className="text-white font-bold text-sm mt-0.5">
-                  서비스별 예상 배송비{insuranceEnabled ? " (보험 포함)" : ""}
-                </p>
-              </div>
-              <button onClick={reset} className="text-white/70 hover:text-white">
-                <RotateCcw size={16} />
-              </button>
-            </div>
-
-            <div className="divide-y divide-gray-50">
-              {SERVICES.map(svc => {
-                const r = results.services[svc.id];
-                const isCheapest = r.status === "ok" && r.fee === cheapestFee;
-                return (
-                  <div
-                    key={svc.id}
-                    className={`flex items-start gap-3 px-4 py-3.5 ${
-                      isCheapest ? "bg-green-50" : ""
-                    }`}
-                  >
-                    {/* 서비스명 */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${svc.color} shrink-0`} />
-                        <span className="text-sm font-semibold text-gray-800">{svc.label}</span>
-                        {svc.sublabel && (
-                          <span className="text-[10px] bg-gray-100 text-gray-500 rounded px-1">
-                            {svc.sublabel}
-                          </span>
-                        )}
-                        {isCheapest && (
-                          <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-semibold">
-                            최저가
-                          </span>
-                        )}
-                      </div>
-                      {svc.em_ee === "ee" ? (
-                        <>
-                          <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
-                            최대 {svc.maxWeight / 1000}kg · 실중량 기준
-                          </p>
-                          <p className="text-[10px] text-amber-700 mt-1 ml-3.5 leading-snug">
-                            서류·페이퍼류만 발송 가능합니다. 일반 물품·현금·상품권·수표 등은 서류로 보낼 수 없습니다.
-                          </p>
-                        </>
-                      ) : svc.maxWeight <= 2000 ? (
-                        <p className="text-[10px] text-gray-400 mt-0.5 ml-3.5">
-                          최대 {svc.maxWeight / 1000}kg
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {/* 금액 / 상태 */}
-                    <div className="text-right shrink-0 pt-0.5">
-                      {r.status === "ok" && (
-                        <div className="flex items-center gap-1">
-                          <CheckCircle2 size={13} className="text-green-500" />
-                          <span className={`text-base font-bold ${isCheapest ? "text-green-700" : "text-gray-900"}`}>
-                            {r.fee.toLocaleString()}
-                            <span className="text-xs font-normal text-gray-400 ml-0.5">원</span>
-                          </span>
-                        </div>
-                      )}
-                      {r.status === "overweight" && (
-                        <div className="flex items-center gap-1">
-                          <XCircle size={13} className="text-orange-400" />
-                          <span className="text-xs text-orange-500 font-medium">중량 초과</span>
-                        </div>
-                      )}
-                      {r.status === "error" && (
-                        <div className="flex items-center gap-1 max-w-[140px]">
-                          <XCircle size={13} className="text-red-400 shrink-0" />
-                          <span className="text-[11px] text-red-500 text-right leading-tight">
-                            {r.message}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* 안내 */}
-            <div className="px-4 pb-4 pt-2">
-              <div className="flex gap-2 bg-yellow-50 rounded-xl p-3 text-[11px] text-yellow-800">
-                <Info size={13} className="shrink-0 mt-0.5" />
-                <span>
-                  VAT 포함 예상 금액입니다.
-                  {insuranceEnabled ? " 보험 수수료가 포함된 예상 요금입니다." : ""}
-                  {" "}실제 접수 시 창고 실측 무게·크기로 재계산될 수 있습니다.
-                </span>
-              </div>
-            </div>
-          </section>
-        )}
       </div>
     </div>
   );
