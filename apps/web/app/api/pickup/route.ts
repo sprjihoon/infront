@@ -17,6 +17,7 @@ import {
   normalizeEpostPickupAddr2,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
+import { validatePreInvoiceItems } from '@/lib/pre-invoice-validation';
 import {
   resolvePickupBoxList,
   pickupBoxSummary,
@@ -106,6 +107,13 @@ export async function POST(req: NextRequest) {
         { error: '수거 연락처, 수거 희망일은 필수입니다.' },
         { status: 400 }
       );
+    }
+
+    const invoiceErr = validatePreInvoiceItems(
+      (pre_invoice_items ?? []) as { name_en?: string; quantity?: number; unit_price_usd?: number; hs_code?: string }[],
+    );
+    if (invoiceErr) {
+      return NextResponse.json({ error: invoiceErr }, { status: 400 });
     }
 
     let retVisitYmd: string;

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package,
@@ -27,6 +27,7 @@ import {
   type PickupBoxSizeCode,
 } from "@/lib/epost/pickup-boxes";
 import { useFlowMode } from "@/lib/flow-mode";
+import { validatePreInvoiceItems } from "@/lib/pre-invoice-validation";
 
 const STEP_LABELS = ["수거 정보", "물품 내역", "확인 및 신청"] as const;
 
@@ -103,6 +104,7 @@ export default function PickupPage() {
   const [itemCondition, setItemCondition] = useState<"NEW" | "USED">("NEW");
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([newItem()]);
   const [specialsOpenKeys, setSpecialsOpenKeys] = useState<Set<string>>(new Set());
+  const [showStep2FieldErrors, setShowStep2FieldErrors] = useState(false);
   const [boxSize, setBoxSize]           = useState<PickupBoxSizeCode>(PICKUP_DEFAULT_SIZE);
 
   const [result, setResult]             = useState<{
@@ -157,18 +159,11 @@ export default function PickupPage() {
   }, [pickupAddress, pickupDate, disabledDates]);
 
   const validateStep2 = useCallback((): string | null => {
-    const filled = invoiceItems.filter(i => i.name_en.trim());
-    if (filled.length === 0) return "품목을 하나 이상 선택해주세요.";
-    const missingCategory = invoiceItems.find(i => !i.name_en.trim());
-    if (missingCategory) return "모든 품목의 품목 선택을 완료해주세요.";
-    const missingQty = filled.find(i => i.quantity < 1);
-    if (missingQty) return "모든 품목의 수량을 입력해주세요.";
-    const missingPrice = filled.find(i => i.unit_price_usd <= 0);
-    if (missingPrice) return "모든 품목의 단가(USD)를 입력해주세요. (인보이스·보험료 계산에 필수)";
-    const missingHs = filled.find(i => !i.hs_code.trim());
-    if (missingHs) return "모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)";
-    return null;
+    return validatePreInvoiceItems(invoiceItems);
   }, [invoiceItems]);
+
+  const step1Ready = useMemo(() => validateStep1() === null, [validateStep1]);
+  const step2Ready = useMemo(() => validateStep2() === null, [validateStep2]);
 
   function inferStep(): 1 | 2 | 3 {
     if (validateStep1()) return 1;
@@ -229,8 +224,10 @@ export default function PickupPage() {
       setStep(2);
       setItemsOpen(true);
     } else if (step === 2) {
+      setShowStep2FieldErrors(true);
       const err = validateStep2();
       if (err) { setError(err); setItemsOpen(true); return; }
+      setShowStep2FieldErrors(false);
       setStep(3);
     }
   }
@@ -242,6 +239,7 @@ export default function PickupPage() {
     const step1Err = validateStep1();
     if (step1Err) { setError(step1Err); if (isSimple) setStep(1); return; }
 
+    setShowStep2FieldErrors(true);
     const step2Err = validateStep2();
     if (step2Err) { setError(step2Err); setItemsOpen(true); if (isSimple) setStep(2); return; }
 
@@ -361,6 +359,11 @@ export default function PickupPage() {
   const selectedBox = PICKUP_BOX_SIZES.find(s => s.code === boxSize);
   const filledItemCount = invoiceItems.filter(i => i.name_en.trim()).length;
   const showStep = (n: number) => !isSimple || step === n;
+  const showItemFieldHints = showStep2FieldErrors || step === 2 || !isSimple;
+
+  function itemPriceInvalid(item: InvoiceItem): boolean {
+    return item.unit_price_usd <= 0 || !Number.isFinite(item.unit_price_usd);
+  }
 
   if (result) {
     const dateStr = result.pickup_date.length >= 8
@@ -670,25 +673,41 @@ export default function PickupPage() {
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] text-gray-400 font-semibold">
-                            단가 (USD) <span className="text-red-400">*</span>
+                          <label
+                            htmlFor={`pickup-unit-price-${item.key}`}
+                            className="text-[10px] text-gray-500 font-semibold flex items-center gap-0.5"
+                          >
+                            단가 (USD)
+                            <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
                           <div className={`flex items-center bg-gray-50 border rounded-xl px-3 py-2 ${
-                            item.name_en && item.unit_price_usd <= 0 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
+                            showItemFieldHints && itemPriceInvalid(item)
+                              ? "border-red-300 ring-1 ring-red-200"
+                              : "border-gray-100"
                           }`}>
                             <span className="text-gray-400 text-xs mr-1">$</span>
                             <input
+                              id={`pickup-unit-price-${item.key}`}
                               type="number"
                               min={0.01}
                               step={0.01}
-                              value={item.unit_price_usd || ""}
-                              onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, unit_price_usd: parseFloat(e.target.value) || 0 } : it))}
+                              required
+                              aria-required="true"
+                              value={item.unit_price_usd > 0 ? item.unit_price_usd : ""}
+                              onChange={e => {
+                                const raw = e.target.value;
+                                const parsed = raw === "" ? 0 : parseFloat(raw);
+                                setInvoiceItems(p => p.map((it, i) =>
+                                  i === idx ? { ...it, unit_price_usd: Number.isFinite(parsed) ? parsed : 0 } : it
+                                ));
+                              }}
+                              onBlur={() => setShowStep2FieldErrors(true)}
                               placeholder="0.00"
                               className="flex-1 bg-transparent text-sm focus:outline-none min-w-0"
                             />
                           </div>
-                          {item.name_en && item.unit_price_usd <= 0 && (
-                            <p className="text-[10px] text-red-500 mt-0.5">금액을 입력해주세요</p>
+                          {showItemFieldHints && itemPriceInvalid(item) && (
+                            <p className="text-[10px] text-red-500 mt-0.5">금액을 입력해주세요 (필수)</p>
                           )}
                         </div>
                       </div>
@@ -923,7 +942,8 @@ export default function PickupPage() {
             <button
               type="button"
               onClick={handleNext}
-              className={`${step > 1 ? "flex-[2]" : "w-full"} flex items-center justify-center gap-1.5 py-4 rounded-xl text-sm font-bold bg-brand-600 text-white active:opacity-80`}
+              disabled={step === 1 ? !step1Ready : !step2Ready}
+              className={`${step > 1 ? "flex-[2]" : "w-full"} flex items-center justify-center gap-1.5 py-4 rounded-xl text-sm font-bold bg-brand-600 text-white active:opacity-80 disabled:opacity-40 disabled:pointer-events-none`}
             >
               다음
               <ArrowRight className="w-4 h-4" />
@@ -933,7 +953,7 @@ export default function PickupPage() {
           <button
             type="submit"
             form=""
-            disabled={loading || !agreed}
+            disabled={loading || !agreed || !step1Ready || !step2Ready}
             onClick={handleSubmit}
             className={`w-full py-4 rounded-xl text-sm font-bold transition-colors ${
               agreed && !loading
