@@ -261,7 +261,18 @@ export default function PickupPage() {
         }),
       });
 
-      let data: { error?: string; success?: boolean; parcel_id?: string | number } = {};
+      let data: {
+        error?: string;
+        success?: boolean;
+        parcel_id?: string | number;
+        parcel_ids?: string[];
+        tracking_no?: string;
+        tracking_nos?: string[];
+        box_count?: number;
+        pickup_date?: string;
+        post_office?: string;
+        is_test?: boolean;
+      } = {};
       try {
         data = await resp.json();
       } catch {
