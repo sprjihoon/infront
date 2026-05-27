@@ -318,7 +318,11 @@ export function buildEpostParams(params: Record<string, unknown>): string {
     else sv = String(val);
     if (!isReq && sv === '') continue;
     if (isReq && sv.trim() === '') {
-      if (key === 'recAddr2' || key === 'ordAddr2') sv = '없음';
+      if (key === 'recAddr2' || key === 'ordAddr2') {
+        sv = '없음';
+      } else {
+        throw new Error(`[EPost] 필수 파라미터 '${key}'가 비어 있습니다. 주소/연락처를 다시 확인해주세요.`);
+      }
     }
     pairs.push(`${key}=${sv}`);
   }

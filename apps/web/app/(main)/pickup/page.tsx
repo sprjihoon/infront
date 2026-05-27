@@ -175,8 +175,8 @@ export default function PickupPage() {
     const address = normalizeEpostAddr1(data.address) || normalizeEpostAddr1(addr.address);
     return {
       savedId: data.id,
-      label: data.label,
-      name: data.name,
+      label: data.label ?? addr.label,
+      name: data.name ?? addr.name,
       phone: data.phone ?? addr.phone,
       zipcode: zip.length === 5 ? zip : addr.zipcode,
       address,
@@ -261,8 +261,13 @@ export default function PickupPage() {
         }),
       });
 
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "수거 신청에 실패했습니다.");
+      let data: { error?: string; success?: boolean } = {};
+      try {
+        data = await resp.json();
+      } catch {
+        throw new Error(`서버 오류 (${resp.status}). 잠시 후 다시 시도해주세요.`);
+      }
+      if (!resp.ok) throw new Error(data.error || `수거 신청에 실패했습니다. (${resp.status})`);
 
       if (data.parcel_id) {
         const services: { service_code: string; service_name: string; price: number; note?: string }[] = [];

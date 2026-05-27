@@ -161,14 +161,13 @@ export async function POST(req: NextRequest) {
     let recAddr1 = normalizeEpostAddr1(pickup_address);
     let recZip = normalizeEpostZip(pickup_zipcode);
     let recAddr2Raw = pickup_address_detail;
-    let recNm = pickup_name?.trim() || customer.name || '고객';
+    let recNm = pickup_name?.trim() || customer.name?.trim() || '고객';
     let recPhoneRaw = pickup_phone;
 
     console.log('[PICKUP] 클라이언트 입력값', {
       pickup_address,
       pickup_zipcode,
       pickup_address_id,
-      pickup_name,
       recAddr1_init: recAddr1,
       recZip_init: recZip,
     });
@@ -186,7 +185,6 @@ export async function POST(req: NextRequest) {
         found: !!savedAddr,
         dbAddr: savedAddr?.address,
         dbZip: savedAddr?.zipcode,
-        dbPhone: savedAddr?.phone,
         addrErr: addrErr?.message,
       });
 
@@ -197,7 +195,7 @@ export async function POST(req: NextRequest) {
         if (savedZip.length === 5) recZip = savedZip;
         if (savedAddr.address_detail != null) recAddr2Raw = savedAddr.address_detail;
         if (savedAddr.name?.trim()) recNm = savedAddr.name.trim();
-        if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone;
+        if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone.trim();
       }
     }
 
@@ -205,7 +203,7 @@ export async function POST(req: NextRequest) {
       recAddr1,
       recZip,
       recNm,
-      recPhoneRaw: recPhoneRaw ? '있음' : '없음',
+      hasPhone: !!recPhoneRaw,
     });
 
     if (recZip.length !== 5) {

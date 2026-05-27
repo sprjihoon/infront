@@ -86,8 +86,9 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
     body.recNm = truncateUtf8Bytes(body.recNm, 40);
   }
   for (const key of ['ordAddr1', 'ordAddr2', 'recAddr1', 'recAddr2'] as const) {
-    if (typeof body[key] === 'string') {
-      body[key] = truncateUtf8Bytes(normalizeEpostAddr1(body[key]), EPOST_ADDR_MAX_BYTES);
+    const raw = body[key];
+    if (typeof raw === 'string') {
+      body[key] = truncateUtf8Bytes(raw.trim(), EPOST_ADDR_MAX_BYTES);
     }
   }
   if (typeof body.goodsNm === 'string') {
