@@ -190,15 +190,23 @@ export async function POST(req: NextRequest) {
         addrErr: addrErr?.message,
       });
 
-      if (savedAddr) {
-        const savedAddr1 = normalizeEpostAddr1(savedAddr.address);
-        if (savedAddr1.length >= 2) recAddr1 = savedAddr1;
-        const savedZip = normalizeEpostZip(savedAddr.zipcode);
-        if (savedZip.length === 5) recZip = savedZip;
-        if (savedAddr.address_detail != null) recAddr2Raw = savedAddr.address_detail;
-        if (savedAddr.name?.trim()) recNm = savedAddr.name.trim();
-        if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone.trim();
+      if (!savedAddr) {
+        return NextResponse.json(
+          { error: '선택한 수거지 주소를 찾을 수 없습니다. 마이페이지 주소록에서 다시 선택해주세요.' },
+          { status: 400 },
+        );
       }
+
+      const savedAddr1 = normalizeEpostAddr1(savedAddr.address);
+      if (savedAddr1.length >= 2) recAddr1 = savedAddr1;
+      const savedZip = normalizeEpostZip(savedAddr.zipcode);
+      if (savedZip.length === 5) recZip = savedZip;
+      if (savedAddr.name?.trim()) recNm = savedAddr.name.trim();
+      if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone.trim();
+      // 주소록 DB 우선, 단 상세주소는 화면에서 보완 입력한 값이 있으면 그것을 사용
+      const detailFromDb = (savedAddr.address_detail ?? '').trim();
+      const detailFromClient = (pickup_address_detail ?? '').trim();
+      recAddr2Raw = detailFromClient || detailFromDb || recAddr2Raw;
     }
 
     console.log('[PICKUP] 최종 수거지 값', {

@@ -140,6 +140,9 @@ export default function PickupPage() {
     if (!/^[0-9\-\s]{9,}$/.test(pickupAddress.phone)) {
       return "연락처 형식을 확인해주세요. (예: 010-1234-5678)";
     }
+    if ((pickupAddress.addressDetail ?? "").trim().length < 2) {
+      return "수거지 상세주소(동·호수, 층 등)를 입력해주세요. 우체국 수거에 필수입니다.";
+    }
     if (disabledDates.includes(pickupDate)) return "토·일요일 및 공휴일은 수거가 불가합니다.";
     return null;
   }, [pickupAddress, pickupDate, disabledDates]);
@@ -180,7 +183,7 @@ export default function PickupPage() {
       phone: data.phone ?? addr.phone,
       zipcode: zip.length === 5 ? zip : addr.zipcode,
       address,
-      addressDetail: data.address_detail ?? addr.addressDetail,
+      addressDetail: (data.address_detail ?? '').trim() || (addr.addressDetail ?? '').trim(),
     };
   }
 
@@ -245,7 +248,7 @@ export default function PickupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pickup_address: address,
-          pickup_address_detail: resolved.addressDetail?.trim() || undefined,
+          pickup_address_detail: resolved.addressDetail.trim(),
           pickup_zipcode: zip,
           pickup_phone: resolved.phone,
           pickup_name: resolved.name,
@@ -452,6 +455,24 @@ export default function PickupPage() {
                 onChange={setPickupAddress}
                 customerId={customerId}
               />
+              {pickupAddress && (
+                <div className="mt-3">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                    상세주소 (동·호수, 층) <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    value={pickupAddress.addressDetail}
+                    onChange={(e) =>
+                      setPickupAddress({ ...pickupAddress, addressDetail: e.target.value })
+                    }
+                    placeholder="예: 101동 1203호, 3층"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    우체국 수거 기사가 방문할 상세 위치입니다. 저장된 주소에 없으면 여기서 입력하세요.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div>

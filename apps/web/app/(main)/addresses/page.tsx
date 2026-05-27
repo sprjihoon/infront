@@ -139,6 +139,10 @@ export default function AddressesPage() {
       alert("우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.");
       return;
     }
+    if (tab === "pickup" && !(form.address_detail ?? "").trim()) {
+      alert("상세주소(동·호수, 층)를 입력해주세요. 우체국 수거에 필요합니다.");
+      return;
+    }
     if (tab === "overseas" && !form.overseas_addr3?.trim()) { alert("상세주소를 입력해주세요."); return; }
 
     setSaving(true);
@@ -464,7 +468,7 @@ export default function AddressesPage() {
                       <input
                         value={form.address_detail ?? ""}
                         onChange={e => setForm(f => ({ ...f, address_detail: e.target.value }))}
-                        placeholder="상세주소 (동·호수, 선택)"
+                        placeholder="상세주소 (동·호수, 층) *"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                       />
                     </div>

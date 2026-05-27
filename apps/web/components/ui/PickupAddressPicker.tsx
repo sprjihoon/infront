@@ -107,7 +107,15 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
   }
 
   async function confirmNew() {
-    if (!newName || !newPhone || normalizeEpostAddr1(newAddr).length < 2 || normalizeEpostZip(newZip).length !== 5) return;
+    if (
+      !newName ||
+      !newPhone ||
+      normalizeEpostAddr1(newAddr).length < 2 ||
+      normalizeEpostZip(newZip).length !== 5 ||
+      newDetail.trim().length < 2
+    ) {
+      return;
+    }
     setSaving(true);
 
     try {
@@ -283,7 +291,10 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                         </div>
                         <p className="text-sm font-semibold text-gray-900">{a.name}</p>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          [{a.zipcode}] {a.address} {a.address_detail}
+                          [{a.zipcode}] {a.address}{" "}
+                          {a.address_detail?.trim() ? a.address_detail : (
+                            <span className="text-amber-600">(상세주소 없음 — 선택 후 입력)</span>
+                          )}
                         </p>
                         {a.phone && (
                           <p className="text-xs text-gray-400 mt-0.5">{a.phone}</p>
@@ -361,9 +372,10 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     <input
                       value={newDetail}
                       onChange={(e) => setNewDetail(e.target.value)}
-                      placeholder="상세주소 (동·호수, 선택)"
+                      placeholder="예: 101동 1203호, 3층"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                     />
+                    <p className="text-xs text-gray-400 mt-1">우체국 수거에 필수입니다.</p>
                   </div>
 
                   <div className="space-y-2">
@@ -450,7 +462,14 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
               <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
                 <button
                   type="button"
-                  disabled={saving || !newName || !newPhone || !newAddr || normalizeEpostZip(newZip).length !== 5}
+                  disabled={
+                    saving ||
+                    !newName ||
+                    !newPhone ||
+                    !newAddr ||
+                    normalizeEpostZip(newZip).length !== 5 ||
+                    newDetail.trim().length < 2
+                  }
                   onClick={confirmNew}
                   className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
                 >
