@@ -316,7 +316,7 @@ export default function PickupPage() {
         }
       }
 
-      const parcelIds: string[] = data.parcel_ids ?? (data.parcel_id ? [data.parcel_id] : []);
+      const parcelIds: string[] = data.parcel_ids ?? (data.parcel_id ? [String(data.parcel_id)] : []);
       const trackingNos: string[] = data.tracking_nos ?? (data.tracking_no ? [data.tracking_no] : []);
 
       setResult({
