@@ -272,13 +272,22 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   if (!body.orderNo || String(body.orderNo).trim() === '') {
     throw new Error('orderNo가 비어 있습니다.');
   }
-  // 반품 수거(reqType=2) recAddr2는 고객 상세 — '없음' 대체 금지 (ERR-311)
-  if (
-    reqType !== '2' &&
-    typeof body.recAddr2 === 'string' &&
-    body.recAddr2.trim() === ''
-  ) {
+  if (typeof body.recAddr2 === 'string' && body.recAddr2.trim() === '') {
+    if (reqType === '2') {
+      throw new Error(
+        '반품인 상세주소(recAddr2)가 비어 있습니다. 수거지 상세주소를 입력해주세요.',
+      );
+    }
     body.recAddr2 = '없음';
+  }
+  if (
+    reqType === '2' &&
+    typeof body.recAddr2 === 'string' &&
+    body.recAddr2.trim() === '없음'
+  ) {
+    throw new Error(
+      '반품인 상세주소(recAddr2)에 "없음"은 사용할 수 없습니다. 동·호수·층을 입력해주세요.',
+    );
   }
   if (typeof body.ordAddr2 === 'string' && body.ordAddr2.trim() === '') {
     body.ordAddr2 = '없음';
@@ -307,6 +316,21 @@ async function callEPost(
   if (testYn === 'Y') url += '&testYn=Y';
 
   const plainText = buildEpostParams(params);
+
+  if (String(params.reqType) === '2') {
+    const fields: Record<string, string> = {};
+    for (const pair of plainText.split('&')) {
+      const idx = pair.indexOf('=');
+      if (idx > 0) fields[pair.slice(0, idx)] = pair.slice(idx + 1);
+    }
+    const rec2 = (fields.recAddr2 ?? '').trim();
+    if (!rec2 || rec2 === '없음' || rec2.length < EPOST_PICKUP_DETAIL_MIN_LEN) {
+      throw new Error(
+        `우체국 반품 수거 전송 오류: recAddr2="${rec2 || '(비어 있음)'}" — ` +
+          '수취인(반품인) 상세주소가 센터값(없음)으로 들어갔습니다. ord/rec 매핑을 확인하세요.',
+      );
+    }
+  }
 
   // 진단용 로그 — recAddr1 실제 전송값 확인
   {
@@ -426,17 +450,17 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
     throw new Error('수취인 주소(recAddr1)가 없습니다.');
   }
   if (String(body.reqType ?? '') === '2') {
-    const ordDetail = String(body.ordAddr2 ?? '').trim();
-    if (ordDetail.length < EPOST_PICKUP_DETAIL_MIN_LEN) {
+    const recDetail = String(body.recAddr2 ?? '').trim();
+    if (recDetail.length < EPOST_PICKUP_DETAIL_MIN_LEN || recDetail === '없음') {
       throw new Error(
-        '수거지 상세주소(ordAddr2)가 없습니다. 동·호수·층을 2글자 이상 입력해주세요.',
+        '반품인 상세주소(recAddr2)가 없습니다. 수거지 동·호수·층을 2글자 이상 입력해주세요.',
       );
     }
-    if (!body.ordAddr1 || normalizeEpostAddr1(String(body.ordAddr1)).length < 2) {
-      throw new Error('수거지 도로명 주소(ordAddr1)가 없습니다.');
+    if (!body.recAddr1 || normalizeEpostAddr1(String(body.recAddr1)).length < 2) {
+      throw new Error('반품인 도로명 주소(recAddr1)가 없습니다.');
     }
-    requireEpostPhone(String(body.ordMob ?? ''), '수거 연락처(ordMob)');
-    requireEpostPhone(String(body.recTel ?? body.recMob ?? ''), '센터 연락처(recTel)');
+    requireEpostPhone(String(body.ordMob ?? ''), '센터 연락처(ordMob)');
+    requireEpostPhone(String(body.recTel ?? body.recMob ?? ''), '수거 연락처(recTel)');
   } else {
     const recTel = String(body.recTel ?? body.recMob ?? '');
     if (!recTel || recTel.length < 9) {

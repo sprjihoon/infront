@@ -1,11 +1,12 @@
 /**
- * 반품소포(수거) InsertOrder 파라미터
+ * 반품소포(수거) InsertOrder 파라미터 — reqType=2
  *
- * reqType=2 방문반품 — 인프론트 우체국 계약 (live API 검증, contCd=025):
- *   ord* = 고객 수거지 (방문·발신, ordAddr1+ordAddr2 분리)
- *   rec* = 물류센터 등록 수취처 (동대구우체국, recAddr2='없음')
+ * 우체국 API 필드 의미 (오류 메시지 기준):
+ *   rec* = 수취인(반품인) = 고객 수거지 → recAddr1(도로명) + recAddr2(동·호·층) 필수
+ *   ord* = 주문자 = 물류센터(동대구우체국) → ordAddr2는 계약값 '없음'
  *
- * rec*에 고객 주소를 넣으면 ERR-311(recAddr1/2) 발생.
+ * rec*에 센터+recAddr2='없음' 을 넣으면 ERR-311(recAddr2 없음) 반복 발생.
+ * (modo shipments-book 과 동일: ord*=센터, rec*=고객)
  */
 
 import type { InsertOrderParams } from './types';
@@ -15,8 +16,11 @@ import {
   requireEpostPhone,
   resolveEpostCenterAddr2,
   splitPickupAddressForEpost,
+  truncateUtf8Bytes,
+  EPOST_PICKUP_DETAIL_MIN_LEN,
 } from './client';
 
+/** 우체국 ordCompNm — 정확히 12byte (초과 시 ordMob 등 필드 밀림) */
 const EPOST_ORD_COMP_NM = '인프론트';
 
 export interface ReturnPickupLocation {
@@ -50,9 +54,18 @@ export interface ReturnPickupOrderInput {
 }
 
 export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): InsertOrderParams {
-  const pickupPhone = requireEpostPhone(input.pickup.phone, '수거 연락처(ordMob)');
-  const centerPhone = requireEpostPhone(input.center.phone, '센터 연락처(recTel)');
+  const pickupPhone = requireEpostPhone(input.pickup.phone, '수거 연락처(recTel)');
+  const centerPhone = requireEpostPhone(input.center.phone, '센터 연락처(ordMob)');
   const pickupSplit = splitPickupAddressForEpost(input.pickup.addr1, input.pickup.addr2);
+
+  if (pickupSplit.addr1.length < 2) {
+    throw new Error('수거지 도로명 주소(recAddr1)가 없습니다.');
+  }
+  if (pickupSplit.addr2.length < EPOST_PICKUP_DETAIL_MIN_LEN) {
+    throw new Error(
+      '수거지 상세주소(recAddr2)가 없습니다. 동·호수·층을 2글자 이상 입력해주세요.',
+    );
+  }
 
   return {
     custNo: input.custNo,
@@ -62,17 +75,18 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     officeSer: input.officeSer,
     orderNo: input.orderNo,
     ordCompNm: EPOST_ORD_COMP_NM,
-    ordNm: (input.pickup.name.trim() || '고객').slice(0, 20),
-    ordZip: normalizeEpostZip(input.pickup.zip),
-    ordAddr1: pickupSplit.addr1,
-    ordAddr2: pickupSplit.addr2,
-    ordMob: pickupPhone,
-    recNm: EPOST_ORD_COMP_NM,
-    recZip: normalizeEpostZip(input.center.zip),
-    recAddr1: normalizeEpostAddr1(input.center.addr1),
-    recAddr2: resolveEpostCenterAddr2(input.center.addr2),
-    recTel: centerPhone,
-    recMob: centerPhone,
+    ordNm: truncateUtf8Bytes(EPOST_ORD_COMP_NM, 12),
+    inqTelCn: pickupPhone,
+    ordZip: normalizeEpostZip(input.center.zip),
+    ordAddr1: normalizeEpostAddr1(input.center.addr1),
+    ordAddr2: resolveEpostCenterAddr2(input.center.addr2),
+    ordMob: centerPhone,
+    recNm: truncateUtf8Bytes(input.pickup.name.trim() || '고객', 40),
+    recZip: normalizeEpostZip(input.pickup.zip),
+    recAddr1: pickupSplit.addr1,
+    recAddr2: pickupSplit.addr2,
+    recTel: pickupPhone,
+    recMob: pickupPhone,
     contCd: '025',
     goodsNm: input.goodsNm,
     weight: input.weight,
@@ -81,6 +95,5 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     delivMsg: input.delivMsg,
     testYn: input.testYn,
     printYn: 'Y',
-    inqTelCn: pickupPhone,
   };
 }

@@ -9,6 +9,9 @@ import { normalizeEpostPhone } from './client';
  * Vercel/로컬 환경변수 INFRONT_CENTER_* 가 비어 있으면 아래 기본값 사용.
  */
 
+/** 우체국 API ordAddr2 — 계약 등록값. UI 라벨(CENTER_ADDR2)과 다름 */
+export const EPOST_CENTER_API_ADDR2 = '없음';
+
 export const EPOST_CENTER_DEFAULTS = {
   ordNm: '인프론트',
   zip: '41142',

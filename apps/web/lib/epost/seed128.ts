@@ -321,9 +321,23 @@ export function buildEpostParams(params: Record<string, unknown>): string {
       const isReturnPickup = String(params.reqType) === '2';
       if (key === 'ordAddr2' || (key === 'recAddr2' && !isReturnPickup)) {
         sv = '없음';
+      } else if (isReturnPickup && key === 'recAddr2') {
+        throw new Error(
+          '[EPost] 반품인 상세주소(recAddr2)가 비어 있습니다. 수거지 동·호수·층을 입력해주세요.',
+        );
       } else {
         throw new Error(`[EPost] 필수 파라미터 '${key}'가 비어 있습니다. 주소/연락처를 다시 확인해주세요.`);
       }
+    }
+    if (
+      isReq &&
+      String(params.reqType) === '2' &&
+      key === 'recAddr2' &&
+      sv.trim() === '없음'
+    ) {
+      throw new Error(
+        '[EPost] 반품인 상세주소(recAddr2)에 "없음"은 사용할 수 없습니다.',
+      );
     }
     pairs.push(`${key}=${sv}`);
   }

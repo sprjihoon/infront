@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
           centerPhone() || process.env.INFRONT_CENTER_PHONE,
           '센터 연락처(INFRONT_CENTER_PHONE)',
         );
-        recPhoneEpost = requireEpostPhone(recPhoneRaw, '수거 연락처(ordMob)');
+        recPhoneEpost = requireEpostPhone(recPhoneRaw, '수거 연락처(recTel)');
       } catch (e) {
         const msg = e instanceof Error ? e.message : '연락처 형식 오류';
         const status = msg.includes('INFRONT_CENTER') ? 500 : 400;
@@ -367,7 +367,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!isTest) {
-      console.log('[PICKUP] epost 반품소포 (ord=수거지, rec=센터)', {
+      console.log('[PICKUP] epost 반품소포 (ord=센터, rec=수거지)', {
         ordZip: epostParams.ordZip,
         ordAddr1: epostParams.ordAddr1,
         ordAddr2: epostParams.ordAddr2,
@@ -398,8 +398,10 @@ export async function POST(req: NextRequest) {
           const msg = e instanceof Error ? e.message : '우체국 API 오류';
           const hint =
             msg.includes('ordMob') || msg.includes('ERR-522')
-              ? ' 수거 연락처를 숫자만 입력했는지 확인해주세요. (예: 01012345678)'
-              : '';
+              ? ' 센터·수거 연락처를 숫자만 입력했는지 확인해주세요. (예: 01012345678)'
+              : msg.includes('recAddr2') || msg.includes('ERR-311')
+                ? ' 수거지 상세주소(동·호수·층)를 2글자 이상 입력했는지 확인해주세요.'
+                : '';
           return NextResponse.json({ error: msg + hint }, { status: 502 });
         }
       }
