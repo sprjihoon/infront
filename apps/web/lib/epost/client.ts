@@ -7,7 +7,7 @@ import { seed128Encrypt, buildEpostParams } from './seed128';
 import type { InsertOrderParams, InsertOrderResponse, GetResInfoParams, GetResInfoResponse, CancelOrderParams, EPOST_TREAT_STATUS } from './types';
 export type { GetResInfoResponse };
 
-const EPOST_BASE_URL = 'http://ship.epost.go.kr';
+const EPOST_BASE_URL = 'https://ship.epost.go.kr';
 const OFFICE_SER = '260537802'; // 공급지코드 (인프론트)
 
 function getEnv(key: string) {
@@ -150,8 +150,10 @@ async function callEPost(
       recAddr1: dbg.recAddr1,
       recAddr2: dbg.recAddr2,
       recTel:   dbg.recTel,
+      ordNm:    dbg.ordNm,
       ordAddr1: dbg.ordAddr1,
       ordZip:   dbg.ordZip,
+      ordMob:   dbg.ordMob,
       plainLen: plainText.length,
     });
   }
@@ -159,26 +161,54 @@ async function callEPost(
   const encrypted = seed128Encrypt(plainText, securityKey);
   url += `&regData=${encodeURIComponent(encrypted)}`;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 30000);
+  async function attemptFetch(): Promise<Response> {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 30000);
+    try {
+      return await fetch(url, {
+        method: 'GET',
+        headers: { 'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)' },
+        signal: ctrl.signal,
+      });
+    } finally {
+      clearTimeout(t);
+    }
+  }
 
   let resp: Response;
   try {
-    resp = await fetch(url, {
-      method: 'GET',
-      headers: { 'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)' },
-      signal: controller.signal,
-    });
+    try {
+      resp = await attemptFetch();
+    } catch (firstNetErr) {
+      const isAbort = firstNetErr instanceof Error && (firstNetErr.name === 'AbortError' || firstNetErr.message.includes('abort'));
+      if (isAbort) throw firstNetErr;
+      // Network-level retry after 1 s (handles transient ECONNRESET / cold-start drops)
+      console.warn('[EPOST] first attempt failed, retrying in 1s:', firstNetErr instanceof Error ? firstNetErr.message : firstNetErr);
+      await new Promise((r) => setTimeout(r, 1000));
+      resp = await attemptFetch();
+    }
   } catch (err) {
-    const detail = err instanceof Error ? err.message : String(err);
-    if (detail.includes('abort') || (err instanceof Error && err.name === 'AbortError')) {
+    const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message.includes('abort'));
+    if (isAbort) {
       throw new Error('우체국 API 응답 시간 초과(30초). 잠시 후 다시 시도해주세요.');
     }
+    const detail = err instanceof Error ? err.message : String(err);
+    // err.cause contains the underlying Node.js socket/DNS error (e.g. ECONNREFUSED, ENOTFOUND)
+    const cause = err instanceof Error && err.cause instanceof Error ? err.cause.message : undefined;
+    const causeCode =
+      err instanceof Error && err.cause != null && typeof (err.cause as Record<string, unknown>).code === 'string'
+        ? (err.cause as Record<string, unknown>).code as string
+        : undefined;
+    console.error('[EPOST] fetch error', { detail, cause, causeCode, endpoint });
+    const hint =
+      causeCode === 'ECONNREFUSED' ? '서버가 연결을 거부했습니다.' :
+      causeCode === 'ENOTFOUND'    ? 'DNS 조회에 실패했습니다.' :
+      causeCode === 'ETIMEDOUT'    ? '연결 시도 시간이 초과됐습니다.' :
+      causeCode === 'ECONNRESET'   ? '연결이 강제로 끊어졌습니다.' :
+      cause ?? detail;
     throw new Error(
-      `우체국 API 서버(${EPOST_BASE_URL})에 연결하지 못했습니다. 네트워크 또는 우체국 서비스 상태를 확인해주세요. (${detail})`,
+      `우체국 API 서버(${EPOST_BASE_URL})에 연결하지 못했습니다. 네트워크 또는 우체국 서비스 상태를 확인해주세요. (${hint})`,
     );
-  } finally {
-    clearTimeout(timer);
   }
 
   if (!resp.ok) {
@@ -220,11 +250,11 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
     throw new Error('수취인 우편번호(recZip)가 없습니다.');
   }
   if (!body.recAddr1 || normalizeEpostAddr1(String(body.recAddr1)).length < 2) {
-    throw new Error('수취인 주소(recAddr1)가 없습니다. 주소 검색으로 다시 선택해주세요.');
+    throw new Error('수취인 주소(recAddr1)가 없습니다.');
   }
   const recTel = String(body.recTel ?? body.recMob ?? '');
   if (!recTel || recTel.length < 9) {
-    throw new Error('수취인 연락처(recTel)가 없습니다. 수거지 연락처를 확인해주세요.');
+    throw new Error('수취인 연락처(recTel)가 없습니다.');
   }
 
   const xml = await callEPost('api.InsertOrder.jparcel', body, testYn);

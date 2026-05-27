@@ -1,6 +1,12 @@
 /**
- * 반품소포(수거) InsertOrder 파라미터 — modo shipments-book 매핑 기준
- * reqType=2, payType=2: ord*=물류센터(도착), rec*=고객(출발)
+ * 반품소포(수거) InsertOrder 파라미터
+ *
+ * reqType=2 방문반품 필드 매핑:
+ *   ord* = 주문자/발신자 = 고객 (수거를 요청한 반품인, 소포의 출발지)
+ *   rec* = 수취인       = 물류센터 (우체국 계약에 등록된 반품 수취 주소)
+ *
+ * 주의: rec*에 고객 주소를 넣으면 ERR-311(recAddr1 없음) 발생.
+ *       우체국 시스템은 rec*가 계약에 등록된 센터 주소인지 검증한다.
  */
 
 import type { InsertOrderParams } from './types';
@@ -41,11 +47,14 @@ export interface ReturnPickupOrderInput {
   testYn: 'Y' | 'N';
 }
 
-/** modo shipments-book 반품소포 매핑 — recMob 없음, inqTelCn=고객 연락처 */
+/**
+ * 방문반품 InsertOrder 파라미터 빌더
+ *
+ * ord* ← 고객 (수거지, 반품인)
+ * rec* ← 물류센터 (우체국 등록 수취처)
+ */
 export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): InsertOrderParams {
-  const recZip = normalizeEpostZip(input.pickup.zip);
-  const recAddr1 = normalizeEpostAddr1(input.pickup.addr1);
-  const recPhone = normalizeEpostPhone(input.pickup.phone);
+  const pickupPhone = normalizeEpostPhone(input.pickup.phone);
   const centerPhone = normalizeEpostPhone(input.center.phone);
 
   return {
@@ -55,17 +64,19 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     reqType: '2',
     officeSer: input.officeSer,
     orderNo: input.orderNo,
-    ordCompNm: input.center.ordNm,
-    ordNm: input.center.ordNm,
-    ordZip: normalizeEpostZip(input.center.zip),
-    ordAddr1: normalizeEpostAddr1(input.center.addr1),
-    ordAddr2: resolveEpostRecAddr2(input.center.addr2),
-    ordMob: centerPhone,
-    recNm: input.pickup.name.trim() || '고객',
-    recZip,
-    recAddr1,
-    recAddr2: resolveEpostRecAddr2(input.pickup.addr2),
-    recTel: recPhone,
+    // 발신자(고객) → ord*
+    ordCompNm: input.pickup.name.trim() || '고객',
+    ordNm:     input.pickup.name.trim() || '고객',
+    ordZip:    normalizeEpostZip(input.pickup.zip),
+    ordAddr1:  normalizeEpostAddr1(input.pickup.addr1),
+    ordAddr2:  resolveEpostRecAddr2(input.pickup.addr2),
+    ordMob:    pickupPhone,
+    // 수취인(물류센터) → rec*
+    recNm:    input.center.ordNm,
+    recZip:   normalizeEpostZip(input.center.zip),
+    recAddr1: normalizeEpostAddr1(input.center.addr1),
+    recAddr2: resolveEpostRecAddr2(input.center.addr2),
+    recTel:   centerPhone,
     contCd: '025',
     goodsNm: input.goodsNm,
     weight: input.weight,
@@ -74,6 +85,6 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     delivMsg: input.delivMsg,
     testYn: input.testYn,
     printYn: 'Y',
-    inqTelCn: recPhone,
+    inqTelCn: pickupPhone,
   };
 }
