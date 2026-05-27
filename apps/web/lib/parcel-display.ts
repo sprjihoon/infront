@@ -190,7 +190,7 @@ export function getParcelDisplaySummary(
         badgeLabel: "센터 보관",
         ...BADGE.warehouse,
         subtitle: formatInboundDate(parcel.inbound_at) ?? "처리 중",
-        meta: formatWeight(parcel.weight_actual),
+        meta: formatWeight(parcel.weight_actual) ?? undefined,
       };
   }
 }
