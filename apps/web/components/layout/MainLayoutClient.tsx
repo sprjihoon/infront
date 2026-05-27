@@ -16,7 +16,7 @@ export default function MainLayoutClient({ children }: { children: React.ReactNo
         </div>
 
         <div
-          className="hidden lg:block fixed top-4 bottom-[calc(60px+var(--sab,0px)+0.5rem)] w-72 overflow-y-auto z-[1]"
+          className="hidden xl:block fixed top-4 bottom-[calc(60px+var(--sab,0px)+0.5rem)] w-72 overflow-y-auto z-[1]"
           style={{ left: "calc(50% + 300px + 24px)" }}
         >
           <SidebarWrapper />

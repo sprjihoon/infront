@@ -9,7 +9,6 @@ import {
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
 import type { ItemCategory } from "@/lib/item-categories";
 import { useFlowMode } from "@/lib/flow-mode";
-import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
 const STEP_LABELS = ["발송 정보", "물품 내역"] as const;
 
@@ -300,7 +299,6 @@ export default function RegisterParcelPage() {
               <h1 className="text-base font-bold text-gray-900">물품 등록</h1>
             )}
           </div>
-          <FlowModeToggle />
         </div>
         {isSimple && (
           <div className="flex gap-1.5 px-4 pb-3">

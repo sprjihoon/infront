@@ -104,15 +104,5 @@ export function buildActionCards(
     });
   }
 
-  if (cards.length === 0 && parcels.length === 0 && orders.length === 0) {
-    cards.push({
-      id: "empty",
-      priority: 6,
-      emoji: "📭",
-      message: "아직 접수된 물품이 없어요",
-      button: { label: "수거 신청하기", href: "/pickup" },
-    });
-  }
-
   return cards.sort((a, b) => a.priority - b.priority).slice(0, 3);
 }

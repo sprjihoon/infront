@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, Hash } from "lucide-react";
+import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, Hash, SlidersHorizontal } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
 const INFRONT_ADDRESS = "대구광역시 동구 동촌로 1 (동대구우체국 소포실) 인프론트";
 const INFRONT_ZIPCODE = "41068";
@@ -141,6 +142,17 @@ export default function MyPage() {
         <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2 leading-relaxed">
           ⚠️ 수거 신청 이외의 입고는 <span className="font-semibold">마이창고 물품 등록</span>이 필수입니다.
         </p>
+      </div>
+
+      <div className="bg-white rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <SlidersHorizontal size={16} className="text-brand-600" />
+          <p className="text-sm font-semibold text-gray-900">입력 모드</p>
+        </div>
+        <p className="text-xs text-gray-400 mb-4 leading-relaxed">
+          수거·출고 신청 화면 표시 방식입니다. 일반모드는 단계별, 고급모드는 한 페이지에 모두 입력합니다.
+        </p>
+        <FlowModeToggle />
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

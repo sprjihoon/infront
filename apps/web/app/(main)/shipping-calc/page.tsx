@@ -12,7 +12,6 @@ import { snapDocWeightG } from "@/lib/ems/client";
 import { validateShippingDimensions } from "@/lib/ems/dimension-limits";
 import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
 import SidebarPricingGuide from "@/components/ui/SidebarPricingGuide";
-import SidebarShippingCalcInfo from "@/components/ui/SidebarShippingCalcInfo";
 import InsuranceQuoteFields from "@/components/ui/InsuranceQuoteFields";
 
 const SERVICES = [
@@ -254,16 +253,10 @@ export default function ShippingCalcPage() {
 
       {/* 데스크톱: 600px 영역 왼쪽 — 요금 안내 위젯 */}
       <aside
-        className="hidden lg:block fixed top-4 bottom-[calc(60px+var(--sab,0px)+0.5rem)] w-72 overflow-y-auto z-[1]"
+        className="hidden xl:block fixed top-4 bottom-[calc(60px+var(--sab,0px)+0.5rem)] w-72 overflow-y-auto z-[1]"
         style={{ right: "calc(50% + 300px + 24px)" }}
       >
         <SidebarPricingGuide />
-      </aside>
-
-      {/* 모바일: 상단 인라인 */}
-      <aside className="lg:hidden px-4 pt-4 space-y-4">
-        <SidebarPricingGuide />
-        <SidebarShippingCalcInfo />
       </aside>
 
       <div className="px-4 py-4 space-y-4">

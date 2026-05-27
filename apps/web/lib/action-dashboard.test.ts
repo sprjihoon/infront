@@ -30,11 +30,9 @@ describe("formatPickupDate", () => {
 });
 
 describe("buildActionCards", () => {
-  it("shows empty state when no active items", () => {
+  it("returns no cards when no active items", () => {
     const cards = buildActionCards([], []);
-    expect(cards).toHaveLength(1);
-    expect(cards[0].id).toBe("empty");
-    expect(cards[0].button?.href).toBe("/pickup");
+    expect(cards).toHaveLength(0);
   });
 
   it("prioritizes payment over inbound", () => {

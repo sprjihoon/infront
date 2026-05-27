@@ -34,17 +34,6 @@ async function fetchDashboardData() {
   };
 }
 
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-3">
-      <div className="h-5 w-20 bg-gray-200 rounded animate-pulse" />
-      <div className="rounded-2xl border bg-white shadow-sm p-4 animate-pulse space-y-3">
-        <div className="h-4 bg-gray-200 rounded w-4/5" />
-        <div className="h-10 bg-gray-200 rounded-xl" />
-      </div>
-    </div>
-  );
-}
 
 export default function ActionDashboard() {
   const { data, isLoading, isError } = useQuery({
@@ -54,7 +43,7 @@ export default function ActionDashboard() {
   });
 
   if (isLoading) {
-    return <DashboardSkeleton />;
+    return null;
   }
 
   if (isError || !data) {

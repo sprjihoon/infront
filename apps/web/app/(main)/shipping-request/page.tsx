@@ -10,7 +10,6 @@ import { createClient } from "@/lib/supabase/client";
 import { isParcelShippable } from "@/lib/parcel-shippable";
 import OverseasAddressPicker, { OverseasAddressValue } from "@/components/ui/OverseasAddressPicker";
 import { useFlowMode } from "@/lib/flow-mode";
-import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
 import { usdToBoprcKrw } from "@/lib/ems/insurance";
 import { useEmsExchangeRate } from "@/lib/hooks/useEmsExchangeRate";
@@ -477,7 +476,6 @@ function ShippingRequestContent() {
               </>
             )}
           </div>
-          <FlowModeToggle />
         </div>
         {isSimple && (
           <div className="max-w-[600px] mx-auto flex gap-1.5 px-4 pb-3">

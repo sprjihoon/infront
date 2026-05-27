@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Bell, Truck, Calculator, Send, BookOpen, List } from "lucide-react";
-import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { createClient } from "@/lib/supabase/client";
 import ActionDashboard from "@/components/ActionDashboard";
 import {
@@ -211,7 +210,6 @@ export default function HomeClient() {
           </p>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
-          <FlowModeToggle />
           {isLoggedIn ? (
             <Link href="/notifications" className="relative p-2" aria-label="알림">
               <Bell size={22} className="text-gray-700" />
@@ -232,7 +230,7 @@ export default function HomeClient() {
         </div>
       </div>
 
-      <ActionDashboard />
+      {isLoggedIn && <ActionDashboard />}
 
       {/* 서비스 안내 배너 */}
       <div className="bg-gradient-to-r from-brand-600 to-brand-800 rounded-2xl px-5 py-5 sm:py-6 text-white flex items-center justify-between gap-4 min-h-[108px]">
