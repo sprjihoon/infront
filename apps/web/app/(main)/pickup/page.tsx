@@ -261,7 +261,7 @@ export default function PickupPage() {
         }),
       });
 
-      let data: { error?: string; success?: boolean } = {};
+      let data: { error?: string; success?: boolean; parcel_id?: string | number } = {};
       try {
         data = await resp.json();
       } catch {
