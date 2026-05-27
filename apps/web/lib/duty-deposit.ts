@@ -9,6 +9,15 @@ export type DdpCountryCode = (typeof DDP_COUNTRY_CODES)[number];
 
 export type DdpPath = "postal" | "premium";
 
+export type ShippingMethodCode = "EMS" | "EMS_PREMIUM" | "KPACKET";
+
+export function parseShippingMethod(
+  method: string | null | undefined,
+): ShippingMethodCode | undefined {
+  if (method === "EMS" || method === "EMS_PREMIUM" || method === "KPACKET") return method;
+  return undefined;
+}
+
 const US_DDP_MAX_USD = 800;
 const US_GIFT_MAX_USD = 100;
 
@@ -77,7 +86,7 @@ export interface DutyDepositInput {
   countryCode: string;
   customsValueUsd: number;
   dutyPrepaidRequested?: boolean;
-  shippingMethod?: "EMS" | "EMS_PREMIUM" | "KPACKET";
+  shippingMethod?: ShippingMethodCode;
   usdKrwRate: number;
   fxSpread?: number;
 }

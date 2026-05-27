@@ -2,6 +2,8 @@ export interface ParcelInvoiceItem {
   name_en?: string;
   product_name?: string;
   quantity?: number;
+  unit_price_usd?: number;
+  origin_country?: string;
 }
 
 export function parcelItemDisplayName(item: ParcelInvoiceItem): string {
@@ -9,10 +11,8 @@ export function parcelItemDisplayName(item: ParcelInvoiceItem): string {
 }
 
 /** JSONB·문자열 등 Supabase 응답을 배열로 정규화 */
-export function normalizeParcelItems(
-  raw: ParcelInvoiceItem[] | string | Record<string, ParcelInvoiceItem> | null | undefined,
-): ParcelInvoiceItem[] {
-  if (!raw) return [];
+export function normalizeParcelItems(raw: unknown): ParcelInvoiceItem[] {
+  if (raw == null) return [];
   let parsed: unknown = raw;
   if (typeof raw === "string") {
     try {

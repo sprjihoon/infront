@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { calculateDutyDeposit } from "@/lib/duty-deposit";
+import { calculateDutyDeposit, parseShippingMethod } from "@/lib/duty-deposit";
 import { getEmsUsdKrwRate, getEmsUsdKrwRateNumber } from "@/lib/ems/exchange-rate-store";
 import {
   buildItemListFromParcels,
@@ -92,7 +92,7 @@ export async function rebuildOrderAfterPartialRelease(
       countryCode: order.recipient_country?.toUpperCase() ?? "",
       customsValueUsd: customs_value,
       dutyPrepaidRequested: true,
-      shippingMethod: order.shipping_method,
+      shippingMethod: parseShippingMethod(order.shipping_method),
       usdKrwRate: getEmsUsdKrwRateNumber(rateInfo),
     });
     duty_prepaid = dutyResult.dutyPrepaid;
