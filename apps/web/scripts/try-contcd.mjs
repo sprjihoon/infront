@@ -15,8 +15,8 @@ const LIVE = process.argv.includes('--live');
 const testYn = LIVE ? 'N' : 'Y';
 const codes = ['011', '021', '025', '031', '003', '001'];
 
-// reqType=2 방문반품 (인프론트 계약 기준 — regiNo 발급 확인된 매핑)
-// ord* = 고객(수거지), rec* = 물류센터(수취처)
+// reqType=2 방문반품 — modo shipments-book 동일
+// ord* = 센터, rec* = 고객(반품인, 수거지)
 const base = {
   custNo: process.env.EPOST_CUSTOMER_ID.trim(),
   apprNo: process.env.EPOST_APPROVAL_NO.trim(),
@@ -26,19 +26,17 @@ const base = {
   weight: 2,
   volume: 60,
   microYn: 'N',
-  // ord* = 고객 (수거 요청자, 반품인)
-  ordCompNm: '홍길동',
-  ordNm:     '홍길동',
-  ordZip:    '41100',
-  ordAddr1:  '대구광역시 동구 범심로 188',
-  ordAddr2:  '201호',
-  ordMob:    '01012345678',
-  // rec* = 물류센터 (우체국 계약 등록 수취처)
-  recNm:    (process.env.INFRONT_CENTER_ORD_NM ?? '인프론트').trim(),
-  recZip:   process.env.INFRONT_CENTER_ZIPCODE.replace(/\D/g, ''),
-  recAddr1: process.env.INFRONT_CENTER_ADDR1,
-  recAddr2: '없음',
-  recTel:   phone,
+  ordCompNm: (process.env.INFRONT_CENTER_ORD_NM ?? '인프론트').trim(),
+  ordNm:     (process.env.INFRONT_CENTER_ORD_NM ?? '인프론트').trim(),
+  ordZip:    process.env.INFRONT_CENTER_ZIPCODE.replace(/\D/g, ''),
+  ordAddr1:  process.env.INFRONT_CENTER_ADDR1,
+  ordAddr2:  process.env.INFRONT_CENTER_ADDR2?.trim() || '없음',
+  ordMob:    phone,
+  recNm:    '홍길동',
+  recZip:   '41100',
+  recAddr1: '대구광역시 동구 범심로 188',
+  recAddr2: '201호',
+  recTel:   '01012345678',
   goodsNm: '수거테스트',
   printYn: 'Y',
   inqTelCn: '01012345678',

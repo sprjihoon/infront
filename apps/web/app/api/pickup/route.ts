@@ -10,7 +10,7 @@ import {
   normalizeEpostPhone,
   normalizeEpostZip,
   normalizeEpostAddr1,
-  resolveEpostRecAddr2,
+  resolveEpostPickupAddr2,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import {
@@ -228,7 +228,14 @@ export async function POST(req: NextRequest) {
       !!apprNo;
     const isTest = test_mode === true || !hasEpostCreds;
 
-    const recAddr2 = resolveEpostRecAddr2(recAddr2Raw);
+    if (!isTest && (recAddr2Raw ?? '').trim().length < 2) {
+      return NextResponse.json(
+        { error: '수거지 상세주소(동·호수, 층 등)를 입력해주세요. 우체국 수거에 필수입니다.' },
+        { status: 400 }
+      );
+    }
+
+    const recAddr2 = resolveEpostPickupAddr2(recAddr2Raw);
 
     const centerMob = centerPhone();
     if (!isTest && !centerMob) {
@@ -265,7 +272,7 @@ export async function POST(req: NextRequest) {
         ordNm: CENTER_ORD_NM,
         zip: CENTER_ZIPCODE,
         addr1: CENTER_ADDR1,
-        addr2: '',  // 우체국 계약에 recAddr2='없음'으로 등록됨
+        addr2: CENTER_ADDR2,
         phone: centerMob,
       },
       pickup: {
@@ -283,11 +290,13 @@ export async function POST(req: NextRequest) {
     });
 
     if (!isTest) {
-      console.log('[PICKUP] epost 반품소포', {
+      console.log('[PICKUP] epost 반품소포 (modo 매핑)', {
         ordZip: epostParams.ordZip,
         ordAddr1: epostParams.ordAddr1,
+        ordAddr2: epostParams.ordAddr2,
         recZip: epostParams.recZip,
         recAddr1: epostParams.recAddr1,
+        recAddr2: epostParams.recAddr2,
         recNm: epostParams.recNm,
       });
     }
@@ -343,7 +352,7 @@ export async function POST(req: NextRequest) {
         tracking_carrier_id: 'kr.epost',
         inbound_source: 'PICKUP',
         pickup_address: recAddr1,
-        pickup_address_detail: recAddr2 === '없음' ? null : recAddr2,
+        pickup_address_detail: recAddr2 || null,
         pickup_zipcode: recZip,
         pickup_phone: recPhoneRaw,
         pickup_date,

@@ -25,10 +25,21 @@ export function normalizeEpostAddr1(addr?: string | null): string {
   return addr?.trim() ?? '';
 }
 
-/** 우체국 recAddr2 — 미입력 시 API 관례값 */
-export function resolveEpostRecAddr2(detail?: string | null): string {
+/** 센터 ordAddr2 — 미입력 시 '없음' (modo shipments-book 동일) */
+export function resolveEpostCenterAddr2(detail?: string | null): string {
   const trimmed = detail?.trim();
   return trimmed && trimmed.length >= 2 ? trimmed : '없음';
+}
+
+/** 고객 수거지 recAddr2 — 미입력 시 빈 문자열 (modo shipments-book 동일) */
+export function resolveEpostPickupAddr2(detail?: string | null): string {
+  const trimmed = detail?.trim();
+  return trimmed && trimmed.length >= 2 ? trimmed : '';
+}
+
+/** @deprecated resolveEpostCenterAddr2 또는 resolveEpostPickupAddr2 사용 */
+export function resolveEpostRecAddr2(detail?: string | null): string {
+  return resolveEpostCenterAddr2(detail);
 }
 
 /** 우체국 API — 전화번호는 숫자만 허용 */
