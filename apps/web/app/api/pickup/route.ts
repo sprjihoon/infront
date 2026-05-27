@@ -13,6 +13,7 @@ import {
   inferPickupAddressDetail,
   resolveEpostPickupAddr2,
   requireEpostPhone,
+  splitPickupAddressForEpost,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import {
@@ -262,6 +263,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const pickupSplit = splitPickupAddressForEpost(recAddr1, recAddr2Raw);
+    recAddr1 = pickupSplit.addr1;
+    const recAddr2ForEpost = pickupSplit.addr2;
+
     const custNo = (process.env.EPOST_CUSTOMER_ID ?? '').trim();
     const apprNo = (process.env.EPOST_APPROVAL_NO ?? '').trim();
     const hasEpostCreds =
@@ -271,7 +276,7 @@ export async function POST(req: NextRequest) {
       !!apprNo;
     const isTest = test_mode === true || !hasEpostCreds;
 
-    if (!isTest && (recAddr2Raw ?? '').trim().length < 2) {
+    if (!isTest && recAddr2ForEpost.length < 2) {
       const short = (recAddr2Raw ?? '').trim();
       const hint = pickup_address_id
         ? '마이페이지 → 주소록 관리 → 수거배송지에서 상세주소(2글자 이상, 예: 3층·302호)를 입력·저장한 뒤 다시 선택해주세요.'
@@ -289,16 +294,14 @@ export async function POST(req: NextRequest) {
     }
 
     // 수거 화면에서 보완 입력한 상세주소를 주소록에 반영 (다음 접수부터 그대로 사용)
-    if (pickup_address_id && (recAddr2Raw ?? '').trim().length >= 2) {
+    if (pickup_address_id && recAddr2ForEpost.length >= 2) {
       await supabase
         .from('customer_addresses')
-        .update({ address_detail: (recAddr2Raw ?? '').trim() })
+        .update({ address_detail: recAddr2ForEpost })
         .eq('id', pickup_address_id)
         .eq('customer_id', user.id)
         .eq('type', 'pickup');
     }
-
-    const recAddr2 = resolveEpostPickupAddr2(recAddr2Raw);
 
     let centerMob = '';
     let recPhoneEpost = '';
@@ -346,14 +349,14 @@ export async function POST(req: NextRequest) {
         ordNm: CENTER_ORD_NM,
         zip: CENTER_ZIPCODE,
         addr1: CENTER_ADDR1,
-        addr2: CENTER_ADDR2,
+        addr2: '',
         phone: centerMob,
       },
       pickup: {
         name: recNm,
         zip: recZip,
         addr1: recAddr1,
-        addr2: recAddr2Raw,
+        addr2: recAddr2ForEpost,
         phone: recPhoneEpost,
       },
       goodsNm,
@@ -364,7 +367,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (!isTest) {
-      console.log('[PICKUP] epost 반품소포 (modo 매핑)', {
+      console.log('[PICKUP] epost 반품소포 (ord=수거지, rec=센터)', {
         ordZip: epostParams.ordZip,
         ordAddr1: epostParams.ordAddr1,
         ordAddr2: epostParams.ordAddr2,
@@ -428,7 +431,7 @@ export async function POST(req: NextRequest) {
         tracking_carrier_id: 'kr.epost',
         inbound_source: 'PICKUP',
         pickup_address: recAddr1,
-        pickup_address_detail: recAddr2 || null,
+        pickup_address_detail: recAddr2ForEpost || null,
         pickup_zipcode: recZip,
         pickup_phone: recPhoneRaw,
         pickup_date,

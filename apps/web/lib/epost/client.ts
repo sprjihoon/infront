@@ -92,6 +92,51 @@ export function inferPickupAddressDetail(
   return '';
 }
 
+/**
+ * 우체국 recAddr1(도로명) / recAddr2(상세) 분리
+ * 한 줄 주소에 상세가 붙어 있으면 도로명만 addr1, 나머지 addr2
+ */
+export function splitPickupAddressForEpost(
+  addr1?: string | null,
+  detail?: string | null,
+): { addr1: string; addr2: string } {
+  const full = normalizeEpostAddr1(addr1);
+  const d = (detail ?? '').trim();
+  const inferred = inferPickupAddressDetail(full, d);
+
+  if (full.length >= 2 && d.length >= 2) {
+    return { addr1: full, addr2: d };
+  }
+
+  if (full.length >= 2 && inferred.length >= 2) {
+    const roadOnly = full
+      .replace(new RegExp(`\\s*${escapeRegExpForAddr(inferred)}\\s*$`), '')
+      .trim();
+    if (roadOnly.length >= 2) {
+      return { addr1: roadOnly, addr2: inferred };
+    }
+    const roadMatch = full.match(/^(.+?(?:로|길|대로)\s*\d+(?:-\d+)?)\s+(.+)$/);
+    if (roadMatch && roadMatch[1].trim().length >= 2 && roadMatch[2].trim().length >= 2) {
+      return { addr1: roadMatch[1].trim(), addr2: roadMatch[2].trim() };
+    }
+    return { addr1: full, addr2: inferred };
+  }
+
+  if (full.length >= 2) {
+    const roadMatch = full.match(/^(.+?(?:로|길|대로)\s*\d+(?:-\d+)?)\s+(.+)$/);
+    if (roadMatch && roadMatch[2].trim().length >= 2) {
+      return { addr1: roadMatch[1].trim(), addr2: roadMatch[2].trim() };
+    }
+    return { addr1: full, addr2: resolveEpostPickupAddr2(d) };
+  }
+
+  return { addr1: '', addr2: resolveEpostPickupAddr2(d || inferred) };
+}
+
+function escapeRegExpForAddr(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 /** @deprecated resolveEpostCenterAddr2 또는 resolveEpostPickupAddr2 사용 */
 export function resolveEpostRecAddr2(detail?: string | null): string {
   return resolveEpostCenterAddr2(detail);
@@ -360,8 +405,17 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
     throw new Error('수취인 주소(recAddr1)가 없습니다.');
   }
   if (String(body.reqType ?? '') === '2') {
-    requireEpostPhone(String(body.ordMob ?? ''), '주문자 휴대폰(ordMob)');
-    requireEpostPhone(String(body.recTel ?? body.recMob ?? ''), '수취인 연락처(recTel)');
+    const ordDetail = String(body.ordAddr2 ?? '').trim();
+    if (ordDetail.length < EPOST_PICKUP_DETAIL_MIN_LEN) {
+      throw new Error(
+        '수거지 상세주소(ordAddr2)가 없습니다. 동·호수·층을 2글자 이상 입력해주세요.',
+      );
+    }
+    if (!body.ordAddr1 || normalizeEpostAddr1(String(body.ordAddr1)).length < 2) {
+      throw new Error('수거지 도로명 주소(ordAddr1)가 없습니다.');
+    }
+    requireEpostPhone(String(body.ordMob ?? ''), '수거 연락처(ordMob)');
+    requireEpostPhone(String(body.recTel ?? body.recMob ?? ''), '센터 연락처(recTel)');
   } else {
     const recTel = String(body.recTel ?? body.recMob ?? '');
     if (!recTel || recTel.length < 9) {

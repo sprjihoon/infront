@@ -1,11 +1,11 @@
 /**
  * 반품소포(수거) InsertOrder 파라미터
  *
- * reqType=2 방문반품 — modo shipments-book 동일 매핑:
- *   ord* = 물류센터 (도착지)
- *   rec* = 고객/반품인 (수거지 — 우체국이 방문하는 주소)
+ * reqType=2 방문반품 — 인프론트 우체국 계약 (live API 검증, contCd=025):
+ *   ord* = 고객 수거지 (방문·발신, ordAddr1+ordAddr2 분리)
+ *   rec* = 물류센터 등록 수취처 (동대구우체국, recAddr2='없음')
  *
- * recAddr2 = 고객 상세주소(동·호수). 비어 있으면 ERR-311 발생.
+ * rec*에 고객 주소를 넣으면 ERR-311(recAddr1/2) 발생.
  */
 
 import type { InsertOrderParams } from './types';
@@ -14,10 +14,9 @@ import {
   normalizeEpostZip,
   requireEpostPhone,
   resolveEpostCenterAddr2,
-  resolveEpostPickupAddr2,
+  splitPickupAddressForEpost,
 } from './client';
 
-/** ordCompNm 12byte 초과 시 regData 필드 밀림 → ordMob ERR-522 유발 가능 */
 const EPOST_ORD_COMP_NM = '인프론트';
 
 export interface ReturnPickupLocation {
@@ -50,10 +49,10 @@ export interface ReturnPickupOrderInput {
   testYn: 'Y' | 'N';
 }
 
-/** modo 반품소포(수거) — ord*=센터, rec*=고객 */
 export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): InsertOrderParams {
-  const pickupPhone = requireEpostPhone(input.pickup.phone, '수거 연락처');
-  const centerPhone = requireEpostPhone(input.center.phone, '센터 연락처(ordMob)');
+  const pickupPhone = requireEpostPhone(input.pickup.phone, '수거 연락처(ordMob)');
+  const centerPhone = requireEpostPhone(input.center.phone, '센터 연락처(recTel)');
+  const pickupSplit = splitPickupAddressForEpost(input.pickup.addr1, input.pickup.addr2);
 
   return {
     custNo: input.custNo,
@@ -62,19 +61,18 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     reqType: '2',
     officeSer: input.officeSer,
     orderNo: input.orderNo,
-    // 주문자(물류센터) → ord*
     ordCompNm: EPOST_ORD_COMP_NM,
-    ordNm:     input.center.ordNm,
-    ordZip:    normalizeEpostZip(input.center.zip),
-    ordAddr1:  normalizeEpostAddr1(input.center.addr1),
-    ordAddr2:  resolveEpostCenterAddr2(input.center.addr2),
-    ordMob:    centerPhone,
-    // 수취인(반품인=고객) → rec*
-    recNm:    input.pickup.name.trim() || '고객',
-    recZip:   normalizeEpostZip(input.pickup.zip),
-    recAddr1: normalizeEpostAddr1(input.pickup.addr1),
-    recAddr2: resolveEpostPickupAddr2(input.pickup.addr2),
-    recTel:   pickupPhone,
+    ordNm: input.pickup.name.trim() || '고객',
+    ordZip: normalizeEpostZip(input.pickup.zip),
+    ordAddr1: pickupSplit.addr1,
+    ordAddr2: pickupSplit.addr2,
+    ordMob: pickupPhone,
+    recNm: input.center.ordNm,
+    recZip: normalizeEpostZip(input.center.zip),
+    recAddr1: normalizeEpostAddr1(input.center.addr1),
+    recAddr2: resolveEpostCenterAddr2(input.center.addr2),
+    recTel: centerPhone,
+    recMob: centerPhone,
     contCd: '025',
     goodsNm: input.goodsNm,
     weight: input.weight,
