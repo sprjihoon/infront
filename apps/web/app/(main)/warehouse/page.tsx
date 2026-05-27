@@ -127,11 +127,11 @@ export default function WarehousePage() {
     return (
       p.tracking_no?.includes(q) ||
       p.sender_name?.includes(q) ||
-      p.pre_invoice_items?.some(
+      (p.pre_invoice_items?.some(
         (item) =>
           item.product_name?.includes(q) ||
           item.name_en?.toLowerCase().includes(q.toLowerCase()),
-      ) ?? false
+      ) ?? false)
     );
   });
 
