@@ -161,7 +161,7 @@ export async function POST(req: NextRequest) {
 
     if (!pickup_address_detail?.trim() || pickup_address_detail.trim().length < 2) {
       return NextResponse.json(
-        { error: '수거 상세주소를 2자 이상 입력해주세요. (우체국 API 필수)' },
+        { error: '상세 주소(동·호수 등)를 2자 이상 입력해주세요.' },
         { status: 400 }
       );
     }

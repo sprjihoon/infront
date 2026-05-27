@@ -131,6 +131,9 @@ export default function PickupPage() {
   const validateStep1 = useCallback((): string | null => {
     if (!pickupAddress?.address) return "수거 주소를 선택해주세요.";
     if (!pickupAddress.zipcode) return "주소 검색을 통해 우편번호를 확인해주세요.";
+    if (!pickupAddress.addressDetail?.trim() || pickupAddress.addressDetail.trim().length < 2) {
+      return "상세 주소(동·호수 등)를 2자 이상 입력해주세요.";
+    }
     if (!pickupAddress.phone) return "수거지 연락처를 입력해주세요.";
     if (!/^[0-9\-\s]{9,}$/.test(pickupAddress.phone)) {
       return "연락처 형식을 확인해주세요. (예: 010-1234-5678)";
@@ -206,7 +209,7 @@ export default function PickupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pickup_address: pickupAddress!.address,
-          pickup_address_detail: pickupAddress!.addressDetail || undefined,
+          pickup_address_detail: pickupAddress!.addressDetail.trim(),
           pickup_zipcode: pickupAddress!.zipcode,
           pickup_phone: pickupAddress!.phone,
           pickup_date: pickupDate,
@@ -380,7 +383,7 @@ export default function PickupPage() {
             <div>
               <p className="text-sm font-bold text-brand-800">우체국 반품 수거</p>
               <p className="text-xs text-brand-600 mt-0.5 leading-relaxed">
-                계약 반품(reqType) 방문 수거입니다. 1회 신청당 박스 1개·운송장 1장이며, 박스가 여러 개면 수거 신청을 나눠 주세요.
+                우체국이 방문하여 물품을 수거합니다. 신청 1회당 박스 1개·운송장 1장이며, 박스가 여러 개면 각각 수거 신청해 주세요.
               </p>
             </div>
           </div>
@@ -399,6 +402,26 @@ export default function PickupPage() {
                 onChange={setPickupAddress}
                 customerId={customerId}
               />
+              {pickupAddress && (
+                <div className="mt-3">
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                    상세 주소 <span className="text-red-400">*</span>
+                    <span className="text-gray-400 font-normal ml-1">(동·호수 등 2자 이상)</span>
+                  </label>
+                  <input
+                    value={pickupAddress.addressDetail}
+                    onChange={(e) =>
+                      setPickupAddress({ ...pickupAddress, addressDetail: e.target.value })
+                    }
+                    placeholder="예: 101동 502호"
+                    className={`w-full bg-white border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                      pickupAddress.addressDetail.trim().length < 2
+                        ? "border-amber-300"
+                        : "border-gray-200"
+                    }`}
+                  />
+                </div>
+              )}
             </div>
 
             <div>

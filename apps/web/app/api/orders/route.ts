@@ -28,6 +28,80 @@ function createAdminSupabase() {
   );
 }
 
+function isMissingColumnError(message: string | undefined): boolean {
+  if (!message) return false;
+  return /column|schema cache|PGRST204/i.test(message);
+}
+
+const ORDER_SELECT_FULL = `
+  id, order_no, status, shipping_method, packaging_type,
+  packaging_fee, shipping_fee, total_amount, payment_status,
+  recipient_name, recipient_country,
+  customs_value, duty_prepaid, duty_deposit_krw, duty_estimate_usd,
+  item_list, intl_tracking_no,
+  intl_tracking_status, intl_tracking_last_event, delivered_at,
+  created_at, updated_at,
+  order_parcels (parcel_id),
+  shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
+`;
+
+const ORDER_SELECT_NO_BOXES = `
+  id, order_no, status, shipping_method, packaging_type,
+  packaging_fee, shipping_fee, total_amount, payment_status,
+  recipient_name, recipient_country,
+  customs_value, duty_prepaid, duty_deposit_krw, duty_estimate_usd,
+  item_list, intl_tracking_no,
+  intl_tracking_status, intl_tracking_last_event, delivered_at,
+  created_at, updated_at,
+  order_parcels (parcel_id)
+`;
+
+const ORDER_SELECT_CORE = `
+  id, order_no, status, shipping_method, packaging_type,
+  packaging_fee, shipping_fee, total_amount, payment_status,
+  recipient_name, recipient_country,
+  customs_value, item_list, intl_tracking_no,
+  created_at, updated_at,
+  order_parcels (parcel_id)
+`;
+
+async function fetchCustomerOrders(
+  supabase: ReturnType<typeof createSupabase>,
+  userId: string,
+  limit: number,
+) {
+  const selects = [ORDER_SELECT_FULL, ORDER_SELECT_NO_BOXES, ORDER_SELECT_CORE];
+  let lastError: { message: string } | null = null;
+
+  for (const select of selects) {
+    const { data, error } = await supabase
+      .from('orders')
+      .select(select)
+      .eq('customer_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (!error) {
+      return (data ?? []).map((row) => {
+        const order = row as unknown as Record<string, unknown>;
+        return {
+          ...order,
+          shipping_boxes: Array.isArray(order.shipping_boxes) ? order.shipping_boxes : [],
+          duty_prepaid: order.duty_prepaid ?? false,
+          duty_deposit_krw: order.duty_deposit_krw ?? 0,
+          duty_estimate_usd: order.duty_estimate_usd ?? null,
+          intl_tracking_status: order.intl_tracking_status ?? null,
+          intl_tracking_last_event: order.intl_tracking_last_event ?? null,
+          delivered_at: order.delivered_at ?? null,
+        };
+      });
+    }
+    lastError = error;
+  }
+
+  throw new Error(lastError?.message ?? '주문 목록 조회에 실패했습니다.');
+}
+
 export interface CreateOrderBody {
   parcel_ids: string[];
   shipping_method: 'EMS' | 'EMS_PREMIUM' | 'KPACKET';
@@ -195,47 +269,72 @@ export async function POST(req: NextRequest) {
     else if (packaging_options.safe_pack) packaging_type = 'SPECIAL';
 
     // 주문 생성
-    const { data: order, error: orderErr } = await supabase
-      .from('orders')
-      .insert({
-        customer_id: user.id,
-        order_no,
-        status: 'DRAFT',
-        shipping_method,
-        packaging_type,
-        packaging_fee: packaging_fee ?? 0,
-        shipping_fee: estimated_shipping_fee ?? 0,
-        total_amount,
-        payment_status: 'UNPAID',
-        recipient_name: overseas_address.name,
-        recipient_phone: overseas_address.phone ?? null,
-        // 단일 문자열 (기존 호환)
-        recipient_address: [
-          overseas_address.overseas_addr3,
-          overseas_address.overseas_addr2,
-          overseas_address.overseas_addr1,
-        ].filter(Boolean).join(', '),
-        recipient_country: overseas_address.country_code,
-        // EMS API용 분리 저장
-        recipient_addr1:   overseas_address.overseas_addr1 || null,
-        recipient_addr2:   overseas_address.overseas_addr2 || null,
-        recipient_addr3:   overseas_address.overseas_addr3 || null,
-        recipient_zip:     overseas_address.overseas_zip   || null,
-        recipient_email:   overseas_address.email          || null,
-        customs_value,
-        insurance_enabled: insuranceEnabled,
-        insurance_amount: insuranceAmount,
-        duty_prepaid: dutyPrepaid,
-        duty_estimate_usd: dutyEstimateUsd,
-        duty_deposit_krw: dutyDepositKrw,
-        item_list,
-      })
-      .select()
-      .single();
+    const recipientAddress = [
+      overseas_address.overseas_addr3,
+      overseas_address.overseas_addr2,
+      overseas_address.overseas_addr1,
+    ].filter(Boolean).join(', ');
+
+    const fullInsert = {
+      customer_id: user.id,
+      order_no,
+      status: 'DRAFT',
+      shipping_method,
+      packaging_type,
+      packaging_fee: packaging_fee ?? 0,
+      shipping_fee: estimated_shipping_fee ?? 0,
+      total_amount,
+      payment_status: 'UNPAID',
+      recipient_name: overseas_address.name,
+      recipient_phone: overseas_address.phone ?? null,
+      recipient_address: recipientAddress,
+      recipient_country: overseas_address.country_code,
+      recipient_addr1: overseas_address.overseas_addr1 || null,
+      recipient_addr2: overseas_address.overseas_addr2 || null,
+      recipient_addr3: overseas_address.overseas_addr3 || null,
+      recipient_zip: overseas_address.overseas_zip || null,
+      recipient_email: overseas_address.email || null,
+      customs_value,
+      insurance_enabled: insuranceEnabled,
+      insurance_amount: insuranceAmount,
+      duty_prepaid: dutyPrepaid,
+      duty_estimate_usd: dutyEstimateUsd,
+      duty_deposit_krw: dutyDepositKrw,
+      item_list,
+    };
+
+    const coreInsert = {
+      customer_id: user.id,
+      order_no,
+      status: 'DRAFT',
+      shipping_method,
+      packaging_type,
+      packaging_fee: packaging_fee ?? 0,
+      shipping_fee: estimated_shipping_fee ?? 0,
+      total_amount,
+      payment_status: 'UNPAID',
+      recipient_name: overseas_address.name,
+      recipient_phone: overseas_address.phone ?? null,
+      recipient_address: recipientAddress,
+      recipient_country: overseas_address.country_code,
+      customs_value,
+      item_list,
+    };
+
+    let orderResult = await supabase.from('orders').insert(fullInsert).select().single();
+    if (orderResult.error && isMissingColumnError(orderResult.error.message)) {
+      console.warn('[ORDERS] full insert failed, retrying core columns:', orderResult.error.message);
+      orderResult = await supabase.from('orders').insert(coreInsert).select().single();
+    }
+
+    const { data: order, error: orderErr } = orderResult;
 
     if (orderErr || !order) {
       console.error('[ORDERS] order insert error:', orderErr);
-      return NextResponse.json({ error: '주문 생성에 실패했습니다.' }, { status: 500 });
+      return NextResponse.json(
+        { error: orderErr?.message ?? '주문 생성에 실패했습니다.' },
+        { status: 500 },
+      );
     }
 
     // order_parcels 연결
@@ -324,48 +423,9 @@ export async function GET(req: NextRequest) {
     const url = new URL(req.url);
     const limit = parseInt(url.searchParams.get('limit') ?? '20', 10);
 
-    const baseSelect = `
-      id, order_no, status, shipping_method, packaging_type,
-      packaging_fee, shipping_fee, total_amount, payment_status,
-      recipient_name, recipient_country,
-      customs_value, duty_prepaid, duty_deposit_krw, duty_estimate_usd,
-      item_list, intl_tracking_no,
-      intl_tracking_status, intl_tracking_last_event, delivered_at,
-      created_at, updated_at,
-      order_parcels (parcel_id)
-    `;
+    const orders = await fetchCustomerOrders(supabase, user.id, limit);
 
-    const selectWithBoxes = `${baseSelect},
-      shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
-    `;
-
-    let { data: orders, error } = await supabase
-      .from('orders')
-      .select(selectWithBoxes)
-      .eq('customer_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    // shipping_boxes 테이블 미적용 환경 호환 (010 마이그레이션 전)
-    if (error) {
-      const fallback = await supabase
-        .from('orders')
-        .select(baseSelect)
-        .eq('customer_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(limit);
-
-      if (fallback.error) {
-        return NextResponse.json({ error: fallback.error.message }, { status: 500 });
-      }
-
-      orders = (fallback.data ?? []).map((order) => ({
-        ...order,
-        shipping_boxes: [],
-      }));
-    }
-
-    return NextResponse.json({ orders: orders ?? [] });
+    return NextResponse.json({ orders });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : '알 수 없는 오류';
     return NextResponse.json({ error: message }, { status: 500 });
