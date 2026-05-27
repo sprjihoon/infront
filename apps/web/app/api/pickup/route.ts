@@ -10,6 +10,7 @@ import {
   normalizeEpostPhone,
   normalizeEpostZip,
   normalizeEpostAddr1,
+  inferPickupAddressDetail,
   resolveEpostPickupAddr2,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
@@ -204,11 +205,38 @@ export async function POST(req: NextRequest) {
       if (savedAddr.name?.trim()) recNm = savedAddr.name.trim();
       if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone.trim();
       // 주소록 DB가 기준 — 화면 값은 DB에 상세주소가 없을 때만 보완
-      const detailFromDb = (savedAddr.address_detail ?? '').trim();
+      const detailFromDb = inferPickupAddressDetail(
+        savedAddr.address,
+        savedAddr.address_detail,
+      );
       const detailFromClient = (pickup_address_detail ?? '').trim();
-      recAddr2Raw = detailFromDb || detailFromClient || (recAddr2Raw ?? '').trim();
+      recAddr2Raw =
+        detailFromDb ||
+        detailFromClient ||
+        inferPickupAddressDetail(recAddr1, recAddr2Raw) ||
+        '';
     } else {
-      recAddr2Raw = (pickup_address_detail ?? recAddr2Raw ?? '').trim();
+      recAddr2Raw =
+        (pickup_address_detail ?? '').trim() ||
+        inferPickupAddressDetail(recAddr1, recAddr2Raw) ||
+        '';
+    }
+
+    // 주소록 ID 없이 동일 우편번호·도로명이면 저장된 수거지와 매칭
+    if (!pickup_address_id && recZip.length === 5 && recAddr1.length >= 2) {
+      const { data: candidates } = await supabase
+        .from('customer_addresses')
+        .select('id, address, address_detail')
+        .eq('customer_id', user.id)
+        .eq('type', 'pickup')
+        .eq('zipcode', recZip);
+      const hit = candidates?.find(
+        (row) => normalizeEpostAddr1(row.address) === recAddr1,
+      );
+      if (hit) {
+        const inferred = inferPickupAddressDetail(hit.address, hit.address_detail);
+        if (inferred.length >= 2) recAddr2Raw = inferred;
+      }
     }
 
     console.log('[PICKUP] 최종 수거지 값', {

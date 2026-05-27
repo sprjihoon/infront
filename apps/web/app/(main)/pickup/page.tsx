@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package,
 } from "lucide-react";
-import { normalizeEpostZip, normalizeEpostAddr1 } from "@/lib/epost/client";
+import { normalizeEpostZip, normalizeEpostAddr1, inferPickupAddressDetail } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
@@ -140,7 +140,11 @@ export default function PickupPage() {
     if (!/^[0-9\-\s]{9,}$/.test(pickupAddress.phone)) {
       return "연락처 형식을 확인해주세요. (예: 010-1234-5678)";
     }
-    if ((pickupAddress.addressDetail ?? "").trim().length < 2) {
+    const effectiveDetail = inferPickupAddressDetail(
+      pickupAddress.address,
+      pickupAddress.addressDetail,
+    );
+    if (effectiveDetail.length < 2) {
       return pickupAddress.savedId
         ? "주소록에 상세주소가 없습니다. 마이페이지 → 주소록 관리에서 수거배송지 상세주소를 저장하거나, 아래 칸에 입력해주세요."
         : "수거지 상세주소(동·호수, 층 등)를 입력해주세요.";
@@ -185,9 +189,10 @@ export default function PickupPage() {
       phone: data.phone ?? addr.phone,
       zipcode: zip.length === 5 ? zip : addr.zipcode,
       address,
-      addressDetail:
-        (data.address_detail ?? '').trim() ||
-        (addr.addressDetail ?? '').trim(),
+      addressDetail: inferPickupAddressDetail(
+        data.address ?? addr.address,
+        (data.address_detail ?? '').trim() || addr.addressDetail,
+      ),
     };
   }
 
@@ -252,7 +257,10 @@ export default function PickupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           pickup_address: address,
-          pickup_address_detail: resolved.addressDetail.trim(),
+          pickup_address_detail: inferPickupAddressDetail(
+            resolved.address,
+            resolved.addressDetail,
+          ),
           pickup_zipcode: zip,
           pickup_phone: resolved.phone,
           pickup_name: resolved.name,

@@ -37,6 +37,39 @@ export function resolveEpostPickupAddr2(detail?: string | null): string {
   return trimmed && trimmed.length >= 2 ? trimmed : '';
 }
 
+/**
+ * 주소록 address_detail 컬럼이 비어 있어도 도로명 주소 문자열에 상세가 포함된 경우 추출
+ * (예: "대구광역시 동구 안심로 188 2, 3층" 또는 "… 188 (신기동)")
+ */
+export function inferPickupAddressDetail(
+  addr1?: string | null,
+  detail?: string | null,
+): string {
+  const fromColumn = (detail ?? '').trim();
+  if (fromColumn.length >= 2) return fromColumn;
+
+  const full = (addr1 ?? '').trim();
+  if (full.length < 5) return '';
+
+  // 도로번호 뒤 상세 (예: 안심로 188 2, 3층 (신기동))
+  const roadTail = full.match(/(?:로|길|대로)\s*(\d+(?:-\d+)?)\s+(.+)$/);
+  if (roadTail && roadTail[2].trim().length >= 2) return roadTail[2].trim();
+
+  const commaParts = full.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
+  if (commaParts.length >= 2) {
+    const last = commaParts[commaParts.length - 1];
+    if (last.length >= 2 && last.length <= 50 && !/^\d{5}$/.test(last)) return last;
+  }
+
+  const floor = full.match(/(\d+\s*층(?:\s*\d+)?[^\s,)]*|\d+\s*호|\d+동\s*\d+[^\s,)]*)/);
+  if (floor && floor[1].trim().length >= 2) return floor[1].trim();
+
+  const paren = full.match(/\(([^)]+)\)\s*$/);
+  if (paren && paren[1].trim().length >= 2) return paren[1].trim();
+
+  return '';
+}
+
 /** @deprecated resolveEpostCenterAddr2 또는 resolveEpostPickupAddr2 사용 */
 export function resolveEpostRecAddr2(detail?: string | null): string {
   return resolveEpostCenterAddr2(detail);

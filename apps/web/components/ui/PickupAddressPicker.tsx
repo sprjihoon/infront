@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { MapPin, Star, Plus, ChevronRight, X, Check, Pencil } from "lucide-react";
-import { normalizeEpostZip, normalizeEpostAddr1 } from "@/lib/epost/client";
+import { normalizeEpostZip, normalizeEpostAddr1, inferPickupAddressDetail } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "./AddressSearchButton";
 
@@ -44,7 +44,7 @@ function toPickupAddressValue(a: SavedAddress): PickupAddressValue | null {
     phone: a.phone ?? "",
     zipcode: zip,
     address,
-    addressDetail: (a.address_detail ?? "").trim(),
+    addressDetail: inferPickupAddressDetail(a.address, a.address_detail),
   };
 }
 
