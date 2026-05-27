@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       pickup_address_detail,
       pickup_zipcode,
       pickup_phone,
+      pickup_name,
       pickup_date,
       pickup_notes,
       goods_name,
@@ -77,6 +78,7 @@ export async function POST(req: NextRequest) {
       pickup_address_detail?: string;
       pickup_zipcode: string;
       pickup_phone: string;
+      pickup_name?: string;
       pickup_date: string;
       pickup_notes?: string;
       goods_name?: string;
@@ -211,7 +213,7 @@ export async function POST(req: NextRequest) {
       ordAddr1: CENTER_ADDR1,
       ordAddr2: CENTER_ADDR2 || '없음',
       ordMob: centerMob,
-      recNm: customer.name || '고객',
+      recNm: pickup_name?.trim() || customer.name || '고객',
       recZip,
       recAddr1: pickup_address,
       recAddr2,

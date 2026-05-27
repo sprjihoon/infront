@@ -33,6 +33,20 @@ interface Props {
   customerId: string | null;
 }
 
+function toPickupAddressValue(a: SavedAddress): PickupAddressValue | null {
+  const zip = normalizeEpostZip(a.zipcode);
+  if (zip.length !== 5) return null;
+  return {
+    savedId: a.id,
+    label: a.label,
+    name: a.name,
+    phone: a.phone ?? "",
+    zipcode: zip,
+    address: a.address ?? "",
+    addressDetail: a.address_detail ?? "",
+  };
+}
+
 export default function PickupAddressPicker({ value, onChange, customerId }: Props) {
   const [sheet, setSheet] = useState(false);
   const [saved, setSaved] = useState<SavedAddress[]>([]);
@@ -64,38 +78,24 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
       .order("created_at", { ascending: false });
     setSaved(data ?? []);
 
-    if (!value && data && data.length > 0) {
+    if (value?.savedId && data) {
+      const current = data.find((a) => a.id === value.savedId);
+      const refreshed = current ? toPickupAddressValue(current) : null;
+      if (refreshed) onChange(refreshed);
+    } else if (!value && data && data.length > 0) {
       const def = data.find((a) => a.is_default) ?? data[0];
-      const zip = normalizeEpostZip(def.zipcode);
-      if (zip.length === 5) {
-        onChange({
-          savedId: def.id,
-          label: def.label,
-          name: def.name,
-          phone: def.phone ?? "",
-          zipcode: zip,
-          address: def.address ?? "",
-          addressDetail: def.address_detail ?? "",
-        });
-      }
+      const picked = toPickupAddressValue(def);
+      if (picked) onChange(picked);
     }
   }
 
   function selectSaved(a: SavedAddress) {
-    const zip = normalizeEpostZip(a.zipcode);
-    if (zip.length !== 5) {
+    const picked = toPickupAddressValue(a);
+    if (!picked) {
       alert("우편번호가 없는 주소입니다. 주소를 수정하거나 다시 검색해주세요.");
       return;
     }
-    onChange({
-      savedId: a.id,
-      label: a.label,
-      name: a.name,
-      phone: a.phone ?? "",
-      zipcode: zip,
-      address: a.address ?? "",
-      addressDetail: a.address_detail ?? "",
-    });
+    onChange(picked);
     setSheet(false);
   }
 
@@ -169,7 +169,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
     <>
       <button
         type="button"
-        onClick={() => { setMode("list"); setSheet(true); }}
+        onClick={() => { setMode("list"); setSheet(true); loadSaved(); }}
         className={`w-full text-left rounded-2xl border-2 p-4 transition-all active:scale-[0.98] ${
           value
             ? "bg-white border-brand-200 shadow-sm"

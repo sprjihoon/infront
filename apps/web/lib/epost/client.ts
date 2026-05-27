@@ -15,9 +15,9 @@ function getEnv(key: string) {
 }
 
 /** 우체국 API — 우편번호는 숫자 5자리 */
-export function normalizeEpostZip(zip?: string | null): string {
-  if (!zip) return '';
-  return zip.replace(/\D/g, '').slice(0, 5);
+export function normalizeEpostZip(zip?: string | number | null): string {
+  if (zip == null || zip === '') return '';
+  return String(zip).replace(/\D/g, '').slice(0, 5);
 }
 
 /** 우체국 recAddr2 — 미입력 시 API 관례값 */

@@ -158,6 +158,29 @@ export default function PickupPage() {
     return 3;
   }
 
+  async function resolvePickupAddress(addr: PickupAddressValue): Promise<PickupAddressValue> {
+    if (!addr.savedId || !customerId) return addr;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("customer_addresses")
+      .select("id, label, name, phone, zipcode, address, address_detail")
+      .eq("id", addr.savedId)
+      .eq("customer_id", customerId)
+      .eq("type", "pickup")
+      .maybeSingle();
+    if (!data) return addr;
+    const zip = normalizeEpostZip(data.zipcode);
+    return {
+      savedId: data.id,
+      label: data.label,
+      name: data.name,
+      phone: data.phone ?? addr.phone,
+      zipcode: zip.length === 5 ? zip : addr.zipcode,
+      address: data.address ?? addr.address,
+      addressDetail: data.address_detail ?? addr.addressDetail,
+    };
+  }
+
   useEffect(() => {
     if (prevFormMode.current === "advanced" && formMode === "simple") {
       setStep(inferStep());
@@ -204,14 +227,21 @@ export default function PickupPage() {
 
     setLoading(true);
     try {
+      const resolved = await resolvePickupAddress(pickupAddress!);
+      const zip = normalizeEpostZip(resolved.zipcode);
+      if (zip.length !== 5) {
+        throw new Error("우편번호가 없습니다. 주소록에서 저장 후 수거지를 다시 선택해주세요.");
+      }
+
       const resp = await fetch("/api/pickup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          pickup_address: pickupAddress!.address,
-          pickup_address_detail: pickupAddress!.addressDetail?.trim() || undefined,
-          pickup_zipcode: normalizeEpostZip(pickupAddress!.zipcode),
-          pickup_phone: pickupAddress!.phone,
+          pickup_address: resolved.address,
+          pickup_address_detail: resolved.addressDetail?.trim() || undefined,
+          pickup_zipcode: zip,
+          pickup_phone: resolved.phone,
+          pickup_name: resolved.name,
           pickup_date: pickupDate,
           pickup_notes: notes.trim() || undefined,
           box_count: 1,
