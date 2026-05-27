@@ -559,39 +559,99 @@ export async function getResInfo(params: GetResInfoParams): Promise<GetResInfoRe
   };
 }
 
+/** 취소·조회 API용 신청일자 — resDate(접수일) 우선, 없으면 KST 기준 일자 */
+export function resolveEpostCancelReqYmd(input: {
+  epostPickupDate?: string | null;
+  requestedAt?: string | null;
+}): string {
+  const fromRes = (input.epostPickupDate ?? '').replace(/\D/g, '').slice(0, 8);
+  if (fromRes.length === 8) return fromRes;
+
+  if (input.requestedAt) {
+    const kst = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(
+      new Date(input.requestedAt),
+    );
+    return kst.replace(/-/g, '');
+  }
+
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
+    .format(new Date())
+    .replace(/-/g, '');
+}
+
 export async function cancelOrder(params: CancelOrderParams): Promise<{
   reqNo: string;
   resNo: string;
   canceledYn?: string;
+  notCancelReason?: string;
 }> {
   const custNo = (params.custNo || getEnv('EPOST_CUSTOMER_ID')).trim();
   const apprNo = (params.apprNo || getEnv('EPOST_APPROVAL_NO')).trim();
+  const reqNo = (params.reqNo ?? '').trim();
+  const resNo = (params.resNo ?? '').trim();
+  const regiNo = (params.regiNo ?? '').trim();
+  const reqYmd =
+    (params.reqYmd ?? '').replace(/\D/g, '').slice(0, 8) ||
+    resolveEpostCancelReqYmd({});
+
+  if (!reqNo || !resNo || !regiNo) {
+    throw new Error(
+      `우체국 취소 필수값 누락 (reqNo=${reqNo || '(없음)'}, resNo=${resNo || '(없음)'}, regiNo=${regiNo || '(없음)'})`,
+    );
+  }
 
   const payload = {
     custNo,
     apprNo,
     reqType: params.reqType,
     payType: params.payType ?? '2',
-    reqNo:   params.reqNo,
-    resNo:   params.resNo,
-    regiNo:  params.regiNo,
-    reqYmd:  params.reqYmd,
-    delYn:   params.delYn,
+    reqNo,
+    resNo,
+    regiNo,
+    reqYmd,
+    delYn: params.delYn,
   };
+
+  console.log('[EPOST] cancel payload:', {
+    reqType: payload.reqType,
+    payType: payload.payType,
+    reqNo: payload.reqNo,
+    resNo: payload.resNo,
+    regiNo: payload.regiNo,
+    reqYmd: payload.reqYmd,
+    delYn: payload.delYn,
+    plainPreview: buildEpostParams(payload),
+  });
 
   const parseCancel = (xml: string) => ({
     reqNo: parseXml(xml, 'reqNo') ?? '',
     resNo: parseXml(xml, 'resNo') ?? '',
-    canceledYn: parseXml(xml, 'canceledYn') ?? undefined,
+    canceledYn: parseXml(xml, 'canceledYn') ?? parseXml(xml, 'canceledyn') ?? undefined,
+    notCancelReason:
+      parseXml(xml, 'notCancelReason') ?? parseXml(xml, 'notcancelreason') ?? undefined,
   });
+
+  const assertCanceled = (result: ReturnType<typeof parseCancel>, endpoint: string) => {
+    const yn = (result.canceledYn ?? 'N').toUpperCase();
+    if (yn === 'Y' || yn === 'D') return result;
+    const reason = result.notCancelReason?.trim();
+    throw new Error(
+      `우체국 취소 미완료(${endpoint}, canceledYn=${yn})` +
+        (reason ? `: ${reason}` : ''),
+    );
+  };
 
   // modo: api.GetResCancelCmd.jparcel (SHPAPI-U02-01)
   try {
     const xml = await callEPost('api.GetResCancelCmd.jparcel', payload);
-    return parseCancel(xml);
-  } catch {
-    const xml = await callEPost('api.CancelOrder.jparcel', payload);
-    return parseCancel(xml);
+    return assertCanceled(parseCancel(xml), 'GetResCancelCmd');
+  } catch (firstErr) {
+    try {
+      const xml = await callEPost('api.CancelOrder.jparcel', payload);
+      return assertCanceled(parseCancel(xml), 'CancelOrder');
+    } catch (secondErr) {
+      throw secondErr instanceof Error ? secondErr : firstErr;
+    }
   }
 }
 
