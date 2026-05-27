@@ -303,7 +303,10 @@ function buildKeyedPlaintext(
     if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
     const val = params[key];
     const isReq = required.has(key);
-    if (val === null || val === undefined) continue;
+    if (isReq && (val === null || val === undefined)) {
+      throw new Error(`[EPost] 필수 파라미터 '${key}'가 누락(undefined/null)되었습니다.`);
+    }
+    if (!isReq && (val === null || val === undefined)) continue;
     let sv: string;
     if (typeof val === 'boolean') sv = val ? 'Y' : 'N';
     else if (typeof val === 'number') sv = String(Math.floor(val));

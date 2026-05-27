@@ -419,7 +419,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const reqYmd = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const reqYmd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
+        .format(new Date())
+        .replace(/-/g, '');
       getResInfo({ reqType: '2', orderNo: orderNoUsed, reqYmd })
         .then((info) => console.log('[PICKUP] getResInfo OK:', info.treatStusCd, info.regiNo))
         .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err));
