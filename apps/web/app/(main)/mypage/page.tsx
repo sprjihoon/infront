@@ -108,6 +108,27 @@ export default function MyPage() {
         )}
       </div>
 
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => router.push("/addresses")}
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
+              <BookOpen size={15} className="text-brand-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-800">주소록 관리</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                수거지 {addrCount.pickup}개 · 해외배송지 {addrCount.overseas}개
+              </p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-gray-300" />
+        </button>
+      </div>
+
       <div className="bg-white rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-2 mb-3">
           <MapPin size={16} className="text-brand-600" />
@@ -153,27 +174,6 @@ export default function MyPage() {
           수거·출고 신청 화면 표시 방식입니다. 일반모드는 단계별, 고급모드는 한 페이지에 모두 입력합니다.
         </p>
         <FlowModeToggle />
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <button
-          type="button"
-          onClick={() => router.push("/addresses")}
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
-              <BookOpen size={15} className="text-brand-600" />
-            </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-gray-800">주소록 관리</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                수거지 {addrCount.pickup}개 · 해외배송지 {addrCount.overseas}개
-              </p>
-            </div>
-          </div>
-          <ChevronRight size={16} className="text-gray-300" />
-        </button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">

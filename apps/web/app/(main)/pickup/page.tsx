@@ -95,7 +95,6 @@ export default function PickupPage() {
   const [pickupDate, setPickupDate]     = useState(minDate);
   const [notes, setNotes]               = useState("");
   const [agreed, setAgreed]             = useState(false);
-  const [immediateShip, setImmediateShip] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState("");
 
@@ -295,10 +294,6 @@ export default function PickupPage() {
       const parcelIds: string[] = data.parcel_ids ?? (data.parcel_id ? [data.parcel_id] : []);
       const trackingNos: string[] = data.tracking_nos ?? (data.tracking_no ? [data.tracking_no] : []);
 
-      if (immediateShip && parcelIds.length > 0) {
-        router.push(`/shipping-request?parcels=${parcelIds.join(",")}`);
-        return;
-      }
       setResult({
         parcel_id: parcelIds[0] ?? "",
         parcel_ids: parcelIds,
@@ -798,26 +793,6 @@ export default function PickupPage() {
                 </button>
               </div>
             )}
-
-            <button
-              type="button"
-              onClick={() => setImmediateShip(!immediateShip)}
-              className={`flex items-start gap-3 w-full text-left p-4 rounded-xl border-2 transition-colors ${
-                immediateShip ? "border-violet-500 bg-violet-50" : "border-gray-200 bg-white"
-              }`}
-            >
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                immediateShip ? "bg-violet-600 border-violet-600" : "border-gray-300"
-              }`}>
-                {immediateShip && <CheckCircle className="w-3.5 h-3.5 text-white" />}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-800">✈️ 수거 후 바로 해외배송 신청</p>
-                <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                  체크하면 수거 신청 완료 즉시 해외배송 신청 화면으로 이동합니다.
-                </p>
-              </div>
-            </button>
 
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-1.5 mb-1">
