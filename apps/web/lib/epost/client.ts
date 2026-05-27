@@ -14,6 +14,12 @@ function getEnv(key: string) {
   return process.env[key] ?? '';
 }
 
+/** 우체국 recAddr2 — 미입력 시 API 관례값 */
+export function resolveEpostRecAddr2(detail?: string | null): string {
+  const trimmed = detail?.trim();
+  return trimmed && trimmed.length >= 2 ? trimmed : '없음';
+}
+
 /** 우체국 API — 전화번호는 숫자만 허용 */
 export function normalizeEpostPhone(phone?: string, maxLen = 12): string {
   if (!phone) return '';

@@ -8,6 +8,7 @@ import {
   cancelOrder,
   getResInfo,
   normalizeEpostPhone,
+  resolveEpostRecAddr2,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import {
@@ -159,12 +160,7 @@ export async function POST(req: NextRequest) {
       !!apprNo;
     const isTest = test_mode === true || !hasEpostCreds;
 
-    if (!pickup_address_detail?.trim() || pickup_address_detail.trim().length < 2) {
-      return NextResponse.json(
-        { error: '상세 주소(동·호수 등)를 2자 이상 입력해주세요.' },
-        { status: 400 }
-      );
-    }
+    const recAddr2 = resolveEpostRecAddr2(pickup_address_detail);
 
     const pickupPhone = normalizeEpostPhone(pickup_phone);
     const centerMob = centerPhone();
@@ -209,7 +205,7 @@ export async function POST(req: NextRequest) {
       recNm: customer.name || '고객',
       recZip: pickup_zipcode.replace(/-/g, ''),
       recAddr1: pickup_address,
-      recAddr2: pickup_address_detail.trim(),
+      recAddr2,
       recTel: pickupPhone,
       recMob: pickupPhone,
       contCd: '025',
@@ -274,7 +270,7 @@ export async function POST(req: NextRequest) {
         tracking_carrier_id: 'kr.epost',
         inbound_source: 'PICKUP',
         pickup_address,
-        pickup_address_detail: pickup_address_detail ?? null,
+        pickup_address_detail: recAddr2 === '없음' ? null : recAddr2,
         pickup_zipcode,
         pickup_phone,
         pickup_date,

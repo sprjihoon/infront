@@ -91,7 +91,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
   }
 
   async function confirmNew() {
-    if (!newName || !newPhone || !newAddr || !newZip || newDetail.trim().length < 2) return;
+    if (!newName || !newPhone || !newAddr || !newZip) return;
     setSaving(true);
 
     try {
@@ -345,7 +345,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
                     <input
                       value={newDetail}
                       onChange={(e) => setNewDetail(e.target.value)}
-                      placeholder="상세 주소 (동·호수, 2자 이상)"
+                      placeholder="상세주소 (동·호수, 선택)"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
                     />
                   </div>
@@ -434,7 +434,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
               <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
                 <button
                   type="button"
-                  disabled={saving || !newName || !newPhone || !newAddr || !newZip || newDetail.trim().length < 2}
+                  disabled={saving || !newName || !newPhone || !newAddr || !newZip}
                   onClick={confirmNew}
                   className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
                 >

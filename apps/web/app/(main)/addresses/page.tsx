@@ -440,13 +440,13 @@ export default function AddressesPage() {
                       <input
                         value={form.address ?? ""}
                         readOnly
-                        placeholder="도로명 주소"
+                        placeholder="도로명 주소 (주소 검색 후 자동 입력)"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm text-gray-500 mb-2"
                       />
                       <input
                         value={form.address_detail ?? ""}
                         onChange={e => setForm(f => ({ ...f, address_detail: e.target.value }))}
-                        placeholder="상세주소 (동/호수)"
+                        placeholder="상세주소 (동·호수, 선택)"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                       />
                     </div>
