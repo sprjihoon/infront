@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { ChevronRight, MapPin, Package, Scale, ShieldCheck, Truck, X } from "lucide-react";
-import { canCustomerCancelOrder } from "@/lib/order-reservation";
+import {
+  canCustomerCancelOrder,
+  getCustomerCancelBlockReason,
+} from "@/lib/order-reservation";
 import {
   COUNTRIES,
   formatRecipientAddress,
@@ -12,12 +15,18 @@ import {
   type OrderDetail,
   type OrderSummary,
 } from "@/lib/order-display";
+import {
+  formatParcelItemTitle,
+  normalizeParcelItems,
+} from "@/lib/parcel-item-display";
 import PaymentButton from "@/components/orders/PaymentButton";
 
 interface OrderDetailViewProps {
   order: OrderDetail;
   variant?: "embedded" | "page";
   onCancelClick?: () => void;
+  /** 상세에서 특정 물품만 주문에서 제외 */
+  onExcludeParcel?: (parcelId: string) => void;
 }
 
 function StatusBadge({ status }: { status: string }) {
@@ -72,7 +81,7 @@ export function OrderListActions({
             className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-semibold bg-white"
           >
             <X size={14} />
-            신청 취소
+            {(order.order_parcels?.length ?? 0) > 1 ? "취소 / 물품 제외" : "신청 취소"}
           </button>
         </div>
       )}
@@ -94,7 +103,13 @@ export default function OrderDetailView({
   order,
   variant = "embedded",
   onCancelClick,
+  onExcludeParcel,
 }: OrderDetailViewProps) {
+  const canCancel = canCustomerCancelOrder(order.status, order.payment_status);
+  const cancelBlockReason = getCustomerCancelBlockReason(
+    order.status,
+    order.payment_status,
+  );
   const country = COUNTRIES[order.recipient_country ?? ""];
   const showWeights =
     order.actual_weight != null ||
@@ -110,6 +125,16 @@ export default function OrderDetailView({
             </div>
             <StatusBadge status={order.status} />
           </div>
+          {order.status === "CANCELLED" && (
+            <p className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2 mb-3">
+              취소된 신청입니다. 포함 물품은 마이창고에서 다시 출고 신청할 수 있습니다.
+            </p>
+          )}
+          {!canCancel && cancelBlockReason && order.status !== "CANCELLED" && (
+            <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 mb-3">
+              {cancelBlockReason}
+            </p>
+          )}
           <OrderListActions order={order} onCancelClick={onCancelClick} />
         </div>
       )}
@@ -160,6 +185,9 @@ export default function OrderDetailView({
           <div className="space-y-1.5">
             {order.order_parcels.map((link) => {
               const parcel = link.parcels;
+              const itemTitle = parcel
+                ? formatParcelItemTitle(normalizeParcelItems(parcel.pre_invoice_items))
+                : "";
               if (!parcel) {
                 return (
                   <div
@@ -171,21 +199,36 @@ export default function OrderDetailView({
                 );
               }
               return (
-                <Link
+                <div
                   key={link.parcel_id}
-                  href={`/warehouse/${parcel.id}`}
-                  className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2.5 active:bg-gray-100 transition-colors"
+                  className="bg-gray-50 rounded-xl px-3 py-2.5"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">
-                      {parcel.sender_name ?? "발송인 미상"}
-                    </p>
-                    <p className="text-xs text-gray-400 font-mono mt-0.5">
-                      {parcel.tracking_no ?? "운송장 없음"}
-                    </p>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                </Link>
+                  <Link
+                    href={`/warehouse/${parcel.id}`}
+                    className="flex items-center justify-between active:opacity-80"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {itemTitle || parcel.sender_name || "발송인 미상"}
+                      </p>
+                      <p className="text-xs text-gray-400 font-mono mt-0.5">
+                        {parcel.tracking_no ?? "운송장 없음"}
+                      </p>
+                    </div>
+                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                  </Link>
+                  {canCancel &&
+                    onExcludeParcel &&
+                    (order.order_parcels?.length ?? 0) > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => onExcludeParcel(link.parcel_id)}
+                        className="mt-2 w-full text-[11px] font-semibold text-red-600 py-1.5 rounded-lg border border-red-100 bg-white"
+                      >
+                        이 물품만 제외 (마이창고 복구)
+                      </button>
+                    )}
+                </div>
               );
             })}
           </div>

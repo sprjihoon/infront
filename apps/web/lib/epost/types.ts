@@ -29,6 +29,10 @@ export interface InsertOrderParams {
   testYn?: 'Y' | 'N';
   printYn?: 'Y' | 'N';
   inqTelCn?: string;
+  /** 반품소포(reqType=2) 반품 희망 방문일자 YYYYMMDD */
+  retVisitYmd?: string;
+  retReason?: string;
+  retOrigRegiNo?: string;
 }
 
 export interface InsertOrderResponse {

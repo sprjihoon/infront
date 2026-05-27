@@ -11,6 +11,12 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isParcelShippable } from "@/lib/parcel-shippable";
+import {
+  canCancelPickupRequest,
+  canRequestParcelReturn,
+  getParcelLifecycleHint,
+  isParcelVisibleInWarehouse,
+} from "@/lib/parcel-lifecycle";
 import { TRACKING_STATUS } from "@/lib/tracking/client";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
 import type { ItemCategory } from "@/lib/item-categories";
@@ -118,8 +124,6 @@ const GRADE_CONFIG: Record<string, { label: string; color: string }> = {
   RETURN_RECOMMENDED:   { label: "반품 권장", color: "text-red-700 bg-red-100" },
 };
 
-const RETURNABLE_STATUSES = new Set(["INBOUND", "INSPECTION", "HOLD"]);
-
 export default function ParcelDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
@@ -172,7 +176,10 @@ export default function ParcelDetailPage() {
       supabase.from("order_parcels").select("order_id, orders(order_no, status, created_at)").eq("parcel_id", parcelId),
     ]);
 
-    if (!parcelData) { router.push("/warehouse"); return; }
+    if (!parcelData || !isParcelVisibleInWarehouse(parcelData)) {
+      router.push("/warehouse");
+      return;
+    }
     setParcel(parcelData);
     setMedia(mediaData ?? []);
     setInspection(inspData ?? null);
@@ -294,8 +301,9 @@ export default function ParcelDetailPage() {
     (lo) => lo.orders && !["CANCELLED", "DELIVERED"].includes(lo.orders.status)
   );
   const canShip = isParcelShippable(parcel) && !linkedActiveOrder;
-  const canReturn = RETURNABLE_STATUSES.has(parcel.status);
+  const canReturn = canRequestParcelReturn(parcel.status);
   const canEdit = ["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"].includes(parcel.status);
+  const lifecycleHint = getParcelLifecycleHint(parcel.status);
   // 제품명·가격은 SHIPPING·DONE 전 단계까지 고객이 수정 가능
   const canEditItems = !["SHIPPING", "DONE"].includes(parcel.status);
 
@@ -777,9 +785,15 @@ export default function ParcelDetailPage() {
         </div>
       )}
 
+      {lifecycleHint && (
+        <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
+          {lifecycleHint}
+        </p>
+      )}
+
       {/* 액션 버튼 */}
       <div className="space-y-2 pb-2">
-        {parcel.status === "PENDING_PICKUP" && (
+        {canCancelPickupRequest(parcel.status) && (
           <button
             type="button"
             onClick={() => setShowCancelPickup(true)}
@@ -789,7 +803,7 @@ export default function ParcelDetailPage() {
             수거 신청 취소
           </button>
         )}
-        {parcel.status === "PICKUP_CANCELLED" && (
+        {parcel.status === "PICKUP_CANCELLED" && parcel.inbound_at && (
           <Link
             href="/pickup"
             className="flex items-center justify-center gap-2 w-full bg-yellow-500 text-white font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform shadow"
@@ -823,7 +837,7 @@ export default function ParcelDetailPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center">
           <div className="w-full max-w-[380px] bg-white rounded-2xl p-5 shadow-xl">
             <p className="text-base font-bold text-gray-900 mb-1">수거 신청을 취소할까요?</p>
-            <p className="text-sm text-gray-500 mb-5">취소 후 다시 수거 신청을 하실 수 있습니다.</p>
+            <p className="text-sm text-gray-500 mb-5">취소하면 마이창고 목록에서 제거됩니다. 다시 이용하시려면 수거 신청 메뉴를 이용해 주세요.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCancelPickup(false)}

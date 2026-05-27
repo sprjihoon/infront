@@ -10,6 +10,7 @@ import {
   normalizeParcelItems,
 } from "@/lib/parcel-item-display";
 import { getParcelDisplaySummary } from "@/lib/parcel-display";
+import { isParcelVisibleInWarehouse } from "@/lib/parcel-lifecycle";
 
 interface UserInfo {
   name: string;
@@ -175,9 +176,12 @@ export default function HomeClient() {
           .from("parcels")
           .select("id, tracking_no, pickup_tracking_no, status, sender_name, created_at, inbound_at, weight_actual, is_shippable, hold_reason, notes, tracking_last_event, pre_invoice_items")
           .eq("customer_id", user.id)
+          .neq("status", "DONE")
           .order("created_at", { ascending: false })
-          .limit(1)
-          .then(({ data }) => setParcels(data ?? []));
+          .limit(30)
+          .then(({ data }) =>
+            setParcels((data ?? []).filter(isParcelVisibleInWarehouse).slice(0, 1)),
+          );
 
       // 최근 배송 현황 1건
       fetch("/api/orders", { cache: "no-store" })

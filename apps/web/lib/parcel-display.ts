@@ -215,7 +215,7 @@ export function getWarehouseEmptyMessage(filter: WarehouseFilterKey): { title: s
     case "ATTENTION":
       return {
         title: "확인이 필요한 물품이 없어요",
-        desc: "보류·수거 취소 등\n조치가 필요한 물품이 여기에 표시됩니다",
+        desc: "보류 등\n조치가 필요한 물품이 여기에 표시됩니다",
       };
     default:
       return {

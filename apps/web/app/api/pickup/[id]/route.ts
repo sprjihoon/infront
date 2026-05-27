@@ -7,7 +7,7 @@ export const preferredRegion = 'icn1';
 
 /**
  * DELETE /api/pickup/[id]
- * 수거 신청 취소: 우체국 전산 취소 후 parcel 상태를 PRE_REGISTERED로 복원
+ * 수거 신청 취소: 우체국 전산 취소 후 PICKUP_CANCELLED (입고 전이면 마이창고 비노출)
  */
 export async function DELETE(
   _req: NextRequest,
@@ -148,13 +148,12 @@ export async function DELETE(
     return NextResponse.json({ error: '취소 처리에 실패했습니다.' }, { status: 500 });
   }
 
-  // 알림
+  // 알림 (입고 전 취소 건은 마이창고에 남기지 않음 — 상세 링크 없이 안내)
   await supabase.from('notifications').insert({
     customer_id: user.id,
-    parcel_id:   id,
-    type:        'INBOUND',
+    type:        'PICKUP_CANCELLED',
     title:       '수거 신청 취소',
-    body:        '수거 신청이 취소되었습니다. 다시 수거 신청을 진행해주세요.',
+    body:        '수거 신청이 취소되었습니다.',
   });
 
   return NextResponse.json({ ok: true });

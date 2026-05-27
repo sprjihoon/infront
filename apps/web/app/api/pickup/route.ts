@@ -25,6 +25,7 @@ import {
   type PickupBoxSizeCode,
 } from '@/lib/epost/pickup-boxes';
 import { buildReturnPickupOrderParams } from '@/lib/epost/pickup-order';
+import { normalizeEpostRetVisitYmd } from '@/lib/epost/pickup-date';
 import { resolveInfrontCenterFromEnv } from '@/lib/epost/center-config';
 
 export const preferredRegion = 'icn1';
@@ -104,6 +105,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: '수거 연락처, 수거 희망일은 필수입니다.' },
         { status: 400 }
+      );
+    }
+
+    let retVisitYmd: string;
+    try {
+      retVisitYmd = normalizeEpostRetVisitYmd(pickup_date);
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : '수거 희망일이 올바르지 않습니다.' },
+        { status: 400 },
       );
     }
 
@@ -370,11 +381,13 @@ export async function POST(req: NextRequest) {
       weight: spec.weight,
       volume: spec.volume,
       delivMsg: pickup_notes,
+      retVisitYmd,
       testYn: isTest ? 'Y' : 'N',
     });
 
     if (!isTest) {
       console.log('[PICKUP] epost 반품소포 (ord=센터, rec=수거지)', {
+        retVisitYmd: epostParams.retVisitYmd,
         ordZip: epostParams.ordZip,
         ordAddr1: epostParams.ordAddr1,
         ordAddr2: epostParams.ordAddr2,
@@ -455,7 +468,7 @@ export async function POST(req: NextRequest) {
         pickup_address_detail: recAddr2ForEpost || null,
         pickup_zipcode: recZip,
         pickup_phone: recPhoneRaw,
-        pickup_date,
+        pickup_date: `${retVisitYmd.slice(0, 4)}-${retVisitYmd.slice(4, 6)}-${retVisitYmd.slice(6, 8)}`,
         pickup_notes: pickup_notes ?? null,
         pickup_requested_at: new Date().toISOString(),
         epost_req_no: epostResult.reqNo,
@@ -487,7 +500,7 @@ export async function POST(req: NextRequest) {
       parcel_id: parcel.id,
       type: 'INBOUND',
       title: '수거 예약 완료',
-      body: `운송장번호 ${epostResult.regiNo}로 수거가 예약되었습니다. 수거 예정일: ${epostResult.resDate?.substring(0, 8) ?? '미정'}`,
+      body: `운송장번호 ${epostResult.regiNo}로 수거가 예약되었습니다. 방문 희망일: ${retVisitYmd.slice(0, 4)}-${retVisitYmd.slice(4, 6)}-${retVisitYmd.slice(6, 8)}`,
     }).throwOnError();
 
     return NextResponse.json({
@@ -504,7 +517,8 @@ export async function POST(req: NextRequest) {
         price: epostResult.price,
         box_spec: boxNote,
       }],
-      pickup_date: epostResult.resDate,
+      pickup_date: retVisitYmd,
+      epost_res_date: epostResult.resDate,
       price: epostResult.price,
       post_office: epostResult.regiPoNm,
       is_test: isTest,

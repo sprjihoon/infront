@@ -14,6 +14,7 @@ export interface OrderParcelLink {
     tracking_no: string | null;
     sender_name: string | null;
     status: string;
+    pre_invoice_items?: unknown;
   } | null;
 }
 
@@ -58,7 +59,7 @@ export interface OrderSummary {
   intl_tracking_synced_at?: string | null;
   delivered_at?: string | null;
   created_at: string;
-  order_parcels: Array<{ parcel_id: string }>;
+  order_parcels: OrderParcelLink[];
   shipping_boxes: ShippingBox[];
 }
 

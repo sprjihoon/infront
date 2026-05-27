@@ -12,6 +12,8 @@ import {
   ClipboardList,
   RefreshCw,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
@@ -24,6 +26,7 @@ import {
   WAREHOUSE_FILTER_TABS,
   type WarehouseFilterKey,
 } from "@/lib/parcel-display";
+import { isParcelVisibleInWarehouse } from "@/lib/parcel-lifecycle";
 
 interface InvoiceItem {
   product_name?: string;
@@ -49,6 +52,8 @@ interface Parcel {
   pre_invoice_items: InvoiceItem[] | null;
 }
 
+const WAREHOUSE_PAGE_SIZE = 15;
+
 export default function WarehousePage() {
   const router = useRouter();
   const [parcels, setParcels] = useState<Parcel[]>([]);
@@ -59,6 +64,7 @@ export default function WarehousePage() {
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [reservedParcelIds, setReservedParcelIds] = useState<Set<string>>(new Set());
+  const [page, setPage] = useState(1);
 
   const loadParcels = useCallback(async () => {
     const supabase = createClient();
@@ -77,7 +83,7 @@ export default function WarehousePage() {
         .eq("orders.customer_id", user.id),
     ]);
     setReservedParcelIds(parcelIdsInActiveOrders(reservedLinks, user.id));
-    setParcels(data ?? []);
+    setParcels((data ?? []).filter(isParcelVisibleInWarehouse));
     setLoading(false);
   }, []);
 
@@ -118,22 +124,37 @@ export default function WarehousePage() {
     setRefreshing(false);
   }
 
-  const filtered = parcels.filter((p) => {
-    if (selectMode && !isParcelShippable(p)) return false;
-    if (selectMode && reservedParcelIds.has(p.id)) return false;
-    if (!matchesWarehouseFilter(p, filter)) return false;
-    const q = search.trim();
-    if (!q) return true;
-    return (
-      p.tracking_no?.includes(q) ||
-      p.sender_name?.includes(q) ||
-      (p.pre_invoice_items?.some(
-        (item) =>
-          item.product_name?.includes(q) ||
-          item.name_en?.toLowerCase().includes(q.toLowerCase()),
-      ) ?? false)
-    );
-  });
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return parcels.filter((p) => {
+      if (selectMode && !isParcelShippable(p)) return false;
+      if (selectMode && reservedParcelIds.has(p.id)) return false;
+      if (!matchesWarehouseFilter(p, filter)) return false;
+      if (!q) return true;
+      return (
+        p.tracking_no?.includes(q) ||
+        p.sender_name?.includes(q) ||
+        (p.pre_invoice_items?.some(
+          (item) =>
+            item.product_name?.toLowerCase().includes(q) ||
+            item.name_en?.toLowerCase().includes(q),
+        ) ?? false)
+      );
+    });
+  }, [parcels, selectMode, reservedParcelIds, filter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / WAREHOUSE_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageStart = (currentPage - 1) * WAREHOUSE_PAGE_SIZE;
+  const paginated = filtered.slice(pageStart, pageStart + WAREHOUSE_PAGE_SIZE);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search, selectMode]);
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   function toggleSelect(id: string) {
     setSelectedIds((prev) => {
@@ -307,8 +328,9 @@ export default function WarehousePage() {
           )}
         </div>
       ) : (
+        <>
         <div className="space-y-3">
-          {filtered.map((parcel) => {
+          {paginated.map((parcel) => {
             const itemTitle = formatParcelItemTitle(parcel.pre_invoice_items);
             const isReserved = reservedParcelIds.has(parcel.id);
             const isSelected = selectedIds.has(parcel.id);
@@ -369,6 +391,38 @@ export default function WarehousePage() {
             );
           })}
         </div>
+
+        {filtered.length > WAREHOUSE_PAGE_SIZE && (
+          <div className="mt-5 flex flex-col items-center gap-2">
+            <p className="text-xs text-gray-400">
+              {pageStart + 1}–{Math.min(pageStart + WAREHOUSE_PAGE_SIZE, filtered.length)} / 총 {filtered.length}건
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                disabled={currentPage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-600 disabled:opacity-40 disabled:pointer-events-none active:scale-95 transition-transform"
+                aria-label="이전 페이지"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <span className="text-sm font-semibold text-gray-700 min-w-[4.5rem] text-center">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                type="button"
+                disabled={currentPage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="flex items-center justify-center w-10 h-10 rounded-xl border border-gray-200 bg-white text-gray-600 disabled:opacity-40 disabled:pointer-events-none active:scale-95 transition-transform"
+                aria-label="다음 페이지"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {selectMode && selectedIds.size > 0 && (

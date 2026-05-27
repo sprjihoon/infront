@@ -22,7 +22,7 @@ const ORDER_SELECT = `
   created_at, updated_at,
   order_parcels (
     parcel_id,
-    parcels (id, tracking_no, sender_name, status)
+    parcels (id, tracking_no, sender_name, status, pre_invoice_items)
   ),
   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
 `;
@@ -33,6 +33,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [cancelTarget, setCancelTarget] = useState<OrderDetail | null>(null);
+  const [cancelInitialRemoveIds, setCancelInitialRemoveIds] = useState<string[] | undefined>();
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState("");
 
@@ -80,21 +81,38 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       .catch(() => {});
   }, [orderId, order?.status]);
 
-  async function confirmCancel() {
+  async function confirmCancel(parcelIdsToRemove: string[] | null) {
     if (!cancelTarget) return;
     setCancelling(true);
     setCancelError("");
     try {
-      const res = await fetch(`/api/orders/${cancelTarget.id}/cancel`, { method: "POST" });
+      const res = await fetch(`/api/orders/${cancelTarget.id}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          parcelIdsToRemove?.length ? { parcel_ids: parcelIdsToRemove } : {},
+        ),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "취소에 실패했습니다.");
       setCancelTarget(null);
+      setCancelInitialRemoveIds(undefined);
+      if (data.mode === "full") {
+        router.replace("/orders");
+        return;
+      }
       await loadOrder();
     } catch (e: unknown) {
       setCancelError(e instanceof Error ? e.message : "취소 중 오류가 발생했습니다.");
     } finally {
       setCancelling(false);
     }
+  }
+
+  function openCancelModal(target: OrderDetail, removeParcelId?: string) {
+    setCancelError("");
+    setCancelTarget(target);
+    setCancelInitialRemoveIds(removeParcelId ? [removeParcelId] : undefined);
   }
 
   if (loading || !order) {
@@ -120,10 +138,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       <OrderDetailView
         order={order}
         variant="page"
-        onCancelClick={() => {
-          setCancelError("");
-          setCancelTarget(order);
-        }}
+        onCancelClick={() => openCancelModal(order)}
+        onExcludeParcel={(parcelId) => openCancelModal(order, parcelId)}
       />
 
       {cancelTarget && (
@@ -131,7 +147,11 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
           order={cancelTarget}
           error={cancelError}
           cancelling={cancelling}
-          onClose={() => setCancelTarget(null)}
+          initialRemoveIds={cancelInitialRemoveIds}
+          onClose={() => {
+            setCancelTarget(null);
+            setCancelInitialRemoveIds(undefined);
+          }}
           onConfirm={confirmCancel}
         />
       )}

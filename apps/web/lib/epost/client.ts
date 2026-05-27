@@ -421,6 +421,7 @@ async function callEPost(
       orderNoBytes: Buffer.byteLength(dbg.orderNo ?? '', 'utf8'),
       goodsNm: dbg.goodsNm,
       delivMsg: dbg.delivMsg,
+      retVisitYmd: dbg.retVisitYmd,
       plainLen: plainText.length,
     });
   }

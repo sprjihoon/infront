@@ -41,7 +41,10 @@ const ORDER_SELECT_FULL = `
   item_list, intl_tracking_no,
   intl_tracking_status, intl_tracking_last_event, delivered_at,
   created_at, updated_at,
-  order_parcels (parcel_id),
+  order_parcels (
+    parcel_id,
+    parcels (id, tracking_no, sender_name, status, pre_invoice_items)
+  ),
   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
 `;
 
@@ -53,7 +56,10 @@ const ORDER_SELECT_NO_BOXES = `
   item_list, intl_tracking_no,
   intl_tracking_status, intl_tracking_last_event, delivered_at,
   created_at, updated_at,
-  order_parcels (parcel_id)
+  order_parcels (
+    parcel_id,
+    parcels (id, tracking_no, sender_name, status, pre_invoice_items)
+  )
 `;
 
 const ORDER_SELECT_CORE = `
@@ -62,7 +68,10 @@ const ORDER_SELECT_CORE = `
   recipient_name, recipient_country,
   customs_value, item_list, intl_tracking_no,
   created_at, updated_at,
-  order_parcels (parcel_id)
+  order_parcels (
+    parcel_id,
+    parcels (id, tracking_no, sender_name, pre_invoice_items)
+  )
 `;
 
 async function fetchCustomerOrders(
@@ -421,7 +430,7 @@ export async function GET(req: NextRequest) {
     }
 
     const url = new URL(req.url);
-    const limit = parseInt(url.searchParams.get('limit') ?? '20', 10);
+    const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '200', 10), 500);
 
     const orders = await fetchCustomerOrders(supabase, user.id, limit);
 

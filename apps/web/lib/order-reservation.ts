@@ -12,18 +12,55 @@ export const ACTIVE_ORDER_STATUSES = [
   "IN_TRANSIT",
 ] as const;
 
-/** 고객이 직접 취소 가능 (처리 전 · 신청 완료) */
+/** 고객이 직접 취소 가능 — 신청 완료(DRAFT) 단계만 */
 export const CUSTOMER_CANCELABLE_ORDER_STATUSES = ["DRAFT"] as const;
+
+/** 창고 출고·견적·국제배송 처리 시작 후 (취소 불가) */
+export const ORDER_POST_OUTBOUND_STATUSES = [
+  "INBOUND",
+  "INSPECTION",
+  "PACKAGING_REQUESTED",
+  "PACKAGING_DONE",
+  "QUOTE_SENT",
+  "PENDING_PAYMENT",
+  "PAID",
+  "CUSTOMS_FILING",
+  "IN_TRANSIT",
+  "DELIVERED",
+] as const;
 
 export function isActiveOrderStatus(status: string): boolean {
   return (ACTIVE_ORDER_STATUSES as readonly string[]).includes(status);
 }
 
+export function isPostOutboundOrderStatus(status: string): boolean {
+  return (ORDER_POST_OUTBOUND_STATUSES as readonly string[]).includes(status);
+}
+
 export function canCustomerCancelOrder(status: string, paymentStatus: string): boolean {
-  if (!(CUSTOMER_CANCELABLE_ORDER_STATUSES as readonly string[]).includes(status)) {
-    return false;
+  if (status === "CANCELLED" || status === "DELIVERED") return false;
+  if (paymentStatus === "PAID" || paymentStatus === "CANCELLED") return false;
+  if (isPostOutboundOrderStatus(status)) return false;
+  return status === "DRAFT";
+}
+
+/** 취소 버튼 비노출 시 안내 문구 */
+export function getCustomerCancelBlockReason(
+  status: string,
+  paymentStatus: string,
+): string | null {
+  if (canCustomerCancelOrder(status, paymentStatus)) return null;
+  if (status === "CANCELLED") return "이미 취소된 신청입니다.";
+  if (paymentStatus === "PAID" || status === "PAID") {
+    return "결제·출고 처리가 완료되어 직접 취소할 수 없습니다. 고객센터로 문의해 주세요.";
   }
-  return paymentStatus !== "PAID";
+  if (status === "IN_TRANSIT" || status === "CUSTOMS_FILING") {
+    return "국제 배송이 시작되어 취소할 수 없습니다.";
+  }
+  if (isPostOutboundOrderStatus(status)) {
+    return "창고 출고 처리가 시작되어 취소할 수 없습니다. 고객센터로 문의해 주세요.";
+  }
+  return "현재 상태에서는 직접 취소할 수 없습니다. 고객센터로 문의해 주세요.";
 }
 
 type OrderParcelsRow = {

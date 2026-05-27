@@ -12,6 +12,11 @@ import {
   validatePickupAddressDetail,
   isValidPickupAddressDetail,
 } from "@/lib/epost/client";
+import {
+  EPOST_PICKUP_KR_HOLIDAYS,
+  getDefaultEpostRetVisitIso,
+  isEpostPickupDateUnavailable,
+} from "@/lib/epost/pickup-date";
 import { createClient } from "@/lib/supabase/client";
 import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
@@ -56,24 +61,14 @@ const SPECIAL_INSPECTION_SERVICES = [
   { code: "FUNC_CHECK",    name: "제품기능검수",  desc: "제품 작동·기능 여부 확인", price: 1000 },
 ];
 
-const KR_HOLIDAYS = new Set([
-  "2026-01-01","2026-02-16","2026-02-17","2026-02-18",
-  "2026-03-01","2026-05-05","2026-05-24","2026-06-06",
-  "2026-08-15","2026-08-16","2026-09-24","2026-09-25","2026-09-26",
-  "2026-10-03","2026-10-09","2026-12-25",
-]);
-
 function isUnavailable(date: Date): boolean {
-  const day = date.getDay();
-  if (day === 0 || day === 6) return true;
-  return KR_HOLIDAYS.has(date.toISOString().split("T")[0]);
+  return isEpostPickupDateUnavailable(date.toISOString().split("T")[0]);
 }
 
+const KR_HOLIDAYS = EPOST_PICKUP_KR_HOLIDAYS;
+
 function getNextWeekday(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  while (isUnavailable(d)) d.setDate(d.getDate() + 1);
-  return d.toISOString().split("T")[0];
+  return getDefaultEpostRetVisitIso();
 }
 
 function getMaxDate(): string {
@@ -166,6 +161,10 @@ export default function PickupPage() {
     if (filled.length === 0) return "품목을 하나 이상 선택해주세요.";
     const missingCategory = invoiceItems.find(i => !i.name_en.trim());
     if (missingCategory) return "모든 품목의 품목 선택을 완료해주세요.";
+    const missingQty = filled.find(i => i.quantity < 1);
+    if (missingQty) return "모든 품목의 수량을 입력해주세요.";
+    const missingPrice = filled.find(i => i.unit_price_usd <= 0);
+    if (missingPrice) return "모든 품목의 단가(USD)를 입력해주세요. (인보이스·보험료 계산에 필수)";
     const missingHs = filled.find(i => !i.hs_code.trim());
     if (missingHs) return "모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)";
     return null;
@@ -392,13 +391,13 @@ export default function PickupPage() {
           )}
           {dateStr !== "-" && (
             <div>
-              <p className="text-xs text-gray-400">수거 예정일</p>
+              <p className="text-xs text-gray-400">방문 희망일</p>
               <p className="text-sm font-medium text-gray-800">{dateStr}</p>
             </div>
           )}
         </div>
         <p className="text-xs text-gray-500 mb-6 leading-relaxed">
-          우체국 집배원이 지정하신 주소로 방문하여 물품을 수거합니다.<br />
+          우체국 집배원이 방문 희망일에 맞춰 수거를 시도합니다. 일정이 바뀔 수 있습니다.<br />
           입고 완료 후 검수 결과를 알려드리겠습니다.
         </p>
         <button
@@ -498,8 +497,9 @@ export default function PickupPage() {
                 className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-brand-500 transition-colors"
               />
               <p className="text-xs text-gray-400 mt-1">
-                희망일은 참고용이며 실제 수거일은 우체국 일정에 따릅니다.{" "}
-                <span className="text-red-400">토·일·공휴일 수거 불가</span>
+                선택한 날짜가 우체국에 <span className="text-gray-600">방문 희망일</span>로 전달됩니다.
+                실제 방문은 집배 일정에 따라 달라질 수 있습니다.{" "}
+                <span className="text-red-400">토·일·공휴일 선택 불가</span>
               </p>
             </div>
 
@@ -656,8 +656,12 @@ export default function PickupPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[10px] text-gray-400 font-semibold">수량</label>
-                          <div className="flex items-center bg-gray-50 border border-gray-100 rounded-xl overflow-hidden">
+                          <label className="text-[10px] text-gray-400 font-semibold">
+                            수량 <span className="text-red-400">*</span>
+                          </label>
+                          <div className={`flex items-center bg-gray-50 border rounded-xl overflow-hidden ${
+                            item.name_en && item.quantity < 1 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
+                          }`}>
                             <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
                               className="px-3 py-2 text-gray-500 font-bold">−</button>
                             <span className="flex-1 text-center text-sm font-semibold">{item.quantity}</span>
@@ -666,14 +670,26 @@ export default function PickupPage() {
                           </div>
                         </div>
                         <div>
-                          <label className="text-[10px] text-gray-400 font-semibold">단가 (USD)</label>
-                          <div className="flex items-center bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                          <label className="text-[10px] text-gray-400 font-semibold">
+                            단가 (USD) <span className="text-red-400">*</span>
+                          </label>
+                          <div className={`flex items-center bg-gray-50 border rounded-xl px-3 py-2 ${
+                            item.name_en && item.unit_price_usd <= 0 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
+                          }`}>
                             <span className="text-gray-400 text-xs mr-1">$</span>
-                            <input type="number" min={0} step={0.01} value={item.unit_price_usd || ""}
+                            <input
+                              type="number"
+                              min={0.01}
+                              step={0.01}
+                              value={item.unit_price_usd || ""}
                               onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, unit_price_usd: parseFloat(e.target.value) || 0 } : it))}
                               placeholder="0.00"
-                              className="flex-1 bg-transparent text-sm focus:outline-none min-w-0" />
+                              className="flex-1 bg-transparent text-sm focus:outline-none min-w-0"
+                            />
                           </div>
+                          {item.name_en && item.unit_price_usd <= 0 && (
+                            <p className="text-[10px] text-red-500 mt-0.5">금액을 입력해주세요</p>
+                          )}
                         </div>
                       </div>
                       <div className="mt-2">

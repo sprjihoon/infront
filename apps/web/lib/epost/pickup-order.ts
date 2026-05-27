@@ -20,6 +20,7 @@ import {
   truncateUtf8Bytes,
   EPOST_PICKUP_DETAIL_MIN_LEN,
 } from './client';
+import { normalizeEpostRetVisitYmd } from './pickup-date';
 
 /** 우체국 ordCompNm — 정확히 12byte (초과 시 ordMob 등 필드 밀림) */
 const EPOST_ORD_COMP_NM = '인프론트';
@@ -51,6 +52,8 @@ export interface ReturnPickupOrderInput {
   weight: number;
   volume: number;
   delivMsg?: string;
+  /** YYYY-MM-DD 또는 YYYYMMDD */
+  retVisitYmd: string;
   testYn: 'Y' | 'N';
 }
 
@@ -94,6 +97,7 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     volume: input.volume,
     microYn: 'N',
     delivMsg: input.delivMsg,
+    retVisitYmd: normalizeEpostRetVisitYmd(input.retVisitYmd),
     testYn: input.testYn,
     printYn: 'Y',
   };
