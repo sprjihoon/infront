@@ -408,17 +408,25 @@ async function callEPost(
     }
   }
 
-  let resp: Response;
+  let resp!: Response;
+  const netRetries = 3;
   try {
-    try {
-      resp = await attemptFetch();
-    } catch (firstNetErr) {
-      const isAbort = firstNetErr instanceof Error && (firstNetErr.name === 'AbortError' || firstNetErr.message.includes('abort'));
-      if (isAbort) throw firstNetErr;
-      // Network-level retry after 1 s (handles transient ECONNRESET / cold-start drops)
-      console.warn('[EPOST] first attempt failed, retrying in 1s:', firstNetErr instanceof Error ? firstNetErr.message : firstNetErr);
-      await new Promise((r) => setTimeout(r, 1000));
-      resp = await attemptFetch();
+    for (let attempt = 1; attempt <= netRetries; attempt++) {
+      try {
+        resp = await attemptFetch();
+        break;
+      } catch (netErr) {
+        const isAbort =
+          netErr instanceof Error &&
+          (netErr.name === 'AbortError' || netErr.message.includes('abort'));
+        if (isAbort || attempt >= netRetries) throw netErr;
+        const waitMs = attempt * 1000;
+        console.warn(
+          `[EPOST] attempt ${attempt}/${netRetries} failed, retrying in ${waitMs}ms:`,
+          netErr instanceof Error ? netErr.message : netErr,
+        );
+        await new Promise((r) => setTimeout(r, waitMs));
+      }
     }
   } catch (err) {
     const isAbort = err instanceof Error && (err.name === 'AbortError' || err.message.includes('abort'));
