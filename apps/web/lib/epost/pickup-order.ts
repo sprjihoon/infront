@@ -75,7 +75,7 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     recNm:    input.center.ordNm,
     recZip:   normalizeEpostZip(input.center.zip),
     recAddr1: normalizeEpostAddr1(input.center.addr1),
-    recAddr2: resolveEpostRecAddr2(input.center.addr2),
+    recAddr2: '없음',  // 우체국 계약 등록 수취처는 상세주소 없음(로컬 테스트 확인)
     recTel:   centerPhone,
     contCd: '025',
     goodsNm: input.goodsNm,
