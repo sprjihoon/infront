@@ -7,6 +7,7 @@ import {
   mockInsertOrder,
   cancelOrder,
   getResInfo,
+  resolveEpostCancelReqYmd,
   normalizeEpostPhone,
   normalizeEpostZip,
   normalizeEpostAddr1,
@@ -57,7 +58,7 @@ async function rollbackEpostOrder(
       reqNo: result.reqNo,
       resNo: result.resNo ?? '',
       regiNo: result.regiNo,
-      reqYmd: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+      reqYmd: resolveEpostCancelReqYmd({ epostPickupDate: result.resDate }),
       delYn: 'Y',
     });
   } catch (e) {
@@ -440,12 +441,10 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const reqYmd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })
-        .format(new Date())
-        .replace(/-/g, '');
+      const reqYmd = resolveEpostCancelReqYmd({ epostPickupDate: epostResult.resDate });
       getResInfo({ reqType: '2', orderNo: orderNoUsed, reqYmd })
-        .then((info) => console.log('[PICKUP] getResInfo OK:', info.treatStusCd, info.regiNo))
-        .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err));
+        .then((info) => console.log('[PICKUP] getResInfo OK:', info.treatStusCd, info.regiNo, 'reqYmd=', reqYmd))
+        .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err, { orderNo: orderNoUsed, reqYmd }));
     }
 
     const trackingEvents = [{
