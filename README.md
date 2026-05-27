@@ -560,6 +560,9 @@ Next.js 웹앱
 | `EPOST_SECURITY_KEY` | 우체국 SEED128 암호화 키 |
 | `EPOST_TRACE_SERVICE_KEY` | 우체국 EMS 행방조회 OpenAPI 서비스키 (공공데이터포털) |
 | `CRON_SECRET` | Vercel Cron 인증 (`Authorization: Bearer …`) |
+| `PUBLIC_DATA_API_KEY` | 공공데이터포털 인증키 — **관세청 수입 과세환율(주간)** EMS 보험 USD→KRW 갱신 (1순위) |
+| `KOREAEXIM_AUTH_KEY` | (선택) 한국수출입은행 환율 API — 관세청 API 실패 시 폴백 |
+| `EMS_USD_KRW_RATE` | (선택) 수동 고정 환율 — DB·API 모두 실패 시 폴백 |
 | `INFRONT_CENTER_NAME` | 물류센터 이름 |
 | `INFRONT_CENTER_ZIPCODE` | 물류센터 우편번호 |
 | `INFRONT_CENTER_ADDR1` | 물류센터 주소 |

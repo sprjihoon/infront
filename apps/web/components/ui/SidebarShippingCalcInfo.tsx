@@ -2,13 +2,6 @@
 
 import { Scale, Box, FileText, Package, Info, AlertCircle } from "lucide-react";
 
-const WEIGHT_LIMITS = [
-  { name: "EMS (서류)", limit: "2kg", note: "실중량만 · 구간 요금" },
-  { name: "EMS (비서류)", limit: "30kg", note: "부피중량 적용" },
-  { name: "EMS 프리미엄", limit: "70kg", note: "부피중량 적용" },
-  { name: "K-Packet", limit: "2kg", note: "부피중량 적용" },
-] as const;
-
 const DOC_TIERS = ["300g", "500g", "750g", "1kg", "1.25kg", "1.5kg", "1.75kg", "2kg"];
 
 export default function SidebarShippingCalcInfo() {
@@ -71,27 +64,6 @@ export default function SidebarShippingCalcInfo() {
                 </p>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* 서비스별 중량 한도 */}
-        <section>
-          <h3 className="text-xs font-bold text-gray-800 mb-2">서비스별 중량 한도</h3>
-          <div className="space-y-1">
-            {WEIGHT_LIMITS.map((item) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between px-3 py-1.5 bg-gray-50 rounded-lg border border-gray-100"
-              >
-                <div>
-                  <p className="text-[11px] font-medium text-gray-800">{item.name}</p>
-                  <p className="text-[9px] text-gray-400">{item.note}</p>
-                </div>
-                <span className="text-[11px] font-bold text-gray-700 shrink-0 ml-2">
-                  최대 {item.limit}
-                </span>
-              </div>
-            ))}
           </div>
         </section>
 

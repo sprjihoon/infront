@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/sync-inbound",
       "schedule": "0 0-9 * * *"
+    },
+    {
+      "path": "/api/cron/sync-usd-krw-rate",
+      "schedule": "0 16 * * 6"
     }
   ]
 }

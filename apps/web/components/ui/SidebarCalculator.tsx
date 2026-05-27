@@ -6,6 +6,7 @@ import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
 import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
 import InsuranceQuoteFields from "@/components/ui/InsuranceQuoteFields";
+import { SHIPPING_CALC_SUBTITLE, SHIPPING_CALC_TITLE } from "@/lib/shipping-calc-copy";
 
 const PARCEL_SERVICES = [
   { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-brand-600",    maxW: 30000 },
@@ -139,10 +140,10 @@ export default function SidebarCalculator() {
   return (
     <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
       {/* 헤더 — 항상 상단 고정 */}
-      <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0">
-        <Calculator size={16} className="text-white" />
-        <span className="text-white font-semibold text-sm">해외배송 계산기</span>
-        <span className="ml-auto text-white/60 text-xs">EMS · K-Packet</span>
+      <div className="bg-gradient-to-r from-brand-600 to-brand-800 px-4 py-3 flex items-center gap-2 shrink-0 min-w-0">
+        <Calculator size={16} className="text-white shrink-0" />
+        <span className="text-white font-semibold text-sm whitespace-nowrap">{SHIPPING_CALC_TITLE}</span>
+        <span className="ml-auto text-white/60 text-xs shrink-0 whitespace-nowrap">{SHIPPING_CALC_SUBTITLE}</span>
       </div>
 
       {/* 스크롤 영역 */}

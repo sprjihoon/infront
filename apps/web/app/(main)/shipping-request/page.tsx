@@ -13,6 +13,7 @@ import { useFlowMode } from "@/lib/flow-mode";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
 import { usdToBoprcKrw } from "@/lib/ems/insurance";
+import { useEmsExchangeRate } from "@/lib/hooks/useEmsExchangeRate";
 
 const MAIN_FLOW_STEP_LABELS = ["배송 옵션", "해외 배송지", "인보이스"] as const;
 const MAIN_FLOW_STEP_COUNT = MAIN_FLOW_STEP_LABELS.length;
@@ -142,6 +143,7 @@ function ShippingRequestContent() {
   const [packNote, setPackNote] = useState("");
   const [addonServiceSet, setAddonServiceSet] = useState<Set<string>>(new Set());
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
+  const { rate: emsUsdKrwRate, info: emsExchangeInfo } = useEmsExchangeRate();
 
   // 해외 배송지 — boxes[i].address
 
@@ -1153,7 +1155,10 @@ function ShippingRequestContent() {
                   <span className="text-sm font-bold text-brand-900">USD {customsValue.toFixed(2)}</span>
                 </div>
                 <p className="text-xs text-brand-700/80">
-                  EMS 보험가액(원화 환산): 약 {usdToBoprcKrw(customsValue).toLocaleString()}원
+                  EMS 보험가액(원화 환산): 약 {usdToBoprcKrw(customsValue, emsUsdKrwRate).toLocaleString()}원
+                  {emsExchangeInfo?.as_of_date_display
+                    ? ` · 1 USD = ${emsUsdKrwRate.toLocaleString()}원 (${emsExchangeInfo.as_of_date_display})`
+                    : ""}
                 </p>
               </div>
             )}

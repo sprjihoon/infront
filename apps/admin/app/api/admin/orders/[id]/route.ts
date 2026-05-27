@@ -3,6 +3,10 @@ import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
 import { getShippingQuote, EmsApiError } from "@/lib/ems/client";
 import { getOrderInsuranceParams } from "@/lib/ems/insurance";
+import {
+  getEmsUsdKrwRate,
+  getEmsUsdKrwRateNumber,
+} from "@/lib/ems/exchange-rate-store";
 
 export const preferredRegion = "icn1"; // EMS 요금 계산 API 접근을 위해 서울 리전
 
@@ -65,7 +69,8 @@ export async function PATCH(
         .select("insurance_enabled, insurance_amount, customs_value")
         .eq("id", id)
         .single();
-      const ins = getOrderInsuranceParams(orderForIns ?? {});
+      const rateInfo = await getEmsUsdKrwRate(adminDb);
+      const ins = getOrderInsuranceParams(orderForIns ?? {}, getEmsUsdKrwRateNumber(rateInfo));
 
       const result = await getShippingQuote({
         premiumcd: method.premiumcd,

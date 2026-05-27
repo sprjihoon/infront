@@ -3,10 +3,24 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { applyEms, mockApplyEms, type EmsApplyParams } from '@/lib/ems/client';
 import { getOrderInsuranceParams } from '@/lib/ems/insurance';
+import {
+  getEmsUsdKrwRate,
+  getEmsUsdKrwRateNumber,
+} from '@/lib/ems/exchange-rate-store';
 
 export const preferredRegion = 'icn1'; // EMS API 접근을 위해 서울 리전 고정
 
 const USE_MOCK = process.env.EMS_MOCK === 'true';
+
+function createAdminSupabase() {
+  const srk = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!srk) return null;
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    srk,
+    { cookies: { getAll: () => [], setAll: () => {} } },
+  );
+}
 
 const METHOD_MAP: Record<string, { premiumcd: string; em_ee: string }> = {
   EMS:         { premiumcd: '31', em_ee: 'em' },
@@ -166,7 +180,8 @@ export async function POST(req: NextRequest) {
             i < items.length - 1 ? each : totweightG - each * (items.length - 1)
           );
 
-          const ins = getOrderInsuranceParams(order);
+          const rateInfo = await getEmsUsdKrwRate(createAdminSupabase() ?? undefined);
+          const ins = getOrderInsuranceParams(order, getEmsUsdKrwRateNumber(rateInfo));
 
           const emsParams: EmsApplyParams = {
             premiumcd:   method.premiumcd,

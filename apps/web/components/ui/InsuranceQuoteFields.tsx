@@ -1,6 +1,7 @@
 "use client";
 
 import { usdToBoprcKrw } from "@/lib/ems/insurance";
+import { useEmsExchangeRate } from "@/lib/hooks/useEmsExchangeRate";
 
 interface InsuranceQuoteFieldsProps {
   enabled: boolean;
@@ -18,6 +19,7 @@ export default function InsuranceQuoteFields({
   compact = false,
 }: InsuranceQuoteFieldsProps) {
   const usd = parseFloat(usdAmount) || 0;
+  const { rate, info } = useEmsExchangeRate();
   const labelClass = compact
     ? "text-[10px] font-semibold text-gray-400 uppercase tracking-wide"
     : "text-xs font-semibold text-gray-500";
@@ -66,9 +68,15 @@ export default function InsuranceQuoteFields({
               className="flex-1 bg-transparent text-sm font-medium text-gray-900 outline-none min-w-0"
             />
           </div>
+          {info && (
+            <p className={`text-brand-600/90 ${compact ? "text-[10px]" : "text-xs"}`}>
+              적용 환율: 1 USD = {rate.toLocaleString()}원
+              {info.as_of_date_display ? ` (${info.label}, ${info.as_of_date_display})` : ""}
+            </p>
+          )}
           {usd > 0 ? (
             <p className={`text-brand-700 ${compact ? "text-[10px]" : "text-xs"}`}>
-              EMS 보험가액(원화): 약 {usdToBoprcKrw(usd).toLocaleString()}원
+              EMS 보험가액(원화): 약 {usdToBoprcKrw(usd, rate).toLocaleString()}원
             </p>
           ) : (
             <p className={`text-brand-600/80 ${compact ? "text-[10px]" : "text-xs"}`}>
