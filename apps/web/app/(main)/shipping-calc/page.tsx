@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
+import { validateShippingDimensions } from "@/lib/ems/dimension-limits";
 import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
 import SidebarPricingGuide from "@/components/ui/SidebarPricingGuide";
 import SidebarShippingCalcInfo from "@/components/ui/SidebarShippingCalcInfo";
@@ -147,6 +148,17 @@ export default function ShippingCalcPage() {
     insurance?: { enabled: boolean; usd: number },
   ): Promise<ServiceResult> {
     if (wg > svc.maxWeight) return { status: "overweight" };
+    if (l && w && h && svc.em_ee !== "ee") {
+      const dimErr = validateShippingDimensions({
+        premiumcd: svc.premiumcd,
+        em_ee: svc.em_ee,
+        countrycd: cc,
+        boxlength: parseFloat(l),
+        boxwidth: parseFloat(w),
+        boxheight: parseFloat(h),
+      });
+      if (dimErr) return { status: "error", message: dimErr };
+    }
     const params = new URLSearchParams({
       premiumcd: svc.premiumcd,
       em_ee: svc.em_ee,

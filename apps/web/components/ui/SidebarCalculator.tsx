@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText, ShieldAlert, Zap } from "lucide-react";
 import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
+import { validateShippingDimensions } from "@/lib/ems/dimension-limits";
 import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
 import InsuranceQuoteFields from "@/components/ui/InsuranceQuoteFields";
 import { SHIPPING_CALC_SUBTITLE, SHIPPING_CALC_TITLE } from "@/lib/shipping-calc-copy";
@@ -104,6 +105,21 @@ export default function SidebarCalculator() {
           out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: `최대 ${s.maxW / 1000}kg 초과` };
           setResults([...out]);
           continue;
+        }
+        if (!isDoc && length && width && height) {
+          const dimErr = validateShippingDimensions({
+            premiumcd: s.premiumcd,
+            em_ee: s.em_ee,
+            countrycd: country,
+            boxlength: parseFloat(length),
+            boxwidth: parseFloat(width),
+            boxheight: parseFloat(height),
+          });
+          if (dimErr) {
+            out[i] = { id: s.id, label: s.label, color: s.color, fee: null, err: dimErr };
+            setResults([...out]);
+            continue;
+          }
         }
         const p = new URLSearchParams({
           premiumcd: s.premiumcd, em_ee: s.em_ee,

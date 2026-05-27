@@ -282,20 +282,6 @@ export default function WarehousePage() {
         </div>
       )}
 
-      {!selectMode && shippableParcels.length > 0 && filter === "ALL" && (
-        <div className="bg-green-50 rounded-xl px-4 py-2.5 mb-3 flex items-center justify-between gap-2">
-          <p className="text-xs text-green-800">
-            출고 가능 {shippableParcels.length}건 · 해외배송을 신청할 수 있어요
-          </p>
-          <button
-            onClick={enterSelectMode}
-            className="shrink-0 text-xs font-bold text-green-700 underline underline-offset-2"
-          >
-            선택하기
-          </button>
-        </div>
-      )}
-
       {loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (

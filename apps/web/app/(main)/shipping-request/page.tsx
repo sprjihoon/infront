@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback, Suspense, useRef } from "rea
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Globe,
-  Plus, Trash2, CheckCircle, Loader2,
+  Plus, Trash2, CheckCircle, Loader2, ShieldCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isParcelShippable } from "@/lib/parcel-shippable";
@@ -14,6 +14,19 @@ import FlowModeToggle from "@/components/ui/FlowModeToggle";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
 import { usdToBoprcKrw } from "@/lib/ems/insurance";
 import { useEmsExchangeRate } from "@/lib/hooks/useEmsExchangeRate";
+import {
+  EMS_PREMIUM_CARRIER,
+  EMS_PREMIUM_INSURANCE_NOTE,
+  EMS_PREMIUM_LIMITS,
+} from "@/lib/ems/premium-config";
+import {
+  calculateDutyDeposit,
+  isDdpCountry,
+  getDdpCountryLabel,
+  requiresUsEmsPremium,
+  isDdpEligibleForShipment,
+  US_POSTAL_DDP_MAX_USD,
+} from "@/lib/duty-deposit";
 
 const MAIN_FLOW_STEP_LABELS = ["배송 옵션", "해외 배송지", "인보이스"] as const;
 const MAIN_FLOW_STEP_COUNT = MAIN_FLOW_STEP_LABELS.length;
@@ -73,7 +86,7 @@ interface BoxSetup {
 // ── 상수 ────────────────────────────────────────────────────
 const SHIPPING_METHODS = [
   { code: "EMS",         name: "EMS",         desc: "일반 국제우편 · 3-7일",  premiumcd: "31", em_ee: "em", badge: "bg-brand-600" },
-  { code: "EMS_PREMIUM", name: "EMS 프리미엄", desc: "빠른 국제우편 · 2-4일", premiumcd: "32", em_ee: "em", badge: "bg-violet-600" },
+  { code: "EMS_PREMIUM", name: "EMS 프리미엄", desc: `FedEx 특송 · 2-4일 · 최대 70kg`, premiumcd: "32", em_ee: "em", badge: "bg-violet-600" },
   { code: "KPACKET",     name: "K-Packet",    desc: "소형 경량 · 7-15일 · 2kg 이하", premiumcd: "14", em_ee: "rl", badge: "bg-emerald-600" },
 ] as const;
 
@@ -143,6 +156,7 @@ function ShippingRequestContent() {
   const [packNote, setPackNote] = useState("");
   const [addonServiceSet, setAddonServiceSet] = useState<Set<string>>(new Set());
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
+  const [dutyPrepaid, setDutyPrepaid] = useState(true);
   const { rate: emsUsdKrwRate, info: emsExchangeInfo } = useEmsExchangeRate();
 
   // 해외 배송지 — boxes[i].address
@@ -327,6 +341,36 @@ function ShippingRequestContent() {
   const packagingFee = PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).reduce((s, o) => s + o.price, 0);
   const customsValue = boxInvoices.flatMap((inv) => inv).reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
 
+  const ddpBoxSummaries = useMemo(() => {
+    return boxes.map((box, i) => {
+      const country = box.address?.countryCode ?? "";
+      const inv = boxInvoices[i] ?? [];
+      const value = inv.reduce((s, item) => s + item.unit_price_usd * item.quantity, 0);
+      const result = calculateDutyDeposit({
+        countryCode: country,
+        customsValueUsd: value,
+        dutyPrepaidRequested: dutyPrepaid,
+        shippingMethod,
+        usdKrwRate: emsUsdKrwRate,
+      });
+      return { boxId: box.id, country, value, ...result };
+    });
+  }, [boxes, boxInvoices, dutyPrepaid, shippingMethod, emsUsdKrwRate]);
+
+  const usRequiresEmsPremium = ddpBoxSummaries.some((s) =>
+    requiresUsEmsPremium(s.country, s.value),
+  );
+
+  const showDdpOption = ddpBoxSummaries.some((s) =>
+    isDdpEligibleForShipment(s.country, s.value, shippingMethod),
+  );
+
+  useEffect(() => {
+    if (usRequiresEmsPremium) {
+      setShippingMethod("EMS_PREMIUM");
+    }
+  }, [usRequiresEmsPremium]);
+
   // ── 유효성 검사 ───────────────────────────────────────────
   function canProceedForMainStep(ms: number): boolean {
     if (ms === 2) {
@@ -463,6 +507,21 @@ function ShippingRequestContent() {
         const addr = box.address!;
         const inv = boxInvoices[i] ?? [newItem()];
         const boxCustomsValue = inv.reduce((s, item) => s + item.unit_price_usd * item.quantity, 0);
+        const dutyResult = calculateDutyDeposit({
+          countryCode: addr.countryCode,
+          customsValueUsd: boxCustomsValue,
+          dutyPrepaidRequested: dutyPrepaid,
+          shippingMethod,
+          usdKrwRate: emsUsdKrwRate,
+        });
+        if (dutyPrepaid && isDdpCountry(addr.countryCode) && dutyResult.ineligibleReason) {
+          throw new Error(dutyResult.ineligibleReason);
+        }
+        if (requiresUsEmsPremium(addr.countryCode, boxCustomsValue) && shippingMethod !== "EMS_PREMIUM") {
+          throw new Error(
+            `미국 신고가액 USD ${US_POSTAL_DDP_MAX_USD} 초과는 EMS 프리미엄만 선택할 수 있습니다.`,
+          );
+        }
         // URL 직접 진입(단일박스) → parcelIds 전체, 박스구성 진입 → 해당 박스의 parcel만
         const boxParcelIds =
           urlParcelIds.length > 0
@@ -491,6 +550,7 @@ function ShippingRequestContent() {
             packaging_fee: packagingFee,
             insurance_enabled: insuranceEnabled,
             insurance_amount: insuranceEnabled ? boxCustomsValue : 0,
+            duty_prepaid: dutyResult.dutyPrepaid,
           }),
         });
         const data = await res.json();
@@ -855,13 +915,27 @@ function ShippingRequestContent() {
         {showMainStep(1) && (
           <>
             <p className="text-sm font-bold text-gray-800">배송 방법 선택</p>
+            {usRequiresEmsPremium && (
+              <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 text-xs text-violet-900 leading-relaxed">
+                미국 배송 · 신고가액 USD {US_POSTAL_DDP_MAX_USD} 초과 — 우체국 EMS/K-Packet 관세 선납은 불가합니다.
+                <span className="font-semibold"> EMS 프리미엄({EMS_PREMIUM_CARRIER})</span>으로 발송하며,
+                {dutyPrepaid ? " FedEx 관세 선납(DDP)이 적용됩니다." : " 관세 선납(DDP)을 선택하면 FedEx 경로로 선납할 수 있습니다."}
+              </div>
+            )}
             <div className="space-y-2">
-              {SHIPPING_METHODS.map((m) => (
+              {SHIPPING_METHODS.map((m) => {
+                const disabled =
+                  usRequiresEmsPremium && m.code !== "EMS_PREMIUM";
+                return (
                 <button
                   key={m.code}
-                  onClick={() => setShippingMethod(m.code)}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => !disabled && setShippingMethod(m.code)}
                   className={`w-full text-left flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
-                    shippingMethod === m.code
+                    disabled
+                      ? "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
+                      : shippingMethod === m.code
                       ? "border-brand-500 bg-brand-50"
                       : "border-gray-100 bg-white"
                   }`}
@@ -869,11 +943,31 @@ function ShippingRequestContent() {
                   <span className={`text-xs text-white font-bold px-2.5 py-1 rounded-lg ${m.badge}`}>
                     {m.name}
                   </span>
-                  <p className="text-xs text-gray-500">{m.desc}</p>
-                  {shippingMethod === m.code && <CheckCircle size={16} className="text-brand-500 ml-auto shrink-0" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-500">{m.desc}</p>
+                    {usRequiresEmsPremium && m.code === "EMS_PREMIUM" && (
+                      <p className="text-[10px] text-violet-700 font-semibold mt-0.5">미국 $800+ 권장</p>
+                    )}
+                    {disabled && (
+                      <p className="text-[10px] text-gray-400 mt-0.5">미국 $800 초과 시 선택 불가</p>
+                    )}
+                  </div>
+                  {shippingMethod === m.code && !disabled && (
+                    <CheckCircle size={16} className="text-brand-500 ml-auto shrink-0" />
+                  )}
                 </button>
-              ))}
+              );})}
             </div>
+
+            {shippingMethod === "EMS_PREMIUM" && (
+              <p className="text-[10px] text-violet-700 leading-relaxed px-1">
+                EMS 프리미엄은 {EMS_PREMIUM_CARRIER} 네트워크 (2026.4.1~).
+                비서류 크기: 최장 {EMS_PREMIUM_LIMITS.nonDocMaxLongestCm}cm ·
+                2번째 {EMS_PREMIUM_LIMITS.nonDocMaxMiddleCm}cm ·
+                최단 {EMS_PREMIUM_LIMITS.nonDocMaxShortestCm}cm ·
+                길이+둘레 {EMS_PREMIUM_LIMITS.nonDocMaxLengthPlusGirthCm}cm 이하.
+              </p>
+            )}
 
             <p className="text-sm font-bold text-gray-800 pt-2">포장 옵션 (선택)</p>
             <div className="space-y-2">
@@ -924,6 +1018,12 @@ function ShippingRequestContent() {
                 </p>
               </div>
             </button>
+
+            {shippingMethod === "EMS_PREMIUM" && insuranceEnabled && (
+              <p className="text-[10px] text-gray-500 leading-relaxed px-1">
+                {EMS_PREMIUM_INSURANCE_NOTE}
+              </p>
+            )}
 
             <p className="text-sm font-bold text-gray-800 pt-2">부가서비스 (선택)</p>
             <div className="space-y-2">
@@ -1147,6 +1247,73 @@ function ShippingRequestContent() {
               <span className="text-sm text-gray-600">총 신고 금액</span>
               <span className="text-sm font-bold text-gray-900">USD {customsValue.toFixed(2)}</span>
             </div>
+
+            {usRequiresEmsPremium && (
+              <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 text-xs text-violet-900 leading-relaxed">
+                신고가액이 USD {US_POSTAL_DDP_MAX_USD}을 초과해 <span className="font-semibold">EMS 프리미엄({EMS_PREMIUM_CARRIER})</span>으로 자동 전환됩니다.
+                {dutyPrepaid
+                  ? " FedEx 관세 선납(DDP)이 적용되며, 견적 확정 시 배송비와 함께 결제됩니다."
+                  : " 관세 선납(DDP)을 켜면 FedEx 경로로 관세를 미리 납부할 수 있습니다."}
+              </div>
+            )}
+
+            {showDdpOption && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setDutyPrepaid((v) => !v)}
+                  className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                    dutyPrepaid ? "border-emerald-500 bg-emerald-50" : "border-gray-100 bg-white"
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                    dutyPrepaid ? "bg-emerald-600 border-emerald-600" : "border-gray-300"
+                  }`}>
+                    {dutyPrepaid && <span className="text-white text-xs font-bold">✓</span>}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
+                      <ShieldCheck size={14} className="text-emerald-600" />
+                      관세 선납 (DDP)
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      미국·영국 — 관세를 미리 납부해 받는 분 추가 부담 없음.
+                      {usRequiresEmsPremium && ` 미국 $${US_POSTAL_DDP_MAX_USD}+는 FedEx(${EMS_PREMIUM_CARRIER}) DDP.`}
+                      {" "}견적 확정 시 배송비와 함께 결제됩니다.
+                    </p>
+                  </div>
+                </button>
+
+                {dutyPrepaid && ddpBoxSummaries.filter((s) => isDdpEligibleForShipment(s.country, s.value, shippingMethod)).map((s) => (
+                  <div
+                    key={s.boxId}
+                    className={`rounded-xl px-4 py-3 border text-xs ${
+                      s.eligible
+                        ? "bg-emerald-50 border-emerald-100 text-emerald-800"
+                        : "bg-amber-50 border-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {boxes.length > 1 && (
+                      <p className="font-semibold mb-1">{s.boxId}번 박스 · {getDdpCountryLabel(s.country)}</p>
+                    )}
+                    {s.eligible ? (
+                      <p>
+                        예상 관세 선납 약 <span className="font-bold">{s.depositKrw.toLocaleString()}원</span>
+                        {s.estimateUsd > 0 && ` (USD ${s.estimateUsd.toFixed(2)} 환산)`}
+                        {s.ddpPath === "premium" && (
+                          <span className="text-emerald-600/80"> · FedEx DDP</span>
+                        )}
+                        {boxes.length === 1 && getDdpCountryLabel(s.country) && s.ddpPath !== "premium" && (
+                          <span className="text-emerald-600/80"> · {getDdpCountryLabel(s.country)}</span>
+                        )}
+                      </p>
+                    ) : (
+                      <p>{s.ineligibleReason ?? "관세 선납을 적용할 수 없습니다."}</p>
+                    )}
+                  </div>
+                ))}
+              </>
+            )}
 
             {insuranceEnabled && (
               <div className="bg-brand-50 border border-brand-100 rounded-xl px-4 py-3 space-y-1">

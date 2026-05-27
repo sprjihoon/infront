@@ -111,10 +111,10 @@ const SHIPPING_METHODS = [
   {
     name: "EMS 프리미엄",
     badge: "bg-violet-600",
-    maxWeight: "최대 30kg",
+    maxWeight: "최대 70kg",
     days: "2~4일",
-    features: ["빠른 배송 보장", "DHL 협력", "익일 배송 가능 (일부)"],
-    desc: "가장 빠른 배송이 필요할 때 선택하세요.",
+    features: ["FedEx 특송 (2026.4~)", "70kg까지", "미국 $800+ 발송"],
+    desc: "긴급·대형·미국 고가 물품. FedEx 네트워크로 배송됩니다.",
   },
   {
     name: "K-Packet",

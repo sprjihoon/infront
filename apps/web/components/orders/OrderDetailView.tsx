@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { ChevronRight, MapPin, Package, Scale, Truck, X } from "lucide-react";
+import { ChevronRight, MapPin, Package, Scale, ShieldCheck, Truck, X } from "lucide-react";
 import { canCustomerCancelOrder } from "@/lib/order-reservation";
 import {
   COUNTRIES,
@@ -349,6 +349,12 @@ export default function OrderDetailView({
               <span>USD {Number(order.insurance_amount ?? order.customs_value ?? 0).toFixed(2)}</span>
             </div>
           )}
+          {order.duty_prepaid && (
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5">
+              <ShieldCheck size={12} className="shrink-0" />
+              관세 선납 (DDP) — 받는 분 추가 관세 부담 없음
+            </div>
+          )}
         </div>
       )}
 
@@ -368,6 +374,12 @@ export default function OrderDetailView({
           <div className="flex justify-between text-xs text-gray-500">
             <span>추가 요금</span>
             <span>{Number(order.extra_fee).toLocaleString()}원</span>
+          </div>
+        )}
+        {order.duty_prepaid && (order.duty_deposit_krw ?? 0) > 0 && (
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>관세 선납 (DDP)</span>
+            <span>{Number(order.duty_deposit_krw).toLocaleString()}원</span>
           </div>
         )}
         <div className="flex justify-between text-sm font-bold text-gray-900 pt-2 border-t border-gray-100">

@@ -33,6 +33,10 @@ interface Order {
   customs_value: number | null;
   insurance_enabled: boolean | null;
   insurance_amount: number | null;
+  duty_prepaid: boolean | null;
+  duty_deposit_krw: number | null;
+  duty_estimate_usd: number | null;
+  duty_paid_krw: number | null;
   tracking_no: string | null;
   carrier: string | null;
   created_at: string;
@@ -142,6 +146,8 @@ export default function OrderDetailPage() {
   const [margin, setMargin] = useState("");
   const [quoteNote, setQuoteNote] = useState("");
   const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [dutyDepositKrw, setDutyDepositKrw] = useState("");
+  const [dutyPaidKrw, setDutyPaidKrw] = useState("");
 
   // 실측값 + EMS 요금 계산
   const [measurements, setMeasurements] = useState({ totweight: "", boxlength: "", boxwidth: "", boxheight: "" });
@@ -177,6 +183,12 @@ export default function OrderDetailPage() {
     if (json.order.shipping_margin) setMargin(String(json.order.shipping_margin));
     if (json.order.shipping_fee && !json.order.quote_ems_cost) {
       setEmsCost(String(json.order.shipping_fee));
+    }
+    if (json.order.duty_deposit_krw) {
+      setDutyDepositKrw(String(json.order.duty_deposit_krw));
+    }
+    if (json.order.duty_paid_krw) {
+      setDutyPaidKrw(String(json.order.duty_paid_krw));
     }
     setLoading(false);
   }
@@ -251,6 +263,9 @@ export default function OrderDetailPage() {
       quote_ems_cost: emsCost || calcFee,
       shipping_margin: margin || "0",
       note: quoteNote,
+      ...(order?.duty_prepaid && dutyDepositKrw
+        ? { duty_deposit_krw: dutyDepositKrw }
+        : {}),
       ...(totweight && boxlength && boxwidth && boxheight && {
         totweight: Number(totweight),
         boxlength: Number(boxlength),
@@ -259,6 +274,18 @@ export default function OrderDetailPage() {
       }),
     });
     if (ok) { setMsg("견적이 고객에게 발송되었습니다"); setShowQuoteForm(false); loadOrder(); }
+  }
+
+  async function handleRecordDutyPaid() {
+    if (!dutyPaidKrw) {
+      setMsg("관세 납부액을 입력해주세요");
+      return;
+    }
+    const ok = await callApi({
+      action: "record_duty_paid",
+      duty_paid_krw: dutyPaidKrw,
+    });
+    if (ok) { setMsg("관세 납부액이 기록되었습니다"); loadOrder(); }
   }
 
   async function handleAddBox() {
@@ -433,6 +460,36 @@ export default function OrderDetailPage() {
                 <span className="font-semibold text-blue-600">{order.shipping_fee.toLocaleString()}원</span>
               </div>
             )}
+            {order.duty_prepaid && (
+              <>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">관세 선납 (DDP)</span>
+                  <span className="font-medium text-emerald-700">
+                    {(order.duty_deposit_krw ?? 0).toLocaleString()}원
+                  </span>
+                </div>
+                {order.duty_estimate_usd != null && (
+                  <div className="flex justify-between text-xs text-gray-400">
+                    <span>관세 예상 (USD)</span>
+                    <span>${Number(order.duty_estimate_usd).toFixed(2)}</span>
+                  </div>
+                )}
+                {order.duty_paid_krw != null && order.duty_paid_krw > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">실제 관세 납부</span>
+                    <span>{order.duty_paid_krw.toLocaleString()}원</span>
+                  </div>
+                )}
+                {order.duty_paid_krw != null && (order.duty_deposit_krw ?? 0) > order.duty_paid_krw && (
+                  <div className="flex justify-between text-xs text-emerald-600">
+                    <span>청구−실납부 차액</span>
+                    <span>
+                      {((order.duty_deposit_krw ?? 0) - order.duty_paid_krw).toLocaleString()}원
+                    </span>
+                  </div>
+                )}
+              </>
+            )}
             <div className="flex justify-between text-sm font-bold border-t pt-2">
               <span className="text-gray-900">총 결제 금액</span>
               <span className="text-gray-900">{order.total_amount.toLocaleString()}원</span>
@@ -440,6 +497,35 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {order.duty_prepaid && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
+            <DollarSign size={15} className="text-emerald-600" /> 관세 납부 기록 (DDP)
+          </h2>
+          <p className="text-xs text-gray-500 mb-3">
+            EMS 접수 시 우체국에 납부한 관세·수수료를 기록하세요.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              min={0}
+              value={dutyPaidKrw}
+              onChange={(e) => setDutyPaidKrw(e.target.value)}
+              placeholder="실제 납부액 (원)"
+              className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+            />
+            <button
+              type="button"
+              onClick={handleRecordDutyPaid}
+              disabled={actioning || !dutyPaidKrw}
+              className="px-4 py-2.5 bg-emerald-600 text-white text-sm font-semibold rounded-xl disabled:opacity-50"
+            >
+              저장
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 포함 물품 (parcel 목록) */}
       <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -1001,6 +1087,43 @@ export default function OrderDetailPage() {
                   = {(parseInt(emsCost) + parseInt(margin)).toLocaleString()}원
                 </p>
               )}
+
+              {order.duty_prepaid && (
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 space-y-2">
+                  <p className="text-xs font-semibold text-emerald-800">관세 선납 (DDP)</p>
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">
+                      관세 선납 청구액 (원)
+                    </label>
+                    <input
+                      type="number"
+                      value={dutyDepositKrw}
+                      onChange={(e) => setDutyDepositKrw(e.target.value)}
+                      placeholder="자동 산출"
+                      className="w-full px-3 py-2.5 border border-emerald-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                    />
+                  </div>
+                  <p className="text-[10px] text-emerald-700">
+                    신고가액 USD {Number(order.customs_value ?? 0).toFixed(2)} 기준 보수적 산출.
+                    비워두면 견적 확정 시 자동 재계산됩니다.
+                  </p>
+                  {dutyDepositKrw && finalFee && (
+                    <p className="text-xs text-gray-600">
+                      총 청구 예상:{" "}
+                      <span className="font-bold">
+                        {(
+                          (order.packaging_fee ?? 0) +
+                          parseInt(finalFee || "0", 10) +
+                          parseInt(dutyDepositKrw || "0", 10)
+                        ).toLocaleString()}
+                        원
+                      </span>
+                      {" "}(포장 + 배송 + 관세)
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="text-xs font-medium text-gray-500 block mb-1">메모 (선택)</label>
                 <input

@@ -7,6 +7,10 @@ import {
   getEmsUsdKrwRate,
   getEmsUsdKrwRateNumber,
 } from "@/lib/ems/exchange-rate-store";
+import {
+  calculateDutyDeposit,
+  computeOrderTotalAmount,
+} from "@/lib/duty-deposit";
 
 export const preferredRegion = "icn1"; // EMS 요금 계산 API 접근을 위해 서울 리전
 
@@ -91,7 +95,17 @@ export async function PATCH(
   }
 
   if (action === "confirm_quote") {
-    const { final_shipping_fee, quote_ems_cost, shipping_margin, note, totweight, boxlength, boxwidth, boxheight } = body;
+    const {
+      final_shipping_fee,
+      quote_ems_cost,
+      shipping_margin,
+      note,
+      totweight,
+      boxlength,
+      boxwidth,
+      boxheight,
+      duty_deposit_krw,
+    } = body;
     if (!final_shipping_fee) return NextResponse.json({ error: "최종 배송비가 필요합니다" }, { status: 400 });
 
     const { data: order } = await adminDb.from("orders").select("*").eq("id", id).single();
@@ -99,15 +113,48 @@ export async function PATCH(
 
     const emsCost = quote_ems_cost ? parseInt(String(quote_ems_cost)) : 0;
     const marginAmt = shipping_margin ? parseInt(String(shipping_margin)) : 0;
-    const newTotal = (order.packaging_fee ?? 0) + parseInt(final_shipping_fee);
+    const shippingFee = parseInt(final_shipping_fee);
+
+    let dutyDepositKrw = order.duty_deposit_krw ?? 0;
+    let dutyEstimateUsd = order.duty_estimate_usd ?? null;
+
+    if (order.duty_prepaid) {
+      if (duty_deposit_krw != null && duty_deposit_krw !== "") {
+        dutyDepositKrw = parseInt(String(duty_deposit_krw), 10) || 0;
+      } else {
+        const rateInfo = await getEmsUsdKrwRate(adminDb);
+        const dutyResult = calculateDutyDeposit({
+          countryCode: order.recipient_country ?? "",
+          customsValueUsd: Number(order.customs_value ?? 0),
+          dutyPrepaidRequested: true,
+          shippingMethod: order.shipping_method ?? undefined,
+          usdKrwRate: getEmsUsdKrwRateNumber(rateInfo),
+        });
+        if (dutyResult.dutyPrepaid) {
+          dutyDepositKrw = dutyResult.depositKrw;
+          dutyEstimateUsd = dutyResult.estimateUsd;
+        } else {
+          dutyDepositKrw = 0;
+        }
+      }
+    }
+
+    const newTotal = computeOrderTotalAmount({
+      packagingFee: order.packaging_fee,
+      shippingFee,
+      extraFee: order.extra_fee,
+      dutyDepositKrw: order.duty_prepaid ? dutyDepositKrw : 0,
+    });
 
     const { data, error } = await adminDb
       .from("orders")
       .update({
         status: "QUOTE_SENT",
-        shipping_fee: parseInt(final_shipping_fee),
+        shipping_fee: shippingFee,
         quote_ems_cost: emsCost || null,
         shipping_margin: marginAmt || null,
+        duty_deposit_krw: order.duty_prepaid ? dutyDepositKrw : 0,
+        duty_estimate_usd: order.duty_prepaid ? dutyEstimateUsd : null,
         total_amount: newTotal,
         updated_at: new Date().toISOString(),
       })
@@ -148,6 +195,31 @@ export async function PATCH(
       body: `총 결제 금액: ${newTotal.toLocaleString()}원${note ? ` (${note})` : ""}. 결제 후 자동 발송됩니다.`,
       data: { order_id: id, total_amount: newTotal },
     });
+    return NextResponse.json({ data });
+  }
+
+  if (action === "record_duty_paid") {
+    const { duty_paid_krw } = body;
+    if (duty_paid_krw == null || duty_paid_krw === "") {
+      return NextResponse.json({ error: "관세 납부액이 필요합니다" }, { status: 400 });
+    }
+
+    const paid = parseInt(String(duty_paid_krw), 10);
+    if (Number.isNaN(paid) || paid < 0) {
+      return NextResponse.json({ error: "유효한 금액을 입력해주세요" }, { status: 400 });
+    }
+
+    const { data, error } = await adminDb
+      .from("orders")
+      .update({
+        duty_paid_krw: paid,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ data });
   }
 

@@ -46,6 +46,10 @@ export interface OrderSummary {
   customs_value: number | null;
   insurance_enabled?: boolean | null;
   insurance_amount?: number | null;
+  duty_prepaid?: boolean | null;
+  duty_deposit_krw?: number | null;
+  duty_estimate_usd?: number | null;
+  duty_paid_krw?: number | null;
   item_list: OrderItem[];
   intl_tracking_no: string | null;
   intl_tracking_status?: string | null;

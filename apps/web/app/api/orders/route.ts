@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { calculateDutyDeposit, requiresUsEmsPremium } from '@/lib/duty-deposit';
+import { getEmsUsdKrwRate, getEmsUsdKrwRateNumber } from '@/lib/ems/exchange-rate-store';
 import { parcelIdsInActiveOrders } from '@/lib/order-reservation';
 
 function createSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
@@ -13,6 +15,16 @@ function createSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
         setAll: (list) => list.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
       },
     }
+  );
+}
+
+function createAdminSupabase() {
+  const srk = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!srk) return null;
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    srk,
+    { cookies: { getAll: () => [], setAll: () => {} } },
   );
 }
 
@@ -46,6 +58,8 @@ export interface CreateOrderBody {
   packaging_fee: number;
   insurance_enabled?: boolean;
   insurance_amount?: number;
+  /** DDP 가능 국가에서 관세 선납 신청 */
+  duty_prepaid?: boolean;
 }
 
 /**
@@ -73,6 +87,7 @@ export async function POST(req: NextRequest) {
       packaging_fee,
       insurance_enabled,
       insurance_amount,
+      duty_prepaid,
     } = body;
 
     // 필수 검증
@@ -139,6 +154,40 @@ export async function POST(req: NextRequest) {
       ? (insurance_amount ?? customs_value)
       : 0;
 
+    const countryCode = overseas_address.country_code?.toUpperCase() ?? '';
+
+    if (requiresUsEmsPremium(countryCode, customs_value)) {
+      if (shipping_method !== 'EMS_PREMIUM') {
+        return NextResponse.json(
+          { error: '미국 신고가액 USD 800 초과는 EMS 프리미엄만 선택할 수 있습니다.' },
+          { status: 400 },
+        );
+      }
+    }
+
+    let dutyPrepaid = false;
+    let dutyEstimateUsd: number | null = null;
+    let dutyDepositKrw = 0;
+
+    if (Boolean(duty_prepaid)) {
+      const rateInfo = await getEmsUsdKrwRate(createAdminSupabase() ?? undefined);
+      const dutyResult = calculateDutyDeposit({
+        countryCode,
+        customsValueUsd: customs_value,
+        dutyPrepaidRequested: true,
+        shippingMethod: shipping_method,
+        usdKrwRate: getEmsUsdKrwRateNumber(rateInfo),
+      });
+
+      if (!dutyResult.dutyPrepaid && dutyResult.ineligibleReason) {
+        return NextResponse.json({ error: dutyResult.ineligibleReason }, { status: 400 });
+      }
+
+      dutyPrepaid = dutyResult.dutyPrepaid;
+      dutyEstimateUsd = dutyResult.dutyPrepaid ? dutyResult.estimateUsd : null;
+      dutyDepositKrw = dutyResult.depositKrw;
+    }
+
     // packaging_type 결정
     let packaging_type = 'NONE';
     if (packaging_options.consolidate) packaging_type = 'COMBINED';
@@ -176,6 +225,9 @@ export async function POST(req: NextRequest) {
         customs_value,
         insurance_enabled: insuranceEnabled,
         insurance_amount: insuranceAmount,
+        duty_prepaid: dutyPrepaid,
+        duty_estimate_usd: dutyEstimateUsd,
+        duty_deposit_krw: dutyDepositKrw,
         item_list,
       })
       .select()
@@ -276,7 +328,8 @@ export async function GET(req: NextRequest) {
       id, order_no, status, shipping_method, packaging_type,
       packaging_fee, shipping_fee, total_amount, payment_status,
       recipient_name, recipient_country,
-      customs_value, item_list, intl_tracking_no,
+      customs_value, duty_prepaid, duty_deposit_krw, duty_estimate_usd,
+      item_list, intl_tracking_no,
       intl_tracking_status, intl_tracking_last_event, delivered_at,
       created_at, updated_at,
       order_parcels (parcel_id)

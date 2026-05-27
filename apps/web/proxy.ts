@@ -1,7 +1,34 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/signup"];
+/** 로그인 없이 접근 가능한 페이지 */
+const PUBLIC_PATHS = [
+  "/",
+  "/login",
+  "/signup",
+  "/home",
+  "/shipping-calc",
+  "/pricing",
+  "/guide",
+  "/terms",
+  "/privacy",
+  "/notices",
+  "/support",
+];
+
+/** 계산기 등 비로그인 기능에서 호출하는 API */
+const PUBLIC_API_PREFIXES = [
+  "/api/ems/quote",
+  "/api/ems/exchange-rate",
+  "/api/ems/nations",
+];
+
+function isPublicPath(pathname: string): boolean {
+  if (PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  return PUBLIC_PATHS.some(
+    (p) => p === "/" ? pathname === "/" : pathname === p || pathname.startsWith(`${p}/`),
+  );
+}
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -32,13 +59,15 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isPublic = isPublicPath(pathname);
 
   if (!user && !isPublic) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (user && isPublic) {
+  if (user && (pathname === "/login" || pathname === "/signup" || pathname.startsWith("/login/") || pathname.startsWith("/signup/"))) {
     return NextResponse.redirect(new URL("/home", request.url));
   }
 

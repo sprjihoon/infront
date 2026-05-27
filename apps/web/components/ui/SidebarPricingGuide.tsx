@@ -19,8 +19,8 @@ const SERVICE_COMPARISON = [
     name: "EMS 프리미엄",
     icon: Shield,
     color: "violet",
-    pros: ["최고 속도", "70kg까지 발송", "우선 처리", "방문 위탁"],
-    bestFor: "긴급 배송이나 대형 화물",
+    pros: ["FedEx 특송", "70kg까지 발송", "미국 $800+ 가능", "우선 처리"],
+    bestFor: "긴급 배송, 미국 고가 물품, 대형 화물",
     speed: "🚀 2~4일",
     speedNote: "도착 국가별 상이",
     weight: "최대 70kg",
@@ -137,6 +137,8 @@ export default function SidebarPricingGuide({ activeTab }: SidebarPricingGuidePr
         })}
 
         <p className="text-[10px] text-gray-400 leading-relaxed pt-0.5">
+          ※ EMS 프리미엄(FedEx): 최장 274cm · 2번째 105cm · 최단 76cm · 길이+둘레 330cm 이하.
+          <br />
           ※ 표시된 배송일은 참고 범위이며, 도착 국가·통관·품목에 따라 달라질 수 있습니다.
         </p>
       </div>

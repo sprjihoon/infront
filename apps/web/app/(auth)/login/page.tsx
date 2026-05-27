@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,8 +18,15 @@ function getSavedPassword() {
   return localStorage.getItem(SAVED_PASSWORD_KEY) ?? "";
 }
 
+function safeRedirectPath(raw: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/home";
+  return raw;
+}
+
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = safeRedirectPath(searchParams.get("redirect"));
   const [email, setEmail] = useState(getSavedEmail);
   const [password, setPassword] = useState(getSavedPassword);
   const [rememberMe, setRememberMe] = useState(() => !!getSavedEmail());
@@ -48,7 +55,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/home");
+    router.push(redirectTo);
     router.refresh();
   }
 

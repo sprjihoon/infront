@@ -7,6 +7,8 @@
  */
 
 import { seed128Encrypt, buildEpostParams } from '@/lib/epost/seed128';
+import { getEmsPremiumMaxWeightG } from '@/lib/ems/premium-config';
+import { validateShippingDimensions } from '@/lib/ems/dimension-limits';
 
 const BASE = 'https://eship.epost.go.kr';
 
@@ -140,13 +142,42 @@ export interface QuoteResult {
   totalFee: number;   // 총 배송예상비용(KRW)
 }
 
+export function getMaxWeightG(premiumcd: string, em_ee?: string): number {
+  if (premiumcd === '14') return 2000;
+  if (premiumcd === '32') return getEmsPremiumMaxWeightG(em_ee);
+  if (em_ee === 'ee') return 2000;
+  return 30000;
+}
+
 export async function getShippingQuote(p: QuoteParams): Promise<QuoteResult> {
-  // 중량 상한 체크
-  const maxG = p.premiumcd === '14' ? 2000 : 30000;
+  const isDoc = p.em_ee === 'ee';
+  const maxG = getMaxWeightG(p.premiumcd, p.em_ee);
+  const serviceName =
+    p.premiumcd === '14' ? 'K-Packet'
+    : isDoc ? 'EMS 서류'
+    : p.premiumcd === '32' ? 'EMS 프리미엄'
+    : 'EMS';
   if (p.totweight > maxG) {
     throw new EmsApiError(
-      `중량 초과: ${p.premiumcd === '14' ? 'K-Packet' : 'EMS'} 최대 ${maxG / 1000}kg (입력: ${(p.totweight / 1000).toFixed(1)}kg)`,
+      `중량 초과: ${serviceName} 최대 ${maxG / 1000}kg (입력: ${(p.totweight / 1000).toFixed(1)}kg)`,
     );
+  }
+
+  if (
+    !isDoc &&
+    p.boxlength != null &&
+    p.boxwidth != null &&
+    p.boxheight != null
+  ) {
+    const dimErr = validateShippingDimensions({
+      premiumcd: p.premiumcd,
+      em_ee: p.em_ee,
+      countrycd: p.countrycd,
+      boxlength: p.boxlength,
+      boxwidth: p.boxwidth,
+      boxheight: p.boxheight,
+    });
+    if (dimErr) throw new EmsApiError(dimErr);
   }
 
   const params: Record<string, string> = {
@@ -304,6 +335,18 @@ export async function applyEms(p: EmsApplyParams): Promise<EmsApplyResult> {
   if (!custno) throw new Error('EMS_CUSTOMER_NO 환경변수가 설정되지 않았습니다.');
   if (!apprno) throw new Error('EMS_APPROVAL_NO 환경변수가 설정되지 않았습니다.');
 
+  if (p.em_ee !== 'ee') {
+    const dimErr = validateShippingDimensions({
+      premiumcd: p.premiumcd,
+      em_ee: p.em_ee,
+      countrycd: p.countrycd,
+      boxlength: p.boxlength,
+      boxwidth: p.boxwidth,
+      boxheight: p.boxheight,
+    });
+    if (dimErr) throw new EmsApiError(dimErr);
+  }
+
   const params: Record<string, unknown> = {
     custno, apprno,
     premiumcd: p.premiumcd,
@@ -358,7 +401,7 @@ export async function applyEms(p: EmsApplyParams): Promise<EmsApplyResult> {
 
 /** 개발용 Mock — 실제 API 미호출 */
 export function mockApplyEms(p: Pick<EmsApplyParams, 'premiumcd' | 'em_ee' | 'countrycd'>): EmsApplyResult {
-  const prefix = p.premiumcd === '32' ? 'UP' : p.em_ee === 'rl' ? 'LK' : 'EG';
+  const prefix = p.premiumcd === '32' ? 'FX' : p.em_ee === 'rl' ? 'LK' : 'EG';
   return {
     receiveseq:         `S${Date.now()}`,
     prerecevprc:        '36500',

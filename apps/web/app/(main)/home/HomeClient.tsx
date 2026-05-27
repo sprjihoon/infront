@@ -121,7 +121,28 @@ function markSynced() {
   try { sessionStorage.setItem(SYNC_KEY, String(Date.now())); } catch { /* ignore */ }
 }
 
+const PROTECTED_PREFIXES = [
+  "/pickup",
+  "/warehouse",
+  "/shipping-request",
+  "/orders",
+  "/notifications",
+  "/mypage",
+  "/addresses",
+  "/return-request",
+  "/register-parcel",
+];
+
+function authHref(href: string, isLoggedIn: boolean) {
+  if (isLoggedIn) return href;
+  if (PROTECTED_PREFIXES.some((p) => href.startsWith(p))) {
+    return `/login?redirect=${encodeURIComponent(href)}`;
+  }
+  return href;
+}
+
 export default function HomeClient() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [parcels,  setParcels]  = useState<Parcel[]>([]);
   const [orders,   setOrders]   = useState<Order[]>([]);
@@ -130,8 +151,12 @@ export default function HomeClient() {
   useEffect(() => {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
+      if (!user) {
+        setIsLoggedIn(false);
+        return;
+      }
 
+      setIsLoggedIn(true);
       supabase
         .from("customers")
         .select("name")
@@ -179,20 +204,31 @@ export default function HomeClient() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-gray-900">
-            안녕하세요 {userInfo?.name ?? ""}님 👋
+            {isLoggedIn ? `안녕하세요 ${userInfo?.name ?? ""}님 👋` : "인프론트 해외배송 👋"}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">무엇을 도와드릴까요?</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            {isLoggedIn ? "무엇을 도와드릴까요?" : "로그인 없이 배송비 계산기를 이용할 수 있어요"}
+          </p>
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
           <FlowModeToggle />
-          <Link href="/notifications" className="relative p-2" aria-label="알림">
-            <Bell size={22} className="text-gray-700" />
-            {unreadNotifications > 0 && (
-              <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                {unreadNotifications > 99 ? "99+" : unreadNotifications}
-              </span>
-            )}
-          </Link>
+          {isLoggedIn ? (
+            <Link href="/notifications" className="relative p-2" aria-label="알림">
+              <Bell size={22} className="text-gray-700" />
+              {unreadNotifications > 0 && (
+                <span className="absolute top-1 right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {unreadNotifications > 99 ? "99+" : unreadNotifications}
+                </span>
+              )}
+            </Link>
+          ) : (
+            <Link
+              href="/login"
+              className="text-sm font-semibold text-brand-600 px-3 py-1.5 rounded-lg active:scale-95 transition-transform"
+            >
+              로그인
+            </Link>
+          )}
         </div>
       </div>
 
@@ -208,7 +244,7 @@ export default function HomeClient() {
           <p className="text-white/80 text-sm mt-1.5">EMS · EMS 프리미엄 · K-Packet</p>
         </div>
         <Link
-          href="/pickup"
+          href={authHref("/pickup", isLoggedIn)}
           className="shrink-0 inline-flex items-center gap-1.5 bg-white text-brand-600 rounded-xl px-4 py-2.5 text-sm font-semibold active:scale-95 transition-transform shadow-sm"
         >
           <Truck size={15} />
@@ -221,7 +257,7 @@ export default function HomeClient() {
         {QUICK_ACTIONS.map((a) => (
           <Link
             key={a.href}
-            href={a.href}
+            href={authHref(a.href, isLoggedIn)}
             className={`${a.className} rounded-2xl p-4 flex flex-col gap-2 shadow-sm active:scale-[0.97] transition-transform`}
           >
             {a.icon}
@@ -237,7 +273,7 @@ export default function HomeClient() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-gray-900">최근 물품 현황</h2>
-          <Link href="/warehouse" className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
+          <Link href={authHref("/warehouse", isLoggedIn)} className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
             전체보기 <ChevronRight size={14} />
           </Link>
         </div>
@@ -247,13 +283,13 @@ export default function HomeClient() {
             <Truck size={40} className="text-gray-300 mx-auto mb-3" />
             <p className="text-gray-500 text-sm">아직 접수된 물품이 없어요</p>
             <p className="text-gray-400 text-xs mt-1">
-              수거 신청을 해보세요
+              {isLoggedIn ? "수거 신청을 해보세요" : "로그인 후 수거 신청을 시작하세요"}
             </p>
             <Link
-              href="/pickup"
+              href={authHref("/pickup", isLoggedIn)}
               className="mt-4 inline-flex items-center gap-1 bg-brand-600 text-white rounded-xl px-4 py-2 text-sm font-medium"
             >
-              <Truck size={14} /> 수거 신청
+              <Truck size={14} /> {isLoggedIn ? "수거 신청" : "로그인하고 수거 신청"}
             </Link>
           </div>
         ) : (
@@ -301,7 +337,7 @@ export default function HomeClient() {
       <div>
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-bold text-gray-900">최근 배송 현황</h2>
-          <Link href="/orders" className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
+          <Link href={authHref("/orders", isLoggedIn)} className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
             전체보기 <ChevronRight size={14} />
           </Link>
         </div>
@@ -311,7 +347,9 @@ export default function HomeClient() {
             <Send size={28} className="text-gray-200 shrink-0" />
             <div>
               <p className="text-sm text-gray-500 font-medium">진행 중인 배송이 없어요</p>
-              <p className="text-xs text-gray-400">출고 신청 후 여기서 확인하세요</p>
+              <p className="text-xs text-gray-400">
+                {isLoggedIn ? "출고 신청 후 여기서 확인하세요" : "로그인 후 배송 현황을 확인하세요"}
+              </p>
             </div>
           </div>
         ) : (
@@ -322,7 +360,7 @@ export default function HomeClient() {
               return (
                 <Link
                   key={order.id}
-                  href="/orders"
+                  href={authHref("/orders", isLoggedIn)}
                   className="flex items-center justify-between bg-white rounded-2xl px-4 py-3 shadow-sm active:scale-[0.98] transition-transform"
                 >
                   <div className="flex items-center gap-3 min-w-0">

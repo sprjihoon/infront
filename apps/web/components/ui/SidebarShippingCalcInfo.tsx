@@ -1,6 +1,11 @@
 ﻿"use client";
 
-import { Scale, Box, FileText, Package, Info, AlertCircle } from "lucide-react";
+import { Scale, Box, FileText, Package, Info, AlertCircle, Ruler } from "lucide-react";
+import {
+  EMS_PARCEL_DEFAULT_RULES,
+  EMS_PREMIUM_DIMENSION_RULES,
+  KPACKET_DIMENSION_RULES,
+} from "@/lib/ems/dimension-limits";
 
 const DOC_TIERS = ["300g", "500g", "750g", "1kg", "1.25kg", "1.5kg", "1.75kg", "2kg"];
 
@@ -64,6 +69,33 @@ export default function SidebarShippingCalcInfo() {
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* 크기 제한 */}
+        <section>
+          <h3 className="text-xs font-bold text-gray-800 flex items-center gap-1.5 mb-2">
+            <Ruler size={14} className="text-brand-600" />
+            크기 제한 (3변 자동 정렬)
+          </h3>
+          <div className="space-y-1.5 text-[10px] text-gray-600 leading-relaxed">
+            <div className="bg-violet-50 rounded-xl px-3 py-2 border border-violet-100">
+              <p className="font-semibold text-violet-900 mb-1">EMS 프리미엄 (FedEx)</p>
+              <p>최장 {EMS_PREMIUM_DIMENSION_RULES.maxLongestCm}cm · 2번째 {EMS_PREMIUM_DIMENSION_RULES.maxMiddleCm}cm · 최단 {EMS_PREMIUM_DIMENSION_RULES.maxShortestCm}cm</p>
+              <p>길이+둘레 ≤ {EMS_PREMIUM_DIMENSION_RULES.maxLengthPlusGirthCm}cm</p>
+            </div>
+            <div className="bg-brand-50 rounded-xl px-3 py-2 border border-brand-100">
+              <p className="font-semibold text-brand-900 mb-1">EMS 비서류 (기본)</p>
+              <p>최장 {EMS_PARCEL_DEFAULT_RULES.maxLongestCm}cm · 길이+둘레 ≤ {EMS_PARCEL_DEFAULT_RULES.maxLengthPlusGirthCm}cm</p>
+              <p className="text-gray-500 mt-0.5">미국·호주·브라질 등 국가별 상이</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl px-3 py-2 border border-emerald-100">
+              <p className="font-semibold text-emerald-900 mb-1">K-Packet</p>
+              <p>최장 {KPACKET_DIMENSION_RULES.maxLongestCm}cm · 3변 합 ≤ {KPACKET_DIMENSION_RULES.maxSumCm}cm</p>
+            </div>
+            <p className="text-gray-400 px-0.5">
+              가로·세로·높이 입력 순서와 관계없이 최장·중간·최단으로 계산합니다.
+            </p>
           </div>
         </section>
 
