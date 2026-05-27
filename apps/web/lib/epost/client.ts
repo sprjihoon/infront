@@ -98,7 +98,7 @@ export function resolveEpostRecAddr2(detail?: string | null): string {
 }
 
 /** 우체국 API — 전화번호는 숫자만 허용 (공백·하이픈·+82 등 제거) */
-export function normalizeEpostPhone(phone?: string, maxLen = 12): string {
+export function normalizeEpostPhone(phone?: string | null, maxLen = 12): string {
   if (!phone) return '';
   let digits = String(phone).replace(/\D/g, '');
   if (digits.startsWith('82') && digits.length >= 11) {
