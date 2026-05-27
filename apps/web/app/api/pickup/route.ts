@@ -164,14 +164,31 @@ export async function POST(req: NextRequest) {
     let recNm = pickup_name?.trim() || customer.name || '고객';
     let recPhoneRaw = pickup_phone;
 
+    console.log('[PICKUP] 클라이언트 입력값', {
+      pickup_address,
+      pickup_zipcode,
+      pickup_address_id,
+      pickup_name,
+      recAddr1_init: recAddr1,
+      recZip_init: recZip,
+    });
+
     if (pickup_address_id) {
-      const { data: savedAddr } = await supabase
+      const { data: savedAddr, error: addrErr } = await supabase
         .from('customer_addresses')
         .select('name, phone, zipcode, address, address_detail')
         .eq('id', pickup_address_id)
         .eq('customer_id', user.id)
         .eq('type', 'pickup')
         .maybeSingle();
+
+      console.log('[PICKUP] DB 주소 조회', {
+        found: !!savedAddr,
+        dbAddr: savedAddr?.address,
+        dbZip: savedAddr?.zipcode,
+        dbPhone: savedAddr?.phone,
+        addrErr: addrErr?.message,
+      });
 
       if (savedAddr) {
         const savedAddr1 = normalizeEpostAddr1(savedAddr.address);
@@ -183,6 +200,13 @@ export async function POST(req: NextRequest) {
         if (savedAddr.phone?.trim()) recPhoneRaw = savedAddr.phone;
       }
     }
+
+    console.log('[PICKUP] 최종 수거지 값', {
+      recAddr1,
+      recZip,
+      recNm,
+      recPhoneRaw: recPhoneRaw ? '있음' : '없음',
+    });
 
     if (recZip.length !== 5) {
       return NextResponse.json(
