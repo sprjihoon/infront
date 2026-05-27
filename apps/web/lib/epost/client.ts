@@ -135,6 +135,26 @@ async function callEPost(
   if (testYn === 'Y') url += '&testYn=Y';
 
   const plainText = buildEpostParams(params);
+
+  // 진단용 로그 — recAddr1 실제 전송값 확인
+  {
+    const dbg: Record<string, string> = {};
+    for (const pair of plainText.split('&')) {
+      const idx = pair.indexOf('=');
+      if (idx > 0) dbg[pair.slice(0, idx)] = pair.slice(idx + 1);
+    }
+    console.log('[EPOST] plainText fields:', {
+      recNm:    dbg.recNm,
+      recZip:   dbg.recZip,
+      recAddr1: dbg.recAddr1,
+      recAddr2: dbg.recAddr2,
+      recTel:   dbg.recTel,
+      ordAddr1: dbg.ordAddr1,
+      ordZip:   dbg.ordZip,
+      plainLen: plainText.length,
+    });
+  }
+
   const encrypted = seed128Encrypt(plainText, securityKey);
   url += `&regData=${encodeURIComponent(encrypted)}`;
 
@@ -148,6 +168,14 @@ async function callEPost(
       headers: { 'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)' },
       signal: controller.signal,
     });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    if (detail.includes('abort') || (err instanceof Error && err.name === 'AbortError')) {
+      throw new Error('우체국 API 응답 시간 초과(30초). 잠시 후 다시 시도해주세요.');
+    }
+    throw new Error(
+      `우체국 API 서버(${EPOST_BASE_URL})에 연결하지 못했습니다. 네트워크 또는 우체국 서비스 상태를 확인해주세요. (${detail})`,
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -192,6 +220,10 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
   }
   if (!body.recAddr1 || normalizeEpostAddr1(String(body.recAddr1)).length < 2) {
     throw new Error('수취인 주소(recAddr1)가 없습니다. 주소 검색으로 다시 선택해주세요.');
+  }
+  const recTel = String(body.recTel ?? body.recMob ?? '');
+  if (!recTel || recTel.length < 9) {
+    throw new Error('수취인 연락처(recTel)가 없습니다. 수거지 연락처를 확인해주세요.');
   }
 
   const xml = await callEPost('api.InsertOrder.jparcel', body, testYn);
