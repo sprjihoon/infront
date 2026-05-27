@@ -540,11 +540,14 @@ Next.js 웹앱
 | `PUBLIC_DATA_API_KEY` | 공공데이터포털 인증키 — **관세청 수입 과세환율(주간)** EMS 보험 USD→KRW 갱신 (1순위) |
 | `KOREAEXIM_AUTH_KEY` | (선택) 한국수출입은행 환율 API — 관세청 API 실패 시 폴백 |
 | `EMS_USD_KRW_RATE` | (선택) 수동 고정 환율 — DB·API 모두 실패 시 폴백 |
-| `INFRONT_CENTER_NAME` | 물류센터 이름 |
-| `INFRONT_CENTER_ZIPCODE` | 물류센터 우편번호 |
-| `INFRONT_CENTER_ADDR1` | 물류센터 주소 |
-| `INFRONT_CENTER_ADDR2` | 물류센터 상세주소 |
-| `INFRONT_CENTER_PHONE` | 물류센터 연락처 |
+| `INFRONT_CENTER_ORD_NM` | 우체국 ord/rec 센터명 (기본 `인프론트`, modo `CENTER_RECIPIENT_NAME`) |
+| `INFRONT_CENTER_NAME` | 표시용 센터 이름 |
+| `INFRONT_CENTER_ZIPCODE` | **수거 도착지** 우편번호 (modo 동일, 기본 `41142`) |
+| `INFRONT_CENTER_ADDR1` | **수거 도착지** 주소 (기본 `대구광역시 동구 동촌로 1` — 동대구우체국) |
+| `INFRONT_CENTER_ADDR2` | **수거 도착지** 상세 (기본 `동대구우체국 2층 소포실`, modo `CENTER_ADDRESS2`) |
+| `INFRONT_CENTER_PHONE` | 센터 연락처 (modo `CENTER_PHONE`) |
+
+> **우체국 수거(reqType=2)**: `ord*` = 동대구우체국 소포실(도착), `rec*` = 고객 수거지. 회사 소재지(안심로)는 사용하지 않습니다. modo `shipments-book` 과 동일합니다.
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
 | `CLOUDFLARE_STREAM_API_TOKEN` | Cloudflare Stream API 토큰 |
 | `ADMIN_EMAILS` | 관리자 이메일 목록 (콤마 구분) |

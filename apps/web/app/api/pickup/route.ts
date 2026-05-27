@@ -21,17 +21,19 @@ import {
   type PickupBoxSizeCode,
 } from '@/lib/epost/pickup-boxes';
 import { buildReturnPickupOrderParams } from '@/lib/epost/pickup-order';
+import { resolveInfrontCenterFromEnv } from '@/lib/epost/center-config';
 
 export const preferredRegion = 'icn1';
 
-const CENTER_ORD_NM  = process.env.INFRONT_CENTER_ORD_NM  ?? '인프론트';
-const CENTER_ZIPCODE = normalizeEpostZip(process.env.INFRONT_CENTER_ZIPCODE ?? '');
-const CENTER_ADDR1   = (process.env.INFRONT_CENTER_ADDR1   ?? '').trim();
-const CENTER_ADDR2   = (process.env.INFRONT_CENTER_ADDR2   ?? '').trim();
+const centerConfig = resolveInfrontCenterFromEnv();
+const CENTER_ORD_NM  = centerConfig.ordNm;
+const CENTER_ZIPCODE = normalizeEpostZip(centerConfig.zip);
+const CENTER_ADDR1   = centerConfig.addr1;
+const CENTER_ADDR2   = centerConfig.addr2;
 const OFFICE_SER     = '260537802';
 
 function centerPhone() {
-  return normalizeEpostPhone(process.env.INFRONT_CENTER_PHONE);
+  return normalizeEpostPhone(centerConfig.phone);
 }
 
 async function rollbackEpostOrder(
@@ -113,9 +115,9 @@ export async function POST(req: NextRequest) {
 
     const spec = boxSpecs[0];
 
-    if (!CENTER_ZIPCODE || !CENTER_ADDR1) {
+    if (CENTER_ZIPCODE.length !== 5 || CENTER_ADDR1.length < 2) {
       return NextResponse.json(
-        { error: '물류센터 정보가 설정되지 않았습니다. 관리자에게 문의하세요.' },
+        { error: '물류센터(동대구우체국) 주소가 올바르지 않습니다. INFRONT_CENTER_* 환경변수를 확인해주세요.' },
         { status: 500 }
       );
     }
