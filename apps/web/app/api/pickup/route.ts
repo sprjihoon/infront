@@ -396,12 +396,16 @@ export async function POST(req: NextRequest) {
         } catch (e) {
           console.error('[PICKUP] epost insert failed:', firstErr, e);
           const msg = e instanceof Error ? e.message : '우체국 API 오류';
-          const hint =
-            msg.includes('ordMob') || msg.includes('ERR-522')
-              ? ' 센터·수거 연락처를 숫자만 입력했는지 확인해주세요. (예: 01012345678)'
-              : msg.includes('recAddr2') || msg.includes('ERR-311')
-                ? ' 수거지 상세주소(동·호수·층)를 2글자 이상 입력했는지 확인해주세요.'
-                : '';
+          let hint = '';
+          if (msg.includes('ordMob') || (msg.includes('ERR-522') && msg.includes('ordMob'))) {
+            hint = ' 센터 연락처(INFRONT_CENTER_PHONE)를 숫자만 입력했는지 확인해주세요. (예: 01012345678)';
+          } else if (msg.includes('recAddr2')) {
+            hint = ' 수거지 상세주소(동·호수·층)를 2글자 이상 입력했는지 확인해주세요.';
+          } else if (msg.includes('recAddr1') || (msg.includes('ERR-311') && msg.includes('recAddr1'))) {
+            hint = ' 수거지 도로명 주소를 주소 검색으로 다시 저장해주세요.';
+          } else if (msg.includes('recZip')) {
+            hint = ' 수거지 우편번호가 올바른지 주소록에서 다시 저장해주세요.';
+          }
           return NextResponse.json({ error: msg + hint }, { status: 502 });
         }
       }

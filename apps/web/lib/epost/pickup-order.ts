@@ -86,7 +86,7 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     recAddr1: pickupSplit.addr1,
     recAddr2: pickupSplit.addr2,
     recTel: pickupPhone,
-    recMob: pickupPhone,
+    // recMob 미전송 — modo 반품소포와 동일. 포함 시 EPOST 파서 필드 밀림(ERR-311/522)
     contCd: '025',
     goodsNm: input.goodsNm,
     weight: input.weight,

@@ -20,9 +20,27 @@ export function normalizeEpostZip(zip?: string | number | null): string {
   return String(zip).replace(/\D/g, '').slice(0, 5);
 }
 
-/** 우체국 recAddr1/ordAddr1 — 앞뒤 공백 제거 */
+/** "대구 동구 …" → "대구광역시 동구 …" (주소 검색 축약형 보정) */
+function expandMetroShortName(addr: string): string {
+  const pairs: [RegExp, string][] = [
+    [/^대구\s+(?!광역시)/, '대구광역시 '],
+    [/^부산\s+(?!광역시)/, '부산광역시 '],
+    [/^인천\s+(?!광역시)/, '인천광역시 '],
+    [/^광주\s+(?!광역시)/, '광주광역시 '],
+    [/^대전\s+(?!광역시)/, '대전광역시 '],
+    [/^울산\s+(?!광역시)/, '울산광역시 '],
+    [/^세종\s+(?!특별자치시)/, '세종특별자치시 '],
+  ];
+  for (const [re, prefix] of pairs) {
+    if (re.test(addr)) return addr.replace(re, prefix);
+  }
+  return addr;
+}
+
+/** 우체국 recAddr1/ordAddr1 — 앞뒤 공백 제거 + 시·도 축약 보정 */
 export function normalizeEpostAddr1(addr?: string | null): string {
-  return addr?.trim() ?? '';
+  const trimmed = addr?.trim() ?? '';
+  return trimmed ? expandMetroShortName(trimmed) : '';
 }
 
 /** 센터 ordAddr2 — 미입력 시 '없음' (modo shipments-book 동일) */
@@ -218,14 +236,13 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   }
   const reqType = String(body.reqType ?? '');
   if (reqType === '2') {
+    // 반품소포: recMob 있으면 우체국 복호화 파서가 recZip 등 다음 필드를 밀어냄
+    delete body.recMob;
     if ('ordMob' in body) {
       body.ordMob = requireEpostPhone(String(body.ordMob ?? ''), '주문자 휴대폰(ordMob)');
     }
     if ('recTel' in body) {
-      body.recTel = requireEpostPhone(
-        String(body.recTel ?? body.recMob ?? ''),
-        '수취인 연락처(recTel)',
-      );
+      body.recTel = requireEpostPhone(String(body.recTel ?? ''), '수취인 연락처(recTel)');
     }
     if (body.inqTelCn != null && body.inqTelCn !== '') {
       body.inqTelCn = requireEpostPhone(String(body.inqTelCn), '문의전화(inqTelCn)');
@@ -351,6 +368,7 @@ async function callEPost(
       ordMob:   dbg.ordMob,
       ordTel:   dbg.ordTel,
       inqTelCn: dbg.inqTelCn,
+      recMobInPlain: 'recMob' in dbg,
       plainLen: plainText.length,
     });
   }
