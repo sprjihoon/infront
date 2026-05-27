@@ -221,14 +221,19 @@ export function truncateUtf8Bytes(str: string, maxBytes: number): string {
   return buf.subarray(0, end).toString('utf8');
 }
 
-/** InsertOrder orderNo — 영숫자, 하이픈 없음 (SPB + timestamp + seq) */
+/** InsertOrder orderNo — 영숫자만, UTF-8 30byte 이하 (매뉴얼 50byte) */
 export function formatEpostOrderNo(prefix = 'SPB', seq = 1): string {
-  return `${prefix}${Date.now()}${seq}`.replace(/[^A-Za-z0-9]/g, '').slice(0, 20);
+  const raw = `${prefix}${Date.now()}${seq}`.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+  return truncateUtf8Bytes(raw, EPOST_ORDER_NO_MAX_BYTES);
 }
 
 /** 우체국 API — ordCompNm 실측 12byte 초과 시 regData 필드 밀림 */
 const EPOST_ORD_COMP_NM_MAX_BYTES = 12;
 const EPOST_ADDR_MAX_BYTES = 100;
+/** 매뉴얼 orderNo 50byte — 파서 밀림 방지 위해 더 짧게 유지 */
+const EPOST_ORDER_NO_MAX_BYTES = 30;
+const EPOST_GOODS_NM_MAX_BYTES = 40;
+const EPOST_DELIV_MSG_MAX_BYTES = 50;
 
 const INSERT_ORDER_KEYS = new Set([
   'custNo', 'apprNo', 'payType', 'reqType', 'officeSer',
@@ -280,10 +285,13 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
     }
   }
   if (typeof body.goodsNm === 'string') {
-    body.goodsNm = truncateUtf8Bytes(sanitizeEpostPlainField(body.goodsNm), 200);
+    body.goodsNm = truncateUtf8Bytes(sanitizeEpostPlainField(body.goodsNm), EPOST_GOODS_NM_MAX_BYTES);
   }
   if (typeof body.delivMsg === 'string' && body.delivMsg !== '') {
-    body.delivMsg = truncateUtf8Bytes(sanitizeEpostPlainField(body.delivMsg), 200);
+    body.delivMsg = truncateUtf8Bytes(
+      sanitizeEpostPlainField(body.delivMsg),
+      EPOST_DELIV_MSG_MAX_BYTES,
+    );
   }
   if (String(body.reqType ?? '') === '2') {
     const mob = String(body.ordMob ?? '');
@@ -294,7 +302,10 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
     }
   }
   if (typeof body.orderNo === 'string') {
-    body.orderNo = body.orderNo.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 20);
+    body.orderNo = truncateUtf8Bytes(
+      body.orderNo.replace(/[^A-Za-z0-9]/g, '').toUpperCase(),
+      EPOST_ORDER_NO_MAX_BYTES,
+    );
   }
   if (typeof body.recZip === 'string') {
     body.recZip = normalizeEpostZip(body.recZip);
@@ -365,6 +376,13 @@ async function callEPost(
           '수취인(반품인) 상세주소가 센터값(없음)으로 들어갔습니다. ord/rec 매핑을 확인하세요.',
       );
     }
+    const orderNo = fields.orderNo ?? '';
+    const orderNoBytes = Buffer.byteLength(orderNo, 'utf8');
+    if (orderNoBytes > 50) {
+      throw new Error(
+        `우체국 전송 오류: orderNo UTF-8 ${orderNoBytes}byte (허용 50byte) — "${orderNo.slice(0, 40)}"`,
+      );
+    }
   }
 
   // 진단용 로그 — InsertOrder 접수 시에만
@@ -387,6 +405,10 @@ async function callEPost(
       ordTel:   dbg.ordTel,
       inqTelCn: dbg.inqTelCn,
       recMobInPlain: 'recMob' in dbg,
+      orderNo: dbg.orderNo,
+      orderNoBytes: Buffer.byteLength(dbg.orderNo ?? '', 'utf8'),
+      goodsNm: dbg.goodsNm,
+      delivMsg: dbg.delivMsg,
       plainLen: plainText.length,
     });
   }

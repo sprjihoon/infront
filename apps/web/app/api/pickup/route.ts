@@ -412,6 +412,8 @@ export async function POST(req: NextRequest) {
             hint = ' 수거지 도로명 주소를 주소 검색으로 다시 저장해주세요.';
           } else if (msg.includes('recZip')) {
             hint = ' 수거지 우편번호가 올바른지 주소록에서 다시 저장해주세요.';
+          } else if (msg.includes('orderNo') || (msg.includes('ERR-522') && msg.includes('orderNo'))) {
+            hint = ' 잠시 후 다시 시도해주세요. (메모가 길면 접수 메시지를 짧게 입력해주세요.)';
           }
           return NextResponse.json({ error: msg + hint }, { status: 502 });
         }

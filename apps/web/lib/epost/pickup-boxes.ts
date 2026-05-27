@@ -114,10 +114,12 @@ export function pickupBoxSummary(spec: PickupBoxSizeSpec): string {
   return `${spec.label} · ${spec.weight}kg · ${spec.volume}cm`;
 }
 
-/** 우체국 InsertOrder orderNo — SPB+timestamp+seq, 영숫자 20자 (실운송 검증됨) */
+import { formatEpostOrderNo } from './client';
+
+/** 우체국 InsertOrder orderNo — SPB+timestamp+seq (formatEpostOrderNo와 동일) */
 export function formatPickupOrderNo(_customerCode: string | undefined, parcelId: string): string {
   const seq = parseInt(parcelId.replace(/[^0-9]/g, '').slice(-6) || '1', 16) % 10000 || 1;
-  return `SPB${Date.now()}${seq}`.replace(/[^A-Z0-9]/g, '').slice(0, 20);
+  return formatEpostOrderNo('SPB', seq);
 }
 
 export function assertUniquePickupOrderNos(orderNos: string[]): void {
