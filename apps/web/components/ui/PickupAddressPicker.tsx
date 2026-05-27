@@ -5,6 +5,7 @@ import { MapPin, Star, Plus, ChevronRight, X, Check, Pencil } from "lucide-react
 import {
   normalizeEpostZip,
   normalizeEpostAddr1,
+  extractEpostZipFromAddress,
   inferPickupAddressDetail,
   validatePickupAddressDetail,
   isValidPickupAddressDetail,
@@ -54,8 +55,9 @@ function savedAddressDetailLabel(a: SavedAddress): ReactNode {
 }
 
 function toPickupAddressValue(a: SavedAddress): PickupAddressValue | null {
-  const zip = normalizeEpostZip(a.zipcode);
+  let zip = normalizeEpostZip(a.zipcode);
   const address = normalizeEpostAddr1(a.address);
+  if (zip.length !== 5) zip = extractEpostZipFromAddress(a.address);
   if (zip.length !== 5 || address.length < 2) return null;
   return {
     savedId: a.id,

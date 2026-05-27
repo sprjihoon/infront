@@ -8,6 +8,7 @@ import {
 import {
   normalizeEpostZip,
   normalizeEpostAddr1,
+  extractEpostZipFromAddress,
   inferPickupAddressDetail,
   validatePickupAddressDetail,
   isValidPickupAddressDetail,
@@ -189,7 +190,7 @@ export default function PickupPage() {
       label: data.label ?? addr.label,
       name: data.name ?? addr.name,
       phone: data.phone ?? addr.phone,
-      zipcode: zip.length === 5 ? zip : addr.zipcode,
+      zipcode: zip.length === 5 ? zip : addr.zipcode || extractEpostZipFromAddress(data.address ?? addr.address),
       address,
       addressDetail: inferPickupAddressDetail(
         data.address ?? addr.address,
@@ -239,19 +240,28 @@ export default function PickupPage() {
     const step1Err = validateStep1();
     if (step1Err) { setError(step1Err); if (isSimple) setStep(1); return; }
 
-    setShowStep2FieldErrors(true);
     const step2Err = validateStep2();
-    if (step2Err) { setError(step2Err); setItemsOpen(true); if (isSimple) setStep(2); return; }
+    if (step2Err) {
+      setShowStep2FieldErrors(true);
+      setItemsOpen(true);
+      setError(step2Err);
+      if (isSimple) setStep(2);
+      else document.getElementById("pickup-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
 
     if (!agreed) { setError("서비스 안내에 동의해주세요."); if (isSimple) setStep(3); return; }
 
     setLoading(true);
     try {
       const resolved = await resolvePickupAddress(pickupAddress!);
-      const zip = normalizeEpostZip(resolved.zipcode);
+      let zip = normalizeEpostZip(resolved.zipcode);
       const address = normalizeEpostAddr1(resolved.address);
       if (zip.length !== 5) {
-        throw new Error("우편번호가 없습니다. 주소록에서 저장 후 수거지를 다시 선택해주세요.");
+        zip = extractEpostZipFromAddress(resolved.address) || extractEpostZipFromAddress(address);
+      }
+      if (zip.length !== 5) {
+        throw new Error("우편번호가 없습니다. 주소록에서 주소 검색으로 저장 후 수거지를 다시 선택해주세요.");
       }
       if (address.length < 2) {
         throw new Error("도로명/지번 주소가 없습니다. 주소록에서 주소 검색 후 다시 저장해주세요.");
@@ -364,6 +374,22 @@ export default function PickupPage() {
   function itemPriceInvalid(item: InvoiceItem): boolean {
     return item.unit_price_usd <= 0 || !Number.isFinite(item.unit_price_usd);
   }
+
+  function goEditItems() {
+    setError("");
+    setShowStep2FieldErrors(true);
+    setItemsOpen(true);
+    if (isSimple) setStep(2);
+    else document.getElementById("pickup-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  useEffect(() => {
+    if (isSimple && step === 3 && !step2Ready) {
+      setShowStep2FieldErrors(true);
+      setItemsOpen(true);
+      setStep(2);
+    }
+  }, [isSimple, step, step2Ready]);
 
   if (result) {
     const dateStr = result.pickup_date.length >= 8
@@ -565,7 +591,7 @@ export default function PickupPage() {
 
         {/* Step 2: 물품 내역 */}
         {showStep(2) && (
-          <div className="border border-gray-200 rounded-xl overflow-hidden">
+          <div id="pickup-items-section" className="border border-gray-200 rounded-xl overflow-hidden">
             {isSimple ? (
               <div className="px-4 py-3.5 bg-white border-b border-gray-100">
                 <div className="flex items-center gap-2">
@@ -825,7 +851,23 @@ export default function PickupPage() {
         {/* Step 3 또는 고급모드: 확인·옵션 */}
         {(showStep(3) || !isSimple) && (
           <>
-            {isSimple && showStep(3) && (
+            {isSimple && showStep(3) && !step2Ready && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-3">
+                <p className="text-sm font-semibold text-red-800">물품 내역을 완료해주세요</p>
+                <p className="text-xs text-red-600">
+                  단가(USD) 등 필수 항목이 비어 있습니다. 확인 단계가 아니라 물품 내역에서 입력해주세요.
+                </p>
+                <button
+                  type="button"
+                  onClick={goEditItems}
+                  className="w-full py-2.5 rounded-xl bg-white border border-red-200 text-red-700 text-xs font-bold"
+                >
+                  물품 내역으로 이동
+                </button>
+              </div>
+            )}
+
+            {isSimple && showStep(3) && step2Ready && (
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
                 <p className="text-sm font-bold text-gray-800">입력 내용 확인</p>
                 <div className="space-y-2 text-sm">
@@ -852,10 +894,15 @@ export default function PickupPage() {
                     <p className="text-gray-800">
                       {itemCondition === "NEW" ? "새 제품" : "중고품"} · {filledItemCount}종
                     </p>
-                    <ul className="mt-1 space-y-0.5">
+                    <ul className="mt-1 space-y-1">
                       {invoiceItems.filter(i => i.name_en.trim()).map(item => (
-                        <li key={item.key} className="text-xs text-gray-600">
-                          · {item.product_name || item.name_en} × {item.quantity}
+                        <li key={item.key} className="text-xs text-gray-600 flex justify-between gap-2">
+                          <span className="min-w-0 truncate">
+                            · {item.product_name || item.name_en} × {item.quantity}
+                          </span>
+                          <span className={`shrink-0 font-medium ${itemPriceInvalid(item) ? "text-red-600" : "text-gray-700"}`}>
+                            {itemPriceInvalid(item) ? "단가 미입력" : `$${item.unit_price_usd.toFixed(2)}`}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -867,13 +914,22 @@ export default function PickupPage() {
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  className="text-xs text-brand-600 font-semibold"
-                >
-                  수정하기
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setError(""); setStep(1); }}
+                    className="flex-1 py-2 rounded-lg border border-gray-200 text-xs text-brand-600 font-semibold bg-white"
+                  >
+                    수거 정보 수정
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goEditItems}
+                    className="flex-1 py-2 rounded-lg border border-gray-200 text-xs text-brand-600 font-semibold bg-white"
+                  >
+                    물품 내역 수정
+                  </button>
+                </div>
               </div>
             )}
 
@@ -919,9 +975,14 @@ export default function PickupPage() {
           </>
         )}
 
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+        {error && (step !== 3 || !isSimple) && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 space-y-2">
             <p className="text-sm text-red-600">{error}</p>
+            {!isSimple && validateStep2() !== null && (
+              <button type="button" onClick={goEditItems} className="text-xs font-bold text-red-700 underline">
+                물품 내역으로 이동
+              </button>
+            )}
           </div>
         )}
       </form>
@@ -956,7 +1017,7 @@ export default function PickupPage() {
             disabled={loading || !agreed || !step1Ready || !step2Ready}
             onClick={handleSubmit}
             className={`w-full py-4 rounded-xl text-sm font-bold transition-colors ${
-              agreed && !loading
+              agreed && !loading && step1Ready && step2Ready
                 ? "bg-brand-600 text-white active:opacity-80"
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}

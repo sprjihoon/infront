@@ -20,6 +20,12 @@ export function normalizeEpostZip(zip?: string | number | null): string {
   return String(zip).replace(/\D/g, '').slice(0, 5);
 }
 
+/** 주소 문자열에 포함된 5자리 우편번호 (주소록 zipcode 누락 시 보완) */
+export function extractEpostZipFromAddress(addr?: string | null): string {
+  const m = (addr ?? '').match(/(?:^|\s|\[)(\d{5})(?:\s|\]|$)/);
+  return m ? m[1] : '';
+}
+
 /** "대구 동구 …" → "대구광역시 동구 …" (주소 검색 축약형 보정) */
 function expandMetroShortName(addr: string): string {
   const pairs: [RegExp, string][] = [
@@ -270,13 +276,16 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
     }
   }
   if (typeof body.ordCompNm === 'string') {
-    body.ordCompNm = truncateUtf8Bytes(body.ordCompNm, EPOST_ORD_COMP_NM_MAX_BYTES);
+    body.ordCompNm = truncateUtf8Bytes(
+      sanitizeEpostPlainField(body.ordCompNm),
+      EPOST_ORD_COMP_NM_MAX_BYTES,
+    );
   }
   if (typeof body.ordNm === 'string') {
-    body.ordNm = truncateUtf8Bytes(body.ordNm, 40);
+    body.ordNm = truncateUtf8Bytes(sanitizeEpostPlainField(body.ordNm), 40);
   }
   if (typeof body.recNm === 'string') {
-    body.recNm = truncateUtf8Bytes(body.recNm, 40);
+    body.recNm = truncateUtf8Bytes(sanitizeEpostPlainField(body.recNm), 40);
   }
   for (const key of ['ordAddr1', 'ordAddr2', 'recAddr1', 'recAddr2'] as const) {
     const raw = body[key];
@@ -381,11 +390,23 @@ async function callEPost(
       const idx = pair.indexOf('=');
       if (idx > 0) fields[pair.slice(0, idx)] = pair.slice(idx + 1);
     }
+    const recZipPlain = (fields.recZip ?? '').trim();
+    if (!/^\d{5}$/.test(recZipPlain)) {
+      throw new Error(
+        `우체국 반품 수거 전송 오류: recZip="${recZipPlain || '(비어 있음)'}" — ` +
+          '수거지 우편번호가 평문에 없거나 형식이 잘못되었습니다. 주소 검색으로 다시 저장해주세요.',
+      );
+    }
     const rec2 = (fields.recAddr2 ?? '').trim();
     if (!rec2 || rec2 === '없음' || rec2.length < EPOST_PICKUP_DETAIL_MIN_LEN) {
       throw new Error(
         `우체국 반품 수거 전송 오류: recAddr2="${rec2 || '(비어 있음)'}" — ` +
-          '수취인(반품인) 상세주소가 센터값(없음)으로 들어갔습니다. ord/rec 매핑을 확인하세요.',
+          '수거지 상세주소(동·호수·층)를 2글자 이상 입력해주세요.',
+      );
+    }
+    if ('recMob' in fields) {
+      throw new Error(
+        '우체국 반품 수거 전송 오류: recMob이 평문에 포함되어 있습니다. (필드 밀림 ERR-311 유발)',
       );
     }
     const orderNo = fields.orderNo ?? '';

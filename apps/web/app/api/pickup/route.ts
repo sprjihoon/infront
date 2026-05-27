@@ -16,6 +16,7 @@ import {
   requireEpostPhone,
   splitPickupAddressForEpost,
   normalizeEpostPickupAddr2,
+  extractEpostZipFromAddress,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
 import { validatePreInvoiceItems } from '@/lib/pre-invoice-validation';
@@ -261,6 +262,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (recZip.length !== 5) {
+      const fromAddr =
+        extractEpostZipFromAddress(recAddr1) ||
+        extractEpostZipFromAddress(pickup_address);
+      if (fromAddr.length === 5) recZip = fromAddr;
+    }
+
     console.log('[PICKUP] 최종 수거지 값', {
       recAddr1,
       recZip,
@@ -272,7 +280,10 @@ export async function POST(req: NextRequest) {
 
     if (recZip.length !== 5) {
       return NextResponse.json(
-        { error: '수거지 우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.' },
+        {
+          error:
+            '수거지 우편번호가 없습니다. 마이페이지 → 주소록에서 주소 검색으로 우편번호를 포함해 다시 저장한 뒤 수거지를 선택해주세요.',
+        },
         { status: 400 }
       );
     }
@@ -321,9 +332,22 @@ export async function POST(req: NextRequest) {
 
     // 수거 화면에서 보완 입력한 상세주소를 주소록에 반영 (다음 접수부터 그대로 사용)
     if (pickup_address_id && recAddr2ForEpost.length >= 2) {
+      const addrPatch: { address_detail: string; zipcode?: string } = {
+        address_detail: recAddr2ForEpost,
+      };
+      const { data: zipRow } = await supabase
+        .from('customer_addresses')
+        .select('zipcode')
+        .eq('id', pickup_address_id)
+        .eq('customer_id', user.id)
+        .eq('type', 'pickup')
+        .maybeSingle();
+      if (normalizeEpostZip(zipRow?.zipcode).length !== 5 && recZip.length === 5) {
+        addrPatch.zipcode = recZip;
+      }
       await supabase
         .from('customer_addresses')
-        .update({ address_detail: recAddr2ForEpost })
+        .update(addrPatch)
         .eq('id', pickup_address_id)
         .eq('customer_id', user.id)
         .eq('type', 'pickup');
@@ -431,7 +455,8 @@ export async function POST(req: NextRequest) {
           } else if (msg.includes('recAddr1') || (msg.includes('ERR-311') && msg.includes('recAddr1'))) {
             hint = ' 수거지 도로명 주소를 주소 검색으로 다시 저장해주세요.';
           } else if (msg.includes('recZip')) {
-            hint = ' 수거지 우편번호가 올바른지 주소록에서 다시 저장해주세요.';
+            hint =
+              ' 수거지를 주소 검색으로 다시 저장해주세요. (상세주소는 2글자 이상·「3층」만 입력 시 「제3층」으로 저장됨) 계속되면 Vercel 로그의 [EPOST] plainText fields에서 recZip·recMobInPlain을 확인해주세요.';
           } else if (msg.includes('orderNo') || (msg.includes('ERR-522') && msg.includes('orderNo'))) {
             hint = ' 잠시 후 다시 시도해주세요. (메모가 길면 접수 메시지를 짧게 입력해주세요.)';
           }

@@ -18,6 +18,7 @@ import {
   resolveEpostCenterAddr2,
   splitPickupAddressForEpost,
   truncateUtf8Bytes,
+  sanitizeEpostPlainField,
   EPOST_PICKUP_DETAIL_MIN_LEN,
 } from './client';
 import { normalizeEpostRetVisitYmd } from './pickup-date';
@@ -85,7 +86,10 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     ordAddr1: normalizeEpostAddr1(input.center.addr1),
     ordAddr2: resolveEpostCenterAddr2(input.center.addr2),
     ordMob: centerPhone,
-    recNm: truncateUtf8Bytes(input.pickup.name.trim() || '고객', 40),
+    recNm: truncateUtf8Bytes(
+      sanitizeEpostPlainField(input.pickup.name.trim() || '고객'),
+      40,
+    ),
     recZip: normalizeEpostZip(input.pickup.zip),
     recAddr1: pickupSplit.addr1,
     recAddr2: normalizeEpostPickupAddr2(pickupSplit.addr2),
