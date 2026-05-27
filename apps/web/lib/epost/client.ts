@@ -142,10 +142,18 @@ export function resolveEpostRecAddr2(detail?: string | null): string {
   return resolveEpostCenterAddr2(detail);
 }
 
-/** 우체국 API — 전화번호는 숫자만 허용 (공백·하이픈·+82 등 제거) */
+/** 우체국 API 평문 — & = 줄바꿈이 있으면 필드가 밀려 ordMob ERR-522 유발 */
+export function sanitizeEpostPlainField(value: string): string {
+  return value.replace(/[&=\r\n]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/** 우체국 API — 전화번호는 ASCII 숫자만 (공백·하이픈·+82·전각숫자 등 제거) */
 export function normalizeEpostPhone(phone?: string | null, maxLen = 12): string {
   if (!phone) return '';
-  let digits = String(phone).replace(/\D/g, '');
+  let digits = '';
+  for (const ch of String(phone)) {
+    if (ch >= '0' && ch <= '9') digits += ch;
+  }
   if (digits.startsWith('82') && digits.length >= 11) {
     digits = `0${digits.slice(2)}`;
   }
@@ -235,11 +243,22 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   for (const key of ['ordAddr1', 'ordAddr2', 'recAddr1', 'recAddr2'] as const) {
     const raw = body[key];
     if (typeof raw === 'string') {
-      body[key] = truncateUtf8Bytes(raw.trim(), EPOST_ADDR_MAX_BYTES);
+      body[key] = truncateUtf8Bytes(sanitizeEpostPlainField(raw), EPOST_ADDR_MAX_BYTES);
     }
   }
   if (typeof body.goodsNm === 'string') {
-    body.goodsNm = truncateUtf8Bytes(body.goodsNm, 200);
+    body.goodsNm = truncateUtf8Bytes(sanitizeEpostPlainField(body.goodsNm), 200);
+  }
+  if (typeof body.delivMsg === 'string' && body.delivMsg !== '') {
+    body.delivMsg = truncateUtf8Bytes(sanitizeEpostPlainField(body.delivMsg), 200);
+  }
+  if (String(body.reqType ?? '') === '2') {
+    const mob = String(body.ordMob ?? '');
+    if (!EPOST_PHONE_RE.test(mob)) {
+      throw new Error(
+        `주문자 휴대폰(ordMob) 형식 오류: "${mob || '(비어 있음)'}" — 수거 연락처를 01012345678 형식으로 입력해주세요.`,
+      );
+    }
   }
   if (typeof body.orderNo === 'string') {
     body.orderNo = body.orderNo.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 20);
@@ -306,6 +325,8 @@ async function callEPost(
       ordAddr1: dbg.ordAddr1,
       ordZip:   dbg.ordZip,
       ordMob:   dbg.ordMob,
+      ordTel:   dbg.ordTel,
+      inqTelCn: dbg.inqTelCn,
       plainLen: plainText.length,
     });
   }

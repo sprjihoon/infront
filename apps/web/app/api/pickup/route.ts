@@ -311,7 +311,7 @@ export async function POST(req: NextRequest) {
           centerPhone() || process.env.INFRONT_CENTER_PHONE,
           '센터 연락처(INFRONT_CENTER_PHONE)',
         );
-        recPhoneEpost = requireEpostPhone(recPhoneRaw, '수거 연락처');
+        recPhoneEpost = requireEpostPhone(recPhoneRaw, '수거 연락처(ordMob)');
       } catch (e) {
         const msg = e instanceof Error ? e.message : '연락처 형식 오류';
         const status = msg.includes('INFRONT_CENTER') ? 500 : 400;
@@ -396,7 +396,11 @@ export async function POST(req: NextRequest) {
         } catch (e) {
           console.error('[PICKUP] epost insert failed:', firstErr, e);
           const msg = e instanceof Error ? e.message : '우체국 API 오류';
-          return NextResponse.json({ error: msg }, { status: 502 });
+          const hint =
+            msg.includes('ordMob') || msg.includes('ERR-522')
+              ? ' 수거 연락처를 숫자만 입력했는지 확인해주세요. (예: 01012345678)'
+              : '';
+          return NextResponse.json({ error: msg + hint }, { status: 502 });
         }
       }
 
