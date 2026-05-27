@@ -8,6 +8,7 @@ import {
   cancelOrder,
   getResInfo,
   normalizeEpostPhone,
+  normalizeEpostZip,
   resolveEpostRecAddr2,
 } from '@/lib/epost/client';
 import type { InsertOrderResponse } from '@/lib/epost/types';
@@ -22,7 +23,7 @@ import {
 export const preferredRegion = 'icn1';
 
 const CENTER_ORD_NM  = process.env.INFRONT_CENTER_ORD_NM  ?? '인프론트';
-const CENTER_ZIPCODE = (process.env.INFRONT_CENTER_ZIPCODE ?? '').replace(/\D/g, '');
+const CENTER_ZIPCODE = normalizeEpostZip(process.env.INFRONT_CENTER_ZIPCODE ?? '');
 const CENTER_ADDR1   = (process.env.INFRONT_CENTER_ADDR1   ?? '').trim();
 const CENTER_ADDR2   = (process.env.INFRONT_CENTER_ADDR2   ?? '').trim();
 const OFFICE_SER     = '260537802';
@@ -87,9 +88,17 @@ export async function POST(req: NextRequest) {
       box_count?: number;
     };
 
-    if (!pickup_address || !pickup_zipcode || !pickup_phone || !pickup_date) {
+    if (!pickup_address || !pickup_phone || !pickup_date) {
       return NextResponse.json(
-        { error: '수거 주소, 우편번호, 연락처, 수거 희망일은 필수입니다.' },
+        { error: '수거 주소, 연락처, 수거 희망일은 필수입니다.' },
+        { status: 400 }
+      );
+    }
+
+    const recZip = normalizeEpostZip(pickup_zipcode);
+    if (recZip.length !== 5) {
+      return NextResponse.json(
+        { error: '수거지 우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.' },
         { status: 400 }
       );
     }
@@ -171,8 +180,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const pickupZip = pickup_zipcode.replace(/-/g, '');
-    const centerZip = CENTER_ZIPCODE.replace(/-/g, '');
+    const pickupZip = recZip;
+    const centerZip = CENTER_ZIPCODE;
     if (
       !isTest &&
       pickupZip === centerZip &&
@@ -203,7 +212,7 @@ export async function POST(req: NextRequest) {
       ordAddr2: CENTER_ADDR2 || '없음',
       ordMob: centerMob,
       recNm: customer.name || '고객',
-      recZip: pickup_zipcode.replace(/-/g, ''),
+      recZip,
       recAddr1: pickup_address,
       recAddr2,
       recTel: pickupPhone,
@@ -271,7 +280,7 @@ export async function POST(req: NextRequest) {
         inbound_source: 'PICKUP',
         pickup_address,
         pickup_address_detail: recAddr2 === '없음' ? null : recAddr2,
-        pickup_zipcode,
+        pickup_zipcode: recZip,
         pickup_phone,
         pickup_date,
         pickup_notes: pickup_notes ?? null,

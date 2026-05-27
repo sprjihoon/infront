@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package,
 } from "lucide-react";
+import { normalizeEpostZip } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import PickupAddressPicker, { PickupAddressValue } from "@/components/ui/PickupAddressPicker";
 import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
@@ -130,7 +131,9 @@ export default function PickupPage() {
 
   const validateStep1 = useCallback((): string | null => {
     if (!pickupAddress?.address) return "수거 주소를 선택해주세요.";
-    if (!pickupAddress.zipcode) return "주소 검색을 통해 우편번호를 확인해주세요.";
+    if (normalizeEpostZip(pickupAddress.zipcode).length !== 5) {
+      return "우편번호가 없습니다. 주소 검색으로 다시 선택해주세요.";
+    }
     if (!pickupAddress.phone) return "수거지 연락처를 입력해주세요.";
     if (!/^[0-9\-\s]{9,}$/.test(pickupAddress.phone)) {
       return "연락처 형식을 확인해주세요. (예: 010-1234-5678)";
@@ -207,7 +210,7 @@ export default function PickupPage() {
         body: JSON.stringify({
           pickup_address: pickupAddress!.address,
           pickup_address_detail: pickupAddress!.addressDetail?.trim() || undefined,
-          pickup_zipcode: pickupAddress!.zipcode,
+          pickup_zipcode: normalizeEpostZip(pickupAddress!.zipcode),
           pickup_phone: pickupAddress!.phone,
           pickup_date: pickupDate,
           pickup_notes: notes.trim() || undefined,

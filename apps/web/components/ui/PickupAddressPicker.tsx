@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { MapPin, Star, Plus, ChevronRight, X, Check, Pencil } from "lucide-react";
+import { normalizeEpostZip } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "./AddressSearchButton";
 
@@ -65,25 +66,33 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
 
     if (!value && data && data.length > 0) {
       const def = data.find((a) => a.is_default) ?? data[0];
-      onChange({
-        savedId: def.id,
-        label: def.label,
-        name: def.name,
-        phone: def.phone ?? "",
-        zipcode: def.zipcode ?? "",
-        address: def.address ?? "",
-        addressDetail: def.address_detail ?? "",
-      });
+      const zip = normalizeEpostZip(def.zipcode);
+      if (zip.length === 5) {
+        onChange({
+          savedId: def.id,
+          label: def.label,
+          name: def.name,
+          phone: def.phone ?? "",
+          zipcode: zip,
+          address: def.address ?? "",
+          addressDetail: def.address_detail ?? "",
+        });
+      }
     }
   }
 
   function selectSaved(a: SavedAddress) {
+    const zip = normalizeEpostZip(a.zipcode);
+    if (zip.length !== 5) {
+      alert("우편번호가 없는 주소입니다. 주소를 수정하거나 다시 검색해주세요.");
+      return;
+    }
     onChange({
       savedId: a.id,
       label: a.label,
       name: a.name,
       phone: a.phone ?? "",
-      zipcode: a.zipcode ?? "",
+      zipcode: zip,
       address: a.address ?? "",
       addressDetail: a.address_detail ?? "",
     });
@@ -92,6 +101,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
 
   async function confirmNew() {
     if (!newName || !newPhone || !newAddr || !newZip) return;
+    if (normalizeEpostZip(newZip).length !== 5) return;
     setSaving(true);
 
     try {
@@ -115,7 +125,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
             label: newLabel.trim() || "새 주소",
             name: newName,
             phone: newPhone,
-            zipcode: newZip,
+            zipcode: normalizeEpostZip(newZip),
             address: newAddr,
             address_detail: newDetail,
             is_default: isDefault,
@@ -128,7 +138,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
           label: newLabel.trim() || "새 주소",
           name: newName,
           phone: newPhone,
-          zipcode: newZip,
+          zipcode: normalizeEpostZip(newZip),
           address: newAddr,
           addressDetail: newDetail,
         });
@@ -137,7 +147,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
         onChange({
           name: newName,
           phone: newPhone,
-          zipcode: newZip,
+          zipcode: normalizeEpostZip(newZip),
           address: newAddr,
           addressDetail: newDetail,
         });
@@ -434,7 +444,7 @@ export default function PickupAddressPicker({ value, onChange, customerId }: Pro
               <div className="px-4 pb-6 pt-3 border-t border-gray-100 shrink-0">
                 <button
                   type="button"
-                  disabled={saving || !newName || !newPhone || !newAddr || !newZip}
+                  disabled={saving || !newName || !newPhone || !newAddr || normalizeEpostZip(newZip).length !== 5}
                   onClick={confirmNew}
                   className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 active:scale-[0.98] transition-transform"
                 >

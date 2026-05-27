@@ -14,6 +14,12 @@ function getEnv(key: string) {
   return process.env[key] ?? '';
 }
 
+/** 우체국 API — 우편번호는 숫자 5자리 */
+export function normalizeEpostZip(zip?: string | null): string {
+  if (!zip) return '';
+  return zip.replace(/\D/g, '').slice(0, 5);
+}
+
 /** 우체국 recAddr2 — 미입력 시 API 관례값 */
 export function resolveEpostRecAddr2(detail?: string | null): string {
   const trimmed = detail?.trim();
@@ -78,6 +84,12 @@ function sanitizeInsertOrderBody(body: Record<string, unknown>) {
   }
   if (typeof body.orderNo === 'string') {
     body.orderNo = body.orderNo.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 20);
+  }
+  if (typeof body.recZip === 'string') {
+    body.recZip = normalizeEpostZip(body.recZip);
+  }
+  if (typeof body.ordZip === 'string') {
+    body.ordZip = normalizeEpostZip(body.ordZip);
   }
   if (!body.orderNo || String(body.orderNo).trim() === '') {
     throw new Error('orderNo가 비어 있습니다.');
@@ -163,6 +175,10 @@ export async function insertOrder(params: InsertOrderParams): Promise<InsertOrde
   };
   delete body.testYn;
   sanitizeInsertOrderBody(body);
+
+  if (!body.recZip || String(body.recZip).length !== 5) {
+    throw new Error('수취인 우편번호(recZip)가 없습니다.');
+  }
 
   const xml = await callEPost('api.InsertOrder.jparcel', body, testYn);
 
