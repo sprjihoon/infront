@@ -1,9 +1,16 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { buildActionCards } from "@/lib/action-dashboard";
+
+const DISMISS_KEY = "action-dashboard-dismissed-date";
+
+function getTodayString() {
+  return new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+}
 
 async function fetchDashboardData() {
   const supabase = createClient();
@@ -36,17 +43,22 @@ async function fetchDashboardData() {
 
 
 export default function ActionDashboard() {
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem(DISMISS_KEY);
+    if (stored === getTodayString()) {
+      setDismissed(true);
+    }
+  }, []);
+
   const { data, isLoading, isError } = useQuery({
     queryKey: ["action-dashboard"],
     queryFn: fetchDashboardData,
     staleTime: 30_000,
   });
 
-  if (isLoading) {
-    return null;
-  }
-
-  if (isError || !data) {
+  if (dismissed || isLoading || isError || !data) {
     return null;
   }
 
@@ -56,9 +68,36 @@ export default function ActionDashboard() {
     return null;
   }
 
+  function handleDismiss() {
+    localStorage.setItem(DISMISS_KEY, getTodayString());
+    setDismissed(true);
+  }
+
   return (
     <div className="space-y-3">
-      <h2 className="text-base font-bold text-gray-900">진행현황</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-gray-900">진행현황</h2>
+        <button
+          onClick={handleDismiss}
+          aria-label="오늘 하루 닫기"
+          className="text-gray-400 hover:text-gray-600 active:text-gray-800 p-1 -mr-1 rounded-lg transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
       <div className="space-y-3">
         {cards.map((card) => (
           <div

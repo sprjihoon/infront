@@ -39,7 +39,7 @@ export async function DELETE(
   const { data: parcel } = await supabase
     .from('parcels')
     .select(
-      'id, status, epost_req_no, epost_res_no, epost_order_no, epost_pickup_date, pickup_tracking_no, pickup_requested_at, tracking_events',
+      'id, status, epost_req_no, epost_res_no, epost_order_no, epost_pickup_date, pickup_tracking_no, pickup_requested_at, tracking_events, pickup_zipcode, pickup_address, pickup_address_detail, pickup_phone, pickup_date',
     )
     .eq('id', id)
     .eq('customer_id', user.id)
