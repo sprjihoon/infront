@@ -670,9 +670,12 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{
     );
   }
 
-  const payload = {
+  // 취소 평문은 접수(InsertOrder)와 동일 슬롯 — 접수 시 보냈던 ord/rec 필드 포함 필요
+  const payload: Record<string, unknown> = {
+    ...(params.insertSnapshot ?? {}),
     custNo,
     apprNo,
+    payType: params.payType ?? '2',
     reqType: params.reqType,
     reqNo,
     resNo,
@@ -681,14 +684,17 @@ export async function cancelOrder(params: CancelOrderParams): Promise<{
     delYn: params.delYn,
   };
 
+  const plainPreview = buildEpostParams(payload, 'api.GetResCancelCmd.jparcel');
   console.log('[EPOST] cancel payload:', {
+    payType: payload.payType,
     reqType: payload.reqType,
     reqNo: payload.reqNo,
     resNo: payload.resNo,
     regiNo: payload.regiNo,
     reqYmd: payload.reqYmd,
     delYn: payload.delYn,
-    plainPreview: buildEpostParams(payload, 'api.GetResCancelCmd.jparcel'),
+    plainLen: plainPreview.length,
+    plainPreview: plainPreview.slice(0, 200) + (plainPreview.length > 200 ? '…' : ''),
   });
 
   const parseCancel = (xml: string) => ({

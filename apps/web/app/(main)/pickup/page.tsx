@@ -93,6 +93,7 @@ export default function PickupPage() {
   const { mode: formMode, isSimple } = useFlowMode();
   const [step, setStep] = useState(1);
   const prevFormMode = useRef(formMode);
+  const submitLockRef = useRef(false);
   const [customerId, setCustomerId] = useState<string | null>(null);
   const [pickupAddress, setPickupAddress] = useState<PickupAddressValue | null>(null);
   const [pickupDate, setPickupDate]     = useState(minDate);
@@ -235,10 +236,17 @@ export default function PickupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submitLockRef.current || loading || result) return;
+    submitLockRef.current = true;
     setError("");
 
     const step1Err = validateStep1();
-    if (step1Err) { setError(step1Err); if (isSimple) setStep(1); return; }
+    if (step1Err) {
+      setError(step1Err);
+      if (isSimple) setStep(1);
+      submitLockRef.current = false;
+      return;
+    }
 
     const step2Err = validateStep2();
     if (step2Err) {
@@ -247,10 +255,16 @@ export default function PickupPage() {
       setError(step2Err);
       if (isSimple) setStep(2);
       else document.getElementById("pickup-items-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      submitLockRef.current = false;
       return;
     }
 
-    if (!agreed) { setError("서비스 안내에 동의해주세요."); if (isSimple) setStep(3); return; }
+    if (!agreed) {
+      setError("서비스 안내에 동의해주세요.");
+      if (isSimple) setStep(3);
+      submitLockRef.current = false;
+      return;
+    }
 
     setLoading(true);
     try {
@@ -294,6 +308,8 @@ export default function PickupPage() {
       let data: {
         error?: string;
         success?: boolean;
+        maybe_booked?: boolean;
+        duplicate_guard?: boolean;
         parcel_id?: string | number;
         parcel_ids?: string[];
         tracking_no?: string;
@@ -308,7 +324,15 @@ export default function PickupPage() {
       } catch {
         throw new Error(`서버 오류 (${resp.status}). 잠시 후 다시 시도해주세요.`);
       }
-      if (!resp.ok) throw new Error(data.error || `수거 신청에 실패했습니다. (${resp.status})`);
+      if (!resp.ok) {
+        if (data.maybe_booked) {
+          throw new Error(
+            data.error ||
+              "우체국 접수는 완료됐을 수 있습니다. 마이페이지를 확인해 주세요. 같은 버튼을 다시 누르지 마세요.",
+          );
+        }
+        throw new Error(data.error || `수거 신청에 실패했습니다. (${resp.status})`);
+      }
 
       if (data.parcel_id) {
         const services: { service_code: string; service_name: string; price: number; note?: string }[] = [];
@@ -361,6 +385,7 @@ export default function PickupPage() {
       });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "수거 신청 중 오류가 발생했습니다.");
+      submitLockRef.current = false;
     } finally {
       setLoading(false);
     }
@@ -474,6 +499,17 @@ export default function PickupPage() {
           </div>
         )}
       </div>
+
+      {loading && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 px-6">
+          <div className="bg-white rounded-2xl px-6 py-5 shadow-xl max-w-sm w-full text-center">
+            <p className="text-sm font-bold text-gray-900">우체국 수거 접수 중</p>
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              30초 정도 걸릴 수 있습니다. 창을 닫거나 버튼을 다시 누르지 마세요.
+            </p>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="px-4 py-5 space-y-6">
 
@@ -1013,9 +1049,7 @@ export default function PickupPage() {
         ) : (
           <button
             type="submit"
-            form=""
             disabled={loading || !agreed || !step1Ready || !step2Ready}
-            onClick={handleSubmit}
             className={`w-full py-4 rounded-xl text-sm font-bold transition-colors ${
               agreed && !loading && step1Ready && step2Ready
                 ? "bg-brand-600 text-white active:opacity-80"

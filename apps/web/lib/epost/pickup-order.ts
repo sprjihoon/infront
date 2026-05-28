@@ -106,3 +106,24 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     printYn: 'Y',
   };
 }
+
+/** 수거 취소 API — 접수(InsertOrder)와 동일 평문 슬롯이 필요할 때 재구성 */
+export function rebuildPickupInsertSnapshotForCancel(input: {
+  custNo: string;
+  apprNo: string;
+  officeSer: string;
+  orderNo: string;
+  center: ReturnPickupCenter;
+  pickup: ReturnPickupLocation;
+  goodsNm: string;
+  weight: number;
+  volume: number;
+  retVisitYmd: string;
+}): Record<string, unknown> {
+  const params = buildReturnPickupOrderParams({
+    ...input,
+    testYn: 'N',
+  });
+  const { testYn: _t, ...snapshot } = params;
+  return snapshot;
+}

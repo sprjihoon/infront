@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { cancelOrder, resolveEpostCancelReqYmd } from '@/lib/epost/client';
+import { cancelOrder, resolveEpostCancelReqYmd, requireEpostPhone } from '@/lib/epost/client';
+import { rebuildPickupInsertSnapshotForCancel } from '@/lib/epost/pickup-order';
+import { resolveInfrontCenterFromEnv } from '@/lib/epost/center-config';
 
 export const preferredRegion = 'icn1';
 
@@ -37,7 +39,7 @@ export async function DELETE(
   const { data: parcel } = await supabase
     .from('parcels')
     .select(
-      'id, status, epost_req_no, epost_res_no, epost_pickup_date, pickup_tracking_no, pickup_requested_at, tracking_events',
+      'id, status, epost_req_no, epost_res_no, epost_order_no, epost_pickup_date, pickup_tracking_no, pickup_requested_at, tracking_events',
     )
     .eq('id', id)
     .eq('customer_id', user.id)
@@ -63,6 +65,7 @@ export async function DELETE(
       apprNo?: string;
       reqType?: string;
       payType?: string;
+      epost_insert?: Record<string, unknown>;
     }>;
     const first = events[0] ?? {};
     const reqNo = (String(first.reqNo || '').trim() || String(parcel.epost_req_no || '').trim());
@@ -83,17 +86,49 @@ export async function DELETE(
       );
     }
 
+    const center = resolveInfrontCenterFromEnv();
+    const insertSnapshot =
+      first.epost_insert ??
+      rebuildPickupInsertSnapshotForCancel({
+        custNo: (process.env.EPOST_CUSTOMER_ID ?? '').trim(),
+        apprNo: first.apprNo ?? (process.env.EPOST_APPROVAL_NO ?? '').trim(),
+        officeSer: '260537802',
+        orderNo: (parcel.epost_order_no ?? '').trim() || `CXL-${parcel.id}`,
+        center: {
+          ordNm: center.ordNm,
+          zip: center.zip,
+          addr1: center.addr1,
+          addr2: center.addr2,
+          phone: requireEpostPhone(
+            center.phone || process.env.INFRONT_CENTER_PHONE,
+            '센터 연락처',
+          ),
+        },
+        pickup: {
+          name: '고객',
+          zip: parcel.pickup_zipcode ?? '',
+          addr1: parcel.pickup_address ?? '',
+          addr2: parcel.pickup_address_detail ?? '',
+          phone: parcel.pickup_phone ?? '',
+        },
+        goodsNm: '해외배송 물품',
+        weight: 2,
+        volume: 60,
+        retVisitYmd: (parcel.pickup_date ?? '').replace(/-/g, ''),
+      });
+
     try {
       const cancelResult = await cancelOrder({
         custNo: (process.env.EPOST_CUSTOMER_ID ?? '').trim(),
         apprNo: first.apprNo ?? (process.env.EPOST_APPROVAL_NO ?? '').trim(),
         reqType: (first.reqType === '1' ? '1' : '2') as '1' | '2',
         payType: (first.payType === '1' ? '1' : '2') as '1' | '2',
+        insertSnapshot,
         reqNo,
         resNo,
         regiNo,
         reqYmd,
-        delYn: 'Y',
+        delYn: 'N',
       });
       console.log('[PICKUP CANCEL] 우체국 취소 OK:', {
         regiNo,

@@ -325,12 +325,37 @@ export function buildEpostParams(
   endpoint = '',
 ): string {
   if (endpoint.includes('GetResCancelCmd') || endpoint.includes('CancelOrder')) {
-    // 매뉴얼 SHPAPI-U02-01: payType 없음 — 포함 시 ERR-211(resNo 누락) 필드 밀림
-    return buildKeyedPlaintext(
-      params,
-      ['custNo', 'apprNo', 'reqType', 'reqNo', 'resNo', 'regiNo', 'reqYmd', 'delYn'],
-      new Set(['custNo', 'apprNo', 'reqType', 'reqNo', 'resNo', 'regiNo', 'delYn']),
-    );
+    // 취소 API: InsertOrder와 동일한 필드 순서 + 취소 전용 필드(reqNo 등)는 맨 뒤에 추가
+    const insertKeys = [
+      'custNo', 'apprNo', 'payType', 'reqType', 'officeSer',
+      'weight', 'volume', 'microYn', 'packngMtrCd', 'orderNo',
+      'insuYn', 'insuAmt',
+      'ordCompNm', 'inqTelCn', 'ordNm', 'ordZip', 'ordAddr1', 'ordAddr2', 'ordTel', 'ordMob',
+      'recNm', 'recZip', 'recAddr1', 'recAddr2', 'recTel', 'recMob',
+      'contCd', 'goodsNm', 'goodsCd', 'goodsMdl', 'goodsSize', 'goodsColor', 'qty',
+      'delivMsg', 'smsOrdCd', 'retReason', 'retVisitYmd', 'retOrigRegiNo',
+      'printYn', 'printAreaCdYn',
+    ];
+    const cancelTail = ['reqNo', 'resNo', 'regiNo', 'reqYmd', 'delYn'];
+    const pairs: string[] = [];
+
+    for (const key of insertKeys) {
+      if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
+      const val = params[key];
+      if (val === null || val === undefined) continue;
+      let sv = typeof val === 'boolean' ? (val ? 'Y' : 'N') : String(val);
+      if (sv === '') continue;
+      pairs.push(`${key}=${sv}`);
+    }
+    for (const key of cancelTail) {
+      if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
+      const val = params[key];
+      if (val === null || val === undefined) continue;
+      const sv = String(val).trim();
+      if (!sv) continue;
+      pairs.push(`${key}=${sv}`);
+    }
+    return pairs.join('&');
   }
   if (endpoint.includes('GetResInfo')) {
     return buildKeyedPlaintext(

@@ -81,6 +81,10 @@ export interface CancelOrderParams {
   apprNo: string;
   reqType: '1' | '2';
   payType?: '1' | '2';
+  officeSer?: string;
+  orderNo?: string;
+  /** InsertOrder 접수 시 사용한 평문 필드(취소 API 슬롯 정렬용) */
+  insertSnapshot?: Record<string, unknown>;
   reqNo: string;
   resNo: string;
   regiNo: string;

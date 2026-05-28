@@ -40,6 +40,57 @@ function getCenterConfig() {
   return resolveInfrontCenterFromEnv();
 }
 
+/** insert 실패 후에도 우체국에 접수됐을 수 있음 — getResInfo로 regiNo 복구 */
+async function recoverPickupInsertFromEpost(
+  orderNo: string,
+  retVisitYmd: string,
+  custNo: string,
+): Promise<InsertOrderResponse | null> {
+  const reqYmdCandidates = [
+    retVisitYmd,
+    resolveEpostCancelReqYmd({}),
+  ];
+  const seen = new Set<string>();
+  for (const reqYmd of reqYmdCandidates) {
+    if (!reqYmd || seen.has(reqYmd)) continue;
+    seen.add(reqYmd);
+    try {
+      const info = await getResInfo({ custNo, reqType: '2', orderNo, reqYmd });
+      const regiNo = info.regiNo?.trim() ?? '';
+      if (regiNo.length >= 10) {
+        console.log('[PICKUP] epost insert recovered via getResInfo', { orderNo, reqYmd, regiNo });
+        return {
+          reqNo: info.reqNo,
+          resNo: info.resNo,
+          regiNo,
+          regiPoNm: info.regiPoNm,
+          resDate: info.resDate,
+          price: info.price,
+          vTelNo: info.vTelNo,
+        };
+      }
+    } catch (e) {
+      console.warn(
+        '[PICKUP] getResInfo recovery miss',
+        orderNo,
+        reqYmd,
+        e instanceof Error ? e.message : e,
+      );
+    }
+  }
+  return null;
+}
+
+function isAmbiguousEpostInsertError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return (
+    msg.includes('연결하지 못했습니다') ||
+    msg.includes('fetch failed') ||
+    msg.includes('ERR-311') ||
+    msg.includes('응답 시간 초과')
+  );
+}
+
 async function rollbackEpostOrder(
   result: InsertOrderResponse,
   custNo: string,
@@ -384,10 +435,52 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const boxNote = pickupBoxSummary(spec);
+    const pickupDateIso = `${retVisitYmd.slice(0, 4)}-${retVisitYmd.slice(4, 6)}-${retVisitYmd.slice(6, 8)}`;
+    const recentSince = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    const { data: recentPickup } = await supabase
+      .from('parcels')
+      .select(
+        'id, pickup_tracking_no, epost_order_no, epost_res_date, epost_price, epost_req_no, epost_res_no',
+      )
+      .eq('customer_id', user.id)
+      .eq('status', 'PENDING_PICKUP')
+      .eq('pickup_zipcode', recZip)
+      .eq('pickup_address', recAddr1)
+      .eq('pickup_date', pickupDateIso)
+      .gte('pickup_requested_at', recentSince)
+      .order('pickup_requested_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (recentPickup?.pickup_tracking_no) {
+      console.log('[PICKUP] duplicate submit blocked — recent parcel', recentPickup.id);
+      return NextResponse.json({
+        success: true,
+        duplicate_guard: true,
+        box_count: 1,
+        parcel_id: recentPickup.id,
+        parcel_ids: [recentPickup.id],
+        tracking_no: recentPickup.pickup_tracking_no,
+        tracking_nos: [recentPickup.pickup_tracking_no],
+        parcels: [{
+          parcel_id: recentPickup.id,
+          tracking_no: recentPickup.pickup_tracking_no,
+          box_seq: 1,
+          price: recentPickup.epost_price ?? '0',
+          box_spec: boxNote,
+        }],
+        pickup_date: retVisitYmd,
+        epost_res_date: recentPickup.epost_res_date ?? '',
+        price: recentPickup.epost_price ?? '0',
+        post_office: '',
+        is_test: false,
+      });
+    }
+
     const parcelId = randomUUID();
     const orderNo = formatPickupOrderNo(customer.customer_code ?? undefined, parcelId);
     const goodsNm = goods_name?.trim() || '해외배송 물품';
-    const boxNote = pickupBoxSummary(spec);
 
     const epostParams = buildReturnPickupOrderParams({
       custNo: custNo || 'TEST',
@@ -437,18 +530,23 @@ export async function POST(req: NextRequest) {
       console.log('[PICKUP] 테스트 모드', spec);
       epostResult = mockInsertOrder();
     } else {
+      const firstOrderNo = orderNoUsed;
       try {
         epostResult = await insertOrder({ ...epostParams, orderNo: orderNoUsed });
       } catch (firstErr) {
-        try {
-          orderNoUsed = formatPickupOrderNo(customer.customer_code ?? undefined, randomUUID());
-          await new Promise((r) => setTimeout(r, 800));
-          epostResult = await insertOrder({ ...epostParams, orderNo: orderNoUsed });
-        } catch (e) {
-          console.error('[PICKUP] epost insert failed:', firstErr, e);
-          const msg = e instanceof Error ? e.message : '우체국 API 오류';
+        console.warn('[PICKUP] epost insert failed, trying getResInfo recovery', firstOrderNo, firstErr);
+        const recovered = await recoverPickupInsertFromEpost(firstOrderNo, retVisitYmd, custNo);
+        if (recovered) {
+          epostResult = recovered;
+          orderNoUsed = firstOrderNo;
+        } else {
+          console.error('[PICKUP] epost insert failed (no recovery):', firstErr);
+          const msg = firstErr instanceof Error ? firstErr.message : '우체국 API 오류';
           let hint = '';
-          if (msg.includes('ordMob') || (msg.includes('ERR-522') && msg.includes('ordMob'))) {
+          if (isAmbiguousEpostInsertError(firstErr)) {
+            hint =
+              ' 우체국에 이미 접수되었을 수 있습니다. 마이페이지에서 수거 내역을 확인하고, 같은 버튼을 다시 누르지 마세요.';
+          } else if (msg.includes('ordMob') || (msg.includes('ERR-522') && msg.includes('ordMob'))) {
             hint = ' 센터 연락처(INFRONT_CENTER_PHONE)를 숫자만 입력했는지 확인해주세요. (예: 01012345678)';
           } else if (msg.includes('recAddr2')) {
             hint = ' 수거지 상세주소(동·호수·층)를 2글자 이상 입력했는지 확인해주세요.';
@@ -456,11 +554,14 @@ export async function POST(req: NextRequest) {
             hint = ' 수거지 도로명 주소를 주소 검색으로 다시 저장해주세요.';
           } else if (msg.includes('recZip')) {
             hint =
-              ' 수거지를 주소 검색으로 다시 저장해주세요. (상세주소는 2글자 이상·「3층」만 입력 시 「제3층」으로 저장됨) 계속되면 Vercel 로그의 [EPOST] plainText fields에서 recZip·recMobInPlain을 확인해주세요.';
+              ' 수거지를 주소 검색으로 다시 저장해주세요. (상세주소는 2글자 이상·「3층」만 입력 시 「제3층」으로 저장됨)';
           } else if (msg.includes('orderNo') || (msg.includes('ERR-522') && msg.includes('orderNo'))) {
             hint = ' 잠시 후 다시 시도해주세요. (메모가 길면 접수 메시지를 짧게 입력해주세요.)';
           }
-          return NextResponse.json({ error: msg + hint }, { status: 502 });
+          return NextResponse.json(
+            { error: msg + hint, maybe_booked: isAmbiguousEpostInsertError(firstErr) },
+            { status: 502 },
+          );
         }
       }
 
@@ -470,6 +571,7 @@ export async function POST(req: NextRequest) {
         .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err, { orderNo: orderNoUsed, reqYmd }));
     }
 
+    const { testYn: _omitTestYn, ...epostInsertSnapshot } = epostParams;
     const trackingEvents = [{
       timestamp: new Date().toISOString(),
       status: 'BOOKED',
@@ -480,6 +582,7 @@ export async function POST(req: NextRequest) {
       apprNo: epostParams.apprNo,
       reqType: epostParams.reqType,
       payType: epostParams.payType,
+      epost_insert: epostInsertSnapshot,
       source: 'epost_pickup',
     }];
 
