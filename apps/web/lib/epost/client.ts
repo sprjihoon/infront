@@ -416,6 +416,13 @@ async function callEPost(
         '우체국 반품 수거 전송 오류: recMob이 평문에 포함되어 있습니다. (필드 밀림 ERR-311 유발)',
       );
     }
+    const ordMobPlain = (fields.ordMob ?? '').trim();
+    if (ordMobPlain && !/^\d{9,12}$/.test(ordMobPlain)) {
+      throw new Error(
+        `우체국 반품 수거 전송 오류: ordMob="${ordMobPlain}" — ` +
+          'Vercel 환경변수 INFRONT_CENTER_PHONE을 숫자만(예: 01012345678) 확인해주세요.',
+      );
+    }
     const orderNo = fields.orderNo ?? '';
     const orderNoBytes = Buffer.byteLength(orderNo, 'utf8');
     if (orderNoBytes > 50) {
