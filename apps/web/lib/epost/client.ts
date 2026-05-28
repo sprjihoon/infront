@@ -496,15 +496,22 @@ async function callEPost(
   }
 
   const encrypted = seed128Encrypt(plainText, securityKey);
-  url += `&regData=${encodeURIComponent(encrypted)}`;
+
+  // POST로 전송 — regData를 URL에 포함하면 프록시 URL 길이 제한(~1000자)으로 잘릴 수 있음
+  // 매뉴얼: 인터페이스 REST(GET, POST) — POST 전환으로 긴 한글 주소도 안전하게 전달
+  const postBody = new URLSearchParams({ regData: encrypted }).toString();
 
   async function attemptFetch(): Promise<Response> {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), 30000);
     try {
       return await fetch(url, {
-        method: 'GET',
-        headers: { 'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)' },
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)',
+        },
+        body: postBody,
         signal: ctrl.signal,
       });
     } finally {
