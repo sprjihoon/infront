@@ -371,8 +371,8 @@ async function callEPost(
   params: Record<string, unknown>,
   testYn: 'Y' | 'N' = 'N'
 ): Promise<string> {
-  const apiKey = getEnv('EPOST_API_KEY');
-  const securityKey = getEnv('EPOST_SECURITY_KEY');
+  const apiKey = getEnv('EPOST_API_KEY').trim();
+  const securityKey = getEnv('EPOST_SECURITY_KEY').trim();
 
   if (!apiKey) throw new Error('EPOST_API_KEY 환경변수가 설정되지 않았습니다.');
   if (!securityKey) throw new Error('EPOST_SECURITY_KEY 환경변수가 설정되지 않았습니다.');
@@ -490,6 +490,8 @@ async function callEPost(
       plainLen: plainText.length,
       // ERR-311 디버그용: 필드 순서 전체 출력
       fieldOrder: plainText.split('&').map(p => p.split('=')[0]).join(','),
+      plainTextBytes: Buffer.byteLength(plainText, 'utf8'),
+      securityKeyLen: securityKey.length,
     });
   }
 
