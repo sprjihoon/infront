@@ -491,7 +491,7 @@ export async function POST(req: NextRequest) {
         ordNm: center.ordNm,
         zip: centerZip,
         addr1: centerAddr1,
-        addr2: '',
+        addr2: center.addr2,
         phone: centerMob,
       },
       pickup: {

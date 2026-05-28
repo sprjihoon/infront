@@ -9,7 +9,7 @@ import { normalizeEpostPhone } from './client';
  * Vercel/로컬 환경변수 INFRONT_CENTER_* 가 비어 있으면 아래 기본값 사용.
  */
 
-/** 우체국 API ordAddr2 — 계약 등록값. UI 라벨(CENTER_ADDR2)과 다름 */
+/** @deprecated 프로덕션에서 ERR-311 유발 — center.addr2('동대구우체국 2층 소포실') 사용 */
 export const EPOST_CENTER_API_ADDR2 = '없음';
 
 export const EPOST_CENTER_DEFAULTS = {

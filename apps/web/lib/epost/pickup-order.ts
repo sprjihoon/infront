@@ -3,7 +3,7 @@
  *
  * 우체국 API 필드 의미 (오류 메시지 기준):
  *   rec* = 수취인(반품인) = 고객 수거지 → recAddr1(도로명) + recAddr2(동·호·층) 필수
- *   ord* = 주문자 = 물류센터(동대구우체국) → ordAddr2는 계약값 '없음'
+ *   ord* = 주문자 = 물류센터(동대구우체국) → ordAddr2는 center.addr2('동대구우체국 2층 소포실') 사용
  *
  * rec*에 센터+recAddr2='없음' 을 넣으면 ERR-311(recAddr2 없음) 반복 발생.
  * (modo shipments-book 과 동일: ord*=센터, rec*=고객)
