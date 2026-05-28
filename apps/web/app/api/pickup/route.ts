@@ -83,10 +83,10 @@ async function recoverPickupInsertFromEpost(
 
 function isAmbiguousEpostInsertError(err: unknown): boolean {
   const msg = err instanceof Error ? err.message : String(err);
+  // ERR-311 은 epost가 명확히 거절한 경우(필수값 누락) — ambiguous 아님
   return (
     msg.includes('연결하지 못했습니다') ||
     msg.includes('fetch failed') ||
-    msg.includes('ERR-311') ||
     msg.includes('응답 시간 초과')
   );
 }
@@ -552,9 +552,11 @@ export async function POST(req: NextRequest) {
             hint = ' 수거지 상세주소(동·호수·층)를 2글자 이상 입력했는지 확인해주세요.';
           } else if (msg.includes('recAddr1') || (msg.includes('ERR-311') && msg.includes('recAddr1'))) {
             hint = ' 수거지 도로명 주소를 주소 검색으로 다시 저장해주세요.';
-          } else if (msg.includes('recZip')) {
+          } else if (msg.includes('recZip') || (msg.includes('ERR-311') && msg.includes('recZip'))) {
             hint =
-              ' 수거지를 주소 검색으로 다시 저장해주세요. (상세주소는 2글자 이상·「3층」만 입력 시 「제3층」으로 저장됨)';
+              ' 마이페이지 → 주소록에서 수거지를 삭제 후 주소 검색으로 다시 저장해주세요. (우편번호 5자리가 필요합니다)';
+          } else if (msg.includes('ERR-311')) {
+            hint = ' 주소 정보를 다시 확인해주세요. 마이페이지 → 주소록에서 수거지를 주소 검색으로 재저장해주세요.';
           } else if (msg.includes('orderNo') || (msg.includes('ERR-522') && msg.includes('orderNo'))) {
             hint = ' 잠시 후 다시 시도해주세요. (메모가 길면 접수 메시지를 짧게 입력해주세요.)';
           }
