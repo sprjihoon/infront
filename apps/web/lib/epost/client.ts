@@ -458,6 +458,8 @@ async function callEPost(
       delivMsg: dbg.delivMsg,
       retVisitYmd: dbg.retVisitYmd,
       plainLen: plainText.length,
+      // ERR-311 디버그용: 필드 순서 전체 출력
+      fieldOrder: plainText.split('&').map(p => p.split('=')[0]).join(','),
     });
   }
 
