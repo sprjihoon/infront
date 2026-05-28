@@ -81,7 +81,7 @@ export function buildReturnPickupOrderParams(input: ReturnPickupOrderInput): Ins
     orderNo: input.orderNo,
     ordCompNm: EPOST_ORD_COMP_NM,
     ordNm: truncateUtf8Bytes(EPOST_ORD_COMP_NM, 12),
-    inqTelCn: pickupPhone,
+    inqTelCn: centerPhone,
     ordZip: normalizeEpostZip(input.center.zip),
     ordAddr1: normalizeEpostAddr1(input.center.addr1),
     ordAddr2: resolveEpostCenterAddr2(input.center.addr2),
