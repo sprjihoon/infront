@@ -1,4 +1,4 @@
-import { normalizeEpostPhone } from './client';
+import { normalizeEpostPhone, sanitizeEpostPlainField } from './client';
 
 /**
  * 우체국 반품소포(수거) 도착지 — modo CENTER_* 와 동일
@@ -35,6 +35,22 @@ export function sanitizeCenterAddr1(addr1: string): string {
   return t;
 }
 
+/** Vercel env 한글 깨짐 시 계약 기본 addr2('동대구우체국 2층 소포실')로 대체 */
+export function sanitizeCenterAddr2(addr2: string): string {
+  const t = addr2.trim();
+  if (t.length < 2) {
+    console.warn('[EPOST] INFRONT_CENTER_ADDR2 비어 있음 — 기본값 사용');
+    return EPOST_CENTER_DEFAULTS.addr2;
+  }
+  const hasHangul = /[가-힣]/.test(t);
+  const mostlyQuestion = (t.match(/\?/g)?.length ?? 0) >= 2;
+  if (!hasHangul || mostlyQuestion) {
+    console.warn('[EPOST] INFRONT_CENTER_ADDR2 인코딩 오류 — 기본값 사용', { raw: t.slice(0, 40) });
+    return EPOST_CENTER_DEFAULTS.addr2;
+  }
+  return t;
+}
+
 /** modo: CENTER_ADDRESS1/2, CENTER_ZIPCODE, CENTER_RECIPIENT_NAME */
 export function resolveInfrontCenterFromEnv(env: NodeJS.ProcessEnv = process.env) {
   const rawAddr1 = (env.INFRONT_CENTER_ADDR1 ?? EPOST_CENTER_DEFAULTS.addr1).trim();
@@ -42,7 +58,9 @@ export function resolveInfrontCenterFromEnv(env: NodeJS.ProcessEnv = process.env
     ordNm: (env.INFRONT_CENTER_ORD_NM ?? EPOST_CENTER_DEFAULTS.ordNm).trim(),
     zip: (env.INFRONT_CENTER_ZIPCODE ?? EPOST_CENTER_DEFAULTS.zip).replace(/\D/g, ''),
     addr1: sanitizeCenterAddr1(rawAddr1),
-    addr2: (env.INFRONT_CENTER_ADDR2 ?? EPOST_CENTER_DEFAULTS.addr2).trim(),
+    addr2: sanitizeCenterAddr2(
+      sanitizeEpostPlainField((env.INFRONT_CENTER_ADDR2 ?? EPOST_CENTER_DEFAULTS.addr2).trim()),
+    ),
     phone: normalizeEpostPhone(env.INFRONT_CENTER_PHONE ?? ''),
     displayName: env.INFRONT_CENTER_NAME ?? EPOST_CENTER_DEFAULTS.ordNm,
   };
