@@ -707,6 +707,7 @@ export default function PickupPage() {
                             onChange={(cat: ItemCategory) => setInvoiceItems(p => p.map((it, i) =>
                               i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "", _isCustom: cat.id === "other" } : it
                             ))}
+                            error={showItemFieldHints && !item.name_en.trim()}
                           />
                           {item._isCustom && (
                             <input
@@ -725,7 +726,7 @@ export default function PickupPage() {
                             수량 <span className="text-red-400">*</span>
                           </label>
                           <div className={`flex items-center bg-gray-50 border rounded-xl overflow-hidden ${
-                            item.name_en && item.quantity < 1 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
+                            showItemFieldHints && item.quantity < 1 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
                           }`}>
                             <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
                               className="px-3 py-2 text-gray-500 font-bold">−</button>

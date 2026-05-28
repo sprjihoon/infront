@@ -7,9 +7,10 @@ import { ITEM_CATEGORIES, ITEM_GROUPS, type ItemCategory } from "@/lib/item-cate
 interface Props {
   value: string;
   onChange: (cat: ItemCategory) => void;
+  error?: boolean;
 }
 
-export default function ItemCategoryPicker({ value, onChange }: Props) {
+export default function ItemCategoryPicker({ value, onChange, error }: Props) {
   const [open, setOpen]   = useState(false);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
@@ -71,7 +72,11 @@ export default function ItemCategoryPicker({ value, onChange }: Props) {
         type="button"
         onClick={() => setOpen(true)}
         className={`w-full flex items-center justify-between bg-gray-50 border rounded-xl px-3 py-2.5 text-sm text-left transition-colors ${
-          open ? "border-brand-400 ring-2 ring-brand-100" : "border-gray-100"
+          open
+            ? "border-brand-400 ring-2 ring-brand-100"
+            : error
+            ? "border-red-300 ring-1 ring-red-200"
+            : "border-gray-100"
         }`}
       >
         <div className="flex-1 min-w-0">
