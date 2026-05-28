@@ -348,11 +348,19 @@ export async function POST(req: NextRequest) {
     const pickupSplit = splitPickupAddressForEpost(recAddr1, recAddr2Raw);
     recAddr1 = pickupSplit.addr1;
     const recAddr2ForEpost = normalizeEpostPickupAddr2(pickupSplit.addr2);
-    if (recAddr2ForEpost !== pickupSplit.addr2.trim()) {
-      console.log('[PICKUP] recAddr2 normalized for EPOST', {
-        from: pickupSplit.addr2,
-        to: recAddr2ForEpost,
-      });
+
+    console.log('[PICKUP] 주소 분리 결과', {
+      addr1_before: recAddr1 === pickupSplit.addr1 ? '(same)' : pickupSplit.addr1,
+      recAddr1,
+      recAddr2ForEpost,
+      splitAddr2: pickupSplit.addr2,
+    });
+
+    if (recAddr1.length < 2) {
+      return NextResponse.json(
+        { error: '수거지 도로명 주소가 분리 후 비어 있습니다. 주소록에서 주소 검색으로 다시 저장해주세요.' },
+        { status: 400 },
+      );
     }
 
     const custNo = (process.env.EPOST_CUSTOMER_ID ?? '').trim();

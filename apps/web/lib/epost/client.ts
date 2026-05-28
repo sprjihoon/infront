@@ -397,6 +397,13 @@ async function callEPost(
           '수거지 우편번호가 평문에 없거나 형식이 잘못되었습니다. 주소 검색으로 다시 저장해주세요.',
       );
     }
+    const recAddr1Plain = (fields.recAddr1 ?? '').trim();
+    if (recAddr1Plain.length < 2) {
+      throw new Error(
+        `우체국 반품 수거 전송 오류: recAddr1="${recAddr1Plain || '(비어 있음)'}" — ` +
+          '수거지 도로명 주소가 평문에 없습니다. 주소 검색으로 다시 저장해주세요.',
+      );
+    }
     const rec2 = (fields.recAddr2 ?? '').trim();
     if (!rec2 || rec2 === '없음' || rec2.length < EPOST_PICKUP_DETAIL_MIN_LEN) {
       throw new Error(
