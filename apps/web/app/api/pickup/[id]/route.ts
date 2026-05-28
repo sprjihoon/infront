@@ -137,21 +137,9 @@ export async function DELETE(
       });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '알 수 없는 오류';
-      console.error('[PICKUP CANCEL] 우체국 API 취소 실패:', message, { reqNo, resNo, regiNo, reqYmd });
-      const isNoReservation =
-        message.includes('ERR-123') ||
-        message.includes('예약된 정보가 없') ||
-        message.includes('접수정보로 예약') ||
-        message.includes('신청정보가 존재하지 않');
-      if (!isNoReservation) {
-        return NextResponse.json(
-          {
-            error: `우체국 전산 취소에 실패했습니다. ${message}`,
-          },
-          { status: 502 },
-        );
-      }
-      console.warn('[PICKUP CANCEL] 우체국 예약 없음 — DB만 취소 처리', { message, reqNo });
+      // 우체국 API 실패(장애·이미 취소됨·예약 없음 등) 여부와 무관하게 DB 취소는 항상 진행.
+      // 관리자/우체국이 이미 취소 처리한 경우에도 고객 화면에서 취소가 막히지 않도록 한다.
+      console.warn('[PICKUP CANCEL] 우체국 API 응답 없음 — DB만 취소 처리', { message, reqNo, resNo, regiNo, reqYmd });
     }
   }
 
