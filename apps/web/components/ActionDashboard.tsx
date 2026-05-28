@@ -79,23 +79,9 @@ export default function ActionDashboard() {
         <h2 className="text-base font-bold text-gray-900">진행현황</h2>
         <button
           onClick={handleDismiss}
-          aria-label="오늘 하루 닫기"
-          className="text-gray-400 hover:text-gray-600 active:text-gray-800 p-1 -mr-1 rounded-lg transition-colors"
+          className="text-xs text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
+          오늘은 그만보기
         </button>
       </div>
       <div className="space-y-3">
