@@ -423,6 +423,20 @@ async function callEPost(
           'Vercel 환경변수 INFRONT_CENTER_PHONE을 숫자만(예: 01012345678) 확인해주세요.',
       );
     }
+    const recTelPlain = (fields.recTel ?? '').trim();
+    if (!recTelPlain || !/^\d{9,12}$/.test(recTelPlain)) {
+      throw new Error(
+        `우체국 반품 수거 전송 오류: recTel="${recTelPlain || '(비어 있음)'}" — ` +
+          '수거 연락처를 숫자만(예: 01012345678) 입력해주세요. 주소록에서 연락처를 다시 확인해주세요.',
+      );
+    }
+    const inqTelPlain = (fields.inqTelCn ?? '').trim();
+    if (inqTelPlain && !/^\d{9,12}$/.test(inqTelPlain)) {
+      throw new Error(
+        `우체국 반품 수거 전송 오류: inqTelCn="${inqTelPlain}" — ` +
+          '수거 연락처(inqTelCn)가 숫자가 아닙니다. 주소록 연락처를 확인해주세요.',
+      );
+    }
     const orderNo = fields.orderNo ?? '';
     const orderNoBytes = Buffer.byteLength(orderNo, 'utf8');
     if (orderNoBytes > 50) {
@@ -459,10 +473,12 @@ async function callEPost(
       recAddr1: dbg.recAddr1,
       recAddr2: dbg.recAddr2,
       recTel:   dbg.recTel,
+      recTelIsDigits: /^\d{9,12}$/.test(dbg.recTel ?? ''),
       ordNm:    dbg.ordNm,
       ordAddr1: dbg.ordAddr1,
       ordZip:   dbg.ordZip,
       ordMob:   dbg.ordMob,
+      ordMobIsDigits: /^\d{9,12}$/.test(dbg.ordMob ?? ''),
       ordTel:   dbg.ordTel,
       inqTelCn: dbg.inqTelCn,
       recMobInPlain: 'recMob' in dbg,
