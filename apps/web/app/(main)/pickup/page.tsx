@@ -511,7 +511,7 @@ export default function PickupPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="px-4 py-5 space-y-6">
+      <form id="pickup-form" onSubmit={handleSubmit} className="px-4 py-5 space-y-6">
 
         {/* 안내 배너 — 1단계 또는 고급모드 */}
         {(showStep(1) || !isSimple) && (
@@ -1049,6 +1049,7 @@ export default function PickupPage() {
         ) : (
           <button
             type="submit"
+            form="pickup-form"
             disabled={loading || !agreed || !step1Ready || !step2Ready}
             className={`w-full py-4 rounded-xl text-sm font-bold transition-colors ${
               agreed && !loading && step1Ready && step2Ready
