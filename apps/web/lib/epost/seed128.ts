@@ -324,39 +324,8 @@ export function buildEpostParams(
   params: Record<string, unknown>,
   endpoint = '',
 ): string {
-  if (endpoint.includes('GetResCancelCmd') || endpoint.includes('CancelOrder')) {
-    // 취소 API: InsertOrder와 동일한 필드 순서 + 취소 전용 필드(reqNo 등)는 맨 뒤에 추가
-    const insertKeys = [
-      'custNo', 'apprNo', 'payType', 'reqType', 'officeSer',
-      'weight', 'volume', 'microYn', 'packngMtrCd', 'orderNo',
-      'insuYn', 'insuAmt',
-      'ordCompNm', 'inqTelCn', 'ordNm', 'ordZip', 'ordAddr1', 'ordAddr2', 'ordTel', 'ordMob',
-      'recNm', 'recZip', 'recAddr1', 'recAddr2', 'recTel', 'recMob',
-      'contCd', 'goodsNm', 'goodsCd', 'goodsMdl', 'goodsSize', 'goodsColor', 'qty',
-      'delivMsg', 'smsOrdCd', 'retReason', 'retVisitYmd', 'retOrigRegiNo',
-      'printYn', 'printAreaCdYn',
-    ];
-    const cancelTail = ['reqNo', 'resNo', 'regiNo', 'reqYmd', 'delYn'];
-    const pairs: string[] = [];
-
-    for (const key of insertKeys) {
-      if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
-      const val = params[key];
-      if (val === null || val === undefined) continue;
-      let sv = typeof val === 'boolean' ? (val ? 'Y' : 'N') : String(val);
-      if (sv === '') continue;
-      pairs.push(`${key}=${sv}`);
-    }
-    for (const key of cancelTail) {
-      if (!Object.prototype.hasOwnProperty.call(params, key)) continue;
-      const val = params[key];
-      if (val === null || val === undefined) continue;
-      const sv = String(val).trim();
-      if (!sv) continue;
-      pairs.push(`${key}=${sv}`);
-    }
-    return pairs.join('&');
-  }
+  // 취소(GetResCancelCmd)는 InsertOrder와 동일한 경로 사용 — modo shipments-cancel과 동일
+  // orderedKeys에 없는 reqNo/resNo/regiNo/reqYmd/delYn은 fallback 루프에서 자동으로 뒤에 붙음
   if (endpoint.includes('GetResInfo')) {
     return buildKeyedPlaintext(
       params,
@@ -365,6 +334,7 @@ export function buildEpostParams(
     );
   }
 
+  const isInsertOrder = !endpoint || endpoint.includes('InsertOrder');
   const orderedKeys = [
     'custNo','apprNo','payType','reqType','officeSer',
     'weight','volume','microYn','packngMtrCd','orderNo',
@@ -388,7 +358,7 @@ export function buildEpostParams(
     else if (typeof val === 'number') sv = String(Math.floor(val));
     else sv = String(val);
     if (!isReq && sv === '') continue;
-    if (isReq && sv.trim() === '') {
+    if (isInsertOrder && isReq && sv.trim() === '') {
       const isReturnPickup = String(params.reqType) === '2';
       if (key === 'ordAddr2' || (key === 'recAddr2' && !isReturnPickup)) {
         sv = '없음';
@@ -399,8 +369,11 @@ export function buildEpostParams(
       } else {
         throw new Error(`[EPost] 필수 파라미터 '${key}'가 비어 있습니다. 주소/연락처를 다시 확인해주세요.`);
       }
+    } else if (!isInsertOrder && isReq && sv.trim() === '') {
+      continue; // 취소/조회는 빈 필수 필드 스킵 (insertSnapshot 패딩용 필드)
     }
     if (
+      isInsertOrder &&
       isReq &&
       String(params.reqType) === '2' &&
       key === 'recAddr2' &&
