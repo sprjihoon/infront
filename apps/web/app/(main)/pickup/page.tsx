@@ -281,29 +281,44 @@ export default function PickupPage() {
         throw new Error("도로명/지번 주소가 없습니다. 주소록에서 주소 검색 후 다시 저장해주세요.");
       }
 
-      const resp = await fetch("/api/pickup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          pickup_address: address,
-          pickup_address_detail: inferPickupAddressDetail(
-            resolved.address,
-            resolved.addressDetail,
-          ),
-          pickup_zipcode: zip,
-          pickup_phone: resolved.phone,
-          pickup_name: resolved.name,
-          pickup_address_id: resolved.savedId,
-          pickup_date: pickupDate,
-          pickup_notes: notes.trim() || undefined,
-          box_count: 1,
-          box_size: boxSize,
-          item_condition: itemCondition,
-          pre_invoice_items: invoiceItems
-            .filter(i => i.name_en.trim())
-            .map(({ key: _k, _isCustom: _c, inspection: _i, specials: _s, ...rest }) => rest),
-        }),
-      });
+      const abortCtrl = new AbortController();
+      const abortTimer = setTimeout(() => abortCtrl.abort(), 55000);
+      let resp: Response;
+      try {
+        resp = await fetch("/api/pickup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pickup_address: address,
+            pickup_address_detail: inferPickupAddressDetail(
+              resolved.address,
+              resolved.addressDetail,
+            ),
+            pickup_zipcode: zip,
+            pickup_phone: resolved.phone,
+            pickup_name: resolved.name,
+            pickup_address_id: resolved.savedId,
+            pickup_date: pickupDate,
+            pickup_notes: notes.trim() || undefined,
+            box_count: 1,
+            box_size: boxSize,
+            item_condition: itemCondition,
+            pre_invoice_items: invoiceItems
+              .filter(i => i.name_en.trim())
+              .map(({ key: _k, _isCustom: _c, inspection: _i, specials: _s, ...rest }) => rest),
+          }),
+          signal: abortCtrl.signal,
+        });
+      } catch (fetchErr) {
+        if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
+          throw new Error(
+            "수거 신청 응답 시간이 초과됐습니다. 마이페이지에서 수거 내역을 확인하고, 접수된 경우 다시 신청하지 마세요.",
+          );
+        }
+        throw fetchErr;
+      } finally {
+        clearTimeout(abortTimer);
+      }
 
       let data: {
         error?: string;
@@ -721,11 +736,11 @@ export default function PickupPage() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
-                        <div>
+                        <div className="flex flex-col">
                           <label className="text-[10px] text-gray-400 font-semibold">
                             수량 <span className="text-red-400">*</span>
                           </label>
-                          <div className={`flex items-center bg-gray-50 border rounded-xl overflow-hidden ${
+                          <div className={`flex-1 flex items-center bg-gray-50 border rounded-xl overflow-hidden ${
                             showItemFieldHints && item.quantity < 1 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
                           }`}>
                             <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
@@ -735,7 +750,7 @@ export default function PickupPage() {
                               className="px-3 py-2 text-gray-500 font-bold">+</button>
                           </div>
                         </div>
-                        <div>
+                        <div className="flex flex-col">
                           <label
                             htmlFor={`pickup-unit-price-${item.key}`}
                             className="text-[10px] text-gray-500 font-semibold flex items-center gap-0.5"
@@ -743,7 +758,7 @@ export default function PickupPage() {
                             단가 (USD)
                             <span className="text-red-500" aria-hidden="true">*</span>
                           </label>
-                          <div className={`flex items-center bg-gray-50 border rounded-xl px-3 py-2 ${
+                          <div className={`flex-1 flex items-center bg-gray-50 border rounded-xl px-3 py-2 ${
                             showItemFieldHints && itemPriceInvalid(item)
                               ? "border-red-300 ring-1 ring-red-200"
                               : "border-gray-100"
@@ -1012,7 +1027,7 @@ export default function PickupPage() {
           </>
         )}
 
-        {error && (step !== 3 || !isSimple) && (
+        {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 space-y-2">
             <p className="text-sm text-red-600">{error}</p>
             {!isSimple && validateStep2() !== null && (
