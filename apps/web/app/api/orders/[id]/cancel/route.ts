@@ -69,24 +69,51 @@ export async function POST(
       return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
-    const { data: order, error: orderErr } = await supabase
-      .from("orders")
-      .select(
-        "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid, insurance_enabled, order_parcels(parcel_id)",
-      )
-      .eq("id", orderId)
-      .eq("customer_id", user.id)
-      .maybeSingle();
+    const CANCEL_SELECT_FULL =
+      "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid, insurance_enabled, order_parcels(parcel_id)";
+    const CANCEL_SELECT_CORE =
+      "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid, order_parcels(parcel_id)";
 
-    if (orderErr || !order) {
+    let orderRow: Record<string, unknown> | null = null;
+    for (const sel of [CANCEL_SELECT_FULL, CANCEL_SELECT_CORE]) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(sel)
+        .eq("id", orderId)
+        .eq("customer_id", user.id)
+        .maybeSingle();
+      if (!error) {
+        orderRow = data as Record<string, unknown> | null;
+        break;
+      }
+      const msg = (error as { message?: string }).message ?? "";
+      if (!/column|schema cache|PGRST204/i.test(msg)) {
+        console.error("[ORDER CANCEL] order fetch error:", error);
+        return NextResponse.json({ error: "주문 조회 중 오류가 발생했습니다." }, { status: 500 });
+      }
+    }
+
+    if (!orderRow) {
       return NextResponse.json({ error: "주문을 찾을 수 없습니다." }, { status: 404 });
     }
+
+    const order = {
+      id: orderRow.id as string,
+      order_no: orderRow.order_no as string,
+      status: orderRow.status as string,
+      payment_status: (orderRow.payment_status ?? "UNPAID") as string,
+      shipping_method: orderRow.shipping_method as string,
+      recipient_country: (orderRow.recipient_country ?? null) as string | null,
+      duty_prepaid: (orderRow.duty_prepaid ?? false) as boolean,
+      insurance_enabled: (orderRow.insurance_enabled ?? false) as boolean,
+      order_parcels: (orderRow.order_parcels ?? []) as Array<{ parcel_id: string }>,
+    };
 
     if (order.status === "CANCELLED") {
       return NextResponse.json({ ok: true, alreadyCancelled: true });
     }
 
-    const paymentStatus = order.payment_status ?? "UNPAID";
+    const paymentStatus = order.payment_status;
     if (!canCustomerCancelOrder(order.status, paymentStatus)) {
       return NextResponse.json(
         {
