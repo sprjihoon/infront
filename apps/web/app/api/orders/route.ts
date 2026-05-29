@@ -415,9 +415,59 @@ export async function POST(req: NextRequest) {
   }
 }
 
+const ORDER_DETAIL_SELECTS = [
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, extra_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, insurance_enabled, insurance_amount,
+   duty_prepaid, duty_deposit_krw, duty_estimate_usd, duty_paid_krw,
+   item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
+   intl_tracking_synced_at, delivered_at, actual_weight, chargeable_weight,
+   created_at, updated_at, customer_id,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
+   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, insurance_enabled, insurance_amount,
+   duty_prepaid, duty_deposit_krw, duty_estimate_usd,
+   item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
+   intl_tracking_synced_at, delivered_at,
+   created_at, updated_at, customer_id,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
+   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, delivered_at,
+   created_at, updated_at, customer_id,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
+   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, delivered_at,
+   created_at, updated_at, customer_id,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items))`,
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   customs_value, item_list, intl_tracking_no,
+   intl_tracking_status, delivered_at, created_at, updated_at, customer_id`,
+];
+
 /**
  * GET /api/orders
  * 본인 주문 목록 조회
+ * ?order_id=UUID 파라미터 지정 시 단일 주문 조회 (admin client, RLS 우회)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -430,10 +480,53 @@ export async function GET(req: NextRequest) {
     }
 
     const url = new URL(req.url);
+    const orderId = url.searchParams.get('order_id');
+
+    // 단일 주문 상세 조회 (admin client로 RLS 우회, 코드에서 소유권 검증)
+    if (orderId) {
+      const admin = createAdminSupabase();
+      if (!admin) {
+        return NextResponse.json({ error: '서버 설정 오류' }, { status: 500 });
+      }
+      let orderRow: Record<string, unknown> | null = null;
+      for (const sel of ORDER_DETAIL_SELECTS) {
+        const { data, error } = await admin
+          .from('orders')
+          .select(sel)
+          .eq('id', orderId)
+          .maybeSingle();
+        if (!error) {
+          orderRow = data as Record<string, unknown> | null;
+          break;
+        }
+        console.warn('[ORDER DETAIL] select fallback:', (error as { message?: string }).message);
+      }
+      if (!orderRow) {
+        return NextResponse.json({ error: '주문을 찾을 수 없습니다.' }, { status: 404 });
+      }
+      if (String(orderRow.customer_id) !== String(user.id)) {
+        return NextResponse.json({ error: '접근 권한이 없습니다.' }, { status: 403 });
+      }
+      // order_parcels / shipping_boxes 조인 없는 폴백 시 별도 조회
+      if (!Array.isArray(orderRow.order_parcels)) {
+        const { data } = await admin
+          .from('order_parcels')
+          .select('parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)')
+          .eq('order_id', orderId);
+        orderRow.order_parcels = data ?? [];
+      }
+      if (!Array.isArray(orderRow.shipping_boxes)) {
+        const { data } = await admin
+          .from('shipping_boxes')
+          .select('id, box_seq, intl_tracking_no, carrier, status, weight_kg')
+          .eq('order_id', orderId);
+        orderRow.shipping_boxes = data ?? [];
+      }
+      return NextResponse.json({ order: orderRow });
+    }
+
     const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '200', 10), 500);
-
     const orders = await fetchCustomerOrders(supabase, user.id, limit);
-
     return NextResponse.json({ orders });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : '알 수 없는 오류';

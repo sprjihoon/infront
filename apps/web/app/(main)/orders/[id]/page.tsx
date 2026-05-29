@@ -23,7 +23,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   const loadOrder = useCallback(async () => {
     if (!orderId) return;
-    const res = await fetch(`/api/orders/${orderId}`);
+    const res = await fetch(`/api/orders?order_id=${orderId}`);
     if (res.status === 401) {
       router.push("/login");
       return;
