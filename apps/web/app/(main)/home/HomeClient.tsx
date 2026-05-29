@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Bell, Truck, Calculator, Send, BookOpen, List, MapPin } from "lucide-react";
+import { ChevronRight, Bell, Truck, Calculator, Send, BookOpen, List, Receipt } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ActionDashboard from "@/components/ActionDashboard";
 import {
@@ -95,19 +95,19 @@ const QUICK_ACTIONS = [
     subClass: "text-gray-500",
   },
   {
-    href: "/domestic-shipping",
-    icon: <MapPin size={24} className="text-blue-600" />,
-    label: "국내 배송 신청",
-    sub: "우체국 소포 국내 발송",
+    href: "/guide",
+    icon: <BookOpen size={24} className="text-teal-600" />,
+    label: "쉬운 가이드",
+    sub: "이용 방법 안내",
     className: "bg-white",
     labelClass: "text-gray-900",
     subClass: "text-gray-500",
   },
   {
-    href: "/guide",
-    icon: <BookOpen size={24} className="text-teal-600" />,
-    label: "쉬운 가이드",
-    sub: "이용 방법 안내",
+    href: "/domestic-rates",
+    icon: <Receipt size={24} className="text-amber-500" />,
+    label: "국내 택배 요금",
+    sub: "규격·크기·무게 안내",
     className: "bg-white",
     labelClass: "text-gray-900",
     subClass: "text-gray-500",
