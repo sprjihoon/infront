@@ -415,7 +415,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
+// 선택 컬럼을 순차적으로 줄여가는 폴백 SELECT 목록
+// 로그에서 확인된 없는 컬럼: duty_prepaid, intl_tracking_status 등
 const ORDER_DETAIL_SELECTS = [
+  // 1) 풀 스키마
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, extra_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
@@ -428,18 +431,19 @@ const ORDER_DETAIL_SELECTS = [
    created_at, updated_at, customer_id,
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
    shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  // 2) duty_*, extra_fee, weight 제외
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
    recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
    customs_value, insurance_enabled, insurance_amount,
-   duty_prepaid, duty_deposit_krw, duty_estimate_usd,
    item_list, intl_tracking_no,
    intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
    intl_tracking_synced_at, delivered_at,
    created_at, updated_at, customer_id,
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
    shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  // 3) insurance_*, intl_tracking_events, synced_at 제외
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
@@ -449,19 +453,29 @@ const ORDER_DETAIL_SELECTS = [
    created_at, updated_at, customer_id,
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
    shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  // 4) intl_tracking_status, intl_tracking_last_event 제외
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
    recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-   customs_value, item_list, intl_tracking_no,
-   intl_tracking_status, intl_tracking_last_event, delivered_at,
+   customs_value, item_list, intl_tracking_no, delivered_at,
    created_at, updated_at, customer_id,
-   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items))`,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
+   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  // 5) shipping_boxes 제외
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
-   customs_value, item_list, intl_tracking_no,
-   intl_tracking_status, delivered_at, created_at, updated_at, customer_id`,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, item_list, intl_tracking_no, delivered_at,
+   created_at, updated_at, customer_id,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items))`,
+  // 6) 완전 최소 — 조인 없이 orders 핵심 컬럼만
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, item_list, created_at, updated_at, customer_id`,
 ];
 
 /**
