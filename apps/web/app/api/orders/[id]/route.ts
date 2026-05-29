@@ -26,7 +26,9 @@ function createAdminSupabase() {
   });
 }
 
+// 최신 컬럼부터 시도, 없으면 순차 폴백 — duty_prepaid 등 선택 컬럼은 뒤로
 const ORDER_SELECTS = [
+  // FULL: 모든 선택 컬럼 포함
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, extra_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
@@ -41,6 +43,7 @@ const ORDER_SELECTS = [
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
    shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
 
+  // MID: extra_fee, duty_paid_krw, actual/chargeable_weight 제외
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
@@ -54,20 +57,32 @@ const ORDER_SELECTS = [
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
    shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
 
+  // SLIM: duty_* / insurance_* / tracking 세부 제외
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
    recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-   customs_value, duty_prepaid,
-   item_list, intl_tracking_no,
+   customs_value, item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, delivered_at,
+   created_at, updated_at, customer_id,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
+   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+
+  // CORE: shipping_boxes 제외
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, item_list, intl_tracking_no,
    intl_tracking_status, intl_tracking_last_event, delivered_at,
    created_at, updated_at, customer_id,
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items))`,
 
+  // MIN: 조인 없이 orders 단독, 절대 존재하는 컬럼만
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
-   customs_value, duty_prepaid, item_list, intl_tracking_no,
+   customs_value, item_list, intl_tracking_no,
    intl_tracking_status, delivered_at, created_at, updated_at, customer_id`,
 ];
 

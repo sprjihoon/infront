@@ -76,6 +76,8 @@ export async function POST(
       "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id, duty_prepaid, insurance_enabled, order_parcels(parcel_id)",
       "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id, duty_prepaid, order_parcels(parcel_id)",
       "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id, duty_prepaid",
+      "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id, order_parcels(parcel_id)",
+      "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id",
     ];
 
     let orderRow: Record<string, unknown> | null = null;
