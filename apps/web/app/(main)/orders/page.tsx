@@ -223,17 +223,15 @@ function OrdersContent() {
             {paginated.map((order) => {
               const country = COUNTRIES[order.recipient_country ?? ""];
 
+              const isCancelled = order.status === "CANCELLED";
+
               return (
-                <div key={order.id} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                  <button
-                    type="button"
-                    className="w-full p-4 text-left active:bg-gray-50 transition-colors"
-                    onClick={() => router.push(`/orders/${order.id}`)}
-                  >
+                <div key={order.id} className={`rounded-2xl shadow-sm overflow-hidden ${isCancelled ? "bg-gray-50" : "bg-white"}`}>
+                  <div className="p-4">
                     <div className="flex items-start justify-between mb-2 gap-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold text-gray-400 mb-0.5">{order.order_no}</p>
-                        <p className="text-sm font-semibold text-gray-900 truncate">
+                        <p className={`text-sm font-semibold truncate ${isCancelled ? "text-gray-400" : "text-gray-900"}`}>
                           {country ? `${country.flag} ${country.name}` : order.recipient_country ?? "—"}
                           {order.recipient_name ? ` · ${order.recipient_name}` : ""}
                         </p>
@@ -241,35 +239,55 @@ function OrdersContent() {
                       <StatusBadge status={order.status} />
                     </div>
 
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
-                        <span>{SHIPPING_METHOD_LABELS[order.shipping_method] ?? order.shipping_method}</span>
-                        <span>·</span>
-                        <span>물품 {order.order_parcels?.length ?? 0}개</span>
-                        <span>·</span>
-                        <span>{new Date(order.created_at).toLocaleDateString("ko-KR")}</span>
+                    {isCancelled ? (
+                      <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                        <span>신청일 {new Date(order.created_at).toLocaleDateString("ko-KR")}</span>
+                        {order.updated_at && (
+                          <>
+                            <span>·</span>
+                            <span>취소일 {new Date(order.updated_at).toLocaleDateString("ko-KR")}</span>
+                          </>
+                        )}
                       </div>
-                      <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                    </div>
-                  </button>
-
-                  <div className="px-4 pb-4 flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => router.push(`/orders/${order.id}`)}
-                      className="w-full flex items-center justify-center gap-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold bg-gray-50"
-                    >
-                      상세보기
-                      <ChevronRight size={14} />
-                    </button>
-                    <OrderListActions
-                      order={order}
-                      onCancelClick={() => {
-                        setCancelError("");
-                        setCancelTarget(order);
-                      }}
-                    />
+                    ) : (
+                      <button
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() => router.push(`/orders/${order.id}`)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                            <span>{SHIPPING_METHOD_LABELS[order.shipping_method] ?? order.shipping_method}</span>
+                            <span>·</span>
+                            <span>물품 {order.order_parcels?.length ?? 0}개</span>
+                            <span>·</span>
+                            <span>{new Date(order.created_at).toLocaleDateString("ko-KR")}</span>
+                          </div>
+                          <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                        </div>
+                      </button>
+                    )}
                   </div>
+
+                  {!isCancelled && (
+                    <div className="px-4 pb-4 flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/orders/${order.id}`)}
+                        className="w-full flex items-center justify-center gap-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold bg-gray-50"
+                      >
+                        상세보기
+                        <ChevronRight size={14} />
+                      </button>
+                      <OrderListActions
+                        order={order}
+                        onCancelClick={() => {
+                          setCancelError("");
+                          setCancelTarget(order);
+                        }}
+                      />
+                    </div>
+                  )}
                 </div>
               );
             })}

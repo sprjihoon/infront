@@ -59,6 +59,7 @@ export interface OrderSummary {
   intl_tracking_synced_at?: string | null;
   delivered_at?: string | null;
   created_at: string;
+  updated_at?: string;
   order_parcels: OrderParcelLink[];
   shipping_boxes: ShippingBox[];
 }
