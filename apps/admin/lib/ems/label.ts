@@ -185,7 +185,7 @@ export function renderLabelHtml(data: EmsLabelData): string {
     </tr>`).join('');
 
   const recipientAddr = recipient.addr3
-    ? [recipient.addr3, recipient.addr2, recipient.addr1].filter(Boolean).map(esc).join('<br />')
+    ? [recipient.addr3, recipient.addr2, recipient.addr1].filter((s): s is string => Boolean(s)).map(esc).join('<br />')
     : '<span style="color:#666;font-style:italic">(주소 분리 미저장)</span>';
 
   return `<!DOCTYPE html>
