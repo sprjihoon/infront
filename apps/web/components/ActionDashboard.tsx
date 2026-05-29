@@ -74,34 +74,44 @@ export default function ActionDashboard() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-gray-900">진행현황</h2>
+    <div className="rounded-3xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.09)] overflow-hidden">
+      {/* Drag handle */}
+      <div className="flex justify-center pt-3 pb-1">
+        <div className="w-9 h-1 rounded-full bg-gray-200" />
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 pt-2 pb-3">
+        <h2 className="text-sm font-bold text-gray-700 tracking-tight">진행현황</h2>
         <button
           onClick={handleDismiss}
-          className="text-xs text-gray-400 hover:text-gray-600 active:text-gray-800 transition-colors"
+          className="text-xs text-gray-400 hover:text-gray-500 active:text-gray-700 transition-colors"
         >
           오늘은 그만보기
         </button>
       </div>
-      <div className="space-y-3">
+
+      {/* Cards */}
+      <div className="px-4 pb-4 space-y-2.5">
         {cards.map((card) => (
           <div
             key={card.id}
-            className={`rounded-2xl border bg-white shadow-sm p-4 ${
-              card.highlight ? "border-red-400 bg-red-50" : ""
+            className={`rounded-2xl p-4 ${
+              card.highlight
+                ? "bg-red-50"
+                : "bg-gray-50"
             }`}
           >
-            <p className="text-sm font-medium text-gray-900 leading-snug">
+            <p className="text-sm font-medium text-gray-800 leading-snug">
               {card.emoji && <span className="mr-1">{card.emoji}</span>}
               {card.message}
             </p>
             {card.button && (
               <Link
                 href={card.button.href}
-                className={`mt-3 flex w-full items-center justify-center rounded-xl py-3 text-sm font-semibold active:scale-[0.98] transition-transform ${
+                className={`mt-3 flex w-full items-center justify-center rounded-xl py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform ${
                   card.highlight
-                    ? "bg-red-600 text-white"
+                    ? "bg-red-500 text-white"
                     : "bg-brand-600 text-white"
                 }`}
               >
