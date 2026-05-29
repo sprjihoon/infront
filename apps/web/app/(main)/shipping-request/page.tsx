@@ -967,6 +967,11 @@ function ShippingRequestContent() {
               </p>
             )}
 
+            <div className="flex items-center gap-2 px-1 py-1">
+              <Globe size={13} className="text-gray-400 shrink-0" />
+              <p className="text-xs text-gray-400">배송비는 실측 무게에 따라 창고 견적 후 확정됩니다</p>
+            </div>
+
             <p className="text-sm font-bold text-gray-800 pt-2">국제우편 보험 (선택)</p>
             <button
               type="button"
