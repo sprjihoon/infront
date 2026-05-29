@@ -4,10 +4,12 @@ import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "rea
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Truck, MapPin,
-  CheckCircle, Loader2, Plus, Star, Globe,
+  CheckCircle, Loader2, Plus, Star,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
+import { useFlowMode } from "@/lib/flow-mode";
+import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface PreInvoiceItem { name_en: string; quantity: number; unit_price_usd: number; }
@@ -61,6 +63,7 @@ const ITEMS_DESC_OPTS = ["의류", "신발", "가방", "전자제품", "화장�
 function DomesticShippingContent() {
   const router = useRouter();
   const supabase = createClient();
+  const { isSimple, isAdvanced } = useFlowMode();
 
   const [flowStep, setFlowStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -274,19 +277,30 @@ function DomesticShippingContent() {
             <ArrowLeft size={22} className="text-gray-700" />
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-400">Step {displayStep} / {TOTAL_STEPS}</p>
-            <p className="text-sm font-bold text-gray-900 truncate">{label}</p>
-            {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+            {isSimple ? (
+              <>
+                <p className="text-xs text-gray-400">Step {displayStep} / {TOTAL_STEPS}</p>
+                <p className="text-sm font-bold text-gray-900 truncate">{label}</p>
+                {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+              </>
+            ) : (
+              <>
+                <p className="text-base font-bold text-gray-900">국내 배송 신청</p>
+                <p className="text-xs text-gray-400">고급모드 · 한 페이지에 입력</p>
+              </>
+            )}
           </div>
-          <Truck size={18} className="text-blue-500 shrink-0" />
+          {selectingForBoxId === null && <FlowModeToggle />}
         </div>
-        <div className="max-w-[600px] mx-auto flex gap-1.5 px-4 pb-3">
-          {STEP_LABELS.map((_, i) => (
-            <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${
-              i + 1 <= (selectingForBoxId !== null ? 1 : flowStep) ? "bg-blue-600" : "bg-gray-200"
-            }`} />
-          ))}
-        </div>
+        {isSimple && (
+          <div className="max-w-[600px] mx-auto flex gap-1.5 px-4 pb-3">
+            {STEP_LABELS.map((_, i) => (
+              <div key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${
+                i + 1 <= (selectingForBoxId !== null ? 1 : flowStep) ? "bg-blue-600" : "bg-gray-200"
+              }`} />
+            ))}
+          </div>
+        )}
       </div>
     );
   }
@@ -390,6 +404,159 @@ function DomesticShippingContent() {
             >
               <CheckCircle size={16} />
               {alreadySelected > 0 ? `${alreadySelected}개 담기 완료` : "물품을 선택해주세요"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 고급모드: 한 페이지 전체 렌더링 ─────────────────────────
+  if (isAdvanced && selectingForBoxId === null) {
+    const allParcelIds = boxes.flatMap(b => b.parcelIds);
+    return (
+      <div className="min-h-screen bg-gray-50 pb-32">
+        {renderFlowHeader()}
+        <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-6">
+
+          {/* 박스 구성 */}
+          <section className="space-y-4">
+            <p className="text-sm font-bold text-gray-800">박스 구성</p>
+            {loadingParcels ? (
+              <div className="flex justify-center py-8"><Loader2 size={24} className="animate-spin text-blue-500" /></div>
+            ) : shippableParcels.length === 0 ? (
+              <div className="bg-white rounded-2xl p-8 text-center shadow-sm">
+                <p className="text-sm text-gray-500">출고 가능한 물품이 없습니다</p>
+              </div>
+            ) : (
+              <>
+                {boxes.map(box => {
+                  const boxParcels = shippableParcels.filter(p => box.parcelIds.includes(p.id));
+                  const isAddrOpen = expandedBoxAddress === box.id;
+                  return (
+                    <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                      <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
+                        <div className="flex items-center gap-2">
+                          <Package size={15} className="text-white" />
+                          <p className="text-sm font-bold text-white">{box.id}번 박스 {box.parcelIds.length > 0 ? `· ${box.parcelIds.length}개` : ""}</p>
+                        </div>
+                        <button type="button" onClick={() => setExpandedBoxAddress(isAddrOpen ? null : box.id)}
+                          className="text-xs text-white/90 bg-white/20 px-2 py-1 rounded-full flex items-center gap-1">
+                          <MapPin size={10} /> {box.address ? (box.address.label || box.address.name) : "배송지"}
+                        </button>
+                      </div>
+                      {isAddrOpen && (
+                        <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 space-y-2">
+                          {savedAddresses.map(addr => (
+                            <button key={addr.id} type="button"
+                              onClick={() => { setBoxes(prev => prev.map(b => b.id === box.id ? { ...b, address: addr } : b)); setExpandedBoxAddress(null); }}
+                              className={`w-full text-left flex items-start gap-3 p-3 rounded-xl border-2 transition-all ${box.address?.id === addr.id ? "border-blue-500 bg-white" : "border-transparent bg-white hover:border-blue-200"}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-gray-900">{addr.name} <span className="text-xs text-gray-400">· {addr.label}</span></p>
+                                <p className="text-xs text-gray-400">[{addr.zipcode}] {addr.address}</p>
+                              </div>
+                              {box.address?.id === addr.id && <CheckCircle size={14} className="text-blue-500 shrink-0 mt-0.5" />}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className="p-4">
+                        {boxParcels.map(p => (
+                          <div key={p.id} className="flex items-center gap-2 py-1.5 text-sm">
+                            <p className="flex-1 text-gray-800 truncate">{p.sender_name ?? "발송인 미상"}</p>
+                            <p className="text-xs text-gray-400">{p.tracking_no ?? "-"}</p>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => openSelectMode(box.id)}
+                          className="mt-2 w-full border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl">
+                          + {box.parcelIds.length > 0 ? "내품 수정" : "박스에 담기"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+                <button type="button" onClick={addBox}
+                  className="w-full border-2 border-dashed border-gray-200 text-gray-500 text-sm font-bold py-3 rounded-2xl hover:border-blue-300 hover:text-blue-600">
+                  + 박스 추가
+                </button>
+              </>
+            )}
+          </section>
+
+          {/* 포장 옵션 */}
+          <section className="space-y-3">
+            <p className="text-sm font-bold text-gray-800">포장 옵션 (선택)</p>
+            {PACKAGING_OPTS.map(o => {
+              const checked = packOpts[o.code];
+              return (
+                <button key={o.code} type="button" onClick={() => setPackOpts(p => ({ ...p, [o.code]: !p[o.code] }))}
+                  className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${checked ? "border-blue-500 bg-blue-50" : "border-gray-100 bg-white"}`}>
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${checked ? "bg-blue-600 border-blue-600" : "border-gray-300"}`}>
+                    {checked && <span className="text-white text-xs font-bold">✓</span>}
+                  </div>
+                  <div className="flex-1"><p className="text-sm font-semibold text-gray-800">{o.name}</p><p className="text-xs text-gray-400">{o.desc}</p></div>
+                  <span className="text-xs font-semibold text-blue-600 shrink-0">+{o.price.toLocaleString()}원</span>
+                </button>
+              );
+            })}
+          </section>
+
+          {/* 부가 서비스 */}
+          <section className="space-y-3">
+            <p className="text-sm font-bold text-gray-800">부가 서비스 (선택)</p>
+            {ADDON_SERVICES.map(o => {
+              const checked = addonSet.has(o.code);
+              return (
+                <button key={o.code} type="button" onClick={() => setAddonSet(prev => { const n = new Set(prev); checked ? n.delete(o.code) : n.add(o.code); return n; })}
+                  className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${checked ? "border-teal-500 bg-teal-50" : "border-gray-100 bg-white"}`}>
+                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${checked ? "bg-teal-500 border-teal-500" : "border-gray-300"}`}>
+                    {checked && <span className="text-white text-xs font-bold">✓</span>}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-1.5"><span className="text-sm font-semibold text-gray-800">{o.name}</span><span className="text-[10px] bg-green-100 text-green-700 font-bold px-1.5 py-0.5 rounded-full">{o.badge}</span></div>
+                    <p className="text-xs text-gray-400">{o.desc}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-green-600 shrink-0">무료</span>
+                </button>
+              );
+            })}
+          </section>
+
+          {/* 요청 메모 */}
+          <section>
+            <label className="block text-sm font-bold text-gray-800 mb-2">요청 메모 (선택)</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+              placeholder="포장·처리 관련 특별 요청사항을 입력해주세요"
+              className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-200" />
+          </section>
+
+          {/* 내용품 분류 */}
+          <section>
+            <p className="text-sm font-bold text-gray-800 mb-3">내용품 분류</p>
+            <div className="flex flex-wrap gap-2">
+              {ITEMS_DESC_OPTS.map(opt => (
+                <button key={opt} type="button" onClick={() => setItemsDesc(opt)}
+                  className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${itemsDesc === opt ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`}
+                >{opt}</button>
+              ))}
+            </div>
+          </section>
+
+          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3">{error}</div>}
+        </div>
+
+        {/* 하단 신청 버튼 */}
+        <div className="fixed left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px))" }}>
+          <div className="max-w-[600px] mx-auto">
+            <button type="button" onClick={() => {
+              if (allParcelIds.length === 0) { setError("배송할 물품을 1개 이상 선택해주세요."); return; }
+              const allHaveAddr = boxes.every(b => b.parcelIds.length === 0 || b.address?.name);
+              if (!allHaveAddr) { setError("모든 박스의 수취인 주소를 설정해주세요."); return; }
+              handleSubmit();
+            }} disabled={submitting}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl disabled:opacity-60">
+              {submitting ? <Loader2 size={16} className="animate-spin" /> : <><CheckCircle size={16} /> 국내 배송 신청하기</>}
             </button>
           </div>
         </div>
