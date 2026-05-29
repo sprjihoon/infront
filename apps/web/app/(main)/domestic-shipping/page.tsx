@@ -10,6 +10,12 @@ import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 
 // ── 타입 ──────────────────────────────────────────────────────
+interface PreInvoiceItem {
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+}
+
 interface Parcel {
   id: string;
   tracking_no: string | null;
@@ -17,6 +23,7 @@ interface Parcel {
   sender_address: string | null;
   weight_actual: number | null;
   status: string;
+  pre_invoice_items: PreInvoiceItem[] | null;
 }
 
 interface DomesticAddress {
@@ -172,6 +179,12 @@ function DomesticShippingContent() {
     });
   }
 
+  // 소포 내 내품 표시용 (pre_invoice_items 없으면 parcel 자체를 1 아이템으로)
+  function getParcelItems(p: Parcel) {
+    if (p.pre_invoice_items && p.pre_invoice_items.length > 0) return p.pre_invoice_items;
+    return [{ name_en: p.sender_name ?? "물품", quantity: 1, unit_price_usd: 0 }];
+  }
+
   // ── 네비게이션 ────────────────────────────────────────────────
   function handleBack() {
     setError("");
@@ -317,18 +330,13 @@ function DomesticShippingContent() {
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
         {renderFlowHeader("수량을 설정해주세요 — 담을 물품을 선택해주세요")}
-        <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-3 pb-40">
+        <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-4 pb-40">
           {shippableParcels.map(p => {
-            const checked = tempSelected.has(p.id);
+            const isSelected = tempSelected.has(p.id);
+            const items = getParcelItems(p);
             return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => toggleTemp(p.id)}
-                className={`w-full text-left rounded-2xl shadow-sm overflow-hidden border-2 transition-all ${
-                  checked ? "border-blue-500 bg-blue-50" : "border-transparent bg-white"
-                }`}
-              >
+              <div key={p.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                {/* 소포 헤더 */}
                 <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
                   <Package size={15} className="text-gray-400 shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -340,13 +348,51 @@ function DomesticShippingContent() {
                       {p.weight_actual ? ` · ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
                     </p>
                   </div>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                    checked ? "bg-blue-600 border-blue-600" : "border-gray-300"
-                  }`}>
-                    {checked && <span className="text-white text-xs font-bold">✓</span>}
-                  </div>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-green-700 bg-green-50 border-green-200">입고완료</span>
                 </div>
-              </button>
+
+                {/* 내품 목록 — 소포 단위 선택 */}
+                <div className="divide-y divide-gray-50">
+                  {items.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-3 px-4 py-3 transition-colors ${isSelected ? "bg-blue-50" : "bg-white"}`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
+                        <p className="text-xs text-gray-400">
+                          재고 {item.quantity}개
+                          {item.unit_price_usd > 0 ? ` · $${item.unit_price_usd}` : ""}
+                        </p>
+                      </div>
+                      {/* 마지막 아이템에만 +/- 버튼 표시 (소포 단위 선택) */}
+                      {idx === items.length - 1 && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => isSelected && toggleTemp(p.id)}
+                            disabled={!isSelected}
+                            className="w-8 h-8 rounded-lg border-2 border-gray-200 flex items-center justify-center text-gray-500 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
+                          >
+                            –
+                          </button>
+                          <span className={`w-8 text-center text-sm font-bold ${isSelected ? "text-blue-600" : "text-gray-300"}`}>
+                            {isSelected ? 1 : 0}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => !isSelected && toggleTemp(p.id)}
+                            disabled={isSelected}
+                            className="w-8 h-8 rounded-lg border-2 border-blue-300 bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
+                          >
+                            +
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             );
           })}
         </div>
