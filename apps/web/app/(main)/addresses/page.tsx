@@ -408,7 +408,7 @@ export default function AddressesPage() {
               {/* 모달 헤더 */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
                 <p className="text-sm font-bold text-gray-800">
-                  {tab === "pickup" ? "수거지" : "해외 배송지"} {modal === "add" ? "추가" : "수정"}
+                  {tab === "pickup" ? "국내배송지" : "해외 배송지"} {modal === "add" ? "추가" : "수정"}
                 </p>
                 <button onClick={() => setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
                   <X size={18} className="text-gray-500" />
@@ -433,7 +433,7 @@ export default function AddressesPage() {
                 {/* 이름 */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                    {tab === "pickup" ? "수거지 담당자" : "수취인 이름"} <span className="text-red-400">*</span>
+                    {tab === "pickup" ? "수취인 이름" : "수취인 이름"} <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={form.name ?? ""}

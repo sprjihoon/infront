@@ -121,7 +121,7 @@ export default function MyPage() {
             <div className="text-left">
               <p className="text-sm font-semibold text-gray-800">주소록 관리</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                수거지 {addrCount.pickup}개 · 해외배송지 {addrCount.overseas}개
+                국내배송지 {addrCount.pickup}개 · 해외배송지 {addrCount.overseas}개
               </p>
             </div>
           </div>
