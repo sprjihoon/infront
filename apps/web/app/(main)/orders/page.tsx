@@ -68,6 +68,8 @@ function OrdersContent() {
       setCancelTarget(null);
       if (data.mode === "partial") {
         router.push(`/orders/${targetId}`);
+      } else {
+        setFilter("CANCELLED");
       }
     } catch (e: unknown) {
       setCancelError(e instanceof Error ? e.message : "취소 중 오류가 발생했습니다.");
@@ -110,7 +112,7 @@ function OrdersContent() {
 
   const filterCounts = useMemo(() => {
     const counts: Record<OrderListFilterKey, number> = {
-      ALL: orders.length,
+      ALL: orders.filter((o) => o.status !== "CANCELLED").length,
       DRAFT: 0,
       PROCESSING: 0,
       PAYMENT: 0,

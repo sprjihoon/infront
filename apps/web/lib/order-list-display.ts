@@ -34,7 +34,7 @@ export function matchesOrderListFilter(
 ): boolean {
   switch (filter) {
     case "ALL":
-      return true;
+      return order.status !== "CANCELLED";
     case "DRAFT":
       return order.status === "DRAFT";
     case "PROCESSING":
