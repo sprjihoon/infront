@@ -44,6 +44,7 @@ async function fetchDashboardData() {
 
 export default function ActionDashboard() {
   const [dismissed, setDismissed] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem(DISMISS_KEY);
@@ -74,15 +75,42 @@ export default function ActionDashboard() {
   }
 
   return (
-    <div className="rounded-3xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.09)] overflow-hidden">
-      {/* Drag handle */}
-      <div className="flex justify-center pt-3 pb-1">
+    <div className="rounded-3xl bg-white shadow-[0_4px_24px_rgba(0,0,0,0.09)] overflow-hidden transition-all duration-300">
+      {/* Drag handle — 탭하면 접기/펼치기 */}
+      <button
+        onClick={() => setCollapsed((v) => !v)}
+        className="w-full flex justify-center pt-3 pb-1 active:opacity-60 transition-opacity"
+        aria-label={collapsed ? "펼치기" : "접기"}
+      >
         <div className="w-9 h-1 rounded-full bg-gray-200" />
-      </div>
+      </button>
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-2 pb-3">
-        <h2 className="text-sm font-bold text-gray-700 tracking-tight">진행현황</h2>
+        {/* 제목 + 잠시접어두기 */}
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          className="flex items-center gap-1.5 group"
+        >
+          <h2 className="text-sm font-bold text-gray-700 tracking-tight">진행현황</h2>
+          <span className="flex items-center justify-center w-5 h-5 rounded-full bg-gray-100 group-hover:bg-gray-200 group-active:bg-gray-300 transition-colors">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="10"
+              height="10"
+              viewBox="0 0 10 10"
+              fill="none"
+              className={`transition-transform duration-300 ${collapsed ? "rotate-180" : ""}`}
+            >
+              <path d="M2 3.5L5 6.5L8 3.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </span>
+          <span className="text-[10px] text-gray-400 group-hover:text-gray-500 transition-colors">
+            {collapsed ? "펼치기" : "잠시접어두기"}
+          </span>
+        </button>
+
+        {/* 오늘은 그만보기 */}
         <button
           onClick={handleDismiss}
           className="flex flex-col items-center gap-0.5 group"
@@ -98,35 +126,39 @@ export default function ActionDashboard() {
         </button>
       </div>
 
-      {/* Cards */}
-      <div className="px-4 pb-4 space-y-2.5">
-        {cards.map((card) => (
-          <div
-            key={card.id}
-            className={`rounded-2xl p-4 ${
-              card.highlight
-                ? "bg-red-50"
-                : "bg-gray-50"
-            }`}
-          >
-            <p className="text-sm font-medium text-gray-800 leading-snug">
-              {card.emoji && <span className="mr-1">{card.emoji}</span>}
-              {card.message}
-            </p>
-            {card.button && (
-              <Link
-                href={card.button.href}
-                className={`mt-3 flex w-full items-center justify-center rounded-xl py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform ${
-                  card.highlight
-                    ? "bg-red-500 text-white"
-                    : "bg-brand-600 text-white"
-                }`}
-              >
-                {card.button.label}
-              </Link>
-            )}
-          </div>
-        ))}
+      {/* Cards — collapsed 시 숨김 */}
+      <div
+        className={`overflow-hidden transition-all duration-300 ease-in-out ${
+          collapsed ? "max-h-0 opacity-0" : "max-h-[600px] opacity-100"
+        }`}
+      >
+        <div className="px-4 pb-4 space-y-2.5">
+          {cards.map((card) => (
+            <div
+              key={card.id}
+              className={`rounded-2xl p-4 ${
+                card.highlight ? "bg-red-50" : "bg-gray-50"
+              }`}
+            >
+              <p className="text-sm font-medium text-gray-800 leading-snug">
+                {card.emoji && <span className="mr-1">{card.emoji}</span>}
+                {card.message}
+              </p>
+              {card.button && (
+                <Link
+                  href={card.button.href}
+                  className={`mt-3 flex w-full items-center justify-center rounded-xl py-2.5 text-sm font-semibold active:scale-[0.98] transition-transform ${
+                    card.highlight
+                      ? "bg-red-500 text-white"
+                      : "bg-brand-600 text-white"
+                  }`}
+                >
+                  {card.button.label}
+                </Link>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
