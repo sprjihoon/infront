@@ -552,7 +552,7 @@ export default function DomesticShippingPage() {
                           className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50"
                         />
                         <AddressSearchButton
-                          onSelect={({ zipcode, address }) => { setNewZip(zipcode); setNewAddr1(address); }}
+                          onSelect={(zipcode, address) => { setNewZip(zipcode); setNewAddr1(address); }}
                           className="px-3 py-2.5 bg-blue-600 text-white text-sm rounded-xl whitespace-nowrap"
                         />
                       </div>
