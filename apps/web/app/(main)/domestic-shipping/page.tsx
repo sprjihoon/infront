@@ -23,6 +23,17 @@ interface Parcel {
   pre_invoice_items: PreInvoiceItem[] | null;
 }
 
+// 아이템 선택 단위 (parcel 내 개별 내품) — 국제 배송과 동일 구조
+interface SelectableItem {
+  key: string;        // `${parcelId}__${itemIndex}`
+  parcelId: string;
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+}
+
+interface BoxItem { key: string; qty: number; }
+
 interface DomesticAddress {
   id: string;
   label: string;
@@ -37,7 +48,7 @@ interface DomesticAddress {
 interface BoxSetup {
   id: number;
   address: DomesticAddress | null;
-  parcelIds: string[];
+  items: BoxItem[];   // 국제와 동일: 아이템키+수량 배열
 }
 
 // ── 상수 ──────────────────────────────────────────────────────
@@ -72,9 +83,9 @@ function DomesticShippingContent() {
   // Step 1: 박스 구성
   const [shippableParcels, setShippableParcels] = useState<Parcel[]>([]);
   const [loadingParcels, setLoadingParcels] = useState(true);
-  const [boxes, setBoxes] = useState<BoxSetup[]>([{ id: 1, address: null, parcelIds: [] }]);
+  const [boxes, setBoxes] = useState<BoxSetup[]>([{ id: 1, address: null, items: [] }]);
   const [selectingForBoxId, setSelectingForBoxId] = useState<number | null>(null);
-  const [tempSelected, setTempSelected] = useState<Set<string>>(new Set());
+  const [tempQty, setTempQty] = useState<Map<string, number>>(new Map());
   const [expandedBoxAddress, setExpandedBoxAddress] = useState<number | null>(null);
   const [itemsDesc, setItemsDesc] = useState("의류");
 
@@ -135,6 +146,22 @@ function DomesticShippingContent() {
     });
   }, [supabase, router, loadParcels, loadAddresses]);
 
+  // parcel → 개별 내품 아이템 플랫화 (국제 배송과 동일 구조)
+  const selectableItems = useMemo<SelectableItem[]>(() => {
+    const result: SelectableItem[] = [];
+    for (const p of shippableParcels) {
+      const items = p.pre_invoice_items;
+      if (items && items.length > 0) {
+        items.forEach((item, idx) => {
+          result.push({ key: `${p.id}__${idx}`, parcelId: p.id, name_en: item.name_en, quantity: item.quantity, unit_price_usd: item.unit_price_usd });
+        });
+      } else {
+        result.push({ key: `${p.id}__0`, parcelId: p.id, name_en: p.sender_name ?? p.tracking_no ?? "물품", quantity: 1, unit_price_usd: 0 });
+      }
+    }
+    return result;
+  }, [shippableParcels]);
+
   // ── 계산 ─────────────────────────────────────────────────────
   const packagingFee = useMemo(
     () => PACKAGING_OPTS.filter(o => packOpts[o.code]).reduce((s, o) => s + o.price, 0),
@@ -142,53 +169,56 @@ function DomesticShippingContent() {
   );
   const activePackaging = PACKAGING_OPTS.filter(o => packOpts[o.code]);
   const activeAddons    = ADDON_SERVICES.filter(o => addonSet.has(o.code));
-  const totalParcels    = boxes.reduce((s, b) => s + b.parcelIds.length, 0);
+  // 선택된 총 아이템 수 (모든 박스의 qty 합산)
+  const totalItems = boxes.reduce((s, b) => s + b.items.reduce((ss, bi) => ss + bi.qty, 0), 0);
+  // 선택된 고유 소포 수 (박스 전체 기준)
+  const totalParcels = useMemo(() => {
+    const ids = new Set<string>();
+    for (const b of boxes) for (const bi of b.items) ids.add(bi.key.split("__")[0]);
+    return ids.size;
+  }, [boxes]);
 
   // ── 박스 관리 ─────────────────────────────────────────────────
   function addBox() {
     const nextId = boxes.length > 0 ? Math.max(...boxes.map(b => b.id)) + 1 : 1;
-    setBoxes(prev => [...prev, { id: nextId, address: defaultAddress, parcelIds: [] }]);
+    setBoxes(prev => [...prev, { id: nextId, address: defaultAddress, items: [] }]);
   }
 
   function removeBox(boxId: number) {
     if (boxes.length <= 1) return;
     const target = boxes.find(b => b.id === boxId);
     if (!target) return;
-    // 해당 박스의 소포를 다른 박스에서도 쓰이지 않으면 해제
     const remaining = boxes.filter(b => b.id !== boxId);
+    // 다른 박스에 없는 고아 아이템을 박스1로 병합 (국제와 동일)
+    const keepKeys = new Set(remaining.flatMap(b => b.items.map(bi => bi.key)));
+    const orphans = target.items.filter(bi => !keepKeys.has(bi.key));
+    if (orphans.length > 0) remaining[0] = { ...remaining[0], items: [...remaining[0].items, ...orphans] };
     setBoxes(remaining);
   }
 
-  // ── 담기 모드 ─────────────────────────────────────────────────
-  function openSelectMode(boxId: number) {
+  // 다른 박스들에서 해당 아이템키의 총 수량 (국제와 동일)
+  const getOtherBoxQty = useCallback((itemKey: string, excludeBoxId: number): number => {
+    return boxes.filter(b => b.id !== excludeBoxId)
+      .reduce((sum, b) => sum + (b.items.find(bi => bi.key === itemKey)?.qty ?? 0), 0);
+  }, [boxes]);
+
+  // ── 담기 모드 (국제와 동일 로직) ────────────────────────────────
+  const openItemSelect = useCallback((boxId: number) => {
     const box = boxes.find(b => b.id === boxId);
-    setTempSelected(new Set(box?.parcelIds ?? []));
+    const initMap = new Map<string, number>();
+    (box?.items ?? []).forEach(bi => initMap.set(bi.key, bi.qty));
+    setTempQty(initMap);
     setSelectingForBoxId(boxId);
     setExpandedBoxAddress(null);
-  }
+  }, [boxes]);
 
-  function confirmSelectMode() {
+  const confirmItemSelect = useCallback(() => {
     if (selectingForBoxId === null) return;
-    setBoxes(prev => prev.map(b =>
-      b.id === selectingForBoxId ? { ...b, parcelIds: Array.from(tempSelected) } : b
-    ));
+    const newItems: BoxItem[] = [];
+    tempQty.forEach((qty, key) => { if (qty > 0) newItems.push({ key, qty }); });
+    setBoxes(prev => prev.map(b => b.id === selectingForBoxId ? { ...b, items: newItems } : b));
     setSelectingForBoxId(null);
-  }
-
-  function toggleTemp(id: string) {
-    setTempSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  }
-
-  // 소포 내 내품 표시용
-  function getParcelItems(p: Parcel): PreInvoiceItem[] {
-    if (p.pre_invoice_items && p.pre_invoice_items.length > 0) return p.pre_invoice_items;
-    return [{ name_en: p.sender_name ?? "물품", quantity: 1, unit_price_usd: 0 }];
-  }
-
-  // 특정 소포가 다른 박스에 이미 배정됐는지
-  function isInOtherBox(parcelId: string, excludeBoxId: number) {
-    return boxes.some(b => b.id !== excludeBoxId && b.parcelIds.includes(parcelId));
-  }
+  }, [selectingForBoxId, tempQty]);
 
   // ── 네비게이션 ────────────────────────────────────────────────
   function handleBack() {
@@ -201,7 +231,7 @@ function DomesticShippingContent() {
 
   function handleNext() {
     setError("");
-    if (flowStep === 1 && totalParcels === 0) { setError("배송할 물품을 1개 이상 선택해주세요."); return; }
+    if (flowStep === 1 && totalItems === 0) { setError("배송할 물품을 1개 이상 선택해주세요."); return; }
     if (flowStep === 3) {
       const allHaveAddr = boxes.every(b => b.address?.name && b.address?.zipcode);
       if (!allHaveAddr && !showNewAddr) { setError("모든 박스의 수취인 주소를 설정해주세요."); return; }
@@ -229,7 +259,9 @@ function DomesticShippingContent() {
       }
 
       for (const box of boxes) {
-        if (box.parcelIds.length === 0) continue;
+        if (box.items.length === 0) continue;
+        // items의 key에서 고유 parcelId 추출 (국제와 동일 방식)
+        const parcelIds = [...new Set(box.items.map(bi => bi.key.split("__")[0]))];
         const addr = box.address ?? (showNewAddr
           ? { name: newName, phone: newPhone, zipcode: newZip, address: newAddr1, address_detail: newAddr2 } as DomesticAddress
           : null);
@@ -243,7 +275,7 @@ function DomesticShippingContent() {
             recipient_zip:   addr.zipcode ?? "",
             recipient_addr1: addr.address ?? "",
             recipient_addr2: addr.address_detail ?? "",
-            parcel_ids:      box.parcelIds,
+            parcel_ids:      parcelIds,
             items_desc:      itemsDesc,
             packaging_type:  activePackaging.map(o => o.code).join(",") || "NONE",
             packaging_fee:   packagingFee,
@@ -330,69 +362,83 @@ function DomesticShippingContent() {
     );
   }
 
-  // ── 담기 모드 ────────────────────────────────────────────────
+  // ── 담기 모드 (국제 배송과 동일 구조) ───────────────────────────
   if (selectingForBoxId !== null) {
-    // 현재 박스에서 선택 가능한 소포만 표시: 다른 박스에 이미 배정된 것 제외
-    const selectableParcels = shippableParcels.filter(p => !isInOtherBox(p.id, selectingForBoxId));
-    const alreadySelected = tempSelected.size;
+    const parcelGroups = shippableParcels.map(p => ({
+      parcel: p,
+      items: selectableItems.filter(it => it.parcelId === p.id),
+    }));
+    const totalSelected = Array.from(tempQty.values()).reduce((s, v) => s + v, 0);
+
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
-        {renderFlowHeader("담을 소포를 선택해주세요")}
+        {renderFlowHeader("수량을 설정해주세요 — 같은 품목을 여러 박스에 나눠 담을 수 있어요")}
         <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-4 pb-40">
           {loadingParcels ? (
             <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
-          ) : selectableParcels.length === 0 ? (
+          ) : shippableParcels.length === 0 ? (
             <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
               <Package size={36} className="text-gray-200 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-500">출고 가능한 물품이 없습니다</p>
             </div>
-          ) : selectableParcels.map(p => {
-            const isSelected = tempSelected.has(p.id);
-            const inOther = false; // selectableParcels에서 이미 필터링됨
-            const items = getParcelItems(p);
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => toggleTemp(p.id)}
-                className={`w-full text-left bg-white rounded-2xl shadow-sm overflow-hidden border-2 transition-all active:scale-[0.99] ${isSelected ? "border-blue-400" : "border-gray-100"}`}
-              >
-                <div className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 transition-colors ${isSelected ? "bg-blue-50" : "bg-gray-50"}`}>
-                  <Package size={15} className={isSelected ? "text-blue-500 shrink-0" : "text-gray-400 shrink-0"} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-gray-700 truncate">{p.tracking_no ?? "운송장번호 미등록"}</p>
-                    <p className="text-[10px] text-gray-400">
-                      {p.sender_address ?? p.sender_name ?? "발송인 미확인"}
-                      {p.weight_actual ? ` · ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
-                    </p>
-                  </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-blue-500 border-blue-500" : "border-gray-300 bg-white"}`}>
-                    {isSelected && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                  </div>
+          ) : parcelGroups.map(({ parcel: p, items: pItems }) => (
+            <div key={p.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
+                <Package size={15} className="text-gray-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-gray-700 truncate">{p.tracking_no ?? "운송장번호 미등록"}</p>
+                  <p className="text-[10px] text-gray-400">
+                    {p.sender_address ?? p.sender_name ?? "발송인 미확인"}
+                    {p.weight_actual ? ` · ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
+                  </p>
                 </div>
-                <div className="divide-y divide-gray-50">
-                  {items.map((item, idx) => (
-                    <div key={idx} className={`flex items-center gap-3 px-4 py-3 transition-colors ${isSelected ? "bg-blue-50/40" : "bg-white"}`}>
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-green-700 bg-green-50 border-green-200">입고완료</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {pItems.map(item => {
+                  const currentQty = tempQty.get(item.key) ?? 0;
+                  const otherQty = getOtherBoxQty(item.key, selectingForBoxId!);
+                  const maxQty = item.quantity - otherQty;
+                  const isActive = currentQty > 0;
+                  return (
+                    <div key={item.key} className={`flex items-center gap-3 px-4 py-3 transition-colors ${isActive ? "bg-blue-50" : "bg-white"}`}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
                         <p className="text-xs text-gray-400">
-                          재고 {item.quantity}개{item.unit_price_usd > 0 ? ` · $${item.unit_price_usd}` : ""}
+                          재고 {item.quantity}개
+                          {otherQty > 0 ? ` · 다른 박스 ${otherQty}개` : ""}
+                          {item.unit_price_usd > 0 ? ` · $${item.unit_price_usd}` : ""}
                         </p>
                       </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setTempQty(prev => { const next = new Map(prev); const v = (next.get(item.key) ?? 0) - 1; if (v <= 0) next.delete(item.key); else next.set(item.key, v); return next; })}
+                          disabled={currentQty === 0}
+                          className="w-8 h-8 rounded-lg border-2 border-gray-200 flex items-center justify-center text-gray-500 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
+                        >–</button>
+                        <span className={`w-8 text-center text-sm font-bold ${isActive ? "text-blue-600" : "text-gray-300"}`}>{currentQty}</span>
+                        <button
+                          type="button"
+                          onClick={() => setTempQty(prev => { const next = new Map(prev); next.set(item.key, Math.min((next.get(item.key) ?? 0) + 1, maxQty)); return next; })}
+                          disabled={currentQty >= maxQty}
+                          className="w-8 h-8 rounded-lg border-2 border-blue-300 bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
+                        >+</button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </button>
-            );
-          })}
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
         <div className="fixed left-0 right-0 px-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}>
           <div className="max-w-[600px] mx-auto">
-            <button onClick={confirmSelectMode} disabled={alreadySelected === 0}
+            <button onClick={confirmItemSelect} disabled={totalSelected === 0}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
               <CheckCircle size={16} />
-              {alreadySelected > 0 ? `${alreadySelected}개 담기 완료` : "물품을 선택해주세요"}
+              {totalSelected > 0 ? `${totalSelected}개 담기 완료` : "물품을 선택해주세요"}
             </button>
           </div>
         </div>
@@ -402,7 +448,7 @@ function DomesticShippingContent() {
 
   // ── 고급모드: 한 페이지 전체 렌더링 ─────────────────────────
   if (isAdvanced && selectingForBoxId === null) {
-    const allParcelIds = boxes.flatMap(b => b.parcelIds);
+    const allItemCount = boxes.reduce((s, b) => s + b.items.reduce((ss, bi) => ss + bi.qty, 0), 0);
     return (
       <div className="min-h-screen bg-gray-50 pb-32">
         {renderFlowHeader()}
@@ -420,14 +466,13 @@ function DomesticShippingContent() {
             ) : (
               <>
                 {boxes.map(box => {
-                  const boxParcels = shippableParcels.filter(p => box.parcelIds.includes(p.id));
                   const isAddrOpen = expandedBoxAddress === box.id;
                   return (
                     <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
                       <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
                         <div className="flex items-center gap-2">
                           <Package size={15} className="text-white" />
-                          <p className="text-sm font-bold text-white">{box.id}번 박스 {box.parcelIds.length > 0 ? `· ${box.parcelIds.length}개` : ""}</p>
+                          <p className="text-sm font-bold text-white">{box.id}번 박스 {box.items.length > 0 ? `· ${box.items.reduce((s,bi)=>s+bi.qty,0)}개` : ""}</p>
                         </div>
                         <button type="button" onClick={() => setExpandedBoxAddress(isAddrOpen ? null : box.id)}
                           className="text-xs text-white/90 bg-white/20 px-2 py-1 rounded-full flex items-center gap-1">
@@ -451,15 +496,19 @@ function DomesticShippingContent() {
                         </div>
                       )}
                       <div className="p-4">
-                        {boxParcels.map(p => (
-                          <div key={p.id} className="flex items-center gap-2 py-1.5 text-sm">
-                            <p className="flex-1 text-gray-800 truncate">{p.sender_name ?? "발송인 미상"}</p>
-                            <p className="text-xs text-gray-400">{p.tracking_no ?? "-"}</p>
-                          </div>
-                        ))}
-                        <button type="button" onClick={() => openSelectMode(box.id)}
+                        {box.items.map(bi => {
+                          const item = selectableItems.find(it => it.key === bi.key);
+                          if (!item) return null;
+                          return (
+                            <div key={bi.key} className="flex items-center gap-2 py-1.5 text-sm">
+                              <p className="flex-1 text-gray-800 truncate">{item.name_en}</p>
+                              <p className="text-xs text-gray-400">{bi.qty}개</p>
+                            </div>
+                          );
+                        })}
+                        <button type="button" onClick={() => openItemSelect(box.id)}
                           className="mt-2 w-full border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl">
-                          + {box.parcelIds.length > 0 ? "내품 수정" : "박스에 담기"}
+                          + {box.items.length > 0 ? "내품 수정" : "박스에 담기"}
                         </button>
                       </div>
                     </div>
@@ -527,8 +576,8 @@ function DomesticShippingContent() {
         <div className="fixed left-0 right-0 bg-white border-t border-gray-100 px-4 py-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px))" }}>
           <div className="max-w-[600px] mx-auto">
             <button type="button" onClick={() => {
-              if (allParcelIds.length === 0) { setError("배송할 물품을 1개 이상 선택해주세요."); return; }
-              const allHaveAddr = boxes.every(b => b.parcelIds.length === 0 || b.address?.name);
+              if (allItemCount === 0) { setError("배송할 물품을 1개 이상 선택해주세요."); return; }
+              const allHaveAddr = boxes.every(b => b.items.length === 0 || b.address?.name);
               if (!allHaveAddr) { setError("모든 박스의 수취인 주소를 설정해주세요."); return; }
               handleSubmit();
             }} disabled={submitting}
@@ -559,7 +608,6 @@ function DomesticShippingContent() {
           ) : (
             <>
               {boxes.map(box => {
-                const boxParcels = shippableParcels.filter(p => box.parcelIds.includes(p.id));
                 const isAddrOpen = expandedBoxAddress === box.id;
                 return (
                   <div key={box.id} className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
@@ -568,7 +616,7 @@ function DomesticShippingContent() {
                       <div className="flex items-center gap-2">
                         <Package size={16} className="text-white" />
                         <p className="text-sm font-bold text-white">{box.id}번 박스</p>
-                        {box.parcelIds.length > 0 && <span className="text-xs text-blue-200">{box.parcelIds.length}개</span>}
+                        {box.items.length > 0 && <span className="text-xs text-blue-200">{box.items.reduce((s,bi)=>s+bi.qty,0)}개</span>}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -622,28 +670,32 @@ function DomesticShippingContent() {
                       </div>
                     )}
 
-                    {/* 담긴 물품 목록 */}
+                    {/* 담긴 물품 목록 (아이템 기준) */}
                     <div className="divide-y divide-gray-50">
-                      {boxParcels.length === 0 ? (
+                      {box.items.length === 0 ? (
                         <p className="text-xs text-gray-400 text-center py-4">아직 담은 내품이 없어요</p>
-                      ) : boxParcels.map(p => (
-                        <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">{p.sender_name ?? "발송인 미상"}</p>
-                            <p className="text-xs text-gray-400">{p.tracking_no ?? "-"}{p.weight_actual ? ` · ${(p.weight_actual/1000).toFixed(2)}kg` : ""}</p>
+                      ) : box.items.map(bi => {
+                        const item = selectableItems.find(it => it.key === bi.key);
+                        if (!item) return null;
+                        return (
+                          <div key={bi.key} className="flex items-center gap-3 px-4 py-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
+                              <p className="text-xs text-gray-400">{bi.qty}개{item.unit_price_usd > 0 ? ` · $${item.unit_price_usd}` : ""}</p>
+                            </div>
+                            <button type="button" onClick={() => setBoxes(prev => prev.map(b => b.id === box.id ? { ...b, items: b.items.filter(i => i.key !== bi.key) } : b))}
+                              className="text-gray-300 hover:text-red-400 transition-colors p-1 text-lg leading-none">×</button>
                           </div>
-                          <button type="button" onClick={() => setBoxes(prev => prev.map(b => b.id === box.id ? { ...b, parcelIds: b.parcelIds.filter(id => id !== p.id) } : b))}
-                            className="text-gray-300 hover:text-red-400 transition-colors p-1 text-lg leading-none">×</button>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     <div className="px-4 pb-4 pt-2">
-                      <button type="button" onClick={() => openSelectMode(box.id)}
+                      <button type="button" onClick={() => openItemSelect(box.id)}
                         className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl hover:bg-blue-50 active:scale-[0.98] transition-all"
                       >
                         <span className="text-lg leading-none">+</span>
-                        {box.parcelIds.length > 0 ? "내품 수정" : "박스에 담기"}
+                        {box.items.length > 0 ? "내품 수정" : "박스에 담기"}
                       </button>
                     </div>
                   </div>
@@ -664,10 +716,10 @@ function DomesticShippingContent() {
         <div className="fixed left-0 right-0 px-4 z-[60]" style={{ bottom: "calc(60px + var(--sab, 0px) + 12px)" }}>
           <div className="max-w-[600px] mx-auto space-y-2">
             {error && <p className="text-xs text-red-500 text-center">{error}</p>}
-            <button type="button" onClick={handleNext} disabled={totalParcels === 0}
+            <button type="button" onClick={handleNext} disabled={totalItems === 0}
               className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-blue-200 disabled:opacity-40 active:scale-[0.98] transition-transform"
             >
-              {totalParcels > 0 ? `${totalParcels}개 물품 — ` : ""}다음 <ArrowRight size={15} />
+              {totalItems > 0 ? `${totalItems}개 물품 — ` : ""}다음 <ArrowRight size={15} />
             </button>
           </div>
         </div>
@@ -849,7 +901,7 @@ function DomesticShippingContent() {
         {/* ─── STEP 4: 최종 확인 ─── */}
         {flowStep === 4 && (
           <>
-            {boxes.filter(b => b.parcelIds.length > 0).map(box => (
+            {boxes.filter(b => b.items.length > 0).map(box => (
               <div key={box.id} className="space-y-3">
                 {boxes.length > 1 && (
                   <div className="flex items-center gap-2 pt-1">
@@ -859,14 +911,18 @@ function DomesticShippingContent() {
                   </div>
                 )}
                 <div className="bg-white rounded-2xl p-4 shadow-sm">
-                  <p className="text-sm font-bold text-gray-500 mb-3">📦 배송 물품 ({box.parcelIds.length}개)</p>
-                  {shippableParcels.filter(p => box.parcelIds.includes(p.id)).map(p => (
-                    <div key={p.id} className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
-                      <Package size={13} className="text-gray-400 shrink-0" />
-                      <p className="text-sm text-gray-800 flex-1 truncate">{p.sender_name ?? "발송인 미상"}</p>
-                      <p className="text-xs text-gray-400">{p.tracking_no ?? "-"}</p>
-                    </div>
-                  ))}
+                  <p className="text-sm font-bold text-gray-500 mb-3">📦 배송 물품 ({box.items.length}종)</p>
+                  {box.items.map(bi => {
+                    const item = selectableItems.find(it => it.key === bi.key);
+                    if (!item) return null;
+                    return (
+                      <div key={bi.key} className="flex items-center gap-2 py-1.5 border-b border-gray-50 last:border-0">
+                        <Package size={13} className="text-gray-400 shrink-0" />
+                        <p className="text-sm text-gray-800 flex-1 truncate">{item.name_en}</p>
+                        <p className="text-xs text-gray-400">{bi.qty}개</p>
+                      </div>
+                    );
+                  })}
                   <p className="text-xs text-gray-400 mt-2">내용품: {itemsDesc}</p>
                 </div>
                 {box.address && (
