@@ -31,25 +31,11 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
 
-  const srk = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const adminSupa = srk
-    ? createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, srk, { cookies: { getAll: () => [], setAll: () => {} } })
-    : null;
-
-  const client = adminSupa ?? supabase;
-
-  const { data: customer } = await client
-    .from("customers")
-    .select("id")
-    .eq("user_id", user.id)
-    .maybeSingle();
-
-  if (!customer) return NextResponse.json({ parcels: [] });
-
-  let query = client
+  // parcels.customer_id = auth.user.id (customers.id == auth.user.id)
+  let query = supabase
     .from("parcels")
-    .select("id, tracking_no, sender_name, weight_actual, status, is_shippable")
-    .eq("customer_id", customer.id)
+    .select("id, tracking_no, sender_name, sender_address, weight_actual, status, is_shippable")
+    .eq("customer_id", user.id)
     .order("created_at", { ascending: false });
 
   if (shippable) {
