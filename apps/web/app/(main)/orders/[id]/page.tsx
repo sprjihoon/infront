@@ -8,24 +8,46 @@ import type { OrderDetail } from "@/lib/order-display";
 import OrderDetailView from "@/components/orders/OrderDetailView";
 import OrderCancelModal from "@/components/orders/OrderCancelModal";
 
-const ORDER_SELECT = `
-  id, order_no, status, shipping_method, packaging_type,
-  packaging_fee, shipping_fee, extra_fee, total_amount, payment_status,
-  recipient_name, recipient_phone, recipient_address, recipient_country,
-  recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-  customs_value, insurance_enabled, insurance_amount,
-  duty_prepaid, duty_deposit_krw, duty_estimate_usd, duty_paid_krw,
-  item_list, intl_tracking_no,
-  intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
-  intl_tracking_synced_at, delivered_at,
-  actual_weight, chargeable_weight,
-  created_at, updated_at,
-  order_parcels (
-    parcel_id,
-    parcels (id, tracking_no, sender_name, status, pre_invoice_items)
-  ),
-  shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)
-`;
+// 최신 스키마 — 일부 컬럼이 없으면 순차 폴백
+const ORDER_SELECTS = [
+  // FULL
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, extra_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, insurance_enabled, insurance_amount,
+   duty_prepaid, duty_deposit_krw, duty_estimate_usd, duty_paid_krw,
+   item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
+   intl_tracking_synced_at, delivered_at,
+   actual_weight, chargeable_weight,
+   created_at, updated_at,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
+   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  // MID — 최근 추가 컬럼 제외
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, insurance_enabled, insurance_amount,
+   duty_prepaid, duty_deposit_krw, duty_estimate_usd,
+   item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
+   intl_tracking_synced_at, delivered_at,
+   created_at, updated_at,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
+   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
+  // CORE — tracking/insurance 선택 컬럼 제외
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, duty_prepaid,
+   item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, delivered_at,
+   created_at, updated_at,
+   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items))`,
+];
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -52,19 +74,34 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       return;
     }
 
-    const { data, error } = await supabase
-      .from("orders")
-      .select(ORDER_SELECT)
-      .eq("id", orderId)
-      .eq("customer_id", user.id)
-      .maybeSingle();
+    let found: unknown = null;
+    for (const sel of ORDER_SELECTS) {
+      const { data, error } = await supabase
+        .from("orders")
+        .select(sel)
+        .eq("id", orderId)
+        .eq("customer_id", user.id)
+        .maybeSingle();
 
-    if (error || !data) {
+      if (!error) {
+        found = data;
+        break;
+      }
+      const msg = (error as { message?: string }).message ?? "";
+      if (!/column|schema cache|PGRST204/i.test(msg)) {
+        // 진짜 오류 (권한, 연결 등) — 목록으로 이동
+        router.replace("/orders");
+        return;
+      }
+      // 컬럼 누락 오류 → 다음 폴백 시도
+    }
+
+    if (!found) {
       router.replace("/orders");
       return;
     }
 
-    setOrder(data as unknown as OrderDetail);
+    setOrder(found as OrderDetail);
     setLoading(false);
   }, [orderId, router]);
 
