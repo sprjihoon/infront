@@ -332,26 +332,33 @@ function DomesticShippingContent() {
 
   // ── 담기 모드 ────────────────────────────────────────────────
   if (selectingForBoxId !== null) {
+    // 현재 박스에서 선택 가능한 소포만 표시: 다른 박스에 이미 배정된 것 제외
+    const selectableParcels = shippableParcels.filter(p => !isInOtherBox(p.id, selectingForBoxId));
     const alreadySelected = tempSelected.size;
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
-        {renderFlowHeader("수량을 설정해주세요 — 같은 품목을 여러 박스에 나눠 담을 수 있어요")}
+        {renderFlowHeader("담을 소포를 선택해주세요")}
         <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-4 pb-40">
           {loadingParcels ? (
             <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
-          ) : shippableParcels.length === 0 ? (
+          ) : selectableParcels.length === 0 ? (
             <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
               <Package size={36} className="text-gray-200 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-500">출고 가능한 물품이 없습니다</p>
             </div>
-          ) : shippableParcels.map(p => {
+          ) : selectableParcels.map(p => {
             const isSelected = tempSelected.has(p.id);
-            const inOther = isInOtherBox(p.id, selectingForBoxId);
+            const inOther = false; // selectableParcels에서 이미 필터링됨
             const items = getParcelItems(p);
             return (
-              <div key={p.id} className={`bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100 ${inOther ? "opacity-40" : ""}`}>
-                <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border-b border-gray-100">
-                  <Package size={15} className="text-gray-400 shrink-0" />
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => toggleTemp(p.id)}
+                className={`w-full text-left bg-white rounded-2xl shadow-sm overflow-hidden border-2 transition-all active:scale-[0.99] ${isSelected ? "border-blue-400" : "border-gray-100"}`}
+              >
+                <div className={`flex items-center gap-3 px-4 py-3 border-b border-gray-100 transition-colors ${isSelected ? "bg-blue-50" : "bg-gray-50"}`}>
+                  <Package size={15} className={isSelected ? "text-blue-500 shrink-0" : "text-gray-400 shrink-0"} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-700 truncate">{p.tracking_no ?? "운송장번호 미등록"}</p>
                     <p className="text-[10px] text-gray-400">
@@ -359,40 +366,23 @@ function DomesticShippingContent() {
                       {p.weight_actual ? ` · ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
                     </p>
                   </div>
-                  <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-green-700 bg-green-50 border-green-200">
-                    {inOther ? "다른 박스" : "입고완료"}
-                  </span>
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-blue-500 border-blue-500" : "border-gray-300 bg-white"}`}>
+                    {isSelected && <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  </div>
                 </div>
                 <div className="divide-y divide-gray-50">
                   {items.map((item, idx) => (
-                    <div key={idx} className={`flex items-center gap-3 px-4 py-3 transition-colors ${isSelected ? "bg-blue-50" : "bg-white"}`}>
+                    <div key={idx} className={`flex items-center gap-3 px-4 py-3 transition-colors ${isSelected ? "bg-blue-50/40" : "bg-white"}`}>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{item.name_en}</p>
                         <p className="text-xs text-gray-400">
                           재고 {item.quantity}개{item.unit_price_usd > 0 ? ` · $${item.unit_price_usd}` : ""}
                         </p>
                       </div>
-                      {idx === items.length - 1 && (
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button" disabled={!isSelected || inOther}
-                            onClick={() => toggleTemp(p.id)}
-                            className="w-8 h-8 rounded-lg border-2 border-gray-200 flex items-center justify-center text-gray-500 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
-                          >–</button>
-                          <span className={`w-8 text-center text-sm font-bold ${isSelected ? "text-blue-600" : "text-gray-300"}`}>
-                            {isSelected ? 1 : 0}
-                          </span>
-                          <button
-                            type="button" disabled={isSelected || inOther}
-                            onClick={() => toggleTemp(p.id)}
-                            className="w-8 h-8 rounded-lg border-2 border-blue-300 bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg disabled:opacity-30 active:scale-90 transition-transform"
-                          >+</button>
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
