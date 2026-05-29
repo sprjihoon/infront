@@ -93,7 +93,28 @@ export async function POST(
     }
 
     if (!orderRow) {
-      return NextResponse.json({ error: "주문을 찾을 수 없습니다." }, { status: 404 });
+      // 진단: customer_id 조건 없이 주문이 존재하는지 확인
+      const admin = createAdminSupabase();
+      const { data: adminRow } = await admin
+        .from("orders")
+        .select("id, order_no, customer_id, status")
+        .eq("id", orderId)
+        .maybeSingle();
+
+      if (!adminRow) {
+        return NextResponse.json({ error: "주문을 찾을 수 없습니다." }, { status: 404 });
+      }
+
+      // 주문은 존재하지만 customer_id 불일치
+      console.error("[ORDER CANCEL] customer_id mismatch", {
+        orderId,
+        orderCustomerId: adminRow.customer_id,
+        requestUserId: user.id,
+      });
+      return NextResponse.json(
+        { error: `인증 불일치: order.customer_id=${String(adminRow.customer_id).slice(0, 8)}… user.id=${String(user.id).slice(0, 8)}…` },
+        { status: 403 },
+      );
     }
 
     // order_parcels가 조인에 없으면 별도 조회
