@@ -164,8 +164,6 @@ export async function POST(
       parcelIdsToRemove.length === 0 ||
       parcelIdsToRemove.length >= allParcelIds.length;
 
-    const admin = createAdminSupabase();
-
     if (isFullCancel) {
       await cleanupOrderDraftArtifacts(admin, orderId, allParcelIds, true);
 
