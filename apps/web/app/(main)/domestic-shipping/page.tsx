@@ -9,7 +9,6 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 import { useFlowMode } from "@/lib/flow-mode";
-import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface PreInvoiceItem { name_en: string; quantity: number; unit_price_usd: number; }
@@ -290,7 +289,7 @@ function DomesticShippingContent() {
               </>
             )}
           </div>
-          {selectingForBoxId === null && <FlowModeToggle />}
+          <Truck size={18} className="text-blue-500 shrink-0" />
         </div>
         {isSimple && (
           <div className="max-w-[600px] mx-auto flex gap-1.5 px-4 pb-3">
