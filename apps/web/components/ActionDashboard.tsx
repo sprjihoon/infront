@@ -85,9 +85,16 @@ export default function ActionDashboard() {
         <h2 className="text-sm font-bold text-gray-700 tracking-tight">진행현황</h2>
         <button
           onClick={handleDismiss}
-          className="text-xs text-gray-400 hover:text-gray-500 active:text-gray-700 transition-colors"
+          className="flex flex-col items-center gap-0.5 group"
         >
-          오늘은 그만보기
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 group-hover:bg-gray-200 group-active:bg-gray-300 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M2 2L10 10M10 2L2 10" stroke="#9CA3AF" strokeWidth="1.7" strokeLinecap="round"/>
+            </svg>
+          </span>
+          <span className="text-[10px] text-gray-400 group-hover:text-gray-500 transition-colors leading-none">
+            오늘은 그만보기
+          </span>
         </button>
       </div>
 
