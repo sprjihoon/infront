@@ -387,13 +387,13 @@ function DomesticShippingContent() {
           ) : (
             <>
               {/* 배송 물품 카드 */}
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
                 <div className="flex items-center justify-between px-4 py-3 bg-blue-600">
                   <div className="flex items-center gap-2">
-                    <Truck size={16} className="text-white" />
-                    <p className="text-sm font-bold text-white">배송 묶음</p>
+                    <Package size={16} className="text-white" />
+                    <p className="text-sm font-bold text-white">1번 박스</p>
                     {selectedIds.length > 0 && (
-                      <span className="text-xs text-blue-200">{selectedIds.length}개 소포</span>
+                      <span className="text-xs text-blue-200">{selectedIds.length}개</span>
                     )}
                   </div>
                 </div>
@@ -435,7 +435,7 @@ function DomesticShippingContent() {
                     className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-blue-300 text-blue-600 text-sm font-bold py-3 rounded-xl hover:bg-blue-50 active:scale-[0.98] transition-all"
                   >
                     <span className="text-lg leading-none">+</span>
-                    {selectedIds.length > 0 ? "물품 수정" : "물품 담기"}
+                    {selectedIds.length > 0 ? "내품 수정" : "박스에 담기"}
                   </button>
                 </div>
               </div>
