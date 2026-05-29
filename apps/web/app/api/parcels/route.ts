@@ -21,6 +21,45 @@ async function makeSupabase() {
 
 import { COURIER_TO_CARRIER_ID } from "@/lib/tracking/client";
 
+/**
+ * GET /api/parcels?shippable=true
+ * 출고 가능한 본인 소포 목록 반환 (국내 배송 신청용)
+ */
+export async function GET(req: NextRequest) {
+  const shippable = req.nextUrl.searchParams.get("shippable") === "true";
+  const supabase = await makeSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "로그인이 필요합니다" }, { status: 401 });
+
+  const srk = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const adminSupa = srk
+    ? createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, srk, { cookies: { getAll: () => [], setAll: () => {} } })
+    : null;
+
+  const client = adminSupa ?? supabase;
+
+  const { data: customer } = await client
+    .from("customers")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!customer) return NextResponse.json({ parcels: [] });
+
+  let query = client
+    .from("parcels")
+    .select("id, tracking_no, sender_name, weight_actual, status, is_shippable")
+    .eq("customer_id", customer.id)
+    .order("created_at", { ascending: false });
+
+  if (shippable) {
+    query = query.eq("status", "INBOUND").eq("is_shippable", true);
+  }
+
+  const { data: parcels } = await query;
+  return NextResponse.json({ parcels: parcels ?? [] });
+}
+
 interface InvoiceItem {
   name_en: string;
   quantity: number;
