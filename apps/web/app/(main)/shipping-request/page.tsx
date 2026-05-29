@@ -967,6 +967,33 @@ function ShippingRequestContent() {
               </p>
             )}
 
+            <p className="text-sm font-bold text-gray-800 pt-2">국제우편 보험 (선택)</p>
+            <button
+              type="button"
+              onClick={() => setInsuranceEnabled((v) => !v)}
+              className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                insuranceEnabled ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white"
+              }`}
+            >
+              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
+                insuranceEnabled ? "bg-brand-600 border-brand-600" : "border-gray-300"
+              }`}>
+                {insuranceEnabled && <span className="text-white text-xs font-bold">✓</span>}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-800">보험 가입</p>
+                <p className="text-xs text-gray-400">
+                  인보이스 신고가액(USD) 합계를 보험가액으로 적용합니다. 실제 보험료는 창고 견적 후 확정됩니다.
+                </p>
+              </div>
+            </button>
+
+            {shippingMethod === "EMS_PREMIUM" && insuranceEnabled && (
+              <p className="text-[10px] text-gray-500 leading-relaxed px-1">
+                {EMS_PREMIUM_INSURANCE_NOTE}
+              </p>
+            )}
+
             <p className="text-sm font-bold text-gray-800 pt-2">포장 옵션 (선택)</p>
             <div className="space-y-2">
               {PACKAGING_OPTS.map((o) => {
@@ -995,33 +1022,6 @@ function ShippingRequestContent() {
                 );
               })}
             </div>
-
-            <p className="text-sm font-bold text-gray-800 pt-2">국제우편 보험 (선택)</p>
-            <button
-              type="button"
-              onClick={() => setInsuranceEnabled((v) => !v)}
-              className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                insuranceEnabled ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white"
-              }`}
-            >
-              <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                insuranceEnabled ? "bg-brand-600 border-brand-600" : "border-gray-300"
-              }`}>
-                {insuranceEnabled && <span className="text-white text-xs font-bold">✓</span>}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-800">보험 가입</p>
-                <p className="text-xs text-gray-400">
-                  인보이스 신고가액(USD) 합계를 보험가액으로 적용합니다. 실제 보험료는 창고 견적 후 확정됩니다.
-                </p>
-              </div>
-            </button>
-
-            {shippingMethod === "EMS_PREMIUM" && insuranceEnabled && (
-              <p className="text-[10px] text-gray-500 leading-relaxed px-1">
-                {EMS_PREMIUM_INSURANCE_NOTE}
-              </p>
-            )}
 
             <p className="text-sm font-bold text-gray-800 pt-2">부가서비스 (선택)</p>
             <div className="space-y-2">
