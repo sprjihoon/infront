@@ -69,61 +69,45 @@ export async function POST(
       return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
-    const CANCEL_SELECT_FULL =
-      "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid, insurance_enabled, order_parcels(parcel_id)";
-    const CANCEL_SELECT_CORE =
-      "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid, order_parcels(parcel_id)";
-    const CANCEL_SELECT_MIN =
-      "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid";
+    // admin client로 조회 후 코드에서 소유권 검증 (RLS 우회)
+    const admin = createAdminSupabase();
+
+    const ADMIN_SELECTS = [
+      "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id, duty_prepaid, insurance_enabled, order_parcels(parcel_id)",
+      "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id, duty_prepaid, order_parcels(parcel_id)",
+      "id, order_no, status, payment_status, shipping_method, recipient_country, customer_id, duty_prepaid",
+    ];
 
     let orderRow: Record<string, unknown> | null = null;
-    for (const sel of [CANCEL_SELECT_FULL, CANCEL_SELECT_CORE, CANCEL_SELECT_MIN]) {
-      const { data, error } = await supabase
+    for (const sel of ADMIN_SELECTS) {
+      const { data, error } = await admin
         .from("orders")
         .select(sel)
         .eq("id", orderId)
-        .eq("customer_id", user.id)
         .maybeSingle();
       if (!error) {
         orderRow = data as Record<string, unknown> | null;
         break;
       }
-      // 어떤 오류든 다음 폴백 시도
-      console.warn("[ORDER CANCEL] select fallback:", (error as { message?: string }).message);
+      console.warn("[ORDER CANCEL] admin select fallback:", (error as { message?: string }).message);
     }
 
     if (!orderRow) {
-      // 진단: customer_id 조건 없이 주문이 존재하는지 확인
-      const admin = createAdminSupabase();
-      const { data: adminRow } = await admin
-        .from("orders")
-        .select("id, order_no, customer_id, status")
-        .eq("id", orderId)
-        .maybeSingle();
+      return NextResponse.json({ error: "주문을 찾을 수 없습니다." }, { status: 404 });
+    }
 
-      if (!adminRow) {
-        return NextResponse.json({ error: "주문을 찾을 수 없습니다." }, { status: 404 });
-      }
-
-      // 주문은 존재하지만 customer_id 불일치
-      console.error("[ORDER CANCEL] customer_id mismatch", {
-        orderId,
-        orderCustomerId: adminRow.customer_id,
-        requestUserId: user.id,
-      });
-      return NextResponse.json(
-        { error: `인증 불일치: order.customer_id=${String(adminRow.customer_id).slice(0, 8)}… user.id=${String(user.id).slice(0, 8)}…` },
-        { status: 403 },
-      );
+    // 소유권 검증 (코드 레벨)
+    if (String(orderRow.customer_id) !== String(user.id)) {
+      return NextResponse.json({ error: "접근 권한이 없습니다." }, { status: 403 });
     }
 
     // order_parcels가 조인에 없으면 별도 조회
     let orderParcels = (orderRow.order_parcels ?? []) as Array<{ parcel_id: string }>;
     if (!Array.isArray(orderRow.order_parcels)) {
-      const { data: opData } = await supabase
+      const { data: opData } = await admin
         .from("order_parcels")
         .select("parcel_id")
-        .eq("order_id", orderRow.id as string);
+        .eq("order_id", orderId);
       orderParcels = opData ?? [];
     }
 

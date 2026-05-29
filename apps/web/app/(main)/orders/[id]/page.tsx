@@ -3,59 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import type { OrderDetail } from "@/lib/order-display";
 import OrderDetailView from "@/components/orders/OrderDetailView";
 import OrderCancelModal from "@/components/orders/OrderCancelModal";
-
-// 최신 스키마 — 일부 컬럼이 없으면 순차 폴백
-const ORDER_SELECTS = [
-  // FULL
-  `id, order_no, status, shipping_method, packaging_type,
-   packaging_fee, shipping_fee, extra_fee, total_amount, payment_status,
-   recipient_name, recipient_phone, recipient_address, recipient_country,
-   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-   customs_value, insurance_enabled, insurance_amount,
-   duty_prepaid, duty_deposit_krw, duty_estimate_usd, duty_paid_krw,
-   item_list, intl_tracking_no,
-   intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
-   intl_tracking_synced_at, delivered_at,
-   actual_weight, chargeable_weight,
-   created_at, updated_at,
-   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
-   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
-  // MID — 최근 추가 컬럼 제외
-  `id, order_no, status, shipping_method, packaging_type,
-   packaging_fee, shipping_fee, total_amount, payment_status,
-   recipient_name, recipient_phone, recipient_address, recipient_country,
-   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-   customs_value, insurance_enabled, insurance_amount,
-   duty_prepaid, duty_deposit_krw, duty_estimate_usd,
-   item_list, intl_tracking_no,
-   intl_tracking_status, intl_tracking_last_event, intl_tracking_events,
-   intl_tracking_synced_at, delivered_at,
-   created_at, updated_at,
-   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
-   shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
-  // CORE — tracking/insurance 선택 컬럼 제외, shipping_boxes 제외
-  `id, order_no, status, shipping_method, packaging_type,
-   packaging_fee, shipping_fee, total_amount, payment_status,
-   recipient_name, recipient_phone, recipient_address, recipient_country,
-   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-   customs_value, duty_prepaid,
-   item_list, intl_tracking_no,
-   intl_tracking_status, intl_tracking_last_event, delivered_at,
-   created_at, updated_at,
-   order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items))`,
-  // MIN — 조인 없이 orders 단독
-  `id, order_no, status, shipping_method, packaging_type,
-   packaging_fee, shipping_fee, total_amount, payment_status,
-   recipient_name, recipient_phone, recipient_address, recipient_country,
-   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
-   customs_value, duty_prepaid, item_list, intl_tracking_no,
-   intl_tracking_status, intl_tracking_last_event, delivered_at,
-   created_at, updated_at`,
-];
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -73,54 +23,17 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   const loadOrder = useCallback(async () => {
     if (!orderId) return;
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+    const res = await fetch(`/api/orders/${orderId}`);
+    if (res.status === 401) {
       router.push("/login");
       return;
     }
-
-    let found: unknown = null;
-    for (const sel of ORDER_SELECTS) {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(sel)
-        .eq("id", orderId)
-        .eq("customer_id", user.id)
-        .maybeSingle();
-
-      if (!error) {
-        found = data;
-        break;
-      }
-      // 어떤 오류든 다음 폴백 시도 (마지막 폴백까지 실패하면 목록으로)
-    }
-
-    if (!found) {
+    if (!res.ok) {
       router.replace("/orders");
       return;
     }
-
-    // order_parcels / shipping_boxes 조인이 없는 폴백으로 조회됐으면 별도 fetch
-    const row = found as Record<string, unknown>;
-    if (!Array.isArray(row.order_parcels)) {
-      const { data: opData } = await supabase
-        .from("order_parcels")
-        .select("parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)")
-        .eq("order_id", row.id as string);
-      row.order_parcels = opData ?? [];
-    }
-    if (!Array.isArray(row.shipping_boxes)) {
-      const { data: sbData } = await supabase
-        .from("shipping_boxes")
-        .select("id, box_seq, intl_tracking_no, carrier, status, weight_kg")
-        .eq("order_id", row.id as string);
-      row.shipping_boxes = sbData ?? [];
-    }
-
-    setOrder(row as unknown as OrderDetail);
+    const body = await res.json() as { order: OrderDetail };
+    setOrder(body.order);
     setLoading(false);
   }, [orderId, router]);
 
