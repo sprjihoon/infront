@@ -531,18 +531,6 @@ function DomesticShippingContent() {
               className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-200" />
           </section>
 
-          {/* 내용품 분류 */}
-          <section>
-            <p className="text-sm font-bold text-gray-800 mb-3">내용품 분류</p>
-            <div className="flex flex-wrap gap-2">
-              {ITEMS_DESC_OPTS.map(opt => (
-                <button key={opt} type="button" onClick={() => setItemsDesc(opt)}
-                  className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${itemsDesc === opt ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200"}`}
-                >{opt}</button>
-              ))}
-            </div>
-          </section>
-
           {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-3">{error}</div>}
         </div>
 
@@ -680,19 +668,6 @@ function DomesticShippingContent() {
                 <span className="text-lg leading-none">+</span> 박스 추가
               </button>
 
-              {/* 내용품 분류 */}
-              <div className="bg-white rounded-2xl p-4 shadow-sm">
-                <p className="text-sm font-bold text-gray-800 mb-3">내용품 분류</p>
-                <div className="flex flex-wrap gap-2">
-                  {ITEMS_DESC_OPTS.map(opt => (
-                    <button key={opt} type="button" onClick={() => setItemsDesc(opt)}
-                      className={`px-3.5 py-1.5 rounded-full text-sm border transition-all ${
-                        itemsDesc === opt ? "bg-blue-600 text-white border-blue-600" : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
-                      }`}
-                    >{opt}</button>
-                  ))}
-                </div>
-              </div>
             </>
           )}
         </div>
