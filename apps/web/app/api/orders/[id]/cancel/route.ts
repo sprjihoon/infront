@@ -73,9 +73,11 @@ export async function POST(
       "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid, insurance_enabled, order_parcels(parcel_id)";
     const CANCEL_SELECT_CORE =
       "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid, order_parcels(parcel_id)";
+    const CANCEL_SELECT_MIN =
+      "id, order_no, status, payment_status, shipping_method, recipient_country, duty_prepaid";
 
     let orderRow: Record<string, unknown> | null = null;
-    for (const sel of [CANCEL_SELECT_FULL, CANCEL_SELECT_CORE]) {
+    for (const sel of [CANCEL_SELECT_FULL, CANCEL_SELECT_CORE, CANCEL_SELECT_MIN]) {
       const { data, error } = await supabase
         .from("orders")
         .select(sel)
@@ -86,15 +88,22 @@ export async function POST(
         orderRow = data as Record<string, unknown> | null;
         break;
       }
-      const msg = (error as { message?: string }).message ?? "";
-      if (!/column|schema cache|PGRST204/i.test(msg)) {
-        console.error("[ORDER CANCEL] order fetch error:", error);
-        return NextResponse.json({ error: "주문 조회 중 오류가 발생했습니다." }, { status: 500 });
-      }
+      // 어떤 오류든 다음 폴백 시도
+      console.warn("[ORDER CANCEL] select fallback:", (error as { message?: string }).message);
     }
 
     if (!orderRow) {
       return NextResponse.json({ error: "주문을 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    // order_parcels가 조인에 없으면 별도 조회
+    let orderParcels = (orderRow.order_parcels ?? []) as Array<{ parcel_id: string }>;
+    if (!Array.isArray(orderRow.order_parcels)) {
+      const { data: opData } = await supabase
+        .from("order_parcels")
+        .select("parcel_id")
+        .eq("order_id", orderRow.id as string);
+      orderParcels = opData ?? [];
     }
 
     const order = {
@@ -106,7 +115,7 @@ export async function POST(
       recipient_country: (orderRow.recipient_country ?? null) as string | null,
       duty_prepaid: (orderRow.duty_prepaid ?? false) as boolean,
       insurance_enabled: (orderRow.insurance_enabled ?? false) as boolean,
-      order_parcels: (orderRow.order_parcels ?? []) as Array<{ parcel_id: string }>,
+      order_parcels: orderParcels,
     };
 
     if (order.status === "CANCELLED") {

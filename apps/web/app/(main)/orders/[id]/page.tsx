@@ -37,7 +37,7 @@ const ORDER_SELECTS = [
    created_at, updated_at,
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)),
    shipping_boxes (id, box_seq, intl_tracking_no, carrier, status, weight_kg)`,
-  // CORE — tracking/insurance 선택 컬럼 제외
+  // CORE — tracking/insurance 선택 컬럼 제외, shipping_boxes 제외
   `id, order_no, status, shipping_method, packaging_type,
    packaging_fee, shipping_fee, total_amount, payment_status,
    recipient_name, recipient_phone, recipient_address, recipient_country,
@@ -47,6 +47,14 @@ const ORDER_SELECTS = [
    intl_tracking_status, intl_tracking_last_event, delivered_at,
    created_at, updated_at,
    order_parcels (parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items))`,
+  // MIN — 조인 없이 orders 단독
+  `id, order_no, status, shipping_method, packaging_type,
+   packaging_fee, shipping_fee, total_amount, payment_status,
+   recipient_name, recipient_phone, recipient_address, recipient_country,
+   recipient_addr1, recipient_addr2, recipient_addr3, recipient_zip, recipient_email,
+   customs_value, duty_prepaid, item_list, intl_tracking_no,
+   intl_tracking_status, intl_tracking_last_event, delivered_at,
+   created_at, updated_at`,
 ];
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -87,13 +95,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
         found = data;
         break;
       }
-      const msg = (error as { message?: string }).message ?? "";
-      if (!/column|schema cache|PGRST204/i.test(msg)) {
-        // 진짜 오류 (권한, 연결 등) — 목록으로 이동
-        router.replace("/orders");
-        return;
-      }
-      // 컬럼 누락 오류 → 다음 폴백 시도
+      // 어떤 오류든 다음 폴백 시도 (마지막 폴백까지 실패하면 목록으로)
     }
 
     if (!found) {
@@ -101,7 +103,24 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       return;
     }
 
-    setOrder(found as OrderDetail);
+    // order_parcels / shipping_boxes 조인이 없는 폴백으로 조회됐으면 별도 fetch
+    const row = found as Record<string, unknown>;
+    if (!Array.isArray(row.order_parcels)) {
+      const { data: opData } = await supabase
+        .from("order_parcels")
+        .select("parcel_id, parcels (id, tracking_no, sender_name, status, pre_invoice_items)")
+        .eq("order_id", row.id as string);
+      row.order_parcels = opData ?? [];
+    }
+    if (!Array.isArray(row.shipping_boxes)) {
+      const { data: sbData } = await supabase
+        .from("shipping_boxes")
+        .select("id, box_seq, intl_tracking_no, carrier, status, weight_kg")
+        .eq("order_id", row.id as string);
+      row.shipping_boxes = sbData ?? [];
+    }
+
+    setOrder(row as unknown as OrderDetail);
     setLoading(false);
   }, [orderId, router]);
 
