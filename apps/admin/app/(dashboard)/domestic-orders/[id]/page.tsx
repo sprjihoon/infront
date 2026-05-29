@@ -99,9 +99,8 @@ export default function DomesticOrderDetailPage() {
 
     const json = await res.json();
     if (res.ok) {
-      setMsg(`접수 완료 ✅ 운송장번호: ${json.regiNo} · 요금: ${parseInt(json.price ?? "0").toLocaleString()}원`);
-      setIsError(false);
-      load();
+      // 접수 완료 즉시 라벨 출력 페이지로 이동
+      router.push(`/domestic-orders/${id}/label`);
     } else {
       setMsg(json.error ?? "접수 실패");
       setIsError(true);

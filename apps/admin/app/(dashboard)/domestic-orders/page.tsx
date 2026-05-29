@@ -173,16 +173,22 @@ export default async function DomesticOrdersPage({
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex items-center gap-1">
-                      {o.epost_regi_no && (
+                      {o.epost_regi_no ? (
                         <Link
                           href={`/domestic-orders/${o.id}/label`}
-                          className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50"
-                          title="라벨 출력"
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700"
                         >
-                          <Printer size={14} />
+                          <Printer size={12} /> 라벨 출력
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/domestic-orders/${o.id}`}
+                          className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-orange-500 hover:bg-orange-600"
+                        >
+                          <Package size={12} /> 접수하기
                         </Link>
                       )}
-                      <Link href={`/domestic-orders/${o.id}`} className="text-blue-600 hover:text-blue-800">
+                      <Link href={`/domestic-orders/${o.id}`} className="p-1.5 text-gray-400 hover:text-gray-700">
                         <ChevronRight size={16} />
                       </Link>
                     </div>
