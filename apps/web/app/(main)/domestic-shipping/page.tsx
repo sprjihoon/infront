@@ -31,7 +31,7 @@ interface DomesticAddress {
 }
 
 // ── 상수 ──────────────────────────────────────────────────────
-const STEP_LABELS = ["배송 물품 구성", "포장·서비스", "수취인 주소", "최종 확인"] as const;
+const STEP_LABELS = ["박스 구성", "포장·서비스", "수취인 주소", "최종 확인"] as const;
 const TOTAL_STEPS = STEP_LABELS.length;
 
 const PACKAGING_OPTS = [
@@ -249,7 +249,7 @@ function DomesticShippingContent() {
   // ── 플로우 헤더 ───────────────────────────────────────────────
   function renderFlowHeader(subtitle?: string) {
     const label = selectingMode
-      ? "배송 물품 담기"
+      ? "박스에 담기"
       : STEP_LABELS[flowStep - 1];
     const displayStep = selectingMode ? 1 : flowStep;
 
@@ -316,7 +316,7 @@ function DomesticShippingContent() {
     const totalSelected = tempSelected.size;
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
-        {renderFlowHeader("배송할 물품을 선택해주세요")}
+        {renderFlowHeader("수량을 설정해주세요 — 담을 물품을 선택해주세요")}
         <div className="max-w-[600px] mx-auto px-4 pt-4 space-y-3 pb-40">
           {shippableParcels.map(p => {
             const checked = tempSelected.has(p.id);
@@ -371,7 +371,7 @@ function DomesticShippingContent() {
     const selectedParcels = shippableParcels.filter(p => selectedIds.includes(p.id));
     return (
       <div className="min-h-screen bg-gray-50 pb-[160px]">
-        {renderFlowHeader("배송할 물품을 구성해주세요")}
+        {renderFlowHeader("박스 개수를 정하고 내품을 담아주세요")}
         <div className="max-w-[600px] mx-auto px-4 pt-5 space-y-5 pb-40">
           {loadingParcels ? (
             <div className="flex justify-center py-16"><Loader2 size={28} className="animate-spin text-blue-500" /></div>
