@@ -95,6 +95,10 @@ export async function POST(req: NextRequest) {
     parcel_ids: string[];
     items_desc?: string;
     delivery_msg?: string;
+    packaging_type?: string;
+    packaging_fee?: number;
+    add_services?: string[];
+    notes?: string;
   };
 
   const { recipient_name, recipient_phone, recipient_zip, recipient_addr1, parcel_ids } = body;
@@ -132,11 +136,15 @@ export async function POST(req: NextRequest) {
       recipient_phone,
       recipient_zip,
       recipient_addr1,
-      recipient_addr2: body.recipient_addr2 ?? '',
+      recipient_addr2:  body.recipient_addr2 ?? '',
       parcel_ids,
-      items_desc:     body.items_desc ?? '의류',
-      delivery_msg:   body.delivery_msg ?? null,
-      status:         'PENDING',
+      items_desc:       body.items_desc ?? '의류',
+      delivery_msg:     body.delivery_msg ?? null,
+      packaging_type:   body.packaging_type ?? 'NONE',
+      packaging_fee:    body.packaging_fee ?? 0,
+      add_services:     body.add_services ?? [],
+      notes:            body.notes ?? null,
+      status:           'PENDING',
     })
     .select('id')
     .single();

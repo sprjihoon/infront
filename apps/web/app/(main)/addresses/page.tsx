@@ -255,7 +255,7 @@ export default function AddressesPage() {
                   : "text-gray-400"
               }`}
             >
-              {t === "pickup" ? <><MapPin size={14} /> 수거배송지</> : <><Globe size={14} /> 해외배송지</>}
+              {t === "pickup" ? <><MapPin size={14} /> 국내 주소</> : <><Globe size={14} /> 해외 주소</>}
             </button>
           ))}
         </div>
@@ -275,11 +275,11 @@ export default function AddressesPage() {
                 : <Globe size={28} className="text-violet-300" />}
             </div>
             <p className="text-base font-semibold text-gray-700 mb-1">
-              {tab === "pickup" ? "저장된 수거지가 없어요" : "저장된 해외 배송지가 없어요"}
+              {tab === "pickup" ? "저장된 국내 주소가 없어요" : "저장된 해외 주소가 없어요"}
             </p>
             <p className="text-xs text-gray-400 mb-6 leading-relaxed">
               {tab === "pickup"
-                ? "자주 쓰는 수거지를 저장해두면\n수거 신청 시 빠르게 입력할 수 있어요."
+                ? "국내 수거·배송 주소를 저장해두면\n수거 신청·국내 배송 시 빠르게 선택할 수 있어요."
                 : "자주 발송하는 해외 수취인 주소를\n저장해두면 발송 시 바로 선택할 수 있어요."}
             </p>
             <button
@@ -289,7 +289,7 @@ export default function AddressesPage() {
               }`}
             >
               <Plus size={16} />
-              {tab === "pickup" ? "수거지 추가하기" : "해외 배송지 추가하기"}
+              {tab === "pickup" ? "국내 주소 추가하기" : "해외 주소 추가하기"}
             </button>
           </div>
         ) : (
