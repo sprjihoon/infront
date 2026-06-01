@@ -8,22 +8,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// ── 우체국 소포(우체국택배) 국내 기본요금 ─────────────────────────────
-// 출처: 우체국 소포 요금표 (우정사업본부 koreapost.go.kr 기준, 2024년 적용)
-// 동일권: 동일 시·도 내 배송 / 타권: 다른 시·도로 배송
+// ── 창구접수 등기소포 요금표 ────────────────────────────────────────
+// 출처: 우정사업본부 창구접수 등기소포 기준 (koreapost.go.kr)
+// 크기: 가로+세로+높이 합계(cm) / 제주 익일은 제주↔육지 쌍방향 적용
 const DOMESTIC_RATES = [
-  { weight: "1kg 이하",  same: 4000,  other: 5000  },
-  { weight: "2kg 이하",  same: 4500,  other: 5500  },
-  { weight: "4kg 이하",  same: 5500,  other: 6500  },
-  { weight: "6kg 이하",  same: 6500,  other: 7500  },
-  { weight: "8kg 이하",  same: 7500,  other: 8500  },
-  { weight: "10kg 이하", same: 8500,  other: 9500  },
-  { weight: "12kg 이하", same: 9000,  other: 10000 },
-  { weight: "14kg 이하", same: 9500,  other: 10500 },
-  { weight: "16kg 이하", same: 10000, other: 11000 },
-  { weight: "18kg 이하", same: 10500, other: 11500 },
-  { weight: "20kg 이하", same: 11000, other: 12000 },
-  { weight: "20kg 초과", same: 11500, other: 12500 },
+  { label: "80cm이하 · 3kg이하",  regular: 4000,  jeju: 6500  },
+  { label: "~100cm · 5kg이하",    regular: 4500,  jeju: 7000  },
+  { label: "~100cm · 7kg이하",    regular: 5000,  jeju: 7500  },
+  { label: "~120cm · 10kg이하",   regular: 6000,  jeju: 8500  },
+  { label: "~120cm · 15kg이하",   regular: 7000,  jeju: 9500  },
+  { label: "~120cm · 20kg이하",   regular: 8000,  jeju: 10500 },
+  { label: "~120cm · 25kg이하",   regular: 11000, jeju: 13500 },
+  { label: "~160cm · 30kg이하",   regular: 13000, jeju: 15500 },
 ];
 
 // ── 우체국 규격 박스 종류 ──────────────────────────────────────────
@@ -146,39 +142,40 @@ export default function DomesticRatesPage() {
         {/* ── 요금표 탭 ── */}
         {tab === "rates" && (
           <div className="space-y-3">
-            <div className="flex items-start gap-2 bg-blue-50 rounded-xl px-3 py-2.5 border border-blue-100">
-              <Info size={13} className="text-blue-500 shrink-0 mt-0.5" />
-              <div className="text-[11px] text-blue-700 space-y-0.5">
-                <p>• <strong>동일권</strong>: 같은 시·도 내 배송</p>
-                <p>• <strong>타권</strong>: 다른 시·도로 배송</p>
-                <p>• 실중량·부피중량(가로×세로×높이÷6,000) 중 큰 값 적용</p>
-                <p className="text-blue-500">※ 아래 요금은 참고값입니다. 실제 요금은 공식사이트에서 확인하세요.</p>
+            <div className="flex items-start gap-2 bg-emerald-50 rounded-xl px-3 py-2.5 border border-emerald-100">
+              <Info size={13} className="text-emerald-500 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-emerald-700 space-y-0.5">
+                <p>• <strong>크기</strong>: 가로+세로+높이 합계(cm)</p>
+                <p>• <strong>중량</strong>: 실중량 기준 (최대 30kg)</p>
+                <p>• 크기·중량 중 더 높은 구간 요금 적용</p>
+                <p>• <strong>제주 익일</strong>: 제주↔육지 쌍방향 적용</p>
+                <p className="text-emerald-500">※ 아래 요금은 참고값입니다. 실제 요금은 공식사이트에서 확인하세요.</p>
               </div>
             </div>
 
             {/* 요금표 */}
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-4 py-3">
-                <p className="text-white font-bold text-sm">우체국 소포 기본 요금</p>
-                <p className="text-white/70 text-[10px] mt-0.5">2024년 기준 · VAT 포함</p>
+              <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 px-4 py-3">
+                <p className="text-white font-bold text-sm">창구접수 등기소포 요금</p>
+                <p className="text-white/70 text-[10px] mt-0.5">크기(가로+세로+높이 합계) · 무게 기준</p>
               </div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
-                    <th className="text-left px-4 py-2.5 text-xs text-gray-500 font-semibold">중량</th>
-                    <th className="text-right px-4 py-2.5 text-xs text-blue-600 font-semibold">동일권</th>
-                    <th className="text-right px-4 py-2.5 text-xs text-indigo-600 font-semibold">타권</th>
+                    <th className="text-left px-4 py-2.5 text-xs text-gray-500 font-semibold">크기 · 중량</th>
+                    <th className="text-right px-4 py-2.5 text-xs text-emerald-600 font-semibold">일반</th>
+                    <th className="text-right px-4 py-2.5 text-xs text-amber-600 font-semibold">제주 익일</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {DOMESTIC_RATES.map((row, i) => (
                     <tr key={i} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-2.5 text-gray-700 text-sm font-medium">{row.weight}</td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-blue-700">
-                        {row.same.toLocaleString()}원
+                      <td className="px-4 py-2.5 text-gray-700 text-sm font-medium">{row.label}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold text-emerald-700">
+                        {row.regular.toLocaleString()}원
                       </td>
-                      <td className="px-4 py-2.5 text-right font-semibold text-indigo-700">
-                        {row.other.toLocaleString()}원
+                      <td className="px-4 py-2.5 text-right font-semibold text-amber-600">
+                        {row.jeju.toLocaleString()}원
                       </td>
                     </tr>
                   ))}
@@ -186,53 +183,14 @@ export default function DomesticRatesPage() {
               </table>
             </div>
 
-            {/* 동일권/타권 지역 안내 */}
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <button
-                onClick={() => toggleSection("zone-guide")}
-                className="w-full flex items-center justify-between px-4 py-3 text-left active:bg-gray-50"
-              >
-                <p className="text-sm font-bold text-gray-800">🗺️ 동일권 · 타권 지역 안내</p>
-                {openSection.has("zone-guide")
-                  ? <ChevronUp size={16} className="text-gray-400 shrink-0" />
-                  : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
-              </button>
-              {openSection.has("zone-guide") && (
-                <div className="border-t border-gray-100 px-4 py-3 space-y-3">
-                  <div className="rounded-xl border border-blue-100 overflow-hidden">
-                    <div className="bg-blue-50 px-3 py-2">
-                      <p className="text-xs font-bold text-blue-800">동일권 (같은 시·도)</p>
-                    </div>
-                    <div className="px-3 py-2.5">
-                      <p className="text-[11px] text-gray-600">
-                        발송지와 수령지가 같은 특별시·광역시·도 내에 있는 경우 적용
-                      </p>
-                      <p className="text-[11px] text-gray-500 mt-1">
-                        예) 서울 → 서울, 경기 → 경기, 부산 → 부산
-                      </p>
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-indigo-100 overflow-hidden">
-                    <div className="bg-indigo-50 px-3 py-2">
-                      <p className="text-xs font-bold text-indigo-800">타권 (다른 시·도)</p>
-                    </div>
-                    <div className="px-3 py-2.5">
-                      <p className="text-[11px] text-gray-600">
-                        발송지와 수령지가 서로 다른 시·도인 경우 적용
-                      </p>
-                      <p className="text-[11px] text-gray-500 mt-1">
-                        예) 서울 → 부산, 경기 → 제주, 인천 → 대구
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
-                    <AlertCircle size={12} className="text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-[10px] text-amber-700">
-                      제주도·도서·산간 지역은 추가 요금이 발생할 수 있습니다
-                    </p>
-                  </div>
-                </div>
-              )}
+            {/* 제주 익일배달 안내 */}
+            <div className="bg-amber-50 rounded-xl px-4 py-3 border border-amber-100 flex items-start gap-2">
+              <AlertCircle size={13} className="text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-[11px] text-amber-700 space-y-0.5">
+                <p className="font-semibold">제주 익일배달 안내</p>
+                <p>• 제주↔육지 쌍방향(제주발·육지발 모두) 적용</p>
+                <p>• 도서·산간 지역은 추가 요금 또는 배달 지연이 발생할 수 있습니다</p>
+              </div>
             </div>
 
             {/* 배달 소요일 */}
