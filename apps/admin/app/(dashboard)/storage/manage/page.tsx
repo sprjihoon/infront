@@ -65,6 +65,7 @@ export default function StorageManagePage() {
 
   const [deleting,     setDeleting]     = useState<string | null>(null);
   const [deleteError,  setDeleteError]  = useState<string | null>(null);
+  const [activeZone,   setActiveZone]   = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -143,6 +144,10 @@ export default function StorageManagePage() {
     if (!grouped[loc.zone]) grouped[loc.zone] = [];
     grouped[loc.zone].push(loc);
   }
+
+  // 탭 선택: activeZone이 없거나 유효하지 않으면 첫 번째 Zone 기본 선택
+  const currentZone = (activeZone && zones.includes(activeZone)) ? activeZone : (zones[0] ?? null);
+  const currentLocs = currentZone ? (grouped[currentZone] ?? []) : [];
 
   // 선택된 타입 정보
   const selectedType = types.find((t) => t.id === newTypeId);
@@ -298,19 +303,58 @@ export default function StorageManagePage() {
           <p className="text-gray-500">등록된 로케이션이 없습니다</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {zones.map((zone) => (
-            <div key={zone} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3 border-b border-gray-100 flex items-center gap-3">
-                <div className="w-7 h-7 bg-indigo-100 rounded-lg flex items-center justify-center">
-                  <span className="text-xs font-bold text-indigo-700">{zone}</span>
-                </div>
-                <span className="font-semibold text-gray-800">구역 {zone}</span>
-                <span className="text-xs text-gray-400 ml-auto">{grouped[zone].length}개 슬롯</span>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          {/* Zone 탭 */}
+          <div className="flex border-b border-gray-100 overflow-x-auto">
+            {zones.map((zone) => {
+              const isActive = zone === currentZone;
+              const locs     = grouped[zone] ?? [];
+              const occupied = locs.filter((l) => l.status === "OCCUPIED").length;
+              return (
+                <button
+                  key={zone}
+                  type="button"
+                  onClick={() => setActiveZone(zone)}
+                  className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                    isActive
+                      ? "border-indigo-600 text-indigo-700 bg-indigo-50/40"
+                      : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
+                    isActive ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"
+                  }`}>
+                    {zone}
+                  </span>
+                  <span>{zone} 구역</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                    isActive ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {locs.length}
+                  </span>
+                  {occupied > 0 && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-medium">
+                      보관 {occupied}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* 선택된 Zone 슬롯 테이블 */}
+          {currentZone && (
+            <>
+              <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                <p className="text-xs text-gray-500">
+                  총 <span className="font-semibold text-gray-700">{currentLocs.length}</span>개 슬롯 ·{" "}
+                  보관중 <span className="font-semibold text-blue-600">{currentLocs.filter(l => l.status === "OCCUPIED").length}</span>개 ·{" "}
+                  비어있음 <span className="font-semibold text-emerald-600">{currentLocs.filter(l => l.status === "AVAILABLE").length}</span>개
+                </p>
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-gray-50 bg-gray-50/50 text-xs text-gray-400">
+                  <tr className="border-b border-gray-100 text-xs text-gray-400 bg-gray-50/30">
                     <th className="px-5 py-2 text-left font-medium">코드</th>
                     <th className="px-5 py-2 text-left font-medium">타입</th>
                     <th className="px-5 py-2 text-left font-medium">상태</th>
@@ -319,7 +363,7 @@ export default function StorageManagePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {grouped[zone].map((loc) => (
+                  {currentLocs.map((loc) => (
                     <tr key={loc.id} className="border-b border-gray-50 hover:bg-gray-50">
                       <td className="px-5 py-3 font-mono font-bold text-gray-900">
                         <Link href={`/storage/${loc.id}`} className="hover:text-indigo-600">
@@ -364,8 +408,8 @@ export default function StorageManagePage() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          ))}
+            </>
+          )}
         </div>
       )}
     </div>
