@@ -39,7 +39,7 @@ type DestType = "regular" | "jejuExpress";
 
 const DEST_OPTS: { id: DestType; label: string; sub: string }[] = [
   { id: "regular",     label: "일반",       sub: "전국 익일배달" },
-  { id: "jejuExpress", label: "제주발 익일", sub: "제주→육지 익일" },
+  { id: "jejuExpress", label: "제주 익일",   sub: "제주↔육지 익일" },
 ];
 
 export default function SidebarDomesticCalculator() {
@@ -107,7 +107,7 @@ export default function SidebarDomesticCalculator() {
           </div>
           {dest !== "regular" && (
             <p className="text-[9px] text-amber-600 mt-1.5 bg-amber-50 rounded-lg px-2 py-1 border border-amber-100">
-              ※ 제주발 익일배달은 제주→육지 발송에만 적용
+              ※ 제주 익일배달은 제주↔육지 쌍방향 적용
             </p>
           )}
         </div>
