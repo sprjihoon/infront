@@ -16,6 +16,8 @@ import {
   PanelLeftClose,
   Truck,
   Warehouse,
+  LayoutGrid,
+  SlidersHorizontal,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,9 +50,17 @@ const NAV_GROUPS: NavGroup[] = [
       { title: "수거·입고", href: "/parcels", icon: Package },
       { title: "해외배송", href: "/orders", icon: ShoppingBag },
       { title: "국내배송", href: "/domestic-orders", icon: Truck },
-      { title: "스토리지", href: "/storage", icon: Warehouse },
       { title: "고객", href: "/customers", icon: Users },
       { title: "반품 관리", href: "/returns", icon: RotateCcw },
+    ],
+  },
+  {
+    id: "storage",
+    title: "스토리지",
+    icon: Warehouse,
+    items: [
+      { title: "로케이션 현황", href: "/storage", icon: LayoutGrid },
+      { title: "Zone·슬롯 관리", href: "/storage/manage", icon: SlidersHorizontal },
     ],
   },
 ];
@@ -90,6 +100,12 @@ export default function DashboardNav() {
   const isItemActive = useCallback(
     (href: string) => {
       if (href === "/dashboard") return pathname === href;
+      // /storage 는 /storage/manage 와 구분
+      if (href === "/storage") {
+        return pathname === "/storage" || (
+          pathname.startsWith("/storage/") && !pathname.startsWith("/storage/manage")
+        );
+      }
       return pathname === href || pathname.startsWith(`${href}/`);
     },
     [pathname],
