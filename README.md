@@ -214,7 +214,8 @@ infront/
 | `/register-parcel` | 물품 등록 | 수동 물품 등록 |
 | `/return-request` | 반품 신청 | 반품 요청 UI |
 | `/shipping-calc` | 배송비 계산 | 해외 배송비 예상 계산기 |
-| `/pricing` | 요금표 | 우체국 공식 EMS/K-Packet 요금표 |
+| `/pricing` | 해외배송 가격표 | 우체국 공식 EMS/K-Packet 요금표 |
+| `/domestic-rates` | 국내배송 가격표 | 창구접수 등기소포 요금·규격·무게 안내 |
 | `/guide` | 이용 가이드 | 서비스 이용 안내 |
 | `/postcode` | 주소 검색 | 다음 우편번호 검색 래퍼 |
 | `/payment/success` | 결제 성공 | Toss 결제 결과 처리 |
@@ -223,7 +224,10 @@ infront/
 
 **하단 탭바 (6탭):** 홈 / 수거신청 / 마이창고 / 출고신청 / 배송현황 / MY
 
-**사이드바 위젯 (lg+ 데스크탑):** EMS 요금 계산기 / 요율표 / 통관 정보
+**사이드바 위젯 (xl+ 데스크탑):**
+- 해외배송 경로 (`/shipping-request` 등): EMS · K-Packet 요금 계산기 + 통관 정보
+- 국내배송 경로 (`/domestic-shipping`, `/domestic-rates`): 창구접수 등기소포 계산기 (도서산간 체크박스)
+- `/shipping-calc`: 해외배송 요율표·통관 정보 패널
 
 ---
 
@@ -406,7 +410,10 @@ parcels/orders ──< parcel_media            사진/영상 미디어
 | 해외배송 신청 (다단계) | ✅ 완료 | 배송옵션→배송지→인보이스 + 다중 박스 지원 |
 | 해외 배송지 주소록 | ✅ 완료 | 저장/수정/삭제, 기본 주소 설정 |
 | 배송비 계산기 | ✅ 완료 | 사이드바 위젯 + 전용 페이지, 국가·무게별 EMS 견적 |
-| 요금표·이용 가이드 | ✅ 완료 | `/pricing`, `/guide` |
+| 국내배송 계산기 | ✅ 완료 | 사이드바 위젯, 창구접수 등기소포 요금, 도서산간 체크박스 |
+| 해외배송 가격표 | ✅ 완료 | `/pricing` — EMS/K-Packet 공식 요금표 |
+| 국내배송 가격표 | ✅ 완료 | `/domestic-rates` — 창구접수 등기소포 요금·규격 안내 |
+| 이용 가이드 | ✅ 완료 | `/guide` |
 | 배송현황 (orders) | ✅ 완료 | 주문 목록, 상태 표시, 운송장 조회 |
 | 신청 완료 주문 취소 | ✅ 완료 | 출고 신청 후 취소 |
 | 결제 (Toss) | ✅ 완료 | 카드 결제, confirm API, 결제 후 EMS 자동 접수 |
@@ -563,6 +570,31 @@ Next.js 웹앱
 - **모바일 우선**: 최대 600px 컨테이너, Safe Area CSS 변수 적용
 - **결제 정책**: 항상 창고 검수 후 견적 확정 → 고객 결제 순서로 진행
 - **리전**: 우체국 ePost API는 Vercel ICN1(서울) 리전에서만 호출
+
+---
+
+## 📝 변경 이력
+
+### 2026-06-01
+
+#### 국내배송 계산기 사이드바 위젯 추가
+- `apps/web/components/ui/SidebarDomesticCalculator.tsx` 신규 생성
+  - 창구접수 등기소포 요금 계산 (크기 L+W+H 합계 · 무게 기반 8구간)
+  - 도서산간·제주 체크박스 선택 시 +2,500원 자동 가산
+  - 전체 요금표 접기/펼치기 내장
+- `SidebarWrapper.tsx` 업데이트: 경로별 위젯 분기
+  - `/domestic-shipping`, `/domestic-rates` → `SidebarDomesticCalculator`
+  - `/shipping-request` 등 해외배송 → 기존 `SidebarCalculator` (EMS · K-Packet) 유지
+  - `/shipping-calc` → `SidebarShippingCalcInfo` 유지
+
+#### 국내배송 가격표 페이지 개선 (`/domestic-rates`)
+- 기존 동일권/타권 중량별 요금표 → **창구접수 등기소포** 요금표로 교체 (위젯과 데이터 일치)
+- 부가서비스 항목 정리: 착불·보험·익일특급 제거, 비규격 소포 (+3,000원)만 유지
+- 제주 안내 문구 수정: 단방향(→) → 쌍방향(↔) 표기
+
+#### 홈 퀵링크 정비
+- "가격표" → **해외배송 가격표**, "국내 택배 요금" → **국내배송 가격표** 레이블 통일
+- 퀵링크 순서 조정: 국내배송 가격표를 쉬운 가이드보다 앞으로
 
 ---
 
