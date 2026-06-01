@@ -2,7 +2,19 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown } from "lucide-react";
+
+type StorageTypeOption = {
+  id: string;
+  code: string;
+  name: string;
+  dim_l_mm: number;
+  dim_w_mm: number;
+  dim_h_mm: number;
+  volume_liter: number;
+  price_per_week: number;
+  price_max: number | null;
+};
 
 type LocationRow = {
   id: string;
@@ -12,38 +24,58 @@ type LocationRow = {
   status: string;
   customer_id: string | null;
   customers: { name: string | null; customer_code: string } | null;
+  storage_types: { id: string; code: string; name: string; volume_liter: number; price_per_week: number } | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  AVAILABLE: "비어있음",
-  OCCUPIED:  "사용중",
-  DISABLED:  "사용불가",
+  AVAILABLE:   "비어있음",
+  RESERVED:    "배정완료",
+  OCCUPIED:    "보관중",
+  PENDING_OUT: "반출예정",
+  DISABLED:    "사용불가",
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  AVAILABLE: "text-emerald-700 bg-emerald-50 border-emerald-200",
-  OCCUPIED:  "text-blue-700 bg-blue-50 border-blue-200",
-  DISABLED:  "text-gray-500 bg-gray-100 border-gray-200",
+  AVAILABLE:   "text-emerald-700 bg-emerald-50 border-emerald-200",
+  RESERVED:    "text-yellow-700 bg-yellow-50 border-yellow-200",
+  OCCUPIED:    "text-blue-700 bg-blue-50 border-blue-200",
+  PENDING_OUT: "text-orange-700 bg-orange-50 border-orange-200",
+  DISABLED:    "text-gray-500 bg-gray-100 border-gray-200",
+};
+
+const TYPE_BADGE: Record<string, string> = {
+  MINI:     "bg-slate-100 text-slate-600",
+  STANDARD: "bg-indigo-100 text-indigo-700",
+  LONG:     "bg-purple-100 text-purple-700",
+  XL:       "bg-orange-100 text-orange-700",
+  OVERSIZE: "bg-red-100 text-red-700",
 };
 
 export default function StorageManagePage() {
-  const [locations, setLocations] = useState<LocationRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [locations, setLocations]   = useState<LocationRow[]>([]);
+  const [types, setTypes]           = useState<StorageTypeOption[]>([]);
+  const [loading, setLoading]       = useState(true);
 
-  // 새 로케이션 추가 폼
-  const [newZone, setNewZone] = useState("");
-  const [newSlots, setNewSlots] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
+  // 추가 폼
+  const [newZone,   setNewZone]   = useState("");
+  const [newSlots,  setNewSlots]  = useState("");
+  const [newTypeId, setNewTypeId] = useState("");
+  const [adding,    setAdding]    = useState(false);
+  const [addError,  setAddError]  = useState<string | null>(null);
 
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting,     setDeleting]     = useState<string | null>(null);
+  const [deleteError,  setDeleteError]  = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/storage/list");
-    const json = await res.json();
-    setLocations(json.locations ?? []);
+    const [locRes, typeRes] = await Promise.all([
+      fetch("/api/admin/storage/list"),
+      fetch("/api/admin/storage"),
+    ]);
+    const locJson  = await locRes.json();
+    const typeJson = await typeRes.json();
+    setLocations(locJson.locations ?? []);
+    setTypes(typeJson.types ?? []);
     setLoading(false);
   }, []);
 
@@ -54,19 +86,17 @@ export default function StorageManagePage() {
     setAdding(true);
     setAddError(null);
 
-    // 슬롯을 쉼표로 파싱: "01,02,03" 또는 "01-05" (범위 지원)
+    // 슬롯 파싱: "01,02,03" 또는 "01-10" (범위)
     let slots: string[] = [];
     const parts = newSlots.split(",").map((s) => s.trim()).filter(Boolean);
     for (const part of parts) {
       const range = part.match(/^(\d+)-(\d+)$/);
       if (range) {
         const from = parseInt(range[1], 10);
-        const to = parseInt(range[2], 10);
-        for (let i = from; i <= to; i++) {
-          slots.push(String(i).padStart(2, "0"));
-        }
+        const to   = parseInt(range[2], 10);
+        for (let i = from; i <= to; i++) slots.push(String(i).padStart(3, "0"));
       } else {
-        slots.push(part.padStart(2, "0"));
+        slots.push(part.padStart(3, "0"));
       }
     }
     slots = [...new Set(slots)];
@@ -74,7 +104,11 @@ export default function StorageManagePage() {
     const res = await fetch("/api/admin/storage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ zone: newZone.toUpperCase(), slots }),
+      body: JSON.stringify({
+        zone:   newZone.toUpperCase(),
+        slots,
+        typeId: newTypeId || undefined,
+      }),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -82,6 +116,7 @@ export default function StorageManagePage() {
     } else {
       setNewZone("");
       setNewSlots("");
+      setNewTypeId("");
       await load();
     }
     setAdding(false);
@@ -91,7 +126,7 @@ export default function StorageManagePage() {
     if (!confirm(`${code} 로케이션을 삭제하시겠습니까?`)) return;
     setDeleting(id);
     setDeleteError(null);
-    const res = await fetch(`/api/admin/storage/${id}`, { method: "DELETE" });
+    const res  = await fetch(`/api/admin/storage/${id}`, { method: "DELETE" });
     const json = await res.json();
     if (!res.ok) {
       setDeleteError(`${code}: ${json.error}`);
@@ -109,8 +144,11 @@ export default function StorageManagePage() {
     grouped[loc.zone].push(loc);
   }
 
+  // 선택된 타입 정보
+  const selectedType = types.find((t) => t.id === newTypeId);
+
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       {/* 헤더 */}
       <div className="flex items-center gap-3 mb-6">
         <Link href="/storage" className="text-gray-400 hover:text-gray-700">
@@ -119,7 +157,7 @@ export default function StorageManagePage() {
         <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
             <Warehouse size={20} className="text-indigo-600" />
-            로케이션 관리
+            Zone·슬롯 관리
           </h1>
           <p className="text-sm text-gray-400 mt-0.5">구역·슬롯 추가, 삭제, 비활성화</p>
         </div>
@@ -136,6 +174,7 @@ export default function StorageManagePage() {
         </div>
         <form onSubmit={handleAdd} className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-4">
+            {/* 구역 코드 */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
                 구역 코드 <span className="text-gray-400 font-normal">(예: A, B, C)</span>
@@ -149,19 +188,80 @@ export default function StorageManagePage() {
                 required
               />
             </div>
+            {/* 슬롯 번호 */}
             <div>
               <label className="block text-xs font-semibold text-gray-600 mb-1">
-                슬롯 번호 <span className="text-gray-400 font-normal">(예: 01, 01-10, 01,03,05)</span>
+                슬롯 번호 <span className="text-gray-400 font-normal">(예: 001, 001-100)</span>
               </label>
               <input
                 value={newSlots}
                 onChange={(e) => setNewSlots(e.target.value)}
-                placeholder="01-10"
+                placeholder="001-100"
                 className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
                 required
               />
             </div>
           </div>
+
+          {/* 스토리지 타입 선택 */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-2">
+              스토리지 타입 <span className="text-gray-400 font-normal">(선택)</span>
+            </label>
+            {types.length === 0 ? (
+              <p className="text-xs text-gray-400">타입 로딩 중…</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                {/* 타입 없음 선택지 */}
+                <button
+                  type="button"
+                  onClick={() => setNewTypeId("")}
+                  className={`px-3 py-2 rounded-xl border-2 text-xs font-medium text-left transition-all ${
+                    newTypeId === ""
+                      ? "border-gray-400 bg-gray-50 text-gray-700"
+                      : "border-gray-200 text-gray-400 hover:border-gray-300"
+                  }`}
+                >
+                  <p className="font-semibold">미지정</p>
+                  <p className="text-gray-400 mt-0.5">—</p>
+                </button>
+
+                {types.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setNewTypeId(t.id)}
+                    className={`px-3 py-2 rounded-xl border-2 text-xs font-medium text-left transition-all ${
+                      newTypeId === t.id
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-900"
+                        : "border-gray-200 text-gray-600 hover:border-indigo-300 hover:bg-indigo-50/30"
+                    }`}
+                  >
+                    <p className="font-bold">{t.name.replace(" Storage", "").replace(" Rack", "")}</p>
+                    <p className="text-gray-500 mt-0.5">{t.volume_liter}L</p>
+                    <p className="text-gray-500">
+                      {t.price_per_week.toLocaleString()}원
+                      {t.price_max ? `~${t.price_max.toLocaleString()}원` : ""}
+                      /주
+                    </p>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 선택된 타입 상세 */}
+            {selectedType && (
+              <div className="mt-2 p-3 bg-indigo-50 rounded-xl text-xs text-indigo-700 flex items-center gap-3">
+                <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${TYPE_BADGE[selectedType.code] ?? "bg-gray-100 text-gray-600"}`}>
+                  {selectedType.code}
+                </span>
+                <span>{selectedType.dim_l_mm} × {selectedType.dim_w_mm} × {selectedType.dim_h_mm} mm</span>
+                <span>{selectedType.volume_liter}L</span>
+                <span className="font-semibold">{selectedType.price_per_week.toLocaleString()}원/주</span>
+              </div>
+            )}
+          </div>
+
           {addError && (
             <p className="text-xs text-red-600 flex items-center gap-1">
               <AlertTriangle size={13} /> {addError}
@@ -176,7 +276,7 @@ export default function StorageManagePage() {
               <Plus size={14} /> {adding ? "추가 중…" : "추가"}
             </button>
             <p className="text-xs text-gray-400">
-              범위 입력 예: <code className="bg-gray-100 px-1 rounded">01-10</code>으로 01~10번 슬롯 한 번에 생성
+              범위 예: <code className="bg-gray-100 px-1 rounded">001-100</code> → 001~100번 슬롯 100개 생성
             </p>
           </div>
         </form>
@@ -206,14 +306,13 @@ export default function StorageManagePage() {
                   <span className="text-xs font-bold text-indigo-700">{zone}</span>
                 </div>
                 <span className="font-semibold text-gray-800">구역 {zone}</span>
-                <span className="text-xs text-gray-400 ml-auto">
-                  {grouped[zone].length}개 슬롯
-                </span>
+                <span className="text-xs text-gray-400 ml-auto">{grouped[zone].length}개 슬롯</span>
               </div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-50 bg-gray-50/50 text-xs text-gray-400">
                     <th className="px-5 py-2 text-left font-medium">코드</th>
+                    <th className="px-5 py-2 text-left font-medium">타입</th>
                     <th className="px-5 py-2 text-left font-medium">상태</th>
                     <th className="px-5 py-2 text-left font-medium">고객</th>
                     <th className="px-5 py-2 text-right font-medium">액션</th>
@@ -228,7 +327,16 @@ export default function StorageManagePage() {
                         </Link>
                       </td>
                       <td className="px-5 py-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[loc.status]}`}>
+                        {loc.storage_types ? (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TYPE_BADGE[loc.storage_types.code] ?? "bg-gray-100 text-gray-600"}`}>
+                            {loc.storage_types.name.replace(" Storage", "").replace(" Rack", "")}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[loc.status] ?? STATUS_COLOR.AVAILABLE}`}>
                           {STATUS_LABEL[loc.status] ?? loc.status}
                         </span>
                       </td>
@@ -246,7 +354,7 @@ export default function StorageManagePage() {
                         <button
                           onClick={() => handleDelete(loc.id, loc.code)}
                           disabled={deleting === loc.id || loc.status === "OCCUPIED"}
-                          title={loc.status === "OCCUPIED" ? "사용중 — 먼저 고객을 해제하세요" : "삭제"}
+                          title={loc.status === "OCCUPIED" ? "보관중 — 먼저 고객을 해제하세요" : "삭제"}
                           className="text-gray-300 hover:text-red-500 disabled:opacity-30 transition-colors"
                         >
                           <Trash2 size={15} />
