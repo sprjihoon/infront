@@ -12,7 +12,7 @@ export default function SidebarWrapper() {
     return <SidebarShippingCalcInfo />;
   }
 
-  if (pathname.startsWith("/domestic-shipping")) {
+  if (pathname.startsWith("/domestic-shipping") || pathname.startsWith("/domestic-rates")) {
     return <SidebarDomesticCalculator />;
   }
 
