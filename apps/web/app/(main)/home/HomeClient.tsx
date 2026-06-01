@@ -88,7 +88,7 @@ const QUICK_ACTIONS = [
   {
     href: "/pricing",
     icon: <List size={24} className="text-orange-500" />,
-    label: "가격표",
+    label: "해외배송 가격표",
     sub: "우체국 요금표",
     className: "bg-white",
     labelClass: "text-gray-900",
