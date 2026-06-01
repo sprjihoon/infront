@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown, Check } from "lucide-react";
 
 type StorageTypeOption = {
   id: string;
@@ -66,6 +66,9 @@ export default function StorageManagePage() {
   const [deleting,     setDeleting]     = useState<string | null>(null);
   const [deleteError,  setDeleteError]  = useState<string | null>(null);
   const [activeZone,   setActiveZone]   = useState<string | null>(null);
+  const [typePopover,  setTypePopover]  = useState<string | null>(null); // location id
+  const [typeSaving,   setTypeSaving]   = useState<string | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +84,37 @@ export default function StorageManagePage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // 팝오버 바깥 클릭 시 닫기
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setTypePopover(null);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const handleSetType = async (locId: string, typeId: string | null) => {
+    setTypeSaving(locId);
+    const res = await fetch(`/api/admin/storage/${locId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "set_type", type_id: typeId }),
+    });
+    if (res.ok) {
+      setLocations((prev) =>
+        prev.map((l) =>
+          l.id === locId
+            ? { ...l, storage_types: typeId ? (types.find((t) => t.id === typeId) as LocationRow["storage_types"] ?? null) : null }
+            : l
+        )
+      );
+    }
+    setTypeSaving(null);
+    setTypePopover(null);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -370,13 +404,58 @@ export default function StorageManagePage() {
                           {loc.code}
                         </Link>
                       </td>
-                      <td className="px-5 py-3">
-                        {loc.storage_types ? (
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TYPE_BADGE[loc.storage_types.code] ?? "bg-gray-100 text-gray-600"}`}>
-                            {loc.storage_types.name.replace(" Storage", "").replace(" Rack", "")}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-300">—</span>
+                      <td className="px-5 py-3 relative">
+                        <button
+                          type="button"
+                          onClick={() => setTypePopover(typePopover === loc.id ? null : loc.id)}
+                          className="flex items-center gap-1 group"
+                          title="타입 변경"
+                        >
+                          {loc.storage_types ? (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TYPE_BADGE[loc.storage_types.code] ?? "bg-gray-100 text-gray-600"}`}>
+                              {loc.storage_types.name.replace(" Storage", "").replace(" Rack", "")}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-300 group-hover:text-gray-500">미지정</span>
+                          )}
+                          <ChevronDown size={11} className="text-gray-300 group-hover:text-gray-500 shrink-0" />
+                        </button>
+
+                        {/* 타입 선택 팝오버 */}
+                        {typePopover === loc.id && (
+                          <div
+                            ref={popoverRef}
+                            className="absolute z-50 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-48"
+                          >
+                            <p className="text-[10px] text-gray-400 font-semibold px-2 pb-1.5">타입 선택</p>
+                            {/* 미지정 */}
+                            <button
+                              type="button"
+                              onClick={() => handleSetType(loc.id, null)}
+                              disabled={typeSaving === loc.id}
+                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs text-gray-500"
+                            >
+                              <span>미지정</span>
+                              {!loc.storage_types && <Check size={12} className="text-indigo-500" />}
+                            </button>
+                            {types.map((t) => (
+                              <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => handleSetType(loc.id, t.id)}
+                                disabled={typeSaving === loc.id}
+                                className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TYPE_BADGE[t.code] ?? "bg-gray-100 text-gray-600"}`}>
+                                    {t.name.replace(" Storage", "").replace(" Rack", "")}
+                                  </span>
+                                  <span className="text-gray-400">{t.volume_liter}L</span>
+                                </div>
+                                {loc.storage_types?.id === t.id && <Check size={12} className="text-indigo-500 shrink-0" />}
+                              </button>
+                            ))}
+                          </div>
                         )}
                       </td>
                       <td className="px-5 py-3">

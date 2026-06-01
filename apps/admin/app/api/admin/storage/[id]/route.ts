@@ -120,6 +120,20 @@ export async function PATCH(
     return NextResponse.json({ ok: true, location: data });
   }
 
+  // ── 타입 변경 ──────────────────────────────────────────────────
+  if (action === "set_type") {
+    const { type_id } = body; // null 허용 (미지정)
+    const { data, error } = await adminDb
+      .from("storage_locations")
+      .update({ storage_type_id: type_id ?? null })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, location: data });
+  }
+
   // ── 노트 수정 ──────────────────────────────────────────────────
   if (action === "update_notes") {
     const { notes } = body;
