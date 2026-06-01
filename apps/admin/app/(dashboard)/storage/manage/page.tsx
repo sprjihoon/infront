@@ -65,10 +65,23 @@ export default function StorageManagePage() {
 
   const [deleting,     setDeleting]     = useState<string | null>(null);
   const [deleteError,  setDeleteError]  = useState<string | null>(null);
-  const [activeZone,   setActiveZone]   = useState<string | null>(null);
+  const [activeZones,  setActiveZones]  = useState<Record<number, string>>({}); // blockIdx → zone
+  const [openBlocks,   setOpenBlocks]   = useState<Set<number>>(new Set([0]));  // 첫 블록 기본 열림
   const [typePopover,  setTypePopover]  = useState<string | null>(null); // location id
   const [typeSaving,   setTypeSaving]   = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  const ZONES_PER_BLOCK = 10;
+
+  const toggleBlock = (idx: number) =>
+    setOpenBlocks((prev) => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+
+  const getActiveZone = (idx: number, chunk: string[]) =>
+    (activeZones[idx] && chunk.includes(activeZones[idx])) ? activeZones[idx] : chunk[0];
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -179,9 +192,11 @@ export default function StorageManagePage() {
     grouped[loc.zone].push(loc);
   }
 
-  // 탭 선택: activeZone이 없거나 유효하지 않으면 첫 번째 Zone 기본 선택
-  const currentZone = (activeZone && zones.includes(activeZone)) ? activeZone : (zones[0] ?? null);
-  const currentLocs = currentZone ? (grouped[currentZone] ?? []) : [];
+  // Zone을 ZONES_PER_BLOCK 단위로 청크 분할
+  const zoneChunks: string[][] = [];
+  for (let i = 0; i < zones.length; i += ZONES_PER_BLOCK) {
+    zoneChunks.push(zones.slice(i, i + ZONES_PER_BLOCK));
+  }
 
   // 선택된 타입 정보
   const selectedType = types.find((t) => t.id === newTypeId);
@@ -337,158 +352,201 @@ export default function StorageManagePage() {
           <p className="text-gray-500">등록된 로케이션이 없습니다</p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          {/* Zone 탭 */}
-          <div className="flex border-b border-gray-100 overflow-x-auto">
-            {zones.map((zone) => {
-              const isActive = zone === currentZone;
-              const locs     = grouped[zone] ?? [];
-              const occupied = locs.filter((l) => l.status === "OCCUPIED").length;
-              return (
+        <div className="space-y-3">
+          {zoneChunks.map((chunk, blockIdx) => {
+            const isOpen      = openBlocks.has(blockIdx);
+            const activeZone  = getActiveZone(blockIdx, chunk);
+            const currentLocs = grouped[activeZone] ?? [];
+            const blockStart  = blockIdx * ZONES_PER_BLOCK + 1;
+            const blockEnd    = blockIdx * ZONES_PER_BLOCK + chunk.length;
+            const totalSlots  = chunk.reduce((s, z) => s + (grouped[z]?.length ?? 0), 0);
+            const totalOccupied = chunk.reduce((s, z) => s + (grouped[z]?.filter(l => l.status === "OCCUPIED").length ?? 0), 0);
+
+            return (
+              <div key={blockIdx} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                {/* ── 아코디언 헤더 ── */}
                 <button
-                  key={zone}
                   type="button"
-                  onClick={() => setActiveZone(zone)}
-                  className={`flex items-center gap-2 px-5 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
-                    isActive
-                      ? "border-indigo-600 text-indigo-700 bg-indigo-50/40"
-                      : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50"
-                  }`}
+                  onClick={() => toggleBlock(blockIdx)}
+                  className="w-full flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors text-left"
                 >
-                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
-                    isActive ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"
-                  }`}>
-                    {zone}
-                  </span>
-                  <span>{zone} 구역</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                    isActive ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-500"
-                  }`}>
-                    {locs.length}
-                  </span>
-                  {occupied > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-medium">
-                      보관 {occupied}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    {chunk.map((z) => (
+                      <span key={z} className="w-6 h-6 bg-indigo-100 rounded-md flex items-center justify-center text-xs font-bold text-indigo-700">
+                        {z}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-gray-800">
+                      구역 {chunk[0]}{chunk.length > 1 ? ` ~ ${chunk[chunk.length - 1]}` : ""}
+                      <span className="text-gray-400 font-normal ml-1.5">({blockStart}~{blockEnd}번 구역)</span>
+                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {chunk.length}개 Zone · {totalSlots}개 슬롯 · 보관중 {totalOccupied}개
+                    </p>
+                  </div>
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+                  />
                 </button>
-              );
-            })}
-          </div>
 
-          {/* 선택된 Zone 슬롯 테이블 */}
-          {currentZone && (
-            <>
-              <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
-                <p className="text-xs text-gray-500">
-                  총 <span className="font-semibold text-gray-700">{currentLocs.length}</span>개 슬롯 ·{" "}
-                  보관중 <span className="font-semibold text-blue-600">{currentLocs.filter(l => l.status === "OCCUPIED").length}</span>개 ·{" "}
-                  비어있음 <span className="font-semibold text-emerald-600">{currentLocs.filter(l => l.status === "AVAILABLE").length}</span>개
-                </p>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-100 text-xs text-gray-400 bg-gray-50/30">
-                    <th className="px-5 py-2 text-left font-medium">코드</th>
-                    <th className="px-5 py-2 text-left font-medium">타입</th>
-                    <th className="px-5 py-2 text-left font-medium">상태</th>
-                    <th className="px-5 py-2 text-left font-medium">고객</th>
-                    <th className="px-5 py-2 text-right font-medium">액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentLocs.map((loc) => (
-                    <tr key={loc.id} className="border-b border-gray-50 hover:bg-gray-50">
-                      <td className="px-5 py-3 font-mono font-bold text-gray-900">
-                        <Link href={`/storage/${loc.id}`} className="hover:text-indigo-600">
-                          {loc.code}
-                        </Link>
-                      </td>
-                      <td className="px-5 py-3 relative">
-                        <button
-                          type="button"
-                          onClick={() => setTypePopover(typePopover === loc.id ? null : loc.id)}
-                          className="flex items-center gap-1 group"
-                          title="타입 변경"
-                        >
-                          {loc.storage_types ? (
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TYPE_BADGE[loc.storage_types.code] ?? "bg-gray-100 text-gray-600"}`}>
-                              {loc.storage_types.name.replace(" Storage", "").replace(" Rack", "")}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-gray-300 group-hover:text-gray-500">미지정</span>
-                          )}
-                          <ChevronDown size={11} className="text-gray-300 group-hover:text-gray-500 shrink-0" />
-                        </button>
-
-                        {/* 타입 선택 팝오버 */}
-                        {typePopover === loc.id && (
-                          <div
-                            ref={popoverRef}
-                            className="absolute z-50 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-48"
+                {/* ── 아코디언 콘텐츠 ── */}
+                {isOpen && (
+                  <>
+                    {/* Zone 탭 */}
+                    <div className="flex border-t border-b border-gray-100 overflow-x-auto">
+                      {chunk.map((zone) => {
+                        const isActive = zone === activeZone;
+                        const locs     = grouped[zone] ?? [];
+                        const occupied = locs.filter((l) => l.status === "OCCUPIED").length;
+                        return (
+                          <button
+                            key={zone}
+                            type="button"
+                            onClick={() => setActiveZones((prev) => ({ ...prev, [blockIdx]: zone }))}
+                            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${
+                              isActive
+                                ? "border-indigo-600 text-indigo-700 bg-indigo-50/40"
+                                : "border-transparent text-gray-500 hover:text-gray-800 hover:bg-gray-50"
+                            }`}
                           >
-                            <p className="text-[10px] text-gray-400 font-semibold px-2 pb-1.5">타입 선택</p>
-                            {/* 미지정 */}
-                            <button
-                              type="button"
-                              onClick={() => handleSetType(loc.id, null)}
-                              disabled={typeSaving === loc.id}
-                              className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs text-gray-500"
-                            >
-                              <span>미지정</span>
-                              {!loc.storage_types && <Check size={12} className="text-indigo-500" />}
-                            </button>
-                            {types.map((t) => (
+                            <span className={`w-5 h-5 rounded-md flex items-center justify-center text-xs font-bold ${
+                              isActive ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"
+                            }`}>
+                              {zone}
+                            </span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                              isActive ? "bg-indigo-100 text-indigo-600" : "bg-gray-100 text-gray-500"
+                            }`}>
+                              {locs.length}
+                            </span>
+                            {occupied > 0 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-600 font-medium">
+                                {occupied}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* 슬롯 요약 */}
+                    <div className="px-5 py-2 bg-gray-50/50 border-b border-gray-100">
+                      <p className="text-xs text-gray-500">
+                        <span className="font-semibold text-gray-700">{activeZone} 구역</span> ·{" "}
+                        총 <span className="font-semibold">{currentLocs.length}</span>개 ·{" "}
+                        보관중 <span className="font-semibold text-blue-600">{currentLocs.filter(l => l.status === "OCCUPIED").length}</span>개 ·{" "}
+                        비어있음 <span className="font-semibold text-emerald-600">{currentLocs.filter(l => l.status === "AVAILABLE").length}</span>개
+                      </p>
+                    </div>
+
+                    {/* 슬롯 테이블 */}
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100 text-xs text-gray-400 bg-gray-50/30">
+                          <th className="px-5 py-2 text-left font-medium">코드</th>
+                          <th className="px-5 py-2 text-left font-medium">타입</th>
+                          <th className="px-5 py-2 text-left font-medium">상태</th>
+                          <th className="px-5 py-2 text-left font-medium">고객</th>
+                          <th className="px-5 py-2 text-right font-medium">액션</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentLocs.map((loc) => (
+                          <tr key={loc.id} className="border-b border-gray-50 hover:bg-gray-50">
+                            <td className="px-5 py-3 font-mono font-bold text-gray-900">
+                              <Link href={`/storage/${loc.id}`} className="hover:text-indigo-600">
+                                {loc.code}
+                              </Link>
+                            </td>
+                            <td className="px-5 py-3 relative">
                               <button
-                                key={t.id}
                                 type="button"
-                                onClick={() => handleSetType(loc.id, t.id)}
-                                disabled={typeSaving === loc.id}
-                                className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs"
+                                onClick={() => setTypePopover(typePopover === loc.id ? null : loc.id)}
+                                className="flex items-center gap-1 group"
+                                title="타입 변경"
                               >
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TYPE_BADGE[t.code] ?? "bg-gray-100 text-gray-600"}`}>
-                                    {t.name.replace(" Storage", "").replace(" Rack", "")}
+                                {loc.storage_types ? (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TYPE_BADGE[loc.storage_types.code] ?? "bg-gray-100 text-gray-600"}`}>
+                                    {loc.storage_types.name.replace(" Storage", "").replace(" Rack", "")}
                                   </span>
-                                  <span className="text-gray-400">{t.volume_liter}L</span>
-                                </div>
-                                {loc.storage_types?.id === t.id && <Check size={12} className="text-indigo-500 shrink-0" />}
+                                ) : (
+                                  <span className="text-xs text-gray-300 group-hover:text-gray-500">미지정</span>
+                                )}
+                                <ChevronDown size={11} className="text-gray-300 group-hover:text-gray-500 shrink-0" />
                               </button>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[loc.status] ?? STATUS_COLOR.AVAILABLE}`}>
-                          {STATUS_LABEL[loc.status] ?? loc.status}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3 text-gray-600 text-xs">
-                        {loc.customers ? (
-                          <span>
-                            {loc.customers.name ?? ""}{" "}
-                            <span className="font-mono text-gray-400">{loc.customers.customer_code}</span>
-                          </span>
-                        ) : (
-                          <span className="text-gray-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <button
-                          onClick={() => handleDelete(loc.id, loc.code)}
-                          disabled={deleting === loc.id || loc.status === "OCCUPIED"}
-                          title={loc.status === "OCCUPIED" ? "보관중 — 먼저 고객을 해제하세요" : "삭제"}
-                          className="text-gray-300 hover:text-red-500 disabled:opacity-30 transition-colors"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </>
-          )}
+
+                              {typePopover === loc.id && (
+                                <div
+                                  ref={popoverRef}
+                                  className="absolute z-50 left-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-48"
+                                >
+                                  <p className="text-[10px] text-gray-400 font-semibold px-2 pb-1.5">타입 선택</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSetType(loc.id, null)}
+                                    disabled={typeSaving === loc.id}
+                                    className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs text-gray-500"
+                                  >
+                                    <span>미지정</span>
+                                    {!loc.storage_types && <Check size={12} className="text-indigo-500" />}
+                                  </button>
+                                  {types.map((t) => (
+                                    <button
+                                      key={t.id}
+                                      type="button"
+                                      onClick={() => handleSetType(loc.id, t.id)}
+                                      disabled={typeSaving === loc.id}
+                                      className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TYPE_BADGE[t.code] ?? "bg-gray-100 text-gray-600"}`}>
+                                          {t.name.replace(" Storage", "").replace(" Rack", "")}
+                                        </span>
+                                        <span className="text-gray-400">{t.volume_liter}L</span>
+                                      </div>
+                                      {loc.storage_types?.id === t.id && <Check size={12} className="text-indigo-500 shrink-0" />}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-5 py-3">
+                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[loc.status] ?? STATUS_COLOR.AVAILABLE}`}>
+                                {STATUS_LABEL[loc.status] ?? loc.status}
+                              </span>
+                            </td>
+                            <td className="px-5 py-3 text-gray-600 text-xs">
+                              {loc.customers ? (
+                                <span>
+                                  {loc.customers.name ?? ""}{" "}
+                                  <span className="font-mono text-gray-400">{loc.customers.customer_code}</span>
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </td>
+                            <td className="px-5 py-3 text-right">
+                              <button
+                                onClick={() => handleDelete(loc.id, loc.code)}
+                                disabled={deleting === loc.id || loc.status === "OCCUPIED"}
+                                title={loc.status === "OCCUPIED" ? "보관중 — 먼저 고객을 해제하세요" : "삭제"}
+                                className="text-gray-300 hover:text-red-500 disabled:opacity-30 transition-colors"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
