@@ -15,7 +15,7 @@ export async function GET(
   const [{ data: parcel }, { data: inspections }] = await Promise.all([
     adminDb
       .from("parcels")
-      .select("*, customers(name, email, customer_code)")
+      .select("*, customers(name, email, customer_code, id), storage_locations(id, code, zone, slot)")
       .eq("id", id)
       .single(),
     adminDb

@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Save, CheckCircle, AlertTriangle, Package,
   User, ChevronRight, Truck, RefreshCw, XCircle, RotateCcw,
+  MapPin,
 } from "lucide-react";
 import {
   getNextWorkflowAction,
@@ -44,7 +45,9 @@ interface Parcel {
   tracking_last_event: { statusLabel?: string; description?: string; location?: string; time?: string } | null;
   tracking_events: Array<{ statusLabel?: string; description?: string; location?: string; time?: string }> | null;
   tracking_synced_at: string | null;
-  customers: { name: string; email: string; customer_code: string } | null;
+  customers: { name: string; email: string; customer_code: string; id: string } | null;
+  storage_location_id: string | null;
+  storage_locations: { id: string; code: string; zone: string; slot: string } | null;
 }
 
 interface InspectionResult {
@@ -99,6 +102,12 @@ export default function ParcelDetailPage() {
   const [inspNotes, setInspNotes] = useState("");
   const [inspecting, setInspecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+
+  // 로케이션 배정
+  const [availableLocations, setAvailableLocations] = useState<{ id: string; code: string; zone: string }[]>([]);
+  const [locationsLoaded, setLocationsLoaded] = useState(false);
+  const [showLocPicker, setShowLocPicker] = useState(false);
+  const [assigningLoc, setAssigningLoc] = useState(false);
 
   useEffect(() => { loadParcel(); }, [id]);
 
@@ -197,6 +206,38 @@ export default function ParcelDetailPage() {
     if (!parcel) return;
     if (!confirm("재접수 처리하시겠습니까? 상태를 '센터 입고'로 되돌립니다.")) return;
     await patchParcel({ status: "INBOUND", is_shippable: false, hold_reason: null });
+  }
+
+  async function loadAvailableLocations(customerId?: string) {
+    // 고객 전용 로케이션 우선, 없으면 빈 로케이션 목록
+    const res = await fetch("/api/admin/storage/list");
+    const json = await res.json();
+    const all = (json.locations ?? []) as { id: string; code: string; zone: string; status: string; customer_id: string | null }[];
+
+    // 고객의 기존 로케이션 먼저, 그 다음 빈 로케이션
+    const customerLoc = customerId ? all.filter((l) => l.customer_id === customerId) : [];
+    const available   = all.filter((l) => l.status === "AVAILABLE");
+    const combined    = [...customerLoc, ...available.filter((l) => !customerLoc.find((cl) => cl.id === l.id))];
+    setAvailableLocations(combined.map(({ id, code, zone }) => ({ id, code, zone })));
+    setLocationsLoaded(true);
+  }
+
+  async function handleAssignLocation(locationId: string) {
+    setAssigningLoc(true);
+    // 1. 소포에 로케이션 연결
+    await patchParcel({ storage_location_id: locationId });
+
+    // 2. 고객이 아직 이 로케이션을 점유하지 않으면 점유 처리
+    if (parcel?.customers?.id && parcel.storage_locations?.id !== locationId) {
+      await fetch(`/api/admin/storage/${locationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "assign", customer_id: parcel.customers.id }),
+      });
+    }
+    setAssigningLoc(false);
+    setShowLocPicker(false);
+    loadParcel();
   }
 
   async function handleApiSync() {
@@ -298,6 +339,61 @@ export default function ParcelDetailPage() {
           </Link>
         </div>
       )}
+
+      {/* 보관 로케이션 */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <MapPin size={16} className="text-indigo-500" />
+            <span className="font-semibold text-gray-800 text-sm">보관 위치</span>
+          </div>
+          <button
+            onClick={() => {
+              setShowLocPicker(!showLocPicker);
+              if (!locationsLoaded) loadAvailableLocations(parcel.customers?.id);
+            }}
+            className="text-xs text-indigo-600 hover:underline"
+          >
+            {parcel.storage_locations ? "변경" : "배정"}
+          </button>
+        </div>
+
+        {parcel.storage_locations ? (
+          <div className="flex items-center gap-3">
+            <div className="bg-indigo-100 rounded-xl px-4 py-2 text-center">
+              <p className="text-lg font-bold text-indigo-700">{parcel.storage_locations.code}</p>
+              <p className="text-[10px] text-indigo-400">구역 {parcel.storage_locations.zone} · {parcel.storage_locations.slot}</p>
+            </div>
+            <Link href={`/storage/${parcel.storage_locations.id}`} className="text-xs text-indigo-600 hover:underline">
+              로케이션 상세 →
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-gray-400 italic">배정된 로케이션 없음</p>
+        )}
+
+        {showLocPicker && (
+          <div className="mt-3 border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+            {!locationsLoaded ? (
+              <div className="p-3 text-xs text-gray-400">로딩 중…</div>
+            ) : availableLocations.length === 0 ? (
+              <div className="p-3 text-xs text-gray-400">사용 가능한 로케이션이 없습니다</div>
+            ) : (
+              availableLocations.map((loc) => (
+                <button
+                  key={loc.id}
+                  onClick={() => handleAssignLocation(loc.id)}
+                  disabled={assigningLoc}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-indigo-50 text-sm text-left border-b last:border-b-0 border-gray-50 disabled:opacity-50"
+                >
+                  <span className="font-mono font-bold text-gray-800">{loc.code}</span>
+                  <span className="text-xs text-gray-400">구역 {loc.zone}</span>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
 
       {/* 진행 단계 */}
       <div className="bg-white rounded-2xl p-5 shadow-sm">

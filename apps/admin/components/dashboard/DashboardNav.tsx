@@ -15,6 +15,7 @@ import {
   PanelLeft,
   PanelLeftClose,
   Truck,
+  Warehouse,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -47,6 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: "수거·입고", href: "/parcels", icon: Package },
       { title: "해외배송", href: "/orders", icon: ShoppingBag },
       { title: "국내배송", href: "/domestic-orders", icon: Truck },
+      { title: "스토리지", href: "/storage", icon: Warehouse },
       { title: "고객", href: "/customers", icon: Users },
       { title: "반품 관리", href: "/returns", icon: RotateCcw },
     ],
