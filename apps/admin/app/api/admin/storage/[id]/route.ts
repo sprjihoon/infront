@@ -19,7 +19,7 @@ export async function GET(
       .single(),
     adminDb
       .from("parcels")
-      .select("id, tracking_no, status, is_shippable, inbound_at, weight_actual, pre_invoice_items, sender_name")
+      .select("id, tracking_no, status, is_shippable, inbound_at, weight_actual, vol_length, vol_width, vol_height, pre_invoice_items, sender_name, sender_address, courier, item_condition, hold_reason, notes, created_at")
       .eq("storage_location_id", id)
       .not("status", "in", '("DONE")')
       .order("inbound_at", { ascending: false }),

@@ -8,9 +8,16 @@ import {
   Package,
   User,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Search,
+  Truck,
+  Weight,
+  Ruler,
+  Calendar,
+  ExternalLink,
+  MapPin,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -24,14 +31,32 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   SHIPPING:       { label: "배송중",   color: "text-cyan-700 bg-cyan-50 border-cyan-200" },
 };
 
+type InvoiceItem = {
+  product_name?: string;
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  origin_country: string;
+};
+
 type Parcel = {
   id: string;
-  tracking_no: string;
+  tracking_no: string | null;
   status: string;
   inbound_at: string | null;
+  created_at: string;
   weight_actual: number | null;
-  pre_invoice_items: { name: string }[] | null;
+  vol_length: number | null;
+  vol_width: number | null;
+  vol_height: number | null;
+  pre_invoice_items: InvoiceItem[] | null;
   sender_name: string | null;
+  sender_address: string | null;
+  courier: string | null;
+  item_condition: string | null;
+  hold_reason: string | null;
+  notes: string | null;
+  is_shippable: boolean | null;
 };
 
 type LocationDetail = {
@@ -70,6 +95,11 @@ export default function StorageDetailPage({
   // 노트 편집
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
+
+  // 소포 카드 확장
+  const [expandedParcels, setExpandedParcels] = useState<Set<string>>(new Set());
+  const toggleParcel = (id: string) =>
+    setExpandedParcels((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   useEffect(() => {
     params.then(({ id }) => setLocationId(id));
@@ -323,37 +353,172 @@ export default function StorageDetailPage({
         {parcels.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">보관 중인 소포가 없습니다</div>
         ) : (
-          <ul className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50">
             {parcels.map((p) => {
               const sc = STATUS_LABELS[p.status] ?? { label: p.status, color: "text-gray-500 bg-gray-50 border-gray-200" };
-              const itemName = p.pre_invoice_items?.[0]?.name ?? p.sender_name ?? "-";
+              const items = p.pre_invoice_items ?? [];
+              const mainTitle = items.length > 0
+                ? (items[0].product_name || items[0].name_en)
+                : (p.sender_name ?? p.tracking_no ?? "물품 미등록");
+              const isExpanded = expandedParcels.has(p.id);
+              const totalUsd = items.reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
+
               return (
-                <li key={p.id} className="flex items-center gap-4 px-5 py-3 hover:bg-gray-50">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sc.color}`}>
-                        {sc.label}
-                      </span>
-                      <span className="text-xs font-mono text-gray-500 truncate">{p.tracking_no}</span>
-                    </div>
-                    <p className="text-sm text-gray-700 truncate">{itemName}</p>
-                    {p.inbound_at && (
-                      <p className="text-[10px] text-gray-400">
-                        입고 {new Date(p.inbound_at).toLocaleDateString("ko-KR")}
-                        {p.weight_actual ? ` · ${p.weight_actual}kg` : ""}
-                      </p>
-                    )}
-                  </div>
-                  <Link
-                    href={`/parcels/${p.id}`}
-                    className="text-xs text-indigo-600 hover:underline shrink-0"
+                <div key={p.id} className="overflow-hidden">
+                  {/* ── 카드 헤더 (항상 표시) ── */}
+                  <button
+                    type="button"
+                    onClick={() => toggleParcel(p.id)}
+                    className="w-full px-5 py-4 flex items-start gap-3 hover:bg-gray-50 text-left"
                   >
-                    상세 보기
-                  </Link>
-                </li>
+                    {/* 상태 점 */}
+                    <div className="mt-1 shrink-0">
+                      <div className={`w-2.5 h-2.5 rounded-full ${
+                        p.status === "STORAGE" ? "bg-indigo-500" :
+                        p.status === "INBOUND" ? "bg-green-500" :
+                        p.status === "HOLD"    ? "bg-red-500" :
+                        p.status === "SHIPPABLE" ? "bg-emerald-500" :
+                        "bg-gray-400"}`} />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      {/* 제품 타이틀 + 상태 뱃지 */}
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-sm font-semibold text-gray-900 truncate">{mainTitle}</span>
+                        {items.length > 1 && (
+                          <span className="text-[10px] text-gray-400">외 {items.length - 1}종</span>
+                        )}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sc.color}`}>
+                          {sc.label}
+                        </span>
+                        {p.is_shippable === false && p.status !== "HOLD" && (
+                          <span className="text-[10px] bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.5 rounded-full font-semibold">출고불가</span>
+                        )}
+                        {p.item_condition === "USED" && (
+                          <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded-full font-semibold">중고품</span>
+                        )}
+                      </div>
+
+                      {/* 운송장 + 입고일 */}
+                      <div className="flex items-center gap-3 text-xs text-gray-400 flex-wrap">
+                        {p.tracking_no && (
+                          <span className="font-mono">{p.tracking_no}</span>
+                        )}
+                        {p.courier && (
+                          <span className="flex items-center gap-1">
+                            <Truck size={11} /> {p.courier}
+                          </span>
+                        )}
+                        {p.inbound_at && (
+                          <span className="flex items-center gap-1">
+                            <Calendar size={11} />
+                            입고 {new Date(p.inbound_at).toLocaleDateString("ko-KR")}
+                          </span>
+                        )}
+                        {p.weight_actual && (
+                          <span className="flex items-center gap-1">
+                            <Weight size={11} /> {p.weight_actual}g
+                          </span>
+                        )}
+                        {p.vol_length && p.vol_width && p.vol_height && (
+                          <span className="flex items-center gap-1">
+                            <Ruler size={11} />
+                            {p.vol_length}×{p.vol_width}×{p.vol_height}cm
+                          </span>
+                        )}
+                      </div>
+
+                      {/* 보류 사유 */}
+                      {p.hold_reason && (
+                        <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                          <AlertTriangle size={11} /> {p.hold_reason}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* 우측: 펼치기 + 상세 링크 */}
+                    <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                      <Link
+                        href={`/parcels/${p.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 text-indigo-400 hover:text-indigo-600"
+                        title="소포 상세"
+                      >
+                        <ExternalLink size={14} />
+                      </Link>
+                      {isExpanded
+                        ? <ChevronDown size={15} className="text-gray-400" />
+                        : <ChevronRight size={15} className="text-gray-400" />}
+                    </div>
+                  </button>
+
+                  {/* ── 펼쳐진 상세 ── */}
+                  {isExpanded && (
+                    <div className="px-5 pb-4 bg-gray-50/60 border-t border-gray-100">
+
+                      {/* 품목 목록 */}
+                      {items.length > 0 ? (
+                        <div className="mt-3 bg-white rounded-xl border border-gray-100 overflow-hidden">
+                          <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wide flex items-center justify-between">
+                            <span>내품 목록 ({items.length}종)</span>
+                            {totalUsd > 0 && (
+                              <span className="font-semibold text-gray-700">총 USD {totalUsd.toFixed(2)}</span>
+                            )}
+                          </div>
+                          <div className="divide-y divide-gray-50">
+                            {items.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between px-3 py-2.5">
+                                <div className="min-w-0">
+                                  <p className="text-sm text-gray-800 font-medium truncate">
+                                    {item.product_name || item.name_en}
+                                  </p>
+                                  <p className="text-[11px] text-gray-400">
+                                    {item.product_name && <>{item.name_en} · </>}
+                                    수량 {item.quantity}
+                                    {item.origin_country ? ` · 원산지 ${item.origin_country}` : ""}
+                                  </p>
+                                </div>
+                                {item.unit_price_usd > 0 && (
+                                  <span className="text-sm font-semibold text-gray-700 shrink-0 ml-2">
+                                    $ {item.unit_price_usd}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-xs text-gray-400 italic">등록된 내품 정보 없음</p>
+                      )}
+
+                      {/* 발송인 / 주소 */}
+                      {(p.sender_name || p.sender_address) && (
+                        <div className="mt-3 flex flex-col gap-1 text-xs text-gray-500">
+                          {p.sender_name && (
+                            <span className="flex items-center gap-1.5">
+                              <MapPin size={12} className="text-gray-400 shrink-0" />
+                              발송인: {p.sender_name}
+                            </span>
+                          )}
+                          {p.sender_address && (
+                            <span className="flex items-center gap-1.5 pl-4 text-gray-400">{p.sender_address}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 메모 */}
+                      {p.notes && (
+                        <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-800">
+                          <p className="font-semibold mb-0.5">메모</p>
+                          <p>{p.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
     </div>
