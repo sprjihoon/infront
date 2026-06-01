@@ -30,14 +30,15 @@ export const PARCEL_STATUS_COLOR: Record<string, string> = {
 
 /** 목록 필터 탭 — key는 URL status 파라미터 */
 export const PARCEL_FILTER_TABS = [
-  { key: "",                 label: "전체" },
-  { key: "PRE_REGISTERED",   label: "등록완료" },
-  { key: "PENDING_PICKUP",   label: "수거신청" },
-  { key: "PICKED_UP",        label: "수거완료" },
-  { key: "INBOUND_ARRIVED",  label: "센터입고" },
-  { key: "INSPECTION",       label: "검수중" },
-  { key: "INBOUND_READY",    label: "입고완료" },
-  { key: "HOLD",             label: "보류" },
+  { key: "",                  label: "전체" },
+  { key: "PRE_REGISTERED",    label: "등록완료" },
+  { key: "PENDING_PICKUP",    label: "수거신청" },
+  { key: "PICKED_UP",         label: "수거완료" },
+  { key: "INBOUND_ARRIVED",   label: "센터입고" },
+  { key: "INSPECTION",        label: "검수중" },
+  { key: "INBOUND_READY",     label: "입고완료" },
+  { key: "HOLD",              label: "보류" },
+  { key: "PICKUP_CANCELLED",  label: "수거취소" },
 ] as const;
 
 export const INBOUND_SOURCE_TABS = [

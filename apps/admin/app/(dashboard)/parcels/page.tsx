@@ -41,7 +41,7 @@ function countForFilter(
   parcels: { status: string; is_shippable: boolean | null }[],
   key: string,
 ): number {
-  if (!key) return parcels.length;
+  if (!key) return parcels.filter((p) => p.status !== "PICKUP_CANCELLED").length;
   if (key === "INBOUND_READY") {
     return parcels.filter((p) => p.status === "INBOUND" && p.is_shippable === true).length;
   }
@@ -75,6 +75,9 @@ export default async function ParcelsPage({
     query = query.eq("status", "INBOUND").or("is_shippable.is.null,is_shippable.eq.false");
   } else if (status) {
     query = query.eq("status", status);
+  } else {
+    // 전체: 수거취소 제외
+    query = query.neq("status", "PICKUP_CANCELLED");
   }
 
   if (source === "PICKUP") {
@@ -192,14 +195,20 @@ export default async function ParcelsPage({
           if (source) params.set("source", source);
           const href = params.toString() ? `/parcels?${params}` : "/parcels";
           const cnt = countForFilter(countSource, key);
+          const isCancelled = key === "PICKUP_CANCELLED";
+          const isActive = (status ?? "") === key;
           return (
             <Link
               key={key || "all"}
               href={href}
               className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors border ${
-                (status ?? "") === key
-                  ? "bg-blue-600 text-white border-blue-600"
-                  : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
+                isCancelled
+                  ? isActive
+                    ? "bg-red-600 text-white border-red-600"
+                    : "bg-white text-red-500 border-red-200 hover:border-red-400"
+                  : isActive
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-gray-600 border-gray-200 hover:border-blue-300"
               }`}
             >
               {label}

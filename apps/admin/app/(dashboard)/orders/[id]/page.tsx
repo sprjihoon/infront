@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Package, User, MapPin, Send, Truck,
   CheckCircle, ChevronDown, DollarSign, Plus, Trash2,
-  Box, Weight, Edit3, X, Check, Mail, Printer,
+  Box, Weight, Edit3, X, Check, Mail, Printer, ClipboardList,
 } from "lucide-react";
 
 interface Order {
@@ -389,6 +389,14 @@ export default function OrderDetailPage() {
           <h1 className="text-lg font-bold text-gray-900">주문 상세</h1>
           <p className="text-xs text-gray-400">{order.order_no}</p>
         </div>
+        <Link
+          href={`/orders/${id}/packing-slip`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          <ClipboardList size={13} /> 출고지시서
+        </Link>
         <span className={`text-sm font-medium px-3 py-1.5 rounded-full ${STATUS_COLOR[order.status] ?? "bg-gray-100 text-gray-700"}`}>
           {STATUS_LABEL[order.status] ?? order.status}
         </span>

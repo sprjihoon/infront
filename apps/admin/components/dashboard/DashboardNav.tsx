@@ -45,8 +45,8 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Package,
     items: [
       { title: "수거·입고", href: "/parcels", icon: Package },
-      { title: "배송 주문", href: "/orders", icon: ShoppingBag },
-      { title: "국내 배송", href: "/domestic-orders", icon: Truck },
+      { title: "해외배송", href: "/orders", icon: ShoppingBag },
+      { title: "국내배송", href: "/domestic-orders", icon: Truck },
       { title: "고객", href: "/customers", icon: Users },
       { title: "반품 관리", href: "/returns", icon: RotateCcw },
     ],

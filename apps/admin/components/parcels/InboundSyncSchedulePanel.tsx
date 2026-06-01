@@ -155,7 +155,7 @@ export default function InboundSyncSchedulePanel({ initialSchedule, initialLastR
           </div>
 
           <p className="text-[11px] text-gray-400">
-            Vercel cron이 매시 정각(09:00~18:00 KST)에 확인합니다. 등록한 시각에만 실제 API 동기화가 실행됩니다.
+            Vercel cron이 매시 정각(08:00~20:00 KST)에 확인합니다. 등록한 시각에만 실제 API 동기화가 실행됩니다.
           </p>
         </div>
       )}

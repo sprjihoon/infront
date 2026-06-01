@@ -110,11 +110,6 @@ function OrdersContent() {
         const list = data ?? [];
         setOrders(list);
         setLoadingIntl(false);
-        const hasInTransit = list.some(o => o.status === "IN_TRANSIT" || o.status === "CUSTOMS_FILING");
-        if (hasInTransit) {
-          fetch("/api/orders/sync-intl-tracking", { method: "POST" })
-            .then(() => loadOrders()).then(r => { if (r) setOrders(r); }).catch(() => {});
-        }
         if (newOrderNo) {
           const found = list.find(o => o.order_no === newOrderNo);
           if (found) router.replace(`/orders/${found.id}`);

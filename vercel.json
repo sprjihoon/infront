@@ -7,7 +7,7 @@
     },
     {
       "path": "/api/cron/sync-inbound",
-      "schedule": "0 0-9 * * *"
+      "schedule": "0 8-20 * * *"
     },
     {
       "path": "/api/cron/sync-usd-krw-rate",

@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Save, CheckCircle, AlertTriangle, Package,
-  User, ChevronRight, Truck, RefreshCw,
+  User, ChevronRight, Truck, RefreshCw, XCircle, RotateCcw,
 } from "lucide-react";
 import {
   getNextWorkflowAction,
@@ -183,6 +183,22 @@ export default function ParcelDetailPage() {
     await patchParcel(action.patch);
   }
 
+  async function handleCancel() {
+    if (!parcel) return;
+    const reason = prompt("취소/보류 사유를 입력하세요 (선택)") ?? "";
+    if (reason === null) return; // 취소 누름
+    const isPickupPending = parcel.status === "PENDING_PICKUP";
+    const newStatus = isPickupPending ? "PICKUP_CANCELLED" : "HOLD";
+    const holdReason = reason.trim() || (isPickupPending ? "관리자 취소" : "관리자 보류 처리");
+    await patchParcel({ status: newStatus, hold_reason: holdReason, is_shippable: false });
+  }
+
+  async function handleReopen() {
+    if (!parcel) return;
+    if (!confirm("재접수 처리하시겠습니까? 상태를 '센터 입고'로 되돌립니다.")) return;
+    await patchParcel({ status: "INBOUND", is_shippable: false, hold_reason: null });
+  }
+
   async function handleApiSync() {
     setSyncing(true);
     const res = await fetch("/api/admin/parcels/sync-inbound", {
@@ -351,6 +367,30 @@ export default function ParcelDetailPage() {
             <CheckCircle size={16} />
             입고 완료 — 고객이 출고 신청할 수 있습니다
           </div>
+        )}
+
+        {/* 취소 / 재접수 버튼 */}
+        {!["PICKUP_CANCELLED", "DONE", "SHIPPING"].includes(parcel.status) && (
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleCancel}
+              disabled={actioning}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-semibold bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              <XCircle size={14} />
+              {parcel.status === "PENDING_PICKUP" ? "수거 취소" : "보류/취소 처리"}
+            </button>
+          </div>
+        )}
+        {["PICKUP_CANCELLED", "HOLD"].includes(parcel.status) && (
+          <button
+            onClick={handleReopen}
+            disabled={actioning}
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-indigo-200 text-indigo-700 text-sm font-semibold bg-indigo-50 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+          >
+            <RotateCcw size={14} />
+            재접수 처리 (센터 입고로 되돌리기)
+          </button>
         )}
       </div>
 

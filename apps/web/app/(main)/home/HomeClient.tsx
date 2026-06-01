@@ -114,20 +114,15 @@ const QUICK_ACTIONS = [
   },
 ];
 
-// 세션당 1회만 추적 동기화 (30분 쿨다운)
-const SYNC_COOLDOWN_MS = 30 * 60 * 1000;
-const SYNC_KEY = "tracking_synced_at";
+// 로그인 세션당 1회만 추적 동기화 (세션 스토리지 — 탭/창 닫으면 초기화)
+const SYNC_KEY = "tracking_synced_session";
 
 function shouldSync(): boolean {
-  try {
-    const last = sessionStorage.getItem(SYNC_KEY);
-    if (!last) return true;
-    return Date.now() - parseInt(last, 10) > SYNC_COOLDOWN_MS;
-  } catch { return true; }
+  try { return !sessionStorage.getItem(SYNC_KEY); } catch { return true; }
 }
 
 function markSynced() {
-  try { sessionStorage.setItem(SYNC_KEY, String(Date.now())); } catch { /* ignore */ }
+  try { sessionStorage.setItem(SYNC_KEY, "1"); } catch { /* ignore */ }
 }
 
 const PROTECTED_PREFIXES = [

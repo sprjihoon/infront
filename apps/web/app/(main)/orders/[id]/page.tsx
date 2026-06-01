@@ -41,15 +41,6 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     loadOrder();
   }, [loadOrder]);
 
-  useEffect(() => {
-    if (!orderId || !order) return;
-    if (order.status !== "IN_TRANSIT" && order.status !== "CUSTOMS_FILING") return;
-
-    fetch(`/api/orders/sync-intl-tracking?order_id=${orderId}`, { method: "POST" })
-      .then(() => loadOrder())
-      .catch(() => {});
-  }, [orderId, order?.status]);
-
   async function confirmCancel(parcelIdsToRemove: string[] | null) {
     if (!cancelTarget) return;
     setCancelling(true);
