@@ -106,7 +106,7 @@ const QUICK_ACTIONS = [
   {
     href: "/domestic-rates",
     icon: <Receipt size={24} className="text-amber-500" />,
-    label: "국내 택배 요금",
+    label: "국내배송 가격표",
     sub: "규격·크기·무게 안내",
     className: "bg-white",
     labelClass: "text-gray-900",
