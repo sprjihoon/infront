@@ -6,14 +6,14 @@ import { Calculator, Package, ChevronDown, MapPin, RotateCcw } from "lucide-reac
 // ── 요금 테이블 (창구접수 · 등기소포) ──────────────────────────────
 // 구분: 크기(L+W+H) 및 무게에 따라 8개 구간
 const TIERS = [
-  { id: 1, maxSizeCm: 80,  maxWeightG: 3000,  label: "80cm이하 · 3kg이하",  regular: 4000,  jejuExpress: 6500,  jejuStd: 4000  },
-  { id: 2, maxSizeCm: 100, maxWeightG: 5000,  label: "~100cm · 5kg이하",    regular: 4500,  jejuExpress: 7000,  jejuStd: 4500  },
-  { id: 3, maxSizeCm: 100, maxWeightG: 7000,  label: "~100cm · 7kg이하",    regular: 5000,  jejuExpress: 7500,  jejuStd: 5000  },
-  { id: 4, maxSizeCm: 120, maxWeightG: 10000, label: "~120cm · 10kg이하",   regular: 6000,  jejuExpress: 8500,  jejuStd: 6000  },
-  { id: 5, maxSizeCm: 120, maxWeightG: 15000, label: "~120cm · 15kg이하",   regular: 7000,  jejuExpress: 9500,  jejuStd: 7000  },
-  { id: 6, maxSizeCm: 120, maxWeightG: 20000, label: "~120cm · 20kg이하",   regular: 8000,  jejuExpress: 10500, jejuStd: 8000  },
-  { id: 7, maxSizeCm: 120, maxWeightG: 25000, label: "~120cm · 25kg이하",   regular: 11000, jejuExpress: 13500, jejuStd: 11000 },
-  { id: 8, maxSizeCm: 160, maxWeightG: 30000, label: "~160cm · 30kg이하",   regular: 13000, jejuExpress: 15500, jejuStd: 13000 },
+  { id: 1, maxSizeCm: 80,  maxWeightG: 3000,  label: "80cm이하 · 3kg이하", regular: 4000,  jejuExpress: 6500  },
+  { id: 2, maxSizeCm: 100, maxWeightG: 5000,  label: "~100cm · 5kg이하",   regular: 4500,  jejuExpress: 7000  },
+  { id: 3, maxSizeCm: 100, maxWeightG: 7000,  label: "~100cm · 7kg이하",   regular: 5000,  jejuExpress: 7500  },
+  { id: 4, maxSizeCm: 120, maxWeightG: 10000, label: "~120cm · 10kg이하",  regular: 6000,  jejuExpress: 8500  },
+  { id: 5, maxSizeCm: 120, maxWeightG: 15000, label: "~120cm · 15kg이하",  regular: 7000,  jejuExpress: 9500  },
+  { id: 6, maxSizeCm: 120, maxWeightG: 20000, label: "~120cm · 20kg이하",  regular: 8000,  jejuExpress: 10500 },
+  { id: 7, maxSizeCm: 120, maxWeightG: 25000, label: "~120cm · 25kg이하",  regular: 11000, jejuExpress: 13500 },
+  { id: 8, maxSizeCm: 160, maxWeightG: 30000, label: "~160cm · 30kg이하",  regular: 13000, jejuExpress: 15500 },
 ] as const;
 
 // 크기 구간 → 최소 tier id (크기만으로 결정되는 하한)
@@ -35,12 +35,11 @@ function weightTierId(weightG: number): number {
   return 8;
 }
 
-type DestType = "regular" | "jejuExpress" | "jejuStd";
+type DestType = "regular" | "jejuExpress";
 
 const DEST_OPTS: { id: DestType; label: string; sub: string }[] = [
-  { id: "regular",     label: "일반",           sub: "전국 익일배달" },
-  { id: "jejuExpress", label: "제주발 익일",     sub: "제주→육지 익일" },
-  { id: "jejuStd",     label: "제주발 D+2",     sub: "제주→육지 D+2" },
+  { id: "regular",     label: "일반",       sub: "전국 익일배달" },
+  { id: "jejuExpress", label: "제주발 익일", sub: "제주→육지 익일" },
 ];
 
 export default function SidebarDomesticCalculator() {
@@ -90,7 +89,7 @@ export default function SidebarDomesticCalculator() {
         {/* 배송 목적지 유형 */}
         <div>
           <p className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">배송 구분</p>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5">
             {DEST_OPTS.map(opt => (
               <button
                 key={opt.id}
