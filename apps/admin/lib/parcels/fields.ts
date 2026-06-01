@@ -18,6 +18,7 @@ export function parcelUpdatesFromBody(body: Record<string, unknown>): Record<str
     "inbound_at",
     "tracking_no",
     "storage_location_id",
+    "item_count",
   ]);
 
   const updates: Record<string, unknown> = {};
