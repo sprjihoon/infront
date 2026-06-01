@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown, Check } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown, Check, X, Layers } from "lucide-react";
 
 type StorageTypeOption = {
   id: string;
@@ -67,9 +67,47 @@ export default function StorageManagePage() {
   const [deleteError,  setDeleteError]  = useState<string | null>(null);
   const [activeZones,  setActiveZones]  = useState<Record<number, string>>({}); // blockIdx → zone
   const [openBlocks,   setOpenBlocks]   = useState<Set<number>>(new Set([0]));  // 첫 블록 기본 열림
-  const [typePopover,  setTypePopover]  = useState<string | null>(null); // location id
+  const [typePopover,  setTypePopover]  = useState<string | null>(null);
   const [typeSaving,   setTypeSaving]   = useState<string | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
+
+  // 선택 / 일괄 변경
+  const [selectedIds,    setSelectedIds]    = useState<Set<string>>(new Set());
+  const [bulkSaving,     setBulkSaving]     = useState(false);
+  const [bulkTypeOpen,   setBulkTypeOpen]   = useState(false);
+  const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
+  const bulkTypeRef   = useRef<HTMLDivElement>(null);
+  const bulkStatusRef = useRef<HTMLDivElement>(null);
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const toggleSelectAll = (ids: string[]) =>
+    setSelectedIds((prev) => {
+      const allSelected = ids.every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkAction = async (action: string, extra?: Record<string, unknown>) => {
+    if (!selectedIds.size) return;
+    setBulkSaving(true);
+    setBulkTypeOpen(false);
+    setBulkStatusOpen(false);
+    const res = await fetch("/api/admin/storage/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids: [...selectedIds], action, ...extra }),
+    });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error ?? "오류 발생"); }
+    else { clearSelection(); await load(); }
+    setBulkSaving(false);
+  };
 
   const ZONES_PER_BLOCK = 10;
 
@@ -101,9 +139,9 @@ export default function StorageManagePage() {
   // 팝오버 바깥 클릭 시 닫기
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setTypePopover(null);
-      }
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) setTypePopover(null);
+      if (bulkTypeRef.current && !bulkTypeRef.current.contains(e.target as Node)) setBulkTypeOpen(false);
+      if (bulkStatusRef.current && !bulkStatusRef.current.contains(e.target as Node)) setBulkStatusOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -446,22 +484,38 @@ export default function StorageManagePage() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-100 text-xs text-gray-400 bg-gray-50/30">
-                          <th className="px-5 py-2 text-left font-medium">코드</th>
-                          <th className="px-5 py-2 text-left font-medium">타입</th>
-                          <th className="px-5 py-2 text-left font-medium">상태</th>
-                          <th className="px-5 py-2 text-left font-medium">고객</th>
-                          <th className="px-5 py-2 text-right font-medium">액션</th>
+                          <th className="pl-4 pr-2 py-2 w-8">
+                            <input
+                              type="checkbox"
+                              className="rounded border-gray-300 accent-indigo-600"
+                              checked={currentLocs.length > 0 && currentLocs.every((l) => selectedIds.has(l.id))}
+                              onChange={() => toggleSelectAll(currentLocs.map((l) => l.id))}
+                            />
+                          </th>
+                          <th className="px-3 py-2 text-left font-medium">코드</th>
+                          <th className="px-3 py-2 text-left font-medium">타입</th>
+                          <th className="px-3 py-2 text-left font-medium">상태</th>
+                          <th className="px-3 py-2 text-left font-medium">고객</th>
+                          <th className="px-3 py-2 text-right font-medium">액션</th>
                         </tr>
                       </thead>
                       <tbody>
                         {currentLocs.map((loc) => (
-                          <tr key={loc.id} className="border-b border-gray-50 hover:bg-gray-50">
-                            <td className="px-5 py-3 font-mono font-bold text-gray-900">
+                          <tr key={loc.id} className={`border-b border-gray-50 hover:bg-gray-50 ${selectedIds.has(loc.id) ? "bg-indigo-50/40" : ""}`}>
+                            <td className="pl-4 pr-2 py-3">
+                              <input
+                                type="checkbox"
+                                className="rounded border-gray-300 accent-indigo-600"
+                                checked={selectedIds.has(loc.id)}
+                                onChange={() => toggleSelect(loc.id)}
+                              />
+                            </td>
+                            <td className="px-3 py-3 font-mono font-bold text-gray-900">
                               <Link href={`/storage/${loc.id}`} className="hover:text-indigo-600">
                                 {loc.code}
                               </Link>
                             </td>
-                            <td className="px-5 py-3 relative">
+                            <td className="px-3 py-3 relative">
                               <button
                                 type="button"
                                 onClick={() => setTypePopover(typePopover === loc.id ? null : loc.id)}
@@ -513,12 +567,12 @@ export default function StorageManagePage() {
                                 </div>
                               )}
                             </td>
-                            <td className="px-5 py-3">
+                            <td className="px-3 py-3">
                               <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${STATUS_COLOR[loc.status] ?? STATUS_COLOR.AVAILABLE}`}>
                                 {STATUS_LABEL[loc.status] ?? loc.status}
                               </span>
                             </td>
-                            <td className="px-5 py-3 text-gray-600 text-xs">
+                            <td className="px-3 py-3 text-gray-600 text-xs">
                               {loc.customers ? (
                                 <span>
                                   {loc.customers.name ?? ""}{" "}
@@ -528,7 +582,7 @@ export default function StorageManagePage() {
                                 <span className="text-gray-300">—</span>
                               )}
                             </td>
-                            <td className="px-5 py-3 text-right">
+                            <td className="px-3 py-3 text-right">
                               <button
                                 onClick={() => handleDelete(loc.id, loc.code)}
                                 disabled={deleting === loc.id || loc.status === "OCCUPIED"}
@@ -547,6 +601,108 @@ export default function StorageManagePage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── 일괄 변경 바 (선택 시 하단 sticky) ── */}
+      {selectedIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl">
+          <Layers size={16} className="text-indigo-400 shrink-0" />
+          <span className="text-sm font-semibold text-indigo-300">{selectedIds.size}개 선택됨</span>
+
+          <div className="w-px h-5 bg-gray-600" />
+
+          {/* 타입 일괄 변경 */}
+          <div className="relative" ref={bulkTypeRef}>
+            <button
+              type="button"
+              onClick={() => { setBulkTypeOpen((v) => !v); setBulkStatusOpen(false); }}
+              disabled={bulkSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 rounded-xl text-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              타입 변경 <ChevronDown size={12} />
+            </button>
+            {bulkTypeOpen && (
+              <div className="absolute bottom-full mb-2 left-0 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-48 text-gray-800">
+                <p className="text-[10px] text-gray-400 font-semibold px-2 pb-1.5">일괄 적용할 타입</p>
+                <button
+                  type="button"
+                  onClick={() => bulkAction("set_type", { type_id: null })}
+                  className="w-full px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs text-gray-500 text-left"
+                >
+                  미지정 (초기화)
+                </button>
+                {types.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => bulkAction("set_type", { type_id: t.id })}
+                    className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs"
+                  >
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${TYPE_BADGE[t.code] ?? "bg-gray-100 text-gray-600"}`}>
+                      {t.name.replace(" Storage", "").replace(" Rack", "")}
+                    </span>
+                    <span className="text-gray-400">{t.volume_liter}L</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 상태 일괄 변경 */}
+          <div className="relative" ref={bulkStatusRef}>
+            <button
+              type="button"
+              onClick={() => { setBulkStatusOpen((v) => !v); setBulkTypeOpen(false); }}
+              disabled={bulkSaving}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-800 rounded-xl text-sm hover:bg-gray-700 transition-colors disabled:opacity-50"
+            >
+              상태 변경 <ChevronDown size={12} />
+            </button>
+            {bulkStatusOpen && (
+              <div className="absolute bottom-full mb-2 left-0 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-40 text-gray-800">
+                <p className="text-[10px] text-gray-400 font-semibold px-2 pb-1.5">상태 일괄 변경</p>
+                <p className="text-[9px] text-gray-400 px-2 pb-1">보관중/배정중 슬롯은 자동 제외</p>
+                {[
+                  { key: "AVAILABLE", label: "비어있음", cls: "text-emerald-700" },
+                  { key: "DISABLED",  label: "사용불가", cls: "text-gray-500"    },
+                ].map(({ key, label, cls }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => bulkAction("set_status", { status: key })}
+                    className={`w-full px-2 py-1.5 rounded-lg hover:bg-gray-50 text-xs font-semibold text-left ${cls}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 일괄 삭제 */}
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`${selectedIds.size}개 슬롯을 삭제하시겠습니까?\n보관중/배정중 슬롯은 자동 제외됩니다.`))
+                bulkAction("delete");
+            }}
+            disabled={bulkSaving}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 rounded-xl text-sm hover:bg-red-500 transition-colors disabled:opacity-50"
+          >
+            <Trash2 size={13} /> 삭제
+          </button>
+
+          <div className="w-px h-5 bg-gray-600" />
+
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="text-gray-400 hover:text-white transition-colors"
+            title="선택 해제"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
     </div>
