@@ -55,7 +55,7 @@ export default async function StoragePage({
 
   const locations: StorageLocation[] = (rawLocations ?? []).map((loc) => ({
     ...loc,
-    customers: loc.customers as { name: string | null; customer_code: string } | null,
+    customers: (loc.customers as unknown) as { name: string | null; customer_code: string } | null,
     parcel_count: countMap[loc.id] ?? 0,
   }));
 
