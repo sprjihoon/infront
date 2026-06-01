@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import {
@@ -42,7 +42,7 @@ type CancelBody = {
 
 /**
  * POST /api/orders/[id]/cancel
- * - body 없음 또는 전체 parcel_ids: 주문 전체 취소, 물품 마이창고 복구
+ * - body 없음 또는 전체 parcel_ids: 주문 전체 취소, 물품 스토리지 복구
  * - body.parcel_ids: 해당 물품만 주문에서 제외(부분 취소), 나머지는 주문 유지
  */
 export async function POST(
@@ -189,7 +189,7 @@ export async function POST(
         order_id: orderId,
         type: "INBOUND",
         title: "해외배송 신청 취소",
-        body: `주문번호 ${order.order_no} 신청이 취소되었습니다. 마이창고에서 물품을 다시 출고 신청할 수 있습니다.`,
+        body: `주문번호 ${order.order_no} 신청이 취소되었습니다. 스토리지에서 물품을 다시 출고 신청할 수 있습니다.`,
       });
 
       return NextResponse.json({
@@ -210,7 +210,7 @@ export async function POST(
       order_id: orderId,
       type: "INBOUND",
       title: "배송 신청 물품 제외",
-      body: `주문번호 ${order.order_no}에서 물품 ${parcelIdsToRemove.length}개가 제외되었습니다. 마이창고에서 다시 출고 신청할 수 있습니다.`,
+      body: `주문번호 ${order.order_no}에서 물품 ${parcelIdsToRemove.length}개가 제외되었습니다. 스토리지에서 다시 출고 신청할 수 있습니다.`,
     });
 
     return NextResponse.json({

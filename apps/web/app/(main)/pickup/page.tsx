@@ -474,7 +474,7 @@ export default function PickupPage() {
           onClick={() => router.push("/warehouse")}
           className="w-full py-3.5 bg-brand-600 text-white font-bold rounded-xl text-sm"
         >
-          마이창고에서 확인
+          스토리지에서 확인
         </button>
       </div>
     );
@@ -648,7 +648,7 @@ export default function PickupPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-gray-800">물품 내역</span>
                   <span className="text-red-500 text-xs font-semibold">*필수</span>
-                  <span className="text-xs text-gray-400 font-normal">· 인보이스·마이창고 자동 반영</span>
+                  <span className="text-xs text-gray-400 font-normal">· 인보이스·스토리지 자동 반영</span>
                   {filledItemCount > 0 && (
                     <span className="text-xs bg-brand-100 text-brand-700 font-medium px-2 py-0.5 rounded-full">
                       {filledItemCount}종
@@ -665,7 +665,7 @@ export default function PickupPage() {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-gray-800">물품 내역</span>
                   <span className="text-red-500 text-xs font-semibold">*필수</span>
-                  <span className="text-xs text-gray-400 font-normal">· 인보이스·마이창고 자동 반영</span>
+                  <span className="text-xs text-gray-400 font-normal">· 인보이스·스토리지 자동 반영</span>
                   {itemsOpen && filledItemCount > 0 && (
                     <span className="text-xs bg-brand-100 text-brand-700 font-medium px-2 py-0.5 rounded-full">
                       {filledItemCount}종

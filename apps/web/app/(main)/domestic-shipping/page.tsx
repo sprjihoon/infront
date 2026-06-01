@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
@@ -355,7 +355,7 @@ function DomesticShippingContent() {
           )}
           <div className="space-y-2 pt-2">
             <button onClick={() => router.push("/orders")} className="w-full py-3.5 bg-blue-600 text-white font-bold rounded-2xl text-sm">배송현황 보기</button>
-            <button onClick={() => router.push("/warehouse")} className="w-full py-3.5 bg-gray-100 text-gray-700 font-semibold rounded-2xl text-sm">마이창고로 돌아가기</button>
+            <button onClick={() => router.push("/warehouse")} className="w-full py-3.5 bg-gray-100 text-gray-700 font-semibold rounded-2xl text-sm">스토리지로 돌아가기</button>
           </div>
         </div>
       </div>
@@ -603,7 +603,7 @@ function DomesticShippingContent() {
               <Package size={36} className="text-gray-200 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-500">출고 가능한 물품이 없습니다</p>
               <p className="text-xs text-gray-400 mt-1">입고 완료된 물품이 없으면 출고신청을 할 수 없어요</p>
-              <button onClick={() => router.push("/warehouse")} className="mt-5 bg-blue-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">마이창고 보기</button>
+              <button onClick={() => router.push("/warehouse")} className="mt-5 bg-blue-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">스토리지 보기</button>
             </div>
           ) : (
             <>

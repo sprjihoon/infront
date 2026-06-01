@@ -102,7 +102,7 @@ function ReturnRequestContent() {
           onClick={() => router.push("/warehouse")}
           className="w-full bg-brand-600 text-white font-semibold py-4 rounded-2xl"
         >
-          마이창고로 돌아가기
+          스토리지로 돌아가기
         </button>
       </div>
     );

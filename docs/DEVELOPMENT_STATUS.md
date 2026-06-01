@@ -1,4 +1,4 @@
-# 인프론트 개발 현황
+﻿# 인프론트 개발 현황
 
 > **최종 갱신:** 2026-05-28  
 > **총 커밋:** 134 · **DB 마이그레이션:** `001` ~ `022` (020·021은 미적용/작업 중)
@@ -43,7 +43,7 @@ infront/
 | 수거 신청 (우체국 ePost) | ✅ | SEED128, 다박스·박스 규격 선택 |
 | 수거 취소 + GetResInfo 상태 조회 | ✅ | `PICKUP_CANCELLED` 상태 |
 | **수거 취소 안정성 강화** | ✅ | ERR-211(reqNo 누락) graceful 처리, `||` fallback 수정 — `api/pickup/[id]/route.ts` |
-| 마이창고 | ✅ | 상태 필터, 검색, 다중 선택 |
+| 스토리지 | ✅ | 상태 필터, 검색, 다중 선택 |
 | 물품 직접 등록 | ✅ | 타택배·직접 발송 경로 |
 | 해외배송 신청 (다단계) | ✅ | 다중 박스, 인보이스, 주소록 |
 | EMS/K-Packet 견적 | ✅ | 사이드바 계산기 + `/shipping-calc` |
@@ -167,7 +167,7 @@ infront/
 - `apps/admin/lib/parcel-status.ts`, `apps/web/lib/parcel-shippable.ts` — 상태·출고 가능 판단
 - `apps/admin/lib/parcels/fields.ts` — 물품 필드 정규화
 - admin 입고·주문·택배 페이지 UI 보완
-- web 마이창고·배송신청·요금 페이지 소폭 수정
+- web 스토리지·배송신청·요금 페이지 소폭 수정
 
 ---
 

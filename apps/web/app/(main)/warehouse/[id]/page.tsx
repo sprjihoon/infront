@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
@@ -837,7 +837,7 @@ export default function ParcelDetailPage() {
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8 sm:items-center">
           <div className="w-full max-w-[380px] bg-white rounded-2xl p-5 shadow-xl">
             <p className="text-base font-bold text-gray-900 mb-1">수거 신청을 취소할까요?</p>
-            <p className="text-sm text-gray-500 mb-5">취소하면 마이창고 목록에서 제거됩니다. 다시 이용하시려면 수거 신청 메뉴를 이용해 주세요.</p>
+            <p className="text-sm text-gray-500 mb-5">취소하면 스토리지 목록에서 제거됩니다. 다시 이용하시려면 수거 신청 메뉴를 이용해 주세요.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowCancelPickup(false)}

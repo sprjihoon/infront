@@ -1,4 +1,4 @@
-import { COUNTRIES } from "@/lib/order-display";
+﻿import { COUNTRIES } from "@/lib/order-display";
 
 export type OrderListFilterKey =
   | "ALL"
@@ -72,7 +72,7 @@ export function getOrdersListEmptyMessage(filter: OrderListFilterKey): {
     case "DRAFT":
       return {
         title: "신청 완료된 배송이 없어요",
-        desc: "마이창고에서 출고 신청하면\n여기에 표시됩니다",
+        desc: "스토리지에서 출고 신청하면\n여기에 표시됩니다",
       };
     case "PROCESSING":
       return {
@@ -102,7 +102,7 @@ export function getOrdersListEmptyMessage(filter: OrderListFilterKey): {
     default:
       return {
         title: "배송 내역이 없어요",
-        desc: "마이창고에서 해외배송을 신청해보세요",
+        desc: "스토리지에서 해외배송을 신청해보세요",
       };
   }
 }

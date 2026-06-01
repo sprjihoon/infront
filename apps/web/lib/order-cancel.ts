@@ -1,4 +1,4 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+﻿import type { SupabaseClient } from "@supabase/supabase-js";
 import { calculateDutyDeposit, parseShippingMethod } from "@/lib/duty-deposit";
 import { getEmsUsdKrwRate, getEmsUsdKrwRateNumber } from "@/lib/ems/exchange-rate-store";
 import {
@@ -9,7 +9,7 @@ import {
 export { buildItemListFromParcels, sumCustomsValueUsd } from "@/lib/order-cancel-items";
 export type { OrderItemRow } from "@/lib/order-cancel-items";
 
-/** order_parcels 삭제 + 해당 소포 부가서비스 요청 취소 → 마이창고 출고 가능 */
+/** order_parcels 삭제 + 해당 소포 부가서비스 요청 취소 → 스토리지 출고 가능 */
 export async function releaseParcelsFromOrder(
   admin: SupabaseClient,
   orderId: string,

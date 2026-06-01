@@ -1,4 +1,4 @@
-export type PreInvoiceItemInput = {
+﻿export type PreInvoiceItemInput = {
   name_en?: string;
   quantity?: number;
   unit_price_usd?: number;
@@ -22,7 +22,7 @@ export function validatePreInvoiceItems(
     return "모든 품목의 단가(USD)를 입력해주세요. (인보이스·보험료 계산에 필수)";
   }
   if (filled.some((i) => !(i.hs_code ?? "").trim())) {
-    return "모든 품목의 HS 코드를 입력해주세요. (인보이스·마이창고 전달에 필수)";
+    return "모든 품목의 HS 코드를 입력해주세요. (인보이스·스토리지 전달에 필수)";
   }
   return null;
 }

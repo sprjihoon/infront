@@ -161,7 +161,7 @@ export default function MyPage() {
           💡 국내 쇼핑몰 주문 시 위 주소로 배송받으시면 자동 입고됩니다.
         </p>
         <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 mt-2 leading-relaxed">
-          ⚠️ 수거 신청 이외의 입고는 <span className="font-semibold">마이창고 물품 등록</span>이 필수입니다.
+          ⚠️ 수거 신청 이외의 입고는 <span className="font-semibold">스토리지 물품 등록</span>이 필수입니다.
         </p>
       </div>
 

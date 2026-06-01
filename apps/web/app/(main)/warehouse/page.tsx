@@ -210,7 +210,7 @@ export default function WarehousePage() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-xl font-bold text-gray-900">
-            {selectMode ? "출고 물품 선택" : "📦 마이창고"}
+            {selectMode ? "출고 물품 선택" : "📦 스토리지"}
           </h1>
           {selectMode && (
             <p className="text-xs text-gray-500 mt-0.5">출고할 물품을 선택하세요</p>

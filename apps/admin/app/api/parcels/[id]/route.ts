@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
 import { mapParcelForClient, parcelUpdatesFromBody } from "@/lib/parcels/fields";
@@ -48,7 +48,7 @@ export async function PATCH(
     const STATUS_NOTIFY: Record<string, { title: string; body: string }> = {
       PICKED_UP:   { title: "수거가 완료되었습니다", body: "물품이 센터로 이동 중입니다." },
       INBOUND:     isReady
-        ? { title: "입고 완료", body: "마이창고에서 출고 신청이 가능합니다." }
+        ? { title: "입고 완료", body: "스토리지에서 출고 신청이 가능합니다." }
         : { title: "센터에 입고되었습니다", body: "검수 후 출고 신청이 가능해집니다." },
       INSPECTION:  { title: "검수가 시작되었습니다", body: "담당자가 물품을 검수하고 있어요." },
       HOLD:        { title: "물품이 보류되었습니다", body: `사유: ${body.hold_reason ?? ""}` },

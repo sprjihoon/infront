@@ -302,7 +302,7 @@ function OrdersContent() {
               <p className="text-gray-400 text-xs whitespace-pre-line">{emptyMessage.desc}</p>
               {filter === "ALL" && !search.trim() && (
                 <button onClick={() => router.push("/warehouse")} className="mt-5 bg-indigo-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">
-                  마이창고 가기
+                  스토리지 가기
                 </button>
               )}
             </div>
@@ -523,7 +523,7 @@ function OrdersContent() {
                   <span className="font-semibold">{domesticCancelTarget.recipient_name}</span> 앞 배송 신청을 취소하시겠습니까?
                 </p>
                 <div className="bg-amber-50 rounded-xl p-3 text-xs text-amber-800">
-                  취소 시 선택하신 물품 <span className="font-bold">{domesticCancelTarget.parcel_ids?.length ?? 0}개</span>가 마이창고로 돌아갑니다.
+                  취소 시 선택하신 물품 <span className="font-bold">{domesticCancelTarget.parcel_ids?.length ?? 0}개</span>가 스토리지로 돌아갑니다.
                 </div>
                 {domesticCancelError && (
                   <p className="text-sm text-red-600 bg-red-50 rounded-xl p-3">{domesticCancelError}</p>

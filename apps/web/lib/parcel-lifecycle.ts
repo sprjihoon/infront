@@ -1,5 +1,5 @@
-/**
- * 고객 마이창고·수거/반송 액션 규칙 (입고 전 취소 숨김, 입고 후 반송).
+﻿/**
+ * 고객 스토리지·수거/반송 액션 규칙 (입고 전 취소 숨김, 입고 후 반송).
  */
 
 export type ParcelLifecycleInput = {
@@ -7,7 +7,7 @@ export type ParcelLifecycleInput = {
   inbound_at?: string | null;
 };
 
-/** 마이창고 목록·홈·알림 링크에 노출할 소포인지 */
+/** 스토리지 목록·홈·알림 링크에 노출할 소포인지 */
 export function isParcelVisibleInWarehouse(parcel: ParcelLifecycleInput): boolean {
   if (parcel.status === "DONE") return false;
   // 입고·결제 전 수거 취소 — 고객에게 보여줄 실질 정보 없음

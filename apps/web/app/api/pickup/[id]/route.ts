@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { cancelOrder, resolveEpostCancelReqYmd, requireEpostPhone } from '@/lib/epost/client';
@@ -9,7 +9,7 @@ export const preferredRegion = 'icn1';
 
 /**
  * DELETE /api/pickup/[id]
- * 수거 신청 취소: 우체국 전산 취소 후 PICKUP_CANCELLED (입고 전이면 마이창고 비노출)
+ * 수거 신청 취소: 우체국 전산 취소 후 PICKUP_CANCELLED (입고 전이면 스토리지 비노출)
  */
 export async function DELETE(
   _req: NextRequest,
@@ -170,7 +170,7 @@ export async function DELETE(
     return NextResponse.json({ error: '취소 처리에 실패했습니다.' }, { status: 500 });
   }
 
-  // 알림 (입고 전 취소 건은 마이창고에 남기지 않음 — 상세 링크 없이 안내)
+  // 알림 (입고 전 취소 건은 스토리지에 남기지 않음 — 상세 링크 없이 안내)
   await supabase.from('notifications').insert({
     customer_id: user.id,
     type:        'PICKUP_CANCELLED',

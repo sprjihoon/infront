@@ -127,7 +127,7 @@ export default function OrderDetailView({
           </div>
           {order.status === "CANCELLED" && (
             <p className="text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2 mb-3">
-              취소된 신청입니다. 포함 물품은 마이창고에서 다시 출고 신청할 수 있습니다.
+              취소된 신청입니다. 포함 물품은 스토리지에서 다시 출고 신청할 수 있습니다.
             </p>
           )}
           {!canCancel && cancelBlockReason && order.status !== "CANCELLED" && (
@@ -225,7 +225,7 @@ export default function OrderDetailView({
                         onClick={() => onExcludeParcel(link.parcel_id)}
                         className="mt-2 w-full text-[11px] font-semibold text-red-600 py-1.5 rounded-lg border border-red-100 bg-white"
                       >
-                        이 물품만 제외 (마이창고 복구)
+                        이 물품만 제외 (스토리지 복구)
                       </button>
                     )}
                 </div>

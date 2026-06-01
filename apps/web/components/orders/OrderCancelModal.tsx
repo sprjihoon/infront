@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
@@ -124,7 +124,7 @@ export default function OrderCancelModal({
         {mode === "partial" && multi ? (
           <>
             <p className="text-xs text-gray-500 mb-2">
-              제외한 물품은 마이창고로 돌아가 다시 출고 신청할 수 있습니다. 남은 물품은 이 주문에 유지됩니다.
+              제외한 물품은 스토리지로 돌아가 다시 출고 신청할 수 있습니다. 남은 물품은 이 주문에 유지됩니다.
             </p>
             <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
               {parcelIds.map((id) => {
@@ -160,7 +160,7 @@ export default function OrderCancelModal({
           </>
         ) : (
           <p className="text-sm text-gray-500 mb-5">
-            취소하면 담았던 물품 {parcelIds.length}개가 마이창고에서 다시 출고 신청할 수 있는 상태로 돌아갑니다.
+            취소하면 담았던 물품 {parcelIds.length}개가 스토리지에서 다시 출고 신청할 수 있는 상태로 돌아갑니다.
           </p>
         )}
 

@@ -252,7 +252,7 @@ export default function RegisterParcelPage() {
           {wasMerged ? "물품 추가 완료!" : "물품 등록 완료!"}
         </h2>
         <p className="text-gray-500 text-sm leading-relaxed mb-1">
-          운송장 <span className="font-semibold text-gray-800">{trackingNo}</span>{wasMerged ? "에\n물품이 추가되었습니다." : "이\n마이창고에 등록되었습니다."}
+          운송장 <span className="font-semibold text-gray-800">{trackingNo}</span>{wasMerged ? "에\n물품이 추가되었습니다." : "이\n스토리지에 등록되었습니다."}
         </p>
         <p className="text-xs text-gray-400 mb-8">
           센터에 도착하면 입고 처리 후 알려드릴게요.
@@ -261,7 +261,7 @@ export default function RegisterParcelPage() {
           onClick={() => router.push("/warehouse")}
           className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl"
         >
-          마이창고에서 확인
+          스토리지에서 확인
         </button>
         <button
           onClick={() => {
