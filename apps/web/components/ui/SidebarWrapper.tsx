@@ -3,13 +3,17 @@
 import { usePathname } from "next/navigation";
 import SidebarCalculator from "./SidebarCalculator";
 import SidebarShippingCalcInfo from "./SidebarShippingCalcInfo";
+import SidebarDomesticCalculator from "./SidebarDomesticCalculator";
 
 export default function SidebarWrapper() {
   const pathname = usePathname();
-  const isShippingCalc = pathname === "/shipping-calc";
 
-  if (isShippingCalc) {
+  if (pathname === "/shipping-calc") {
     return <SidebarShippingCalcInfo />;
+  }
+
+  if (pathname.startsWith("/domestic-shipping")) {
+    return <SidebarDomesticCalculator />;
   }
 
   return <SidebarCalculator />;
