@@ -260,13 +260,18 @@ infront/
 | `/login` | 관리자 로그인 | ✅ |
 | `/dashboard` | 대시보드 | ✅ (입고·주문·반품 집계) |
 | `/parcels` | 입고 물품 목록 | ✅ (상태 필터, 검색, 입고 동기화) |
-| `/parcels/[id]` | 물품 상세 | ✅ |
+| `/parcels/[id]` | 물품 상세 | ✅ (위치이력, 로케이션 이동) |
+| `/inbound` | 입고처리 | ✅ (바코드 스캔, 사진촬영, 자동 로케이션 배정) |
+| `/transfer` | 로케이션 이동처리 | ✅ (바코드 스캔 2번으로 즉시 이동) |
 | `/orders` | 국제 주문 목록 | ✅ |
 | `/orders/[id]` | 주문 상세 | ✅ |
 | `/orders/[id]/label` | 배송 라벨 | ✅ (보험·세관 필드) |
 | `/customers` | 고객 관리 | 🔄 (고객별 물품·주문 조회) |
 | `/customers/[code]` | 고객 상세 | 🔄 |
 | `/returns` | 반품 신청 목록 | ✅ |
+| `/storage` | 로케이션 현황 | ✅ (Zone별 현황, 타입 뱃지, 용량 표시) |
+| `/storage/[id]` | 로케이션 상세 | ✅ (리터 용량 바, 소포 이동, 고객 배정) |
+| `/storage/manage` | Zone·슬롯 관리 | ✅ (타입 설정, 가격·용량 편집, 일괄 변경) |
 
 ---
 
@@ -315,7 +320,7 @@ infront/
 
 ---
 
-## 🗄 DB 스키마 (마이그레이션 001~021)
+## 🗄 DB 스키마 (마이그레이션 001~035)
 
 | 파일 | 내용 |
 |------|------|
@@ -338,8 +343,23 @@ infront/
 | `017_orders_intl_tracking.sql` | orders: 국제 운송장 추적 필드 |
 | `018_fix_handle_new_user.sql` | handle_new_user 트리거 중복 호출 수정 |
 | `019_orders_quote_margin.sql` | orders: 견적 EMS 원가·마진 (quote_ems_cost, shipping_margin) |
-| `020_parcel_inbound_source.sql` | parcels.inbound_source (PICKUP / DIRECT) — 🔄 적용 예정 |
-| `021_inbound_sync_schedule.sql` | admin_config 입고 동기화 스케줄 — 🔄 적용 예정 |
+| `020_parcel_inbound_source.sql` | parcels.inbound_source (PICKUP / DIRECT) |
+| `021_inbound_sync_schedule.sql` | admin_config 입고 동기화 스케줄 |
+| `022_ems_usd_krw_rate.sql` | EMS 보험 USD→KRW 환율 (admin_config, Cron 1회/일 갱신) |
+| `023_orders_duty_ddp.sql` | DDP(관세납부) 옵션·DDP 가격 필드 |
+| `024_domestic_orders.sql` | domestic_orders 테이블 (창고→국내 주소 출고) |
+| `025_domestic_orders_v2.sql` | domestic_orders 확장: 부가옵션·메모 컬럼 추가 |
+| `026_storage_locations.sql` | storage_locations 테이블 (창고 로케이션 — A-001 형식) |
+| `027_storage_zones.sql` | Zone 그룹핑 (storage_locations 상위 논리 구역) |
+| `028_storage_types.sql` | storage_types 테이블: MINI/STANDARD/LONG/XL/OVERSIZE 규격·요금 정의 |
+| `029_storage_locations_v2.sql` | storage_locations 확장: Zone/Type FK, volume_liter, is_temp 컬럼 |
+| `030_storage_grid_view.sql` | 관리자 그리드 UI용 뷰 |
+| `031_storage_alert_view.sql` | 즉시 처리 필요·장기 보관 알림 집계 뷰 |
+| `032_parcel_barcodes.sql` | parcel_barcodes 테이블 (내부 바코드: `{tracking_no}-{seq}`) |
+| `033_storage_capacity.sql` | storage_locations: max_parcels 용량 상한 컬럼 |
+| `034_parcel_size_code.sql` | parcels.parcel_size_code 컬럼 추가 |
+| `035_parcel_location_history.sql` | parcel_location_events 테이블 (소포 위치 이동 이력) + 임시보관 공간 |
+| `035_parcel_size_code_migrate.sql` | parcel_size_code 값 MINI/STANDARD/LONG/XL/OVERSIZE로 마이그레이션, pickup_weight_kg 기반 자동 채우기 |
 
 > 상세 개발 현황: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -435,20 +455,25 @@ parcels/orders ──< parcel_media            사진/영상 미디어
 | 관리자 로그인 | ✅ 완료 | 이메일 화이트리스트 인증 |
 | 대시보드 | ✅ 완료 | 입고·주문·반품 집계 카드 |
 | 입고 물품 목록 | ✅ 완료 | 상태별 필터, 검색, 입고 동기화 버튼 |
-| 물품 상세 조회 | ✅ 완료 | 물품 정보, 상태 변경 |
+| 물품 상세 조회 | ✅ 완료 | 물품 정보, 상태 변경, 위치 이동 이력 |
+| 입고처리 전용 화면 | ✅ 완료 | 바코드 스캔, 사진·영상 촬영, 내부 바코드 자동 생성 |
 | 국제 주문 목록 | ✅ 완료 | 주문 목록, 상태 표시 |
 | 주문 상세 조회 | ✅ 완료 | 주문 정보, 물품 목록 |
 | 배송 라벨 조회 | ✅ 완료 | 라벨 출력 (보험·세관 필드) |
 | EMS/K-Packet 접수 | ✅ 완료 | 세관신고 매핑 + 결제 후 자동 접수 |
 | 견적 원가·마진 | ✅ 완료 | DB 필드 (019), UI 연동 예정 |
 | 반품 신청 목록 | ✅ 완료 | 반품 현황 조회 |
+| **스토리지 로케이션 현황** | ✅ 완료 | Zone별 현황 그리드, 타입 뱃지, 상태 필터 |
+| **스토리지 로케이션 상세** | ✅ 완료 | 리터 용량 바, 소포 이동, 고객 배정·해제 |
+| **Zone·슬롯 관리** | ✅ 완료 | 슬롯 추가/삭제, 타입 지정, 일괄 변경, 가격·용량 편집 |
+| **스토리지 타입 요금 설정** | ✅ 완료 | MINI~OVERSIZE 주간요금·상한요금·최대건수 인라인 편집 |
+| **로케이션 이동처리** | ✅ 완료 | `/transfer` 전용 페이지, 바코드 2번 스캔으로 즉시 이동 |
+| **자동 로케이션 배정** | ✅ 완료 | 입고 시 size code → 단계적 업사이징 → 분할 배정 |
 | 고객 관리 | 🔄 진행 중 | 고객 검색, 고객별 물품·주문 조회 |
 | 입고 자동 동기화 | 🔄 진행 중 | GetResInfo + tracker.delivery, Cron·스케줄 설정 |
 | 접수건 벌크 상태 변경 | 🔲 예정 | 다중 선택 상태 변경 |
-| 국내 송장 매칭 | 🔲 예정 | 스캔 → 고객 자동 매칭 |
 | 오픈박스 영상 업로드 | 🔲 예정 | Cloudflare Stream tus 청크 업로드 |
 | 검수 결과 입력 | 🔲 예정 | 체크리스트 + 사진 업로드 |
-| 발송 가능/불가/보류 처리 | 🔲 예정 | 보류 사유 → 고객 자동 알림 |
 | 실측 무게/부피 입력 | 🔲 예정 | 부피중량 자동 계산 |
 | 견적 확정 + 결제 요청 | 🔄 부분 완료 | 실측→결제 플로우 완료, QUOTE_SENT 알림·마진 UI 예정 |
 | 반품 처리 워크플로우 | 🔲 예정 | 검수→포장→발송→완료 |
@@ -508,6 +533,17 @@ Next.js 웹앱
 - [x] 국제 추적 Cron (`sync-intl-tracking`, 6시간)
 - [x] 관리자 대시보드 통계 카드
 
+### Phase 1.6 — 스토리지 관리 시스템 ✅ 완료
+
+- [x] 스토리지 로케이션 DB 설계 (026~031.sql)
+- [x] 로케이션 현황·상세 페이지 (Zone 그리드, 리터 용량 바)
+- [x] 입고처리 전용 페이지 + 내부 바코드 (032.sql)
+- [x] 스토리지 타입 용량·요금 관리 UI
+- [x] 리터=포인트 자동 배정: 단계적 업사이징 + 분할 배정 (033~035.sql)
+- [x] 수거신청 시점 parcel_size_code 자동 저장
+- [x] 로케이션 이동처리 전용 페이지 (바코드 2-스캔 워크플로우)
+- [x] 소포 위치 이동 이력 타임라인
+
 ### Phase 2 — 부가 서비스 + 관리자 워크플로우
 
 - [ ] **입고 자동 동기화** 🔄 — GetResInfo + tracker.delivery, Cron·스케줄 (020~021)
@@ -515,7 +551,7 @@ Next.js 웹앱
 - [ ] 검수검품 서비스 신청 UI
 - [ ] 빈 박스 배송 신청 UI + 관리자 처리
 - [ ] 반품 신청 전체 플로우 (시점별 처리)
-- [ ] 관리자: 입고 처리 + 오픈박스 영상 업로드 (Cloudflare Stream)
+- [ ] 관리자: 오픈박스 영상 업로드 (Cloudflare Stream)
 - [ ] 관리자: 검수 결과 입력 + 사진 업로드 (Supabase Storage)
 - [ ] 관리자: 실측 → 견적 확정 → 결제 요청 알림 (QUOTE_SENT)
 - [ ] 관리자: 반품 처리 워크플로우
@@ -575,7 +611,68 @@ Next.js 웹앱
 
 ## 📝 변경 이력
 
+### 2026-06-02
+
+#### 스토리지 리터=포인트 자동 배정 시스템 완성
+
+**parcel_size_code 통일 (MINI/STANDARD/LONG/XL/OVERSIZE)**
+- `admin/lib/parcels/size.ts`, `web/lib/parcels/size.ts` 신규 작성
+  - 기존 SMALL/MEDIUM/LARGE/XLARGE → storage_types.code 와 동일한 코드로 통일
+  - `weightKgToSizeCode(kg)` 함수: 픽업 무게 → size code 자동 매핑
+    - ≤2kg → MINI(16L) / ≤5kg → STANDARD(40.5L) / ≤10kg → LONG(96L) / ≤20kg → XL(108.2L) / ≤30kg → OVERSIZE(480L)
+- `sql/035_parcel_size_code_migrate.sql`: 기존 코드 일괄 변환 + pickup_weight_kg 기반 미설정 소포 자동 채우기
+
+**수거신청 시점 자동 size code 저장**
+- `apps/web/app/api/pickup/route.ts`
+  - 박스 무게(`spec.weight`) 기반 `parcel_size_code` 계산 후 DB 저장
+  - 수거신청 순간부터 스토리지 포인트가 확정됨
+
+**입고 처리 자동 로케이션 배정 고도화** (`api/admin/inbound/process`)
+1. 기존 고객 로케이션 리터 여유 체크 (재사용 우선)
+2. **단계적 업사이징**: 딱 맞는 타입 → 한 단계 큰 타입 → ... 순으로 탐색
+3. **분할 배정**: 단일 로케이션으로 부족하면 여러 로케이션을 묶어 합산 용량 확보
+4. 최후 fallback: 타입·크기 무관 아무 빈 자리
+- 입고 완료 화면에 분할 배정 시 추가 로케이션 코드 표시
+
+#### 스토리지 타입 가격·용량 인라인 편집
+
+- `apps/admin/app/(dashboard)/storage/manage/page.tsx`
+  - 타입 카드에 📦 최대건수 + 💰 주간요금/상한요금 인라인 편집 UI 추가
+- `apps/admin/app/api/admin/storage/route.ts` PATCH
+  - `price_per_week`, `price_max` 수정 지원 추가
+
+#### 로케이션 이동처리 전용 페이지 신설
+
+- `apps/admin/app/(dashboard)/transfer/page.tsx` 신규
+  - **바코드 2번 스캔**으로 즉시 이동처리: ① 소포 바코드 → ② 목적지 로케이션 코드
+  - 내부 바코드·운송장번호·로케이션 코드 자동 판별
+  - 완료 후 "다음 소포 스캔" 버튼으로 연속 처리
+- `apps/admin/app/api/admin/transfer/scan/route.ts` 신규
+  - 스캔 입력 자동 판별: 바코드 → 소포 / 로케이션 코드 → 로케이션+보관소포목록
+- `DashboardNav.tsx`: 스토리지 섹션에 "이동처리" 메뉴 추가
+
+---
+
 ### 2026-06-01
+
+#### 스토리지 시스템 완성 (026~034 마이그레이션)
+
+**스토리지 로케이션 관리**
+- `026~031`: storage_locations, storage_zones, storage_types, 그리드·알림 뷰 구축
+- `/storage` 페이지: Zone별 그리드, 타입 뱃지·사이즈·요금·보관일수 표시
+- `/storage/[id]` 상세: 리터 용량 바, 보관 소포 카드, 고객 배정 관리
+
+**입고처리 전용 페이지 + 내부 바코드 시스템**
+- `032`: parcel_barcodes 테이블 (`{tracking_no}-01` 형식 내부 바코드)
+- `/inbound` 전용 페이지: 바코드 스캔 → 소포 확인 → 사진 촬영 → 로케이션 배정
+
+**스토리지 용량 관리 기반**
+- `033~034`: storage_locations.max_parcels, parcels.parcel_size_code 컬럼 추가
+- `/storage/manage` 페이지: Zone·슬롯 관리, 타입 지정, 아코디언 UI, 일괄 변경
+
+**소포 위치 이동 이력**
+- `035_parcel_location_history.sql`: parcel_location_events 테이블
+- `/parcels/[id]` 상세: 위치 이동 이력 타임라인 표시
 
 #### 국내배송 계산기 사이드바 위젯 추가
 - `apps/web/components/ui/SidebarDomesticCalculator.tsx` 신규 생성
