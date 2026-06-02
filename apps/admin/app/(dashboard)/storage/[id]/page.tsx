@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from "lucide-react";
+import { SIZE_VOLUME_L, PARCEL_SIZE_OPTIONS } from "@/lib/parcels/size";
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   PENDING_PICKUP: { label: "수거신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
@@ -49,6 +50,7 @@ type Parcel = {
   volume_l: number | null;
   volume_w: number | null;
   volume_h: number | null;
+  parcel_size_code: string | null;
   pre_invoice_items: InvoiceItem[] | null;
   sender_name: string | null;
   sender_address: string | null;
@@ -70,6 +72,8 @@ type LocationDetail = {
   assigned_at: string | null;
   notes: string | null;
   max_parcels: number | null;
+  volume_liter: number | null;
+  storage_types: { volume_liter: number | null } | null;
   customers: { id: string; name: string | null; customer_code: string; email: string } | null;
 };
 
@@ -367,19 +371,29 @@ export default function StorageDetailPage({
           <span className="flex items-center gap-2">
             <Package size={16} className="text-blue-500" />
             보관 중인 소포
-            {location.max_parcels != null ? (
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                parcels.length >= location.max_parcels
-                  ? "bg-red-100 text-red-700"
-                  : parcels.length >= location.max_parcels * 0.8
-                  ? "bg-yellow-100 text-yellow-700"
-                  : "bg-blue-100 text-blue-700"
-              }`}>
-                {parcels.length} / {location.max_parcels}건
-              </span>
-            ) : (
-              <span className="text-xs text-gray-400">({parcels.length}개)</span>
-            )}
+            {(() => {
+              // 리터 기반 표시 우선
+              if (location.storage_types?.volume_liter != null) {
+                const usedL = parcels.reduce((sum, p) => {
+                  return sum + (p.parcel_size_code ? (SIZE_VOLUME_L[p.parcel_size_code] ?? 0) : 0);
+                }, 0);
+                const pct = Math.min(100, Math.round((usedL / location.storage_types.volume_liter) * 100));
+                const color = pct >= 100 ? "bg-red-100 text-red-700" : pct >= 80 ? "bg-yellow-100 text-yellow-700" : "bg-blue-100 text-blue-700";
+                return (
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${color}`}>
+                    {usedL}L / {location.storage_types.volume_liter}L
+                  </span>
+                );
+              }
+              // fallback: 건수
+              if (location.max_parcels != null) {
+                const color = parcels.length >= location.max_parcels ? "bg-red-100 text-red-700"
+                  : parcels.length >= location.max_parcels * 0.8 ? "bg-yellow-100 text-yellow-700"
+                  : "bg-blue-100 text-blue-700";
+                return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${color}`}>{parcels.length}/{location.max_parcels}건</span>;
+              }
+              return <span className="text-xs text-gray-400">({parcels.length}개)</span>;
+            })()}
           </span>
           {/* 용량 편집 */}
           {!editingCapacity ? (
@@ -411,6 +425,41 @@ export default function StorageDetailPage({
             </div>
           )}
         </div>
+
+        {/* 리터 용량 바 */}
+        {location.storage_types?.volume_liter != null && (() => {
+          const volLiter = location.storage_types!.volume_liter!;
+          const usedL = parcels.reduce((sum, p) => {
+            return sum + (p.parcel_size_code ? (SIZE_VOLUME_L[p.parcel_size_code] ?? 0) : 0);
+          }, 0);
+          const pct = Math.min(100, Math.round((usedL / volLiter) * 100));
+          const hasSized = parcels.some((p) => p.parcel_size_code);
+          if (!hasSized) return null;
+          return (
+            <div className="px-5 py-2 border-b border-gray-50">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
+                <span>용량 사용률 ({pct}%)</span>
+                <span className="font-mono">{usedL}L / {volLiter}L</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-red-500" : pct >= 80 ? "bg-yellow-400" : "bg-blue-500"}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <div className="flex gap-3 mt-1.5 flex-wrap">
+                {parcels.filter((p) => p.parcel_size_code).map((p) => {
+                  const opt = PARCEL_SIZE_OPTIONS.find((o) => o.code === p.parcel_size_code);
+                  return opt ? (
+                    <span key={p.id} className="text-[10px] bg-orange-50 text-orange-700 border border-orange-200 rounded px-1.5 py-0.5">
+                      {opt.label} {opt.volume_l}L
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          );
+        })()}
         {parcels.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">보관 중인 소포가 없습니다</div>
         ) : (

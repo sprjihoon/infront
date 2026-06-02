@@ -3,10 +3,11 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Search, Package, User, MapPin, CheckCircle,
-  Loader2, ScanLine, ChevronDown, RotateCcw, AlertCircle,
+  Loader2, ScanLine, ChevronDown, RotateCcw, AlertCircle, Box,
 } from "lucide-react";
 import Link from "next/link";
 import WebcamCapture, { type CapturedPhoto, type WebcamCaptureResult } from "@/components/inbound/WebcamCapture";
+import { PARCEL_SIZE_OPTIONS, type ParcelSizeCode } from "@/lib/parcels/size";
 
 interface InvoiceItem {
   name_en?: string;
@@ -61,10 +62,15 @@ export default function InboundPage() {
     location_code: string | null;
     location_max_parcels: number | null;
     location_current_count: number | null;
+    location_volume_liter: number | null;
+    location_used_liter: number | null;
     barcode_count: number;
   } | null>(null);
   const [resultBarcodes, setResultBarcodes] = useState<unknown[]>([]);
   const [addingLocation, setAddingLocation] = useState(false);
+
+  // 소포 사이즈
+  const [parcelSizeCode, setParcelSizeCode] = useState<ParcelSizeCode | null>(null);
 
   const scanInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,6 +193,7 @@ export default function InboundPage() {
         body: JSON.stringify({
           parcel_id: parcel.id,
           item_count: itemCount,
+          parcel_size_code: parcelSizeCode ?? undefined,
           location_id: locationMode === "manual" ? selectedLocationId : null,
         }),
       });
@@ -199,6 +206,8 @@ export default function InboundPage() {
         location_code: json.location_code,
         location_max_parcels: json.location_max_parcels ?? null,
         location_current_count: json.location_current_count ?? null,
+        location_volume_liter: json.location_volume_liter ?? null,
+        location_used_liter: json.location_used_liter ?? null,
         barcode_count: json.barcode_count,
       });
       setResultBarcodes(json.barcodes ?? []);
@@ -260,6 +269,7 @@ export default function InboundPage() {
     setSearchError("");
     setUploadProgress(0);
     setAddingLocation(false);
+    setParcelSizeCode(null);
   }
 
   async function handleAddLocation() {
@@ -404,9 +414,38 @@ export default function InboundPage() {
             </div>
           </div>
 
-          {/* 로케이션 */}
+          {/* 소포 사이즈 (우체국 규격) */}
           <div className="bg-white rounded-2xl p-4 shadow-sm">
             <div className="flex items-center gap-2 mb-3">
+              <Box size={15} className="text-orange-500" />
+              <span className="font-semibold text-gray-800 text-sm">소포 사이즈</span>
+              <span className="text-xs text-gray-400">· 로케이션 용량 자동 계산에 사용됩니다</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {PARCEL_SIZE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.code}
+                  type="button"
+                  onClick={() => setParcelSizeCode(parcelSizeCode === opt.code ? null : opt.code as ParcelSizeCode)}
+                  className={`py-2.5 px-2 rounded-xl border-2 text-xs font-semibold flex flex-col items-center gap-0.5 transition-all ${
+                    parcelSizeCode === opt.code
+                      ? "border-orange-500 bg-orange-50 text-orange-800"
+                      : "border-gray-200 text-gray-500 hover:border-orange-300"
+                  }`}
+                >
+                  <span className="text-sm font-bold">{opt.label}</span>
+                  <span className="text-[10px] text-orange-600 font-semibold">{opt.volume_l}L</span>
+                  <span className="text-[9px] text-gray-400 leading-tight text-center">{opt.desc.split("·")[0].trim()}</span>
+                </button>
+              ))}
+            </div>
+            {!parcelSizeCode && (
+              <p className="text-xs text-gray-400 mt-2">미선택 시 건수 기반으로 배정됩니다</p>
+            )}
+          </div>
+
+          {/* 로케이션 */}
+          <div className="bg-white rounded-2xl p-4 shadow-sm">            <div className="flex items-center gap-2 mb-3">
               <MapPin size={15} className="text-indigo-500" />
               <span className="font-semibold text-gray-800 text-sm">보관 로케이션</span>
             </div>
@@ -515,7 +554,18 @@ export default function InboundPage() {
                     <span className="text-gray-500">로케이션</span>
                     <div className="flex items-center gap-2">
                       <span className="font-bold text-blue-700 text-lg">{result.location_code}</span>
-                      {result.location_max_parcels != null && result.location_current_count != null && (
+                      {/* 리터 기반 표시 우선, 없으면 건수 */}
+                      {result.location_volume_liter != null && result.location_used_liter != null ? (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          result.location_used_liter >= result.location_volume_liter
+                            ? "bg-red-100 text-red-700"
+                            : result.location_used_liter >= result.location_volume_liter * 0.8
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}>
+                          {result.location_used_liter}L / {result.location_volume_liter}L
+                        </span>
+                      ) : result.location_max_parcels != null && result.location_current_count != null ? (
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                           result.location_current_count >= result.location_max_parcels
                             ? "bg-red-100 text-red-700"
@@ -525,26 +575,31 @@ export default function InboundPage() {
                         }`}>
                           {result.location_current_count}/{result.location_max_parcels}건
                         </span>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 )}
                 {/* 용량 초과 경고 + 추가 로케 배정 버튼 */}
-                {result.location_max_parcels != null &&
-                  result.location_current_count != null &&
-                  result.location_current_count >= result.location_max_parcels && (
-                  <div className="flex items-center justify-between gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mt-1">
-                    <span className="text-xs text-orange-700 font-medium">⚠️ 로케이션 용량 초과</span>
-                    <button
-                      onClick={handleAddLocation}
-                      disabled={addingLocation}
-                      className="text-xs bg-orange-500 text-white px-3 py-1 rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1"
-                    >
-                      {addingLocation ? <Loader2 size={11} className="animate-spin" /> : null}
-                      추가 로케 배정
-                    </button>
-                  </div>
-                )}
+                {(() => {
+                  const isOverLiter = result.location_volume_liter != null && result.location_used_liter != null
+                    && result.location_used_liter >= result.location_volume_liter;
+                  const isOverCount = result.location_max_parcels != null && result.location_current_count != null
+                    && result.location_current_count >= result.location_max_parcels;
+                  if (!isOverLiter && !isOverCount) return null;
+                  return (
+                    <div className="flex items-center justify-between gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mt-1">
+                      <span className="text-xs text-orange-700 font-medium">⚠️ 로케이션 용량 초과</span>
+                      <button
+                        onClick={handleAddLocation}
+                        disabled={addingLocation}
+                        className="text-xs bg-orange-500 text-white px-3 py-1 rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1"
+                      >
+                        {addingLocation ? <Loader2 size={11} className="animate-spin" /> : null}
+                        추가 로케 배정
+                      </button>
+                    </div>
+                  );
+                })()}
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">바코드 생성</span>
                   <span className="font-semibold text-gray-900">{result.barcode_count}장</span>

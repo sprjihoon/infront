@@ -14,12 +14,12 @@ export async function GET(
   const [{ data: location }, { data: parcels }] = await Promise.all([
     adminDb
       .from("storage_locations")
-      .select("*, max_parcels, customers(id, name, customer_code, email)")
+      .select("*, max_parcels, customers(id, name, customer_code, email), storage_types(volume_liter)")
       .eq("id", id)
       .single(),
     adminDb
       .from("parcels")
-      .select("id, tracking_no, status, is_shippable, inbound_at, weight_actual, volume_l, volume_w, volume_h, pre_invoice_items, sender_name, sender_address, courier, item_condition, hold_reason, notes, created_at")
+      .select("id, tracking_no, status, is_shippable, inbound_at, weight_actual, volume_l, volume_w, volume_h, pre_invoice_items, sender_name, sender_address, courier, item_condition, hold_reason, notes, created_at, parcel_size_code")
       .eq("storage_location_id", id)
       .not("status", "in", '("DONE")')
       .order("inbound_at", { ascending: false }),
