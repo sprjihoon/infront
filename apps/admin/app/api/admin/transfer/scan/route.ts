@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
         barcode_no: s.barcode_no,
         seq: s.seq,
         item_name: s.item_name,
-        location: (s.storage_locations as { id: string; code: string } | null) ?? null,
+        location: (s.storage_locations as unknown as { id: string; code: string } | null) ?? null,
       })),
     });
   }
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
         barcode_no: s.barcode_no,
         seq: s.seq,
         item_name: s.item_name,
-        location: (s.storage_locations as { id: string; code: string } | null) ?? null,
+        location: (s.storage_locations as unknown as { id: string; code: string } | null) ?? null,
       })),
     });
   }
