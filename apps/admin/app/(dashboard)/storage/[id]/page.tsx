@@ -69,6 +69,7 @@ type LocationDetail = {
   customer_id: string | null;
   assigned_at: string | null;
   notes: string | null;
+  max_parcels: number | null;
   customers: { id: string; name: string | null; customer_code: string; email: string } | null;
 };
 
@@ -96,6 +97,10 @@ export default function StorageDetailPage({
   const [notes, setNotes] = useState("");
   const [editingNotes, setEditingNotes] = useState(false);
 
+  // 최대 소포 수 편집
+  const [editingCapacity, setEditingCapacity] = useState(false);
+  const [maxParcelsInput, setMaxParcelsInput] = useState<string>("");
+
   // 소포 카드 확장
   const [expandedParcels, setExpandedParcels] = useState<Set<string>>(new Set());
   const toggleParcel = (id: string) =>
@@ -112,6 +117,7 @@ export default function StorageDetailPage({
     setLocation(json.location);
     setParcels(json.parcels ?? []);
     setNotes(json.location?.notes ?? "");
+    setMaxParcelsInput(json.location?.max_parcels != null ? String(json.location.max_parcels) : "");
     setLoading(false);
   }, [locationId]);
 
@@ -173,6 +179,17 @@ export default function StorageDetailPage({
   const handleSaveNotes = async () => {
     await patch("update_notes", { notes });
     setEditingNotes(false);
+  };
+
+  const handleSaveCapacity = async () => {
+    const val = maxParcelsInput.trim();
+    const max_parcels = val === "" ? null : parseInt(val, 10);
+    if (val !== "" && (isNaN(max_parcels!) || max_parcels! < 1)) {
+      alert("1 이상의 숫자 또는 빈칸(무제한)으로 입력하세요.");
+      return;
+    }
+    await patch("set_capacity", { max_parcels });
+    setEditingCapacity(false);
   };
 
   if (loading) {
@@ -346,9 +363,53 @@ export default function StorageDetailPage({
 
       {/* 보관 소포 목록 */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 font-semibold text-gray-700 flex items-center gap-2">
-          <Package size={16} className="text-blue-500" />
-          보관 중인 소포 ({parcels.length}개)
+        <div className="px-5 py-3 border-b border-gray-100 font-semibold text-gray-700 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Package size={16} className="text-blue-500" />
+            보관 중인 소포
+            {location.max_parcels != null ? (
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                parcels.length >= location.max_parcels
+                  ? "bg-red-100 text-red-700"
+                  : parcels.length >= location.max_parcels * 0.8
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-blue-100 text-blue-700"
+              }`}>
+                {parcels.length} / {location.max_parcels}건
+              </span>
+            ) : (
+              <span className="text-xs text-gray-400">({parcels.length}개)</span>
+            )}
+          </span>
+          {/* 용량 편집 */}
+          {!editingCapacity ? (
+            <button
+              onClick={() => setEditingCapacity(true)}
+              className="text-xs text-indigo-600 hover:underline"
+            >
+              {location.max_parcels != null ? `최대 ${location.max_parcels}건` : "용량 무제한"} · 편집
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={1}
+                value={maxParcelsInput}
+                onChange={(e) => setMaxParcelsInput(e.target.value)}
+                placeholder="무제한"
+                className="w-20 border border-gray-300 rounded-lg text-xs px-2 py-1 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+              <span className="text-xs text-gray-400">건</span>
+              <button onClick={handleSaveCapacity} className="text-xs text-indigo-600 font-bold hover:underline">저장</button>
+              <button
+                onClick={() => {
+                  setEditingCapacity(false);
+                  setMaxParcelsInput(location.max_parcels != null ? String(location.max_parcels) : "");
+                }}
+                className="text-xs text-gray-400 hover:underline"
+              >취소</button>
+            </div>
+          )}
         </div>
         {parcels.length === 0 ? (
           <div className="p-8 text-center text-sm text-gray-400">보관 중인 소포가 없습니다</div>

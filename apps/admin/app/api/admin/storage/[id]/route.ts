@@ -14,7 +14,7 @@ export async function GET(
   const [{ data: location }, { data: parcels }] = await Promise.all([
     adminDb
       .from("storage_locations")
-      .select("*, customers(id, name, customer_code, email)")
+      .select("*, max_parcels, customers(id, name, customer_code, email)")
       .eq("id", id)
       .single(),
     adminDb
@@ -126,6 +126,23 @@ export async function PATCH(
     const { data, error } = await adminDb
       .from("storage_locations")
       .update({ storage_type_id: type_id ?? null })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, location: data });
+  }
+
+  // ── 용량(최대 소포 수) 설정 ────────────────────────────────────
+  if (action === "set_capacity") {
+    const max = body.max_parcels;  // null 허용 (무제한)
+    if (max !== null && max !== undefined && (typeof max !== "number" || max < 1)) {
+      return NextResponse.json({ error: "max_parcels는 1 이상의 정수 또는 null(무제한)" }, { status: 400 });
+    }
+    const { data, error } = await adminDb
+      .from("storage_locations")
+      .update({ max_parcels: max ?? null })
       .eq("id", id)
       .select()
       .single();
