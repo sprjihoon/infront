@@ -630,6 +630,48 @@ export default function StorageDetailPage({
                   {isExpanded && (
                     <div className="px-5 pb-4 bg-gray-50/60 border-t border-gray-100">
 
+                      {/* 이동 버튼 */}
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={async () => {
+                            await loadMoveTargets();
+                            setMovingParcelId(movingParcelId === p.id ? null : p.id);
+                          }}
+                          className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg border border-indigo-200 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 font-semibold"
+                        >
+                          <ArrowRightLeft size={12} />
+                          로케이션 이동
+                        </button>
+                      </div>
+
+                      {/* 이동 위치 picker */}
+                      {movingParcelId === p.id && (
+                        <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden max-h-44 overflow-y-auto bg-white">
+                          <div className="px-3 py-2 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                            이동할 로케이션 선택
+                          </div>
+                          {!moveTargetsLoaded ? (
+                            <div className="p-3 text-xs text-gray-400">로딩 중…</div>
+                          ) : moveTargets.length === 0 ? (
+                            <div className="p-3 text-xs text-gray-400">사용 가능한 로케이션 없음</div>
+                          ) : (
+                            moveTargets.map((t) => (
+                              <button
+                                key={t.id}
+                                disabled={saving}
+                                onClick={() => handleMoveParcel(p.id, t.id, t.is_temp ? "TEMP_OUT" : "TRANSFER")}
+                                className="w-full flex items-center justify-between px-4 py-2 hover:bg-indigo-50 text-sm text-left border-b last:border-b-0 border-gray-50 disabled:opacity-50"
+                              >
+                                <span className="font-mono font-bold text-gray-800">{t.code}</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full ${t.is_temp ? "bg-orange-100 text-orange-700" : "bg-gray-100 text-gray-500"}`}>
+                                  {t.is_temp ? "임시보관" : `구역 ${t.zone}`}
+                                </span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+
                       {/* 품목 목록 */}
                       {items.length > 0 ? (
                         <div className="mt-3 bg-white rounded-xl border border-gray-100 overflow-hidden">

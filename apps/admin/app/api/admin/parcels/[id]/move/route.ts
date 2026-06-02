@@ -86,14 +86,14 @@ export async function POST(
     }
   }
 
-  // 새 로케이션: 비어 있으면 OCCUPIED로 변경 + 고객 연결
-  const customerId = (parcel.customers as { id: string } | null)?.id ?? null;
+  const customerId = (parcel.customers as { id: string } | { id: string }[] | null);
+  const custId = Array.isArray(customerId) ? customerId[0]?.id ?? null : customerId?.id ?? null;
   if (toLoc.status === "AVAILABLE" || toLoc.status === "RESERVED") {
     await adminDb
       .from("storage_locations")
       .update({
         status: "OCCUPIED",
-        ...(customerId && !toLoc.customer_id ? { customer_id: customerId, assigned_at: new Date().toISOString() } : {}),
+        ...(custId && !toLoc.customer_id ? { customer_id: custId, assigned_at: new Date().toISOString() } : {}),
       })
       .eq("id", to_location_id);
   }

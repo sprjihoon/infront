@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ArrowLeft, Save, CheckCircle, AlertTriangle, Package,
   User, ChevronRight, Truck, RefreshCw, XCircle, RotateCcw,
-  MapPin,
+  MapPin, ArrowRightLeft, Clock, ArrowRight,
 } from "lucide-react";
 import {
   getNextWorkflowAction,
@@ -80,12 +80,34 @@ export default function ParcelDetailPage() {
   const [syncing, setSyncing] = useState(false);
 
   // 로케이션 배정
-  const [availableLocations, setAvailableLocations] = useState<{ id: string; code: string; zone: string }[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<{ id: string; code: string; zone: string; is_temp: boolean }[]>([]);
   const [locationsLoaded, setLocationsLoaded] = useState(false);
   const [showLocPicker, setShowLocPicker] = useState(false);
   const [assigningLoc, setAssigningLoc] = useState(false);
 
-  useEffect(() => { loadParcel(); }, [id]);
+  // 위치 이동 이력 (최근 3단계)
+  type LocationEvent = {
+    id: string;
+    reason: string;
+    notes: string | null;
+    created_by: string | null;
+    created_at: string;
+    from_location: { id: string; code: string; zone: string; is_temp: boolean } | null;
+    to_location: { id: string; code: string; zone: string; is_temp: boolean } | null;
+  };
+  const [locationHistory, setLocationHistory] = useState<LocationEvent[]>([]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+
+  useEffect(() => { loadParcel(); loadLocationHistory(); }, [id]);
+
+  async function loadLocationHistory() {
+    const res = await fetch(`/api/admin/parcels/${id}/location-history`);
+    if (res.ok) {
+      const json = await res.json();
+      setLocationHistory(json.history ?? []);
+    }
+    setHistoryLoaded(true);
+  }
 
   async function loadParcel() {
     const res = await fetch(`/api/admin/parcels/${id}`);
@@ -186,35 +208,55 @@ export default function ParcelDetailPage() {
   }
 
   async function loadAvailableLocations(customerId?: string) {
-    // 고객 전용 로케이션 우선, 없으면 빈 로케이션 목록
     const res = await fetch("/api/admin/storage/list");
     const json = await res.json();
-    const all = (json.locations ?? []) as { id: string; code: string; zone: string; status: string; customer_id: string | null }[];
+    const all = (json.locations ?? []) as { id: string; code: string; zone: string; status: string; customer_id: string | null; is_temp: boolean }[];
 
-    // 고객의 기존 로케이션 먼저, 그 다음 빈 로케이션
-    const customerLoc = customerId ? all.filter((l) => l.customer_id === customerId) : [];
-    const available   = all.filter((l) => l.status === "AVAILABLE");
-    const combined    = [...customerLoc, ...available.filter((l) => !customerLoc.find((cl) => cl.id === l.id))];
-    setAvailableLocations(combined.map(({ id, code, zone }) => ({ id, code, zone })));
+    // 고객의 기존 로케이션 먼저, 그 다음 빈 로케이션, 임시보관 마지막
+    const customerLoc = customerId ? all.filter((l) => l.customer_id === customerId && !l.is_temp) : [];
+    const available   = all.filter((l) => l.status === "AVAILABLE" && !l.is_temp);
+    const tempLocs    = all.filter((l) => l.is_temp && l.status !== "DISABLED");
+    const combined = [
+      ...customerLoc,
+      ...available.filter((l) => !customerLoc.find((cl) => cl.id === l.id)),
+      ...tempLocs,
+    ];
+    setAvailableLocations(combined.map(({ id, code, zone, is_temp }) => ({ id, code, zone, is_temp: !!is_temp })));
     setLocationsLoaded(true);
   }
 
-  async function handleAssignLocation(locationId: string) {
+  async function handleAssignLocation(locationId: string, isTemp = false) {
     setAssigningLoc(true);
-    // 1. 소포에 로케이션 연결
-    await patchParcel({ storage_location_id: locationId });
+    const hasCurrentLoc = !!parcel?.storage_location_id;
+    const reason = isTemp ? "TEMP_OUT" : hasCurrentLoc ? "TRANSFER" : "MANUAL";
 
-    // 2. 고객이 아직 이 로케이션을 점유하지 않으면 점유 처리
-    if (parcel?.customers?.id && parcel.storage_locations?.id !== locationId) {
-      await fetch(`/api/admin/storage/${locationId}`, {
-        method: "PATCH",
+    if (hasCurrentLoc) {
+      // 이동 이력 기록 포함 이동
+      const res = await fetch(`/api/admin/parcels/${id}/move`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "assign", customer_id: parcel.customers.id }),
+        body: JSON.stringify({ to_location_id: locationId, reason }),
       });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        setSaveMsg(json.error ?? "이동 실패");
+      }
+    } else {
+      // 최초 배정: 기존 방식 유지
+      await patchParcel({ storage_location_id: locationId });
+      if (parcel?.customers?.id) {
+        await fetch(`/api/admin/storage/${locationId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "assign", customer_id: parcel.customers.id }),
+        });
+      }
     }
+
     setAssigningLoc(false);
     setShowLocPicker(false);
-    loadParcel();
+    await loadParcel();
+    await loadLocationHistory();
   }
 
   async function handleApiSync() {
