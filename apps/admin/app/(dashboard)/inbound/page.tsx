@@ -55,8 +55,16 @@ export default function InboundPage() {
   // 처리
   const [processing, setProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [result, setResult] = useState<{ parcel_id: string; location_code: string | null; barcode_count: number } | null>(null);
+  const [result, setResult] = useState<{
+    parcel_id: string;
+    location_id: string | null;
+    location_code: string | null;
+    location_max_parcels: number | null;
+    location_current_count: number | null;
+    barcode_count: number;
+  } | null>(null);
   const [resultBarcodes, setResultBarcodes] = useState<unknown[]>([]);
+  const [addingLocation, setAddingLocation] = useState(false);
 
   const scanInputRef = useRef<HTMLInputElement>(null);
 
@@ -187,7 +195,10 @@ export default function InboundPage() {
 
       setResult({
         parcel_id: json.parcel_id,
+        location_id: json.location_id,
         location_code: json.location_code,
+        location_max_parcels: json.location_max_parcels ?? null,
+        location_current_count: json.location_current_count ?? null,
         barcode_count: json.barcode_count,
       });
       setResultBarcodes(json.barcodes ?? []);
@@ -248,6 +259,30 @@ export default function InboundPage() {
     setSelectedLocationId(null);
     setSearchError("");
     setUploadProgress(0);
+    setAddingLocation(false);
+  }
+
+  async function handleAddLocation() {
+    if (!parcel?.customers?.id) return;
+    setAddingLocation(true);
+    try {
+      const res = await fetch("/api/admin/storage/auto-assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_id: parcel.customers.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) { alert(`오류: ${json.error}`); return; }
+      setResult((prev) => prev ? {
+        ...prev,
+        location_id: json.location_id,
+        location_code: json.location_code,
+        location_max_parcels: null,
+        location_current_count: 0,
+      } : prev);
+    } finally {
+      setAddingLocation(false);
+    }
   }
 
   const totalItems = parcel?.pre_invoice_items?.reduce((s, i) => s + Math.max(1, Number(i.quantity) || 1), 0) ?? 0;
@@ -476,9 +511,38 @@ export default function InboundPage() {
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2">
                 {result.location_code && (
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-sm items-center">
                     <span className="text-gray-500">로케이션</span>
-                    <span className="font-bold text-blue-700 text-lg">{result.location_code}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-blue-700 text-lg">{result.location_code}</span>
+                      {result.location_max_parcels != null && result.location_current_count != null && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          result.location_current_count >= result.location_max_parcels
+                            ? "bg-red-100 text-red-700"
+                            : result.location_current_count >= result.location_max_parcels * 0.8
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-blue-100 text-blue-700"
+                        }`}>
+                          {result.location_current_count}/{result.location_max_parcels}건
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {/* 용량 초과 경고 + 추가 로케 배정 버튼 */}
+                {result.location_max_parcels != null &&
+                  result.location_current_count != null &&
+                  result.location_current_count >= result.location_max_parcels && (
+                  <div className="flex items-center justify-between gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 mt-1">
+                    <span className="text-xs text-orange-700 font-medium">⚠️ 로케이션 용량 초과</span>
+                    <button
+                      onClick={handleAddLocation}
+                      disabled={addingLocation}
+                      className="text-xs bg-orange-500 text-white px-3 py-1 rounded-lg font-semibold hover:bg-orange-600 disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {addingLocation ? <Loader2 size={11} className="animate-spin" /> : null}
+                      추가 로케 배정
+                    </button>
                   </div>
                 )}
                 <div className="flex justify-between text-sm">

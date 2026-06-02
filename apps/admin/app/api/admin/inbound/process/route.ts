@@ -126,13 +126,25 @@ export async function POST(req: NextRequest) {
   });
 
   let locationCode: string | null = null;
+  let locationMaxParcels: number | null = null;
+  let locationCurrentCount: number | null = null;
+
   if (resolvedLocationId) {
-    const { data: locData } = await adminDb
-      .from("storage_locations")
-      .select("code")
-      .eq("id", resolvedLocationId)
-      .single();
+    const [{ data: locData }, { count }] = await Promise.all([
+      adminDb
+        .from("storage_locations")
+        .select("code, max_parcels")
+        .eq("id", resolvedLocationId)
+        .single(),
+      adminDb
+        .from("parcels")
+        .select("id", { count: "exact", head: true })
+        .eq("storage_location_id", resolvedLocationId)
+        .not("status", "in", '("DONE","SHIPPING","PICKUP_CANCELLED")'),
+    ]);
     locationCode = locData?.code ?? null;
+    locationMaxParcels = locData?.max_parcels ?? null;
+    locationCurrentCount = count ?? 0;
   }
 
   return NextResponse.json({
@@ -140,6 +152,8 @@ export async function POST(req: NextRequest) {
     parcel_id,
     location_id: resolvedLocationId,
     location_code: locationCode,
+    location_max_parcels: locationMaxParcels,
+    location_current_count: locationCurrentCount,
     barcodes,
     barcode_count: barcodes.length,
   });

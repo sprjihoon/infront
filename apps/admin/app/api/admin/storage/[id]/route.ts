@@ -46,21 +46,6 @@ export async function PATCH(
     const { customer_id } = body;
     if (!customer_id) return NextResponse.json({ error: "customer_id 필수" }, { status: 400 });
 
-    // 해당 고객이 이미 다른 로케이션을 점유 중인지 확인
-    const { data: existing } = await adminDb
-      .from("storage_locations")
-      .select("id, code")
-      .eq("customer_id", customer_id)
-      .eq("status", "OCCUPIED")
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json(
-        { error: `이미 ${existing.code} 로케이션을 사용 중입니다.` },
-        { status: 409 }
-      );
-    }
-
     const { data, error } = await adminDb
       .from("storage_locations")
       .update({ customer_id, status: "OCCUPIED", assigned_at: new Date().toISOString() })
@@ -120,12 +105,27 @@ export async function PATCH(
     return NextResponse.json({ ok: true, location: data });
   }
 
-  // ── 타입 변경 ──────────────────────────────────────────────────
+  // ── 타입 변경 (→ max_parcels 타입 기본값으로 자동 동기화) ─────
   if (action === "set_type") {
     const { type_id } = body; // null 허용 (미지정)
+
+    let typeMaxParcels: number | null = null;
+    if (type_id) {
+      const { data: typeData } = await adminDb
+        .from("storage_types")
+        .select("max_parcels")
+        .eq("id", type_id)
+        .single();
+      typeMaxParcels = typeData?.max_parcels ?? null;
+    }
+
     const { data, error } = await adminDb
       .from("storage_locations")
-      .update({ storage_type_id: type_id ?? null })
+      .update({
+        storage_type_id: type_id ?? null,
+        // 타입 변경 시 max_parcels를 타입 기본값으로 덮어씀
+        max_parcels: typeMaxParcels,
+      })
       .eq("id", id)
       .select()
       .single();

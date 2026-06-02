@@ -12,6 +12,7 @@ type StorageTypeOption = {
   dim_w_mm: number;
   dim_h_mm: number;
   volume_liter: number;
+  max_parcels: number | null;
   price_per_week: number;
   price_max: number | null;
 };
@@ -78,6 +79,10 @@ export default function StorageManagePage() {
   const [bulkStatusOpen, setBulkStatusOpen] = useState(false);
   const bulkTypeRef   = useRef<HTMLDivElement>(null);
   const bulkStatusRef = useRef<HTMLDivElement>(null);
+
+  // 타입별 용량 편집
+  const [editingTypeId,    setEditingTypeId]    = useState<string | null>(null);
+  const [typeCapacityInput, setTypeCapacityInput] = useState<string>("");
 
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -165,6 +170,27 @@ export default function StorageManagePage() {
     }
     setTypeSaving(null);
     setTypePopover(null);
+  };
+
+  const handleSaveTypeCapacity = async (typeId: string) => {
+    const val = typeCapacityInput.trim();
+    const max_parcels = val === "" ? null : parseInt(val, 10);
+    if (val !== "" && (isNaN(max_parcels!) || max_parcels! < 1)) {
+      alert("1 이상의 숫자 또는 빈칸(무제한)으로 입력하세요.");
+      return;
+    }
+    const res = await fetch("/api/admin/storage", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type_id: typeId, max_parcels }),
+    });
+    if (res.ok) {
+      setTypes((prev) => prev.map((t) => t.id === typeId ? { ...t, max_parcels } : t));
+    } else {
+      const json = await res.json();
+      alert(json.error ?? "저장 실패");
+    }
+    setEditingTypeId(null);
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -256,6 +282,60 @@ export default function StorageManagePage() {
         <button onClick={load} className="text-gray-400 hover:text-gray-700">
           <RefreshCw size={16} />
         </button>
+      </div>
+
+      {/* 스토리지 타입별 용량 설정 */}
+      <div className="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 font-semibold text-gray-700 flex items-center gap-2">
+          <Layers size={16} className="text-indigo-500" />
+          스토리지 타입 용량 설정
+          <span className="text-xs font-normal text-gray-400 ml-1">— 로케이션 타입 지정 시 자동 적용됩니다</span>
+        </div>
+        <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          {types.map((t) => (
+            <div key={t.id} className="border border-gray-200 rounded-xl p-3 flex flex-col gap-1">
+              <div className="flex items-center justify-between">
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${TYPE_BADGE[t.code] ?? "bg-gray-100 text-gray-600"}`}>
+                  {t.code}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-gray-800">{t.name.replace(" Storage", "").replace(" Rack", "")}</p>
+              <p className="text-[11px] text-gray-400">{t.volume_liter}L</p>
+
+              {editingTypeId === t.id ? (
+                <div className="flex items-center gap-1 mt-1">
+                  <input
+                    type="number"
+                    min={1}
+                    value={typeCapacityInput}
+                    onChange={(e) => setTypeCapacityInput(e.target.value)}
+                    placeholder="무제한"
+                    className="w-14 border border-gray-300 rounded text-xs px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                    autoFocus
+                  />
+                  <span className="text-[10px] text-gray-400">건</span>
+                  <button
+                    onClick={() => handleSaveTypeCapacity(t.id)}
+                    className="text-[10px] text-indigo-600 font-bold hover:underline"
+                  >저장</button>
+                  <button
+                    onClick={() => setEditingTypeId(null)}
+                    className="text-[10px] text-gray-400 hover:underline"
+                  >취소</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => { setEditingTypeId(t.id); setTypeCapacityInput(t.max_parcels != null ? String(t.max_parcels) : ""); }}
+                  className="mt-1 text-[11px] font-semibold text-left hover:underline"
+                >
+                  {t.max_parcels != null
+                    ? <span className="text-indigo-700">최대 {t.max_parcels}건</span>
+                    : <span className="text-gray-400">무제한 · 설정</span>}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* 추가 폼 */}
