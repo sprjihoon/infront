@@ -39,6 +39,7 @@ export interface GenerateBarcodesOptions {
   trackingNo: string | null;
   itemCount: number;
   invoiceItems?: InvoiceItem[];
+  locationId?: string | null;
 }
 
 export interface BarcodeRow {
@@ -46,6 +47,7 @@ export interface BarcodeRow {
   barcode_no: string;
   seq: number;
   item_name: string | null;
+  storage_location_id?: string | null;
 }
 
 /**
@@ -56,7 +58,7 @@ export async function generateBarcodes(
   db: SupabaseClient,
   opts: GenerateBarcodesOptions,
 ): Promise<{ rows: BarcodeRow[]; error: string | null }> {
-  const { parcelId, trackingNo, itemCount, invoiceItems = [] } = opts;
+  const { parcelId, trackingNo, itemCount, invoiceItems = [], locationId } = opts;
   const nameMap = buildItemNameMap(invoiceItems);
 
   const rows: BarcodeRow[] = Array.from({ length: itemCount }, (_, i) => {
@@ -66,6 +68,7 @@ export async function generateBarcodes(
       barcode_no: buildBarcodeNo(trackingNo, parcelId, seq),
       seq,
       item_name: nameMap.get(seq) ?? null,
+      ...(locationId ? { storage_location_id: locationId } : {}),
     };
   });
 

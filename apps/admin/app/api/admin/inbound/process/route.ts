@@ -196,6 +196,7 @@ export async function POST(req: NextRequest) {
     trackingNo: parcel.tracking_no,
     itemCount: item_count,
     invoiceItems,
+    locationId: resolvedLocationId,
   });
 
   if (barcodeErr) {

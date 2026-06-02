@@ -60,6 +60,12 @@ export async function POST(
     return NextResponse.json({ error: updateErr.message }, { status: 500 });
   }
 
+  // 모든 내품 바코드 위치 동기화 (소포 전체 이동이므로)
+  await adminDb
+    .from("parcel_barcodes")
+    .update({ storage_location_id: to_location_id })
+    .eq("parcel_id", parcelId);
+
   // 이동 이력 기록
   await adminDb.from("parcel_location_events").insert({
     parcel_id: parcelId,
