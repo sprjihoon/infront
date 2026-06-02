@@ -359,12 +359,12 @@ export default function ParcelDetailPage() {
             }}
             className="text-xs text-indigo-600 hover:underline"
           >
-            {parcel.storage_locations ? "변경" : "배정"}
+            {parcel.storage_locations ? "이동/변경" : "배정"}
           </button>
         </div>
 
         {parcel.storage_locations ? (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <div className="bg-indigo-100 rounded-xl px-4 py-2 text-center">
               <p className="text-lg font-bold text-indigo-700">{parcel.storage_locations.code}</p>
               <p className="text-[10px] text-indigo-400">구역 {parcel.storage_locations.zone} · {parcel.storage_locations.slot}</p>
@@ -379,6 +379,9 @@ export default function ParcelDetailPage() {
 
         {showLocPicker && (
           <div className="mt-3 border border-gray-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+            <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100 text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+              이동할 로케이션 선택 (이력 자동 기록)
+            </div>
             {!locationsLoaded ? (
               <div className="p-3 text-xs text-gray-400">로딩 중…</div>
             ) : availableLocations.length === 0 ? (
@@ -387,15 +390,59 @@ export default function ParcelDetailPage() {
               availableLocations.map((loc) => (
                 <button
                   key={loc.id}
-                  onClick={() => handleAssignLocation(loc.id)}
+                  onClick={() => handleAssignLocation(loc.id, loc.is_temp)}
                   disabled={assigningLoc}
                   className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-indigo-50 text-sm text-left border-b last:border-b-0 border-gray-50 disabled:opacity-50"
                 >
                   <span className="font-mono font-bold text-gray-800">{loc.code}</span>
-                  <span className="text-xs text-gray-400">구역 {loc.zone}</span>
+                  {loc.is_temp ? (
+                    <span className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-semibold">임시보관</span>
+                  ) : (
+                    <span className="text-xs text-gray-400">구역 {loc.zone}</span>
+                  )}
                 </button>
               ))
             )}
+          </div>
+        )}
+
+        {/* 위치 이동 이력 (최근 3단계) */}
+        {historyLoaded && locationHistory.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-1.5 mb-2">
+              <Clock size={12} className="text-gray-400" />
+              <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">이동 이력 (최근 {locationHistory.length}단계)</span>
+            </div>
+            <div className="space-y-1.5">
+              {locationHistory.map((ev, i) => {
+                const reasonLabel: Record<string, string> = {
+                  INBOUND: "입고 배정",
+                  TRANSFER: "이동",
+                  TEMP_OUT: "임시 반출",
+                  RETURN: "복귀",
+                  FORCE_CLEAR: "강제 비우기",
+                  MANUAL: "수동 이동",
+                };
+                return (
+                  <div key={ev.id} className={`flex items-center gap-2 text-xs ${i === 0 ? "text-gray-700" : "text-gray-400"}`}>
+                    <span className={`shrink-0 text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                      ev.reason === "FORCE_CLEAR" ? "bg-red-100 text-red-700" :
+                      ev.reason === "TEMP_OUT"    ? "bg-orange-100 text-orange-700" :
+                      ev.reason === "RETURN"      ? "bg-green-100 text-green-700" :
+                      "bg-gray-100 text-gray-600"
+                    }`}>
+                      {reasonLabel[ev.reason] ?? ev.reason}
+                    </span>
+                    <span className="font-mono">{ev.from_location?.code ?? "—"}</span>
+                    <ArrowRight size={11} className="shrink-0 text-gray-300" />
+                    <span className="font-mono font-semibold">{ev.to_location?.code ?? "—"}</span>
+                    <span className="text-gray-300 ml-auto shrink-0">
+                      {new Date(ev.created_at).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

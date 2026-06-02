@@ -8,7 +8,7 @@ export async function GET(_req: NextRequest) {
 
   const { data } = await adminDb
     .from("storage_locations")
-    .select("id, code, zone, slot, status, customer_id, customers(name, customer_code), storage_types(id, code, name, volume_liter, price_per_week)")
+    .select("id, code, zone, slot, status, customer_id, is_temp, customers(name, customer_code), storage_types(id, code, name, volume_liter, price_per_week)")
     .order("zone")
     .order("slot");
 

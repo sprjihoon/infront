@@ -30,14 +30,17 @@ export async function POST(req: NextRequest) {
 
   const { data: parcel, error: fetchErr } = await adminDb
     .from("parcels")
-    .select("id, tracking_no, status, customer_id, pre_invoice_items, storage_location_id")
+    .select("id, tracking_no, status, customer_id, pre_invoice_items, storage_location_id, parcel_size_code")
     .eq("id", parcel_id)
     .single();
 
   if (fetchErr || !parcel) return NextResponse.json({ error: "parcel 없음" }, { status: 404 });
 
+  // 요청값 우선, 없으면 수거신청 시점에 자동 저장된 parcel_size_code 사용
+  const resolvedSizeCode = parcel_size_code ?? (parcel.parcel_size_code as string | null) ?? null;
+
   // 새 소포의 부피 (리터)
-  const newParcelVolume = parcel_size_code ? (SIZE_VOLUME_L[parcel_size_code] ?? 0) : 0;
+  const newParcelVolume = resolvedSizeCode ? (SIZE_VOLUME_L[resolvedSizeCode] ?? 0) : 0;
 
   let resolvedLocationId: string | null = location_id ?? null;
   let isNewLocation = false;
@@ -91,18 +94,41 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. 기존 로케이션 없거나 모두 꽉 찼으면 → 새 빈 로케이션 배정
+    //    parcel_size_code 가 있으면 해당 volume_liter 의 storage_type 로케이션 우선
     if (!resolvedLocationId) {
-      const { data: autoLoc } = await adminDb
-        .from("storage_locations")
-        .select("id")
-        .eq("status", "AVAILABLE")
-        .is("customer_id", null)
-        .order("zone")
-        .order("slot")
-        .limit(1)
-        .maybeSingle();
-      resolvedLocationId = autoLoc?.id ?? null;
-      isNewLocation = true;
+      if (newParcelVolume > 0) {
+        // size code에 맞는 storage_type의 AVAILABLE 로케이션 우선 탐색
+        const { data: sizedLoc } = await adminDb
+          .from("storage_locations")
+          .select("id, volume_liter, storage_types!inner(volume_liter)")
+          .eq("status", "AVAILABLE")
+          .is("customer_id", null)
+          .eq("storage_types.volume_liter", newParcelVolume)
+          .order("zone")
+          .order("slot")
+          .limit(1)
+          .maybeSingle();
+
+        if (sizedLoc) {
+          resolvedLocationId = sizedLoc.id;
+          isNewLocation = true;
+        }
+      }
+
+      // fallback: size 매칭 없으면 아무 빈 로케이션
+      if (!resolvedLocationId) {
+        const { data: autoLoc } = await adminDb
+          .from("storage_locations")
+          .select("id")
+          .eq("status", "AVAILABLE")
+          .is("customer_id", null)
+          .order("zone")
+          .order("slot")
+          .limit(1)
+          .maybeSingle();
+        resolvedLocationId = autoLoc?.id ?? null;
+        isNewLocation = true;
+      }
     }
   } else {
     isNewLocation = true;
@@ -115,7 +141,7 @@ export async function POST(req: NextRequest) {
     is_shippable: true,
     inbound_at: today,
     item_count,
-    ...(parcel_size_code ? { parcel_size_code } : {}),
+    ...(resolvedSizeCode ? { parcel_size_code: resolvedSizeCode } : {}),
     ...(resolvedLocationId ? { storage_location_id: resolvedLocationId } : {}),
   }).eq("id", parcel_id);
 

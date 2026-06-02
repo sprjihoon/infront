@@ -30,6 +30,7 @@ import {
 import { buildReturnPickupOrderParams } from '@/lib/epost/pickup-order';
 import { normalizeEpostRetVisitYmd } from '@/lib/epost/pickup-date';
 import { resolveInfrontCenterFromEnv } from '@/lib/epost/center-config';
+import { weightKgToSizeCode } from '@/lib/parcels/size';
 
 export const preferredRegion = 'icn1';
 
@@ -625,6 +626,7 @@ export async function POST(req: NextRequest) {
         pickup_weight_kg: spec.weight,
         pickup_volume_cm: spec.volume,
         pickup_micro_yn: 'N',
+        parcel_size_code: weightKgToSizeCode(spec.weight),
         ...(item_condition && { item_condition }),
         ...(pre_invoice_items?.length && { pre_invoice_items }),
         registered_by: 'CUSTOMER',

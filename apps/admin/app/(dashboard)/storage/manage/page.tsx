@@ -80,9 +80,12 @@ export default function StorageManagePage() {
   const bulkTypeRef   = useRef<HTMLDivElement>(null);
   const bulkStatusRef = useRef<HTMLDivElement>(null);
 
-  // 타입별 용량 편집
-  const [editingTypeId,    setEditingTypeId]    = useState<string | null>(null);
-  const [typeCapacityInput, setTypeCapacityInput] = useState<string>("");
+  // 타입별 용량·가격 편집
+  const [editingTypeId,      setEditingTypeId]      = useState<string | null>(null);
+  const [editingField,       setEditingField]       = useState<"capacity" | "price" | null>(null);
+  const [typeCapacityInput,  setTypeCapacityInput]  = useState<string>("");
+  const [typePriceInput,     setTypePriceInput]     = useState<string>("");
+  const [typePriceMaxInput,  setTypePriceMaxInput]  = useState<string>("");
 
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -191,6 +194,42 @@ export default function StorageManagePage() {
       alert(json.error ?? "저장 실패");
     }
     setEditingTypeId(null);
+    setEditingField(null);
+  };
+
+  const handleSaveTypePrice = async (typeId: string) => {
+    const priceVal = typePriceInput.trim();
+    const priceMaxVal = typePriceMaxInput.trim();
+    const price_per_week = priceVal === "" ? null : parseInt(priceVal, 10);
+    const price_max = priceMaxVal === "" ? null : parseInt(priceMaxVal, 10);
+
+    if (!price_per_week || isNaN(price_per_week) || price_per_week < 0) {
+      alert("기본 주간 요금을 0 이상 정수로 입력하세요.");
+      return;
+    }
+    if (priceMaxVal !== "" && (isNaN(price_max!) || price_max! < price_per_week)) {
+      alert("상한 요금은 기본 요금 이상이어야 합니다.");
+      return;
+    }
+    const res = await fetch("/api/admin/storage", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type_id: typeId, price_per_week, price_max: price_max ?? null }),
+    });
+    if (res.ok) {
+      setTypes((prev) =>
+        prev.map((t) =>
+          t.id === typeId
+            ? { ...t, price_per_week: price_per_week!, price_max: price_max ?? null }
+            : t
+        )
+      );
+    } else {
+      const json = await res.json();
+      alert(json.error ?? "저장 실패");
+    }
+    setEditingTypeId(null);
+    setEditingField(null);
   };
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -293,46 +332,100 @@ export default function StorageManagePage() {
         </div>
         <div className="p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {types.map((t) => (
-            <div key={t.id} className="border border-gray-200 rounded-xl p-3 flex flex-col gap-1">
-              <div className="flex items-center justify-between">
+            <div key={t.id} className="border border-gray-200 rounded-xl p-3 flex flex-col gap-1.5">
+              {/* 코드 뱃지 + 이름 */}
+              <div className="flex items-center gap-1.5">
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${TYPE_BADGE[t.code] ?? "bg-gray-100 text-gray-600"}`}>
                   {t.code}
                 </span>
               </div>
-              <p className="text-xs font-semibold text-gray-800">{t.name.replace(" Storage", "").replace(" Rack", "")}</p>
+              <p className="text-xs font-semibold text-gray-800 leading-tight">
+                {t.name.replace(" Storage", "").replace(" Rack", "")}
+              </p>
               <p className="text-[11px] text-gray-400">{t.volume_liter}L</p>
 
-              {editingTypeId === t.id ? (
-                <div className="flex items-center gap-1 mt-1">
-                  <input
-                    type="number"
-                    min={1}
-                    value={typeCapacityInput}
-                    onChange={(e) => setTypeCapacityInput(e.target.value)}
-                    placeholder="무제한"
-                    className="w-14 border border-gray-300 rounded text-xs px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-300"
-                    autoFocus
-                  />
-                  <span className="text-[10px] text-gray-400">건</span>
+              <div className="mt-0.5 border-t border-gray-100 pt-1.5 flex flex-col gap-1">
+                {/* ── 용량(최대 건수) ── */}
+                {editingTypeId === t.id && editingField === "capacity" ? (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min={1}
+                      value={typeCapacityInput}
+                      onChange={(e) => setTypeCapacityInput(e.target.value)}
+                      placeholder="무제한"
+                      className="w-14 border border-gray-300 rounded text-[11px] px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                      autoFocus
+                    />
+                    <span className="text-[10px] text-gray-400">건</span>
+                    <button onClick={() => handleSaveTypeCapacity(t.id)} className="text-[10px] text-indigo-600 font-bold hover:underline">저장</button>
+                    <button onClick={() => { setEditingTypeId(null); setEditingField(null); }} className="text-[10px] text-gray-400 hover:underline">취소</button>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => handleSaveTypeCapacity(t.id)}
-                    className="text-[10px] text-indigo-600 font-bold hover:underline"
-                  >저장</button>
+                    onClick={() => { setEditingTypeId(t.id); setEditingField("capacity"); setTypeCapacityInput(t.max_parcels != null ? String(t.max_parcels) : ""); }}
+                    className="text-[11px] font-semibold text-left hover:underline flex items-center gap-1"
+                    title="최대 건수 편집"
+                  >
+                    <span className="text-gray-400">📦</span>
+                    {t.max_parcels != null
+                      ? <span className="text-indigo-700">최대 {t.max_parcels}건</span>
+                      : <span className="text-gray-400">무제한</span>}
+                    <span className="text-gray-300 text-[10px]">편집</span>
+                  </button>
+                )}
+
+                {/* ── 가격 ── */}
+                {editingTypeId === t.id && editingField === "price" ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-500 w-8 shrink-0">기본</span>
+                      <input
+                        type="number" min={0}
+                        value={typePriceInput}
+                        onChange={(e) => setTypePriceInput(e.target.value)}
+                        placeholder="0"
+                        className="flex-1 border border-gray-300 rounded text-[11px] px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                        autoFocus
+                      />
+                      <span className="text-[10px] text-gray-400">원</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-gray-500 w-8 shrink-0">상한</span>
+                      <input
+                        type="number" min={0}
+                        value={typePriceMaxInput}
+                        onChange={(e) => setTypePriceMaxInput(e.target.value)}
+                        placeholder="없음"
+                        className="flex-1 border border-gray-300 rounded text-[11px] px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                      />
+                      <span className="text-[10px] text-gray-400">원</span>
+                    </div>
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => handleSaveTypePrice(t.id)} className="text-[10px] text-indigo-600 font-bold hover:underline">저장</button>
+                      <button onClick={() => { setEditingTypeId(null); setEditingField(null); }} className="text-[10px] text-gray-400 hover:underline">취소</button>
+                    </div>
+                  </div>
+                ) : (
                   <button
-                    onClick={() => setEditingTypeId(null)}
-                    className="text-[10px] text-gray-400 hover:underline"
-                  >취소</button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { setEditingTypeId(t.id); setTypeCapacityInput(t.max_parcels != null ? String(t.max_parcels) : ""); }}
-                  className="mt-1 text-[11px] font-semibold text-left hover:underline"
-                >
-                  {t.max_parcels != null
-                    ? <span className="text-indigo-700">최대 {t.max_parcels}건</span>
-                    : <span className="text-gray-400">무제한 · 설정</span>}
-                </button>
-              )}
+                    onClick={() => {
+                      setEditingTypeId(t.id);
+                      setEditingField("price");
+                      setTypePriceInput(String(t.price_per_week));
+                      setTypePriceMaxInput(t.price_max != null ? String(t.price_max) : "");
+                    }}
+                    className="text-[11px] font-semibold text-left hover:underline flex items-center gap-1"
+                    title="요금 편집"
+                  >
+                    <span className="text-gray-400">💰</span>
+                    <span className="text-emerald-700">
+                      {t.price_per_week.toLocaleString()}원
+                      {t.price_max ? `~${t.price_max.toLocaleString()}원` : ""}
+                      /주
+                    </span>
+                    <span className="text-gray-300 text-[10px]">편집</span>
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

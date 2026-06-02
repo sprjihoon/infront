@@ -58,24 +58,45 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, created: data?.length ?? 0 });
 }
 
-// 스토리지 타입 max_parcels 수정
+// 스토리지 타입 설정 수정 (max_parcels, price_per_week, price_max)
 export async function PATCH(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const { type_id, max_parcels } = body as { type_id: string; max_parcels: number | null };
+  const { type_id, max_parcels, price_per_week, price_max } = body as {
+    type_id: string;
+    max_parcels?: number | null;
+    price_per_week?: number | null;
+    price_max?: number | null;
+  };
 
   if (!type_id) return NextResponse.json({ error: "type_id 필수" }, { status: 400 });
-  if (max_parcels !== null && max_parcels !== undefined && (typeof max_parcels !== "number" || max_parcels < 1)) {
+
+  if (max_parcels !== undefined && max_parcels !== null && (typeof max_parcels !== "number" || max_parcels < 1)) {
     return NextResponse.json({ error: "max_parcels는 1 이상 정수 또는 null" }, { status: 400 });
+  }
+  if (price_per_week !== undefined && price_per_week !== null && (typeof price_per_week !== "number" || price_per_week < 0)) {
+    return NextResponse.json({ error: "price_per_week는 0 이상 숫자" }, { status: 400 });
+  }
+  if (price_max !== undefined && price_max !== null && (typeof price_max !== "number" || price_max < 0)) {
+    return NextResponse.json({ error: "price_max는 0 이상 숫자 또는 null" }, { status: 400 });
+  }
+
+  const patch: Record<string, unknown> = {};
+  if (max_parcels !== undefined) patch.max_parcels = max_parcels ?? null;
+  if (price_per_week !== undefined) patch.price_per_week = price_per_week;
+  if (price_max !== undefined) patch.price_max = price_max ?? null;
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: "변경할 항목이 없습니다" }, { status: 400 });
   }
 
   const { data, error } = await adminDb
     .from("storage_types")
-    .update({ max_parcels: max_parcels ?? null })
+    .update(patch)
     .eq("id", type_id)
-    .select("id, code, name, max_parcels")
+    .select("id, code, name, max_parcels, price_per_week, price_max")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
