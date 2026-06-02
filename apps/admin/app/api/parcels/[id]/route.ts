@@ -14,16 +14,12 @@ export async function PATCH(
   const body = await req.json();
   const updates = parcelUpdatesFromBody(body);
 
-  const { data: current } = await adminDb
-    .from("parcels")
-    .select("status, is_shippable")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (updates.status === "INBOUND" && body.is_shippable !== true) {
-    updates.is_shippable = false;
+  // SHIPPABLE = 보관중·출고가능
+  if (updates.status === "SHIPPABLE") {
+    updates.is_shippable = true;
   }
-  if (updates.status === "INSPECTION") {
+  // INBOUND = 센터입고(처리중)
+  if (updates.status === "INBOUND") {
     updates.is_shippable = false;
   }
 
@@ -41,23 +37,17 @@ export async function PATCH(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   if (body.status) {
-    const isReady = body.status === "INBOUND" && updates.is_shippable === true;
-    const isRevertToInbound =
-      current?.status === "INSPECTION" && body.status === "INBOUND" && !isReady;
-
     const STATUS_NOTIFY: Record<string, { title: string; body: string }> = {
-      PICKED_UP:   { title: "수거가 완료되었습니다", body: "물품이 센터로 이동 중입니다." },
-      INBOUND:     isReady
-        ? { title: "입고 완료", body: "스토리지에서 출고 신청이 가능합니다." }
-        : { title: "센터에 입고되었습니다", body: "검수 후 출고 신청이 가능해집니다." },
-      INSPECTION:  { title: "검수가 시작되었습니다", body: "담당자가 물품을 검수하고 있어요." },
-      HOLD:        { title: "물품이 보류되었습니다", body: `사유: ${body.hold_reason ?? ""}` },
-      PACKING:     { title: "포장 작업이 시작되었습니다", body: "포장 완료 후 발송됩니다." },
-      SHIPPING:    { title: "물품이 발송되었습니다", body: "국제 배송이 시작되었어요." },
-      DONE:        { title: "배송이 완료되었습니다", body: "물품이 목적지에 도착했습니다." },
+      PICKED_UP:  { title: "수거가 완료되었습니다", body: "물품이 센터로 이동 중입니다." },
+      INBOUND:    { title: "센터에 입고되었습니다", body: "보관 처리 후 출고 신청이 가능해집니다." },
+      SHIPPABLE:  { title: "보관 완료 · 출고 가능", body: "출고 신청이 가능합니다." },
+      HOLD:       { title: "물품이 보류되었습니다", body: `사유: ${body.hold_reason ?? ""}` },
+      PACKING:    { title: "포장 작업이 시작되었습니다", body: "포장 완료 후 발송됩니다." },
+      SHIPPING:   { title: "물품이 발송되었습니다", body: "국제 배송이 시작되었어요." },
+      DONE:       { title: "배송이 완료되었습니다", body: "물품이 목적지에 도착했습니다." },
     };
     const notify = STATUS_NOTIFY[body.status];
-    if (notify && !isRevertToInbound) {
+    if (notify) {
       const { data: parcel } = await adminDb.from("parcels").select("customer_id").eq("id", id).single();
       if (parcel) {
         await adminDb.from("notifications").insert({
@@ -85,24 +75,12 @@ export async function POST(
   const body = await req.json();
   const { action } = body;
 
+  // 레거시 inspection 액션 — 보류 처리만 유지
   if (action === "inspection") {
-    const { checklist, grade, notes } = body;
-    const { data, error } = await adminDb
-      .from("inspection_results")
-      .insert({
-        parcel_id: id,
-        inspector_id: admin.id,
-        checklist: checklist ?? {},
-        grade: grade ?? "OK",
-        notes: notes ?? null,
-      })
-      .select()
-      .single();
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const { grade, notes } = body;
 
     const isOk = grade === "OK";
-    const nextStatus = grade === "RETURN_RECOMMENDED" || grade === "HOLD" ? "HOLD" : "INBOUND";
+    const nextStatus = (grade === "RETURN_RECOMMENDED" || grade === "HOLD") ? "HOLD" : "SHIPPABLE";
     await adminDb.from("parcels").update({
       status: nextStatus,
       is_shippable: isOk,
@@ -118,20 +96,14 @@ export async function POST(
       await adminDb.from("notifications").insert({
         customer_id: parcel.customer_id,
         parcel_id: id,
-        type: "INSPECTION_DONE",
-        title: "검수가 완료되었습니다",
-        body: grade === "OK" ? "물품 상태 양호 - 배송 신청 가능합니다" : `검수 결과: ${GRADE_LABEL[grade] ?? grade}`,
+        type: "PARCEL_SHIPPABLE",
+        title: isOk ? "보관 완료 · 출고 가능" : "물품이 보류되었습니다",
+        body: isOk ? "출고 신청이 가능합니다." : `${notes ?? ""}`,
       });
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ ok: true });
   }
 
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }
-
-const GRADE_LABEL: Record<string, string> = {
-  OK:                 "정상",
-  HOLD:               "보류",
-  RETURN_RECOMMENDED: "반품 권장",
-};

@@ -24,12 +24,10 @@ import { SIZE_VOLUME_L, PARCEL_SIZE_OPTIONS } from "@/lib/parcels/size";
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   PENDING_PICKUP: { label: "수거신청", color: "text-yellow-700 bg-yellow-50 border-yellow-200" },
   INBOUND:        { label: "입고",     color: "text-blue-700 bg-blue-50 border-blue-200" },
-  INSPECTION:     { label: "검수중",   color: "text-purple-700 bg-purple-50 border-purple-200" },
-  STORAGE:        { label: "보관중",   color: "text-indigo-700 bg-indigo-50 border-indigo-200" },
+  SHIPPABLE:      { label: "보관중",   color: "text-emerald-700 bg-emerald-50 border-emerald-200" },
   HOLD:           { label: "보류",     color: "text-orange-700 bg-orange-50 border-orange-200" },
-  SHIPPABLE:      { label: "출고가능", color: "text-green-700 bg-green-50 border-green-200" },
-  DONE:           { label: "완료",     color: "text-gray-500 bg-gray-50 border-gray-200" },
   SHIPPING:       { label: "배송중",   color: "text-cyan-700 bg-cyan-50 border-cyan-200" },
+  DONE:           { label: "완료",     color: "text-gray-500 bg-gray-50 border-gray-200" },
 };
 
 type InvoiceItem = {
@@ -484,10 +482,9 @@ export default function StorageDetailPage({
                     {/* 상태 점 */}
                     <div className="mt-1 shrink-0">
                       <div className={`w-2.5 h-2.5 rounded-full ${
-                        p.status === "STORAGE" ? "bg-indigo-500" :
-                        p.status === "INBOUND" ? "bg-green-500" :
-                        p.status === "HOLD"    ? "bg-red-500" :
                         p.status === "SHIPPABLE" ? "bg-emerald-500" :
+                        p.status === "INBOUND"   ? "bg-green-500" :
+                        p.status === "HOLD"      ? "bg-red-500" :
                         "bg-gray-400"}`} />
                     </div>
 
@@ -501,8 +498,8 @@ export default function StorageDetailPage({
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${sc.color}`}>
                           {sc.label}
                         </span>
-                        {p.is_shippable === false && p.status !== "HOLD" && (
-                          <span className="text-[10px] bg-red-50 text-red-600 border border-red-200 px-1.5 py-0.5 rounded-full font-semibold">출고불가</span>
+                        {p.status === "INBOUND" && (
+                          <span className="text-[10px] bg-yellow-50 text-yellow-700 border border-yellow-200 px-1.5 py-0.5 rounded-full font-semibold">처리중</span>
                         )}
                         {p.item_condition === "USED" && (
                           <span className="text-[10px] bg-orange-50 text-orange-700 border border-orange-200 px-1.5 py-0.5 rounded-full font-semibold">중고품</span>

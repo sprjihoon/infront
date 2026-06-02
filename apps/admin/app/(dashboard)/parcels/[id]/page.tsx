@@ -59,8 +59,8 @@ interface InspectionResult {
 }
 
 const STATUS_OPTIONS = [
-  "PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP", "INBOUND", "INSPECTION",
-  "PACKING", "HOLD", "PAYMENT_WAIT", "SHIPPING", "DONE",
+  "PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP", "INBOUND",
+  "SHIPPABLE", "HOLD", "PACKING", "PAYMENT_WAIT", "SHIPPING", "DONE",
 ];
 
 const CHECKLIST_ITEMS = [
@@ -165,11 +165,11 @@ export default function ParcelDetailPage() {
       inbound_at: inboundAt || null,
       tracking_no: trackingNo || null,
     };
-    // 센터 입고(INBOUND)는 기본 검수 전 — 출고가능은 체크박스로만
-    if (status === "INBOUND" && !isShippable) {
-      payload.is_shippable = false;
+    // SHIPPABLE = 보관중·출고가능
+    if (status === "SHIPPABLE") {
+      payload.is_shippable = true;
     }
-    if (status === "INSPECTION") {
+    if (status === "INBOUND") {
       payload.is_shippable = false;
     }
     const ok = await patchParcel(payload);
@@ -179,7 +179,9 @@ export default function ParcelDetailPage() {
 
   function handleStatusChange(next: string) {
     setStatus(next);
-    if (next === "INBOUND" || next === "INSPECTION") {
+    if (next === "SHIPPABLE") {
+      setIsShippable(true);
+    } else if (next === "INBOUND") {
       setIsShippable(false);
     }
   }
@@ -204,8 +206,8 @@ export default function ParcelDetailPage() {
 
   async function handleReopen() {
     if (!parcel) return;
-    if (!confirm("재접수 처리하시겠습니까? 상태를 '센터 입고'로 되돌립니다.")) return;
-    await patchParcel({ status: "INBOUND", is_shippable: false, hold_reason: null });
+    if (!confirm("재접수 처리하시겠습니까? 상태를 '보관중'으로 되돌립니다.")) return;
+    await patchParcel({ status: "SHIPPABLE", is_shippable: true, hold_reason: null });
   }
 
   async function loadAvailableLocations(customerId?: string) {
@@ -449,19 +451,10 @@ export default function ParcelDetailPage() {
           </button>
         )}
 
-        {parcel.status === "INSPECTION" && !showInspection && (
-          <button
-            onClick={() => setShowInspection(true)}
-            className="w-full mt-2 bg-purple-600 text-white font-semibold py-3 rounded-xl"
-          >
-            검수 결과 입력
-          </button>
-        )}
-
-        {parcel.status === "INBOUND" && parcel.is_shippable === true && (
+        {parcel.status === "SHIPPABLE" && (
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-sm text-emerald-800">
             <CheckCircle size={16} />
-            입고 완료 — 고객이 출고 신청할 수 있습니다
+            보관중 · 출고 신청 가능합니다
           </div>
         )}
 
@@ -485,7 +478,7 @@ export default function ParcelDetailPage() {
             className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-indigo-200 text-indigo-700 text-sm font-semibold bg-indigo-50 hover:bg-indigo-100 transition-colors disabled:opacity-50"
           >
             <RotateCcw size={14} />
-            재접수 처리 (센터 입고로 되돌리기)
+            재접수 처리 (보관중으로 되돌리기)
           </button>
         )}
       </div>
@@ -504,57 +497,7 @@ export default function ParcelDetailPage() {
         </div>
       )}
 
-      {/* 검수 폼 */}
-      {showInspection && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-purple-200 space-y-3">
-          <h2 className="font-semibold text-gray-900">검수 입력</h2>
-          <p className="text-xs text-gray-500">무게·크기를 먼저 입력한 뒤 검수를 완료하세요.</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-500">실측 무게 (g)</label>
-              <input type="number" value={weight} onChange={(e) => setWeight(e.target.value)}
-                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm" />
-            </div>
-            <div className="grid grid-cols-3 gap-1 col-span-2">
-              <input type="number" value={volL} onChange={(e) => setVolL(e.target.value)} placeholder="L" className="px-2 py-2 border rounded-lg text-sm" />
-              <input type="number" value={volW} onChange={(e) => setVolW(e.target.value)} placeholder="W" className="px-2 py-2 border rounded-lg text-sm" />
-              <input type="number" value={volH} onChange={(e) => setVolH(e.target.value)} placeholder="H" className="px-2 py-2 border rounded-lg text-sm" />
-            </div>
-          </div>
-          {CHECKLIST_ITEMS.map(({ key, label }) => (
-            <div key={key} className="flex items-center gap-2">
-              <input type="checkbox" id={key} checked={checklist[key]}
-                onChange={(e) => setChecklist((p) => ({ ...p, [key]: e.target.checked }))}
-                className="w-4 h-4 accent-blue-600" />
-              <label htmlFor={key} className="text-sm text-gray-700">{label}</label>
-            </div>
-          ))}
-          <select value={grade} onChange={(e) => setGrade(e.target.value)}
-            className="w-full px-3 py-2 border rounded-lg text-sm bg-white">
-            <option value="OK">정상 — 입고 완료 (출고 가능)</option>
-            <option value="HOLD">보류</option>
-            <option value="RETURN_RECOMMENDED">반품 권장</option>
-          </select>
-          <textarea value={inspNotes} onChange={(e) => setInspNotes(e.target.value)} rows={2}
-            className="w-full px-3 py-2 border rounded-lg text-sm resize-none" placeholder="검수 메모" />
-          <div className="flex gap-2">
-            <button onClick={() => setShowInspection(false)} className="flex-1 py-2.5 border rounded-lg text-sm">취소</button>
-            <button onClick={handleInspection} disabled={inspecting}
-              className="flex-1 py-2.5 bg-green-600 text-white rounded-lg text-sm font-semibold disabled:opacity-60">
-              {inspecting ? "처리 중…" : "검수 완료"}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 검수 이력 */}
-      {inspections.length > 0 && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm space-y-3">
-          <h2 className="font-semibold text-gray-900">검수 이력</h2>
-          {inspections.map((ins) => (
-            <div key={ins.id} className="border border-gray-100 rounded-xl p-3">
-              <div className="flex justify-between mb-1">
-                <span className="text-xs font-medium">{ins.grade === "OK" ? "정상" : ins.grade}</span>
+      {events.length > 0 && (
                 <span className="text-xs text-gray-400">{new Date(ins.inspected_at).toLocaleDateString("ko-KR")}</span>
               </div>
               {ins.notes && <p className="text-xs text-gray-500">{ins.notes}</p>}

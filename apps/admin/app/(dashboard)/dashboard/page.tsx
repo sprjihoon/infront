@@ -54,9 +54,9 @@ export default async function DashboardPage() {
   const p = parcels ?? [];
   const pickupPending = p.filter((x) => x.status === "PENDING_PICKUP").length;
   const pickedUp = p.filter((x) => x.status === "PICKED_UP").length;
-  const arrived = p.filter((x) => x.status === "INBOUND" && x.is_shippable !== true).length;
-  const inspecting = p.filter((x) => x.status === "INSPECTION").length;
-  const ready = p.filter((x) => x.status === "INBOUND" && x.is_shippable === true).length;
+  const arrived = p.filter((x) => x.status === "INBOUND").length;
+  const stored = p.filter((x) => x.status === "SHIPPABLE").length;
+  const held = p.filter((x) => x.status === "HOLD").length;
 
   const pendingQuote = (orders ?? []).filter((o) => ["PENDING_QUOTE", "DRAFT"].includes(o.status)).length;
   const paymentWait = (orders ?? []).filter((o) => ["PAYMENT_WAIT", "QUOTE_SENT"].includes(o.status)).length;
@@ -77,9 +77,9 @@ export default async function DashboardPage() {
   const queueItems = [
     { label: "수거 신청 대기", count: pickupPending, href: "/parcels?status=PENDING_PICKUP", icon: Truck },
     { label: "수거 완료 · 센터 이동 중", count: pickedUp, href: "/parcels?status=PICKED_UP" },
-    { label: "센터 입고 (검수 전)", count: arrived, href: "/parcels?status=INBOUND_ARRIVED" },
-    { label: "검수 중", count: inspecting, href: "/parcels?status=INSPECTION" },
-    { label: "입고 완료 · 출고 가능", count: ready, href: "/parcels?status=INBOUND_READY" },
+    { label: "센터 입고 처리 중", count: arrived, href: "/parcels?status=INBOUND" },
+    { label: "보관중 · 출고 가능", count: stored, href: "/parcels?status=SHIPPABLE" },
+    { label: "보류", count: held, href: "/parcels?status=HOLD", urgent: held > 0 },
     { label: "견적 대기 주문", count: pendingQuote, href: "/orders?status=PENDING_QUOTE" },
     { label: "결제 대기 주문", count: paymentWait, href: "/orders?status=QUOTE_SENT" },
     { label: "결제 완료 · 발송 대기", count: paidShip, href: "/orders?status=PAID" },
@@ -90,7 +90,7 @@ export default async function DashboardPage() {
     <div className="space-y-6 max-w-6xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">오늘 할 일</h1>
-        <p className="text-sm text-gray-500 mt-1">수거 → 입고 → 검수 → 출고 → 결제 순서로 처리하세요</p>
+        <p className="text-sm text-gray-500 mt-1">수거 → 입고 → 보관 → 출고 순서로 처리하세요</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

@@ -42,12 +42,6 @@ function countForFilter(
   key: string,
 ): number {
   if (!key) return parcels.filter((p) => p.status !== "PICKUP_CANCELLED").length;
-  if (key === "INBOUND_READY") {
-    return parcels.filter((p) => p.status === "INBOUND" && p.is_shippable === true).length;
-  }
-  if (key === "INBOUND_ARRIVED") {
-    return parcels.filter((p) => p.status === "INBOUND" && p.is_shippable !== true).length;
-  }
   return parcels.filter((p) => p.status === key).length;
 }
 
@@ -69,11 +63,7 @@ export default async function ParcelsPage({
     .order("created_at", { ascending: false })
     .limit(100);
 
-  if (status === "INBOUND_READY") {
-    query = query.eq("status", "INBOUND").eq("is_shippable", true);
-  } else if (status === "INBOUND_ARRIVED") {
-    query = query.eq("status", "INBOUND").or("is_shippable.is.null,is_shippable.eq.false");
-  } else if (status) {
+  if (status === "INBOUND" || status === "SHIPPABLE" || status === "HOLD" || status) {
     query = query.eq("status", status);
   } else {
     // 전체: 수거취소 제외

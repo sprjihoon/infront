@@ -6,9 +6,9 @@ export const PARCEL_STATUS_LABEL: Record<string, string> = {
   PICKUP_CANCELLED: "수거 취소",
   PICKED_UP:        "수거 완료",
   INBOUND:          "센터 입고",
-  INSPECTION:       "검수 중",
-  PACKING:          "포장 중",
+  SHIPPABLE:        "보관중 · 출고가능",
   HOLD:             "보류",
+  PACKING:          "포장 중",
   PAYMENT_WAIT:     "결제 대기",
   SHIPPING:         "발송 중",
   DONE:             "완료",
@@ -20,9 +20,9 @@ export const PARCEL_STATUS_COLOR: Record<string, string> = {
   PICKUP_CANCELLED: "text-red-600 bg-red-50 border-red-200",
   PICKED_UP:        "text-blue-700 bg-blue-50 border-blue-200",
   INBOUND:          "text-green-700 bg-green-50 border-green-200",
-  INSPECTION:       "text-purple-700 bg-purple-50 border-purple-200",
-  PACKING:          "text-orange-700 bg-orange-50 border-orange-200",
+  SHIPPABLE:        "text-emerald-700 bg-emerald-50 border-emerald-200",
   HOLD:             "text-red-700 bg-red-50 border-red-200",
+  PACKING:          "text-orange-700 bg-orange-50 border-orange-200",
   PAYMENT_WAIT:     "text-amber-700 bg-amber-50 border-amber-200",
   SHIPPING:         "text-blue-800 bg-blue-100 border-blue-300",
   DONE:             "text-gray-600 bg-gray-50 border-gray-200",
@@ -30,15 +30,14 @@ export const PARCEL_STATUS_COLOR: Record<string, string> = {
 
 /** 목록 필터 탭 — key는 URL status 파라미터 */
 export const PARCEL_FILTER_TABS = [
-  { key: "",                  label: "전체" },
-  { key: "PRE_REGISTERED",    label: "등록완료" },
-  { key: "PENDING_PICKUP",    label: "수거신청" },
-  { key: "PICKED_UP",         label: "수거완료" },
-  { key: "INBOUND_ARRIVED",   label: "센터입고" },
-  { key: "INSPECTION",        label: "검수중" },
-  { key: "INBOUND_READY",     label: "입고완료" },
-  { key: "HOLD",              label: "보류" },
-  { key: "PICKUP_CANCELLED",  label: "수거취소" },
+  { key: "",                 label: "전체" },
+  { key: "PRE_REGISTERED",   label: "등록완료" },
+  { key: "PENDING_PICKUP",   label: "수거신청" },
+  { key: "PICKED_UP",        label: "수거완료" },
+  { key: "INBOUND",          label: "센터입고" },
+  { key: "SHIPPABLE",        label: "보관중" },
+  { key: "HOLD",             label: "보류" },
+  { key: "PICKUP_CANCELLED", label: "수거취소" },
 ] as const;
 
 export const INBOUND_SOURCE_TABS = [
@@ -52,16 +51,11 @@ export const INBOUND_SOURCE_LABEL: Record<string, string> = {
   DIRECT: "물품등록",
 };
 
-export function parcelDisplayLabel(status: string, isShippable: boolean | null | undefined): string {
-  if (status === "INBOUND" && isShippable === true) return "입고 완료 (출고가능)";
-  if (status === "INBOUND") return "센터 입고";
+export function parcelDisplayLabel(status: string, _isShippable?: boolean | null): string {
   return PARCEL_STATUS_LABEL[status] ?? status;
 }
 
-export function parcelDisplayColor(status: string, isShippable: boolean | null | undefined): string {
-  if (status === "INBOUND" && isShippable === true) {
-    return "text-emerald-700 bg-emerald-50 border-emerald-200";
-  }
+export function parcelDisplayColor(status: string, _isShippable?: boolean | null): string {
   return PARCEL_STATUS_COLOR[status] ?? PARCEL_STATUS_COLOR.DONE;
 }
 
@@ -74,7 +68,7 @@ export interface ParcelWorkflowAction {
 /** 현재 상태에서 권장 다음 액션 */
 export function getNextWorkflowAction(
   status: string,
-  isShippable: boolean | null | undefined,
+  _isShippable?: boolean | null,
 ): ParcelWorkflowAction | null {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -92,34 +86,29 @@ export function getNextWorkflowAction(
       patch: { status: "INBOUND", is_shippable: false, inbound_at: today },
     };
   }
-  if (status === "INBOUND" && isShippable !== true) {
+  if (status === "INBOUND") {
     return {
-      label: "검수 시작",
-      description: "검수를 시작합니다. 무게·크기를 입력한 뒤 검수를 진행하세요.",
-      patch: { status: "INSPECTION", is_shippable: false },
+      label: "보관 완료 처리",
+      description: "로케이션 배정 완료. 출고가능 상태로 변경합니다.",
+      patch: { status: "SHIPPABLE", is_shippable: true },
     };
-  }
-  if (status === "INSPECTION") {
-    return null; // 검수 폼으로 처리
   }
   return null;
 }
 
 export const WORKFLOW_STEPS = [
-  { key: "register",   label: "등록·수거",  statuses: ["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"] },
-  { key: "arrive",     label: "센터 입고",  statuses: ["INBOUND"], arrivedOnly: true },
-  { key: "inspect",    label: "검수",       statuses: ["INSPECTION"] },
-  { key: "ready",      label: "입고 완료",  statuses: ["INBOUND"], readyOnly: true },
+  { key: "register",  label: "등록·수거",   statuses: ["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"] },
+  { key: "inbound",   label: "센터 입고",   statuses: ["INBOUND"] },
+  { key: "storage",   label: "보관중",      statuses: ["SHIPPABLE"] },
 ] as const;
 
 export function workflowStepIndex(
   status: string,
-  isShippable: boolean | null | undefined,
+  _isShippable?: boolean | null,
 ): number {
-  if (status === "INSPECTION") return 2;
-  if (status === "INBOUND" && isShippable === true) return 3;
+  if (["SHIPPABLE", "SHIPPING", "DONE"].includes(status)) return 2;
   if (status === "INBOUND") return 1;
   if (["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"].includes(status)) return 0;
-  if (status === "HOLD") return 2;
+  if (status === "HOLD") return 1;
   return 0;
 }

@@ -111,8 +111,8 @@ export async function POST(req: NextRequest) {
   const today = new Date().toISOString().slice(0, 10);
 
   const { error: updateErr } = await adminDb.from("parcels").update({
-    status: "INBOUND",
-    is_shippable: false,
+    status: "SHIPPABLE",
+    is_shippable: true,
     inbound_at: today,
     item_count,
     ...(parcel_size_code ? { parcel_size_code } : {}),
@@ -145,9 +145,9 @@ export async function POST(req: NextRequest) {
   await adminDb.from("notifications").insert({
     customer_id: parcel.customer_id,
     parcel_id,
-    type: "PARCEL_INBOUND",
-    title: "센터에 입고되었습니다",
-    body: "검수 후 출고 신청이 가능해집니다.",
+    type: "PARCEL_SHIPPABLE",
+    title: "센터에 입고 · 보관되었습니다",
+    body: "출고 신청이 가능합니다.",
   });
 
   // 로케이션 용량 현황 조회 (응답용)
