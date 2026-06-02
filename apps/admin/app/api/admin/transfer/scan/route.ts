@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     .maybeSingle();
 
   if (byBarcode) {
-    const p = byBarcode.parcels as Record<string, unknown>;
+    const p = byBarcode.parcels as unknown;
     return NextResponse.json({ type: "parcel", parcel: normalizeParcel(p), barcode: byBarcode.barcode_no });
   }
 
