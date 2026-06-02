@@ -18,6 +18,8 @@ import {
   MapPin,
   ChevronDown,
   ChevronRight,
+  Flame,
+  ArrowRightLeft,
 } from "lucide-react";
 import { SIZE_VOLUME_L, PARCEL_SIZE_OPTIONS } from "@/lib/parcels/size";
 
@@ -107,6 +109,60 @@ export default function StorageDetailPage({
   const [expandedParcels, setExpandedParcels] = useState<Set<string>>(new Set());
   const toggleParcel = (id: string) =>
     setExpandedParcels((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  // 소포 이동 picker
+  const [movingParcelId, setMovingParcelId] = useState<string | null>(null);
+  const [moveTargets, setMoveTargets] = useState<{ id: string; code: string; zone: string; is_temp: boolean }[]>([]);
+  const [moveTargetsLoaded, setMoveTargetsLoaded] = useState(false);
+
+  const loadMoveTargets = async () => {
+    if (moveTargetsLoaded) return;
+    const res = await fetch("/api/admin/storage/list");
+    const json = await res.json();
+    const all = (json.locations ?? []) as { id: string; code: string; zone: string; status: string; is_temp: boolean }[];
+    setMoveTargets(
+      all
+        .filter((l) => l.id !== locationId && l.status !== "DISABLED")
+        .map(({ id, code, zone, is_temp }) => ({ id, code, zone, is_temp: !!is_temp }))
+    );
+    setMoveTargetsLoaded(true);
+  };
+
+  const handleMoveParcel = async (parcelId: string, toLocationId: string, reason: string) => {
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/admin/parcels/${parcelId}/move`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ to_location_id: toLocationId, reason }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "이동 오류");
+    } else {
+      setMovingParcelId(null);
+      await load();
+    }
+    setSaving(false);
+  };
+
+  const handleForceClear = async () => {
+    if (!confirm(`[${location?.code}] 로케이션의 소포 ${parcels.length}개를 임시보관 공간으로 강제 이동하시겠습니까?\n\n이 작업은 되돌리기 어렵습니다.`)) return;
+    setSaving(true);
+    setError(null);
+    const res = await fetch(`/api/admin/storage/${locationId}/force-clear`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setError(json.error ?? "강제 비우기 오류");
+    } else {
+      await load();
+    }
+    setSaving(false);
+  };
 
   useEffect(() => {
     params.then(({ id }) => setLocationId(id));
@@ -231,6 +287,17 @@ export default function StorageDetailPage({
 
         {/* 액션 버튼 */}
         <div className="flex gap-2">
+          {parcels.length > 0 && (
+            <button
+              onClick={handleForceClear}
+              disabled={saving}
+              className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 font-semibold flex items-center gap-1"
+              title="모든 소포를 임시보관 공간으로 강제 이동"
+            >
+              <Flame size={13} />
+              강제 비우기
+            </button>
+          )}
           {location.status === "OCCUPIED" && (
             <button
               onClick={handleRelease}

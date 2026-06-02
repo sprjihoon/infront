@@ -50,25 +50,9 @@ interface Parcel {
   storage_locations: { id: string; code: string; zone: string; slot: string } | null;
 }
 
-interface InspectionResult {
-  id: string;
-  grade: string;
-  checklist: Record<string, boolean>;
-  notes: string | null;
-  inspected_at: string;
-}
-
 const STATUS_OPTIONS = [
   "PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP", "INBOUND",
   "SHIPPABLE", "HOLD", "PACKING", "PAYMENT_WAIT", "SHIPPING", "DONE",
-];
-
-const CHECKLIST_ITEMS = [
-  { key: "condition_ok",    label: "전반적 상태 양호" },
-  { key: "size_match",      label: "사이즈 일치" },
-  { key: "color_match",     label: "색상 일치" },
-  { key: "defect",          label: "결함 없음" },
-  { key: "authenticity_ok", label: "정품 확인" },
 ];
 
 export default function ParcelDetailPage() {
@@ -76,7 +60,6 @@ export default function ParcelDetailPage() {
   const { id } = useParams<{ id: string }>();
 
   const [parcel, setParcel] = useState<Parcel | null>(null);
-  const [inspections, setInspections] = useState<InspectionResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [actioning, setActioning] = useState(false);
@@ -94,13 +77,6 @@ export default function ParcelDetailPage() {
   const [inboundAt, setInboundAt] = useState("");
   const [trackingNo, setTrackingNo] = useState("");
 
-  const [showInspection, setShowInspection] = useState(false);
-  const [checklist, setChecklist] = useState<Record<string, boolean>>({
-    condition_ok: true, size_match: true, color_match: true, defect: true, authenticity_ok: true,
-  });
-  const [grade, setGrade] = useState("OK");
-  const [inspNotes, setInspNotes] = useState("");
-  const [inspecting, setInspecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   // 로케이션 배정
@@ -127,7 +103,6 @@ export default function ParcelDetailPage() {
     setNotes(p.notes ?? "");
     setInboundAt(p.inbound_at ? p.inbound_at.slice(0, 10) : "");
     setTrackingNo(p.tracking_no ?? "");
-    setInspections(json.inspections ?? []);
     setLoading(false);
   }
 
@@ -253,20 +228,6 @@ export default function ParcelDetailPage() {
     if (res.ok) {
       setSaveMsg("API 동기화 완료");
       setTimeout(() => setSaveMsg(""), 3000);
-      loadParcel();
-    }
-  }
-
-  async function handleInspection() {
-    setInspecting(true);
-    const res = await fetch(`/api/parcels/${id}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "inspection", checklist, grade, notes: inspNotes }),
-    });
-    setInspecting(false);
-    if (res.ok) {
-      setShowInspection(false);
       loadParcel();
     }
   }
@@ -494,15 +455,6 @@ export default function ParcelDetailPage() {
               </div>
             ))}
           </div>
-        </div>
-      )}
-
-      {events.length > 0 && (
-                <span className="text-xs text-gray-400">{new Date(ins.inspected_at).toLocaleDateString("ko-KR")}</span>
-              </div>
-              {ins.notes && <p className="text-xs text-gray-500">{ins.notes}</p>}
-            </div>
-          ))}
         </div>
       )}
 
