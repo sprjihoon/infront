@@ -19,6 +19,7 @@ import {
   LayoutGrid,
   SlidersHorizontal,
   ScanLine,
+  MoveRight,
   LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Warehouse,
     items: [
       { title: "로케이션 현황", href: "/storage", icon: LayoutGrid },
+      { title: "이동처리", href: "/transfer", icon: MoveRight },
       { title: "Zone·슬롯 관리", href: "/storage/manage", icon: SlidersHorizontal },
     ],
   },

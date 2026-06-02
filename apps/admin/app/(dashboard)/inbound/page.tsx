@@ -65,6 +65,8 @@ export default function InboundPage() {
     location_volume_liter: number | null;
     location_used_liter: number | null;
     barcode_count: number;
+    is_split?: boolean;
+    split_location_codes?: string[];
   } | null>(null);
   const [resultBarcodes, setResultBarcodes] = useState<unknown[]>([]);
   const [addingLocation, setAddingLocation] = useState(false);
@@ -209,6 +211,8 @@ export default function InboundPage() {
         location_volume_liter: json.location_volume_liter ?? null,
         location_used_liter: json.location_used_liter ?? null,
         barcode_count: json.barcode_count,
+        is_split: json.is_split ?? false,
+        split_location_codes: json.split_location_codes ?? [],
       });
       setResultBarcodes(json.barcodes ?? []);
       setUploadProgress(100);
@@ -552,7 +556,7 @@ export default function InboundPage() {
                 {result.location_code && (
                   <div className="flex justify-between text-sm items-center">
                     <span className="text-gray-500">로케이션</span>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
                       <span className="font-bold text-blue-700 text-lg">{result.location_code}</span>
                       {/* 리터 기반 표시 우선, 없으면 건수 */}
                       {result.location_volume_liter != null && result.location_used_liter != null ? (
@@ -577,6 +581,20 @@ export default function InboundPage() {
                         </span>
                       ) : null}
                     </div>
+                  </div>
+                )}
+                {/* 분할 배정 안내 */}
+                {result.is_split && result.split_location_codes && result.split_location_codes.length > 0 && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2 flex flex-col gap-1">
+                    <span className="text-xs font-semibold text-indigo-700">📦 분할 배정 — 추가 로케이션 확보됨</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.split_location_codes.map((code) => (
+                        <span key={code} className="text-xs font-bold font-mono bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded">
+                          {code}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="text-[11px] text-indigo-500">단일 로케이션이 부족해 여러 자리를 묶어 배정했습니다</span>
                   </div>
                 )}
                 {/* 용량 초과 경고 + 추가 로케 배정 버튼 */}
