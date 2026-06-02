@@ -46,9 +46,9 @@ type Parcel = {
   inbound_at: string | null;
   created_at: string;
   weight_actual: number | null;
-  vol_length: number | null;
-  vol_width: number | null;
-  vol_height: number | null;
+  volume_l: number | null;
+  volume_w: number | null;
+  volume_h: number | null;
   pre_invoice_items: InvoiceItem[] | null;
   sender_name: string | null;
   sender_address: string | null;
@@ -420,10 +420,10 @@ export default function StorageDetailPage({
                             <Weight size={11} /> {p.weight_actual}g
                           </span>
                         )}
-                        {p.vol_length && p.vol_width && p.vol_height && (
+                        {p.volume_l && p.volume_w && p.volume_h && (
                           <span className="flex items-center gap-1">
                             <Ruler size={11} />
-                            {p.vol_length}×{p.vol_width}×{p.vol_height}cm
+                            {p.volume_l}×{p.volume_w}×{p.volume_h}cm
                           </span>
                         )}
                       </div>
