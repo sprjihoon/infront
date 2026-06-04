@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import type { ReactNode } from "react";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
