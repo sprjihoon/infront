@@ -56,6 +56,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: "입고처리", href: "/inbound", icon: ScanLine },
       { title: "피킹 지시서", href: "/picking", icon: ClipboardList },
       { title: "출고처리", href: "/outbound", icon: Send },
+      { title: "이동처리", href: "/transfer", icon: MoveRight },
     ],
   },
   {
@@ -76,7 +77,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: Warehouse,
     items: [
       { title: "로케이션 현황", href: "/storage", icon: LayoutGrid },
-      { title: "이동처리", href: "/transfer", icon: MoveRight },
       { title: "Zone·슬롯 관리", href: "/storage/manage", icon: SlidersHorizontal },
     ],
   },
