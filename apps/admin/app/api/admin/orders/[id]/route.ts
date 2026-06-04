@@ -32,7 +32,7 @@ export async function GET(
   const [{ data: order }, { data: orderParcels }, { data: orderServices }, { data: shippingBoxes }] =
     await Promise.all([
       adminDb.from("orders").select("*, customers(name, email, customer_code, personal_address)").eq("id", id).single(),
-      adminDb.from("order_parcels").select("*, parcels(id, tracking_no, weight_actual, vol_length, vol_width, vol_height, pre_invoice_items, item_condition)").eq("order_id", id),
+      adminDb.from("order_parcels").select("*, parcels(id, tracking_no, weight_actual, volume_l, volume_w, volume_h, pre_invoice_items, item_condition)").eq("order_id", id),
       adminDb.from("order_services").select("*, services(code, name, category)").eq("order_id", id),
       adminDb.from("shipping_boxes").select("*, box_items(*)").eq("order_id", id).order("box_seq"),
     ]);

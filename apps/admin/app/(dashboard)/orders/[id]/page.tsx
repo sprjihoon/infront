@@ -23,7 +23,7 @@ interface Order {
   recipient_addr3: string | null;
   recipient_zip: string | null;
   recipient_email: string | null;
-  item_list: Array<{ name: string; qty: number; price: number; origin: string }>;
+  item_list: Array<{ name?: string; name_en?: string; qty?: number; quantity?: number; price?: number; unit_price_usd?: number; origin?: string; origin_country?: string; hs_code?: string }>;
   est_shipping_fee: number | null;
   shipping_fee: number | null;
   quote_ems_cost: number | null;
@@ -54,9 +54,9 @@ interface OrderParcel {
     id: string;
     tracking_no: string | null;
     weight_actual: number | null;
-    vol_length: number | null;
-    vol_width: number | null;
-    vol_height: number | null;
+    volume_l: number | null;
+    volume_w: number | null;
+    volume_h: number | null;
     pre_invoice_items: InvoiceItem[] | null;
     item_condition: string | null;
   } | null;
@@ -590,10 +590,10 @@ export default function OrderDetailPage() {
             <tbody>
               {order.item_list.map((item, idx) => (
                 <tr key={idx} className="border-b border-gray-50 last:border-0">
-                  <td className="py-2">{item.name}</td>
-                  <td className="py-2 text-center">{item.qty}</td>
-                  <td className="py-2 text-right">${item.price}</td>
-                  <td className="py-2 text-right text-gray-500">{item.origin}</td>
+                  <td className="py-2">{item.name_en ?? item.name}</td>
+                  <td className="py-2 text-center">{item.quantity ?? item.qty}</td>
+                  <td className="py-2 text-right">${item.unit_price_usd ?? item.price}</td>
+                  <td className="py-2 text-right text-gray-500">{item.origin_country ?? item.origin}</td>
                 </tr>
               ))}
             </tbody>
