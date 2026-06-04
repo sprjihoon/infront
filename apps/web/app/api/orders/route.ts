@@ -356,6 +356,16 @@ export async function POST(req: NextRequest) {
       console.error('[ORDERS] order_parcels insert error:', opErr);
     }
 
+    // 배송 박스 1개 자동 생성 (실측값은 관리자가 나중에 입력)
+    await supabase.from('shipping_boxes').insert({
+      order_id: order.id,
+      box_seq: 1,
+      status: 'PREPARING',
+      carrier: shipping_method === 'KPACKET' ? 'K-Packet' : 'EMS',
+    }).then(({ error }) => {
+      if (error) console.warn('[ORDERS] shipping_box auto-create error:', error.message);
+    });
+
     // order_services 생성 (포장 옵션)
     const serviceEntries: Array<{ code: string; price: number }> = [];
     if (packaging_options.safe_pack) serviceEntries.push({ code: 'SAFE_PACK', price: 3000 });
