@@ -1,36 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
-  Globe,
-  Truck,
-  MapPin,
-  Package,
-  CheckCircle2,
-  Loader2,
-  AlertCircle,
-  ScanLine,
-  XCircle,
-  AlertTriangle,
-  ClipboardCheck,
-  ChevronRight,
-  X,
+  ArrowLeft, CheckCircle2, Loader2, MapPin, Package,
+  ScanLine, AlertTriangle, RotateCcw, ChevronRight,
+  Globe, Truck, PauseCircle, XCircle, Info,
 } from "lucide-react";
 
 // ── 타입 ──────────────────────────────────────────────────────
 
 type PickingStatus = "WAITING" | "DONE" | "HOLD" | "NOT_FOUND";
-type ScanResult   = "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND";
-type FeedbackType = "success" | "wrong_order" | "duplicate" | "not_found";
 
-interface PickingBarcode {
-  id:             string;
-  barcode_no:     string;
-  seq:            number;
-  item_name:      string | null;
+interface PickBarcode {
+  id: string;
+  barcode_no: string;
+  seq: number;
+  item_name: string | null;
   picking_status: PickingStatus;
   picking_reason: string | null;
   picking_note:   string | null;
@@ -38,16 +25,17 @@ interface PickingBarcode {
   location:       { id: string; code: string } | null;
 }
 
-interface OrderInfo {
-  id:               string;
-  order_no?:        string;
-  status:           string;
-  recipient_name?:  string;
+interface PickOrder {
+  id: string;
+  order_no?:       string;
+  status:          string;
+  shipping_method?: string;
+  recipient_name:  string;
   recipient_country?: string;
-  packaging_type?:  string;
-  delivery_msg?:    string;
-  notes?:           string;
-  customers?:       { name?: string; customer_code?: string } | null;
+  recipient_addr1?: string;
+  picking_started_at?: string | null;
+  picking_done_at?:    string | null;
+  customers: { name?: string; customer_code?: string } | null;
 }
 
 interface PickingStats {
@@ -58,80 +46,79 @@ interface PickingStats {
   waiting:   number;
 }
 
-interface FeedbackState {
-  type:      FeedbackType;
-  title:     string;
-  subtitle?: string;
-}
+type ScanFeedback = { type: "ok" | "warn" | "err"; msg: string };
 
-// ── 상수 ──────────────────────────────────────────────────────
+// 바코드 ID 기준으로 로컬 상태 Override
+type LocalOverride = Record<string, PickingStatus>;
 
-const STATUS_CONFIG: Record<PickingStatus, { label: string; dot: string; card: string; badge: string }> = {
-  WAITING:   { label: "대기",     dot: "bg-gray-300",   card: "",                              badge: "bg-gray-100 text-gray-600 border-gray-200" },
-  DONE:      { label: "피킹완료", dot: "bg-green-500",  card: "bg-green-50 border-green-300",  badge: "bg-green-100 text-green-700 border-green-300" },
-  HOLD:      { label: "보류",     dot: "bg-yellow-400", card: "bg-yellow-50 border-yellow-300",badge: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  NOT_FOUND: { label: "물품없음", dot: "bg-red-400",    card: "bg-red-50 border-red-300",      badge: "bg-red-100 text-red-700 border-red-300" },
+// ── 상태 표시 설정 ──────────────────────────────────────────────
+
+const STATUS_ICON: Record<PickingStatus, React.ReactNode> = {
+  WAITING:   <div className="w-5 h-5 rounded-full border-2 border-gray-300" />,
+  DONE:      <CheckCircle2 size={20} className="text-green-600" />,
+  HOLD:      <PauseCircle   size={20} className="text-yellow-500" />,
+  NOT_FOUND: <XCircle       size={20} className="text-orange-500" />,
+};
+const STATUS_CARD: Record<PickingStatus, string> = {
+  WAITING:   "bg-white border-gray-200",
+  DONE:      "bg-green-50 border-green-400",
+  HOLD:      "bg-yellow-50 border-yellow-400",
+  NOT_FOUND: "bg-orange-50 border-orange-400",
+};
+const STATUS_LABEL: Record<PickingStatus, string> = {
+  WAITING: "대기", DONE: "완료", HOLD: "보류", NOT_FOUND: "없음",
 };
 
-const MANUAL_REASONS: Record<"DONE" | "HOLD" | "NOT_FOUND", string[]> = {
-  DONE:      ["스캐너 오류로 수동 처리", "바코드 인식 불가", "기타"],
-  HOLD:      ["상품 상태 확인 필요", "위치 확인 불가", "포장 손상", "기타"],
-  NOT_FOUND: ["해당 위치에 상품 없음", "다른 위치 보관 추정", "상품 분실 추정", "기타"],
-};
+// ── 컴포넌트 ──────────────────────────────────────────────────
 
-// ── 메인 컴포넌트 ──────────────────────────────────────────────
-
-export default function PickingDetailPage() {
+export default function PickingBoardPage() {
   const { id: rawId } = useParams<{ id: string }>();
-  const router        = useRouter();
-  const isIntl        = !rawId.startsWith("dom-");
-  const orderType     = isIntl ? "intl" : "domestic";
+  const router = useRouter();
 
-  // 데이터
-  const [order,    setOrder]    = useState<OrderInfo | null>(null);
-  const [barcodes, setBarcodes] = useState<PickingBarcode[]>([]);
-  const [stats,    setStats]    = useState<PickingStats>({ total: 0, done: 0, hold: 0, not_found: 0, waiting: 0 });
+  const isIntl    = !rawId.startsWith("dom-");
+  const orderId   = rawId.replace(/^(intl|dom)-/, "");
+  const orderType = isIntl ? "intl" : "domestic";
+
+  // ── 데이터 ──
+  const [order,    setOrder]   = useState<PickOrder | null>(null);
+  const [barcodes, setBarcodes] = useState<PickBarcode[]>([]);
+  const [stats,    setStats]   = useState<PickingStats | null>(null);
   const [loading,  setLoading]  = useState(true);
   const [loadErr,  setLoadErr]  = useState("");
 
-  // 스캔
-  const [scanInput,  setScanInput]  = useState("");
-  const [scanning,   setScanning]   = useState(false);
-  const [feedback,   setFeedback]   = useState<FeedbackState | null>(null);
-  const scanInputRef = useRef<HTMLInputElement>(null);
+  // 로컬 낙관적 업데이트 (API 응답 대기 없이 UI 즉시 반영)
+  const [local, setLocal] = useState<LocalOverride>({});
 
-  // 팝업 (물품 상세)
-  const [selectedBarcode, setSelectedBarcode] = useState<PickingBarcode | null>(null);
-  const [popupAction,     setPopupAction]      = useState<"DONE" | "HOLD" | "NOT_FOUND" | null>(null);
-  const [popupReason,     setPopupReason]      = useState("");
-  const [popupNote,       setPopupNote]        = useState("");
-  const [popupSubmitting, setPopupSubmitting]  = useState(false);
-  const [popupErr,        setPopupErr]         = useState("");
-  const popupRef = useRef<HTMLDivElement>(null);
+  // ── 스캔 ──
+  const [scanInput, setScanInput] = useState("");
+  const [feedback,  setFeedback]  = useState<ScanFeedback | null>(null);
+  const [bigAlert,  setBigAlert]  = useState<{ type: "err" | "warn"; lines: string[] } | null>(null);
+  const scanRef = useRef<HTMLInputElement>(null);
 
-  // 피킹 완료
-  const [completing, setCompleting] = useState(false);
-  const [completed,  setCompleted]  = useState(false);
-  const [completeErr, setCompleteErr] = useState("");
+  // ── 보류/누락 모달 ──
+  const [holdModal, setHoldModal] = useState<{
+    barcode_id: string;
+    barcode_no: string;
+    item_name:  string | null;
+    action:     "HOLD" | "NOT_FOUND";
+  } | null>(null);
+  const [holdReason, setHoldReason] = useState("");
 
-  // ── 데이터 로드 ─────────────────────────────────────────────
+  // ── 피킹 완료 처리 중 ──
+  const [processing, setProcessing] = useState(false);
 
+  // ── 데이터 로드 ──
   const loadData = useCallback(async () => {
-    setLoading(true);
-    setLoadErr("");
     try {
-      const res  = await fetch(`/api/admin/picking/${rawId}`);
+      const res = await fetch(`/api/admin/picking/${rawId}`);
       const data = await res.json();
-      if (!res.ok || data.error) {
-        setLoadErr(data.error ?? "주문을 불러오지 못했습니다.");
-        return;
-      }
+      if (!res.ok) { setLoadErr(data.error ?? "로드 실패"); return; }
       setOrder(data.order);
       setBarcodes(data.barcodes ?? []);
-      setStats(data.stats ?? { total: 0, done: 0, hold: 0, not_found: 0, waiting: 0 });
-      if (data.order?.status === "PICKING_DONE") setCompleted(true);
+      setStats(data.stats ?? null);
+      setLocal({}); // 로컬 오버라이드 초기화
     } catch {
-      setLoadErr("네트워크 오류가 발생했습니다.");
+      setLoadErr("네트워크 오류");
     } finally {
       setLoading(false);
     }
@@ -139,850 +126,448 @@ export default function PickingDetailPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // ── 스캔 입력 자동 포커스 ──────────────────────────────────
-
-  // 팝업이 없을 때 항상 스캔 입력에 포커스 유지
+  // ── 스캔 포커스 유지 ──
   useEffect(() => {
-    if (selectedBarcode) return;
-    const el = scanInputRef.current;
-    if (!el) return;
+    scanRef.current?.focus();
+  });
 
-    const onBlur = () => {
-      // 팝업 내 요소 클릭 시에는 포커스 이동 허용
-      setTimeout(() => {
-        if (!document.activeElement?.closest("[data-popup]")) {
-          el.focus();
-        }
-      }, 150);
-    };
+  // ── 현재 상태 (로컬 오버라이드 우선) ──
+  function getStatus(b: PickBarcode): PickingStatus {
+    return local[b.id] ?? b.picking_status;
+  }
 
-    el.addEventListener("blur", onBlur);
-    el.focus();
-    return () => el.removeEventListener("blur", onBlur);
-  }, [selectedBarcode]);
-
-  // ── 스캔 처리 ───────────────────────────────────────────────
-
+  // ── 스캔 처리 ──
   const handleScan = useCallback(
-    async (raw: string) => {
-      const barcode = raw.trim();
-      if (!barcode || scanning) return;
-
-      setScanning(true);
+    async (barcode: string) => {
+      const b = barcode.trim();
+      if (!b) return;
       setScanInput("");
 
-      try {
-        const res  = await fetch(`/api/admin/picking/${rawId}/scan`, {
-          method:  "POST",
-          headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ barcode }),
-        });
-        const data = await res.json();
-        const result: ScanResult = data.result;
+      const found = barcodes.find((bc) => bc.barcode_no === b);
+      const currentStatus = found ? (local[found.id] ?? found.picking_status) : null;
 
-        if (result === "PICKED") {
-          // 바코드 상태를 클라이언트 상태에서 즉시 업데이트
-          setBarcodes((prev) =>
-            prev.map((b) =>
-              b.barcode_no === barcode
-                ? { ...b, picking_status: "DONE", picked_at: new Date().toISOString() }
-                : b,
-            ),
-          );
-          setStats((prev) => ({
-            ...prev,
-            done:    prev.done + 1,
-            waiting: Math.max(0, prev.waiting - 1),
-          }));
-          const item = data.barcode?.item_name ?? barcode;
-          const loc  = data.barcode?.location?.code ?? "";
-          showFeedback({
-            type:     "success",
-            title:    "스캔 완료",
-            subtitle: `${loc ? `[${loc}] ` : ""}${item}`,
-          });
-        } else if (result === "WRONG_ORDER") {
-          showFeedback({
-            type:     "wrong_order",
-            title:    "이 주문의 물품이 아닙니다",
-            subtitle: "다시 확인해주세요.",
-          });
-        } else if (result === "DUPLICATE") {
-          showFeedback({
-            type:     "duplicate",
-            title:    "이미 피킹 완료된 물품입니다.",
-            subtitle: data.barcode?.item_name ?? "",
-          });
-        } else {
-          showFeedback({
-            type:     "not_found",
-            title:    "등록되지 않은 바코드입니다.",
-            subtitle: "관리자 확인이 필요합니다.",
-          });
-        }
-      } catch {
-        showFeedback({
-          type:     "not_found",
-          title:    "스캔 처리 오류",
-          subtitle: "잠시 후 다시 시도하세요.",
+      if (currentStatus === "DONE") {
+        setFeedback({ type: "warn", msg: `이미 피킹됨: ${found?.item_name ?? b}` });
+        setBigAlert({ type: "warn", lines: ["이미 피킹 처리된 바코드입니다."] });
+        setTimeout(() => setBigAlert(null), 2200);
+        // 중복도 API에 기록
+        fetch(`/api/admin/picking/${rawId}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ barcode_no: b, order_type: orderType, scan_result: "DUPLICATE" }),
         });
-      } finally {
-        setScanning(false);
-        setTimeout(() => scanInputRef.current?.focus(), 50);
+        return;
       }
+
+      if (!found) {
+        // 오스캔 or 미등록 — API가 판별
+        setFeedback({ type: "err", msg: `알 수 없는 바코드: ${b}` });
+        const res = await fetch(`/api/admin/picking/${rawId}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ barcode_no: b, order_type: orderType }),
+        });
+        const json = await res.json();
+
+        if (json.scan_result === "WRONG_ORDER") {
+          setBigAlert({ type: "err", lines: ["이 주문의 내품이 아닙니다.", "다시 확인해주세요."] });
+        } else {
+          setBigAlert({ type: "err", lines: ["등록되지 않은 바코드입니다.", "관리자 확인이 필요합니다."] });
+        }
+        setTimeout(() => setBigAlert(null), 3500);
+        return;
+      }
+
+      // ── 정상 스캔 ──
+      setLocal((prev) => ({ ...prev, [found.id]: "DONE" }));
+      setFeedback({ type: "ok", msg: `✓ ${found.item_name ?? b}` });
+
+      // API 비동기 기록 (낙관적 업데이트 이후)
+      fetch(`/api/admin/picking/${rawId}/scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ barcode_no: b, order_type: orderType }),
+      });
     },
-    [rawId, scanning],
+    [barcodes, local, rawId, orderType],
   );
 
-  function showFeedback(fb: FeedbackState) {
-    setFeedback(fb);
-    if (fb.type === "success") {
-      setTimeout(() => setFeedback(null), 2000);
-    }
+  // ── 보류/누락 수동 처리 ──
+  async function confirmHoldAction() {
+    if (!holdModal) return;
+    const { barcode_id, barcode_no, action } = holdModal;
+
+    setLocal((prev) => ({ ...prev, [barcode_id]: action }));
+    setHoldModal(null);
+    setHoldReason("");
+
+    await fetch(`/api/admin/picking/${rawId}/scan`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ barcode_id, picking_status: action, reason: holdReason || undefined }),
+    });
   }
 
-  // ── 팝업: 물품 상세 ─────────────────────────────────────────
-
-  function openPopup(barcode: PickingBarcode) {
-    setSelectedBarcode(barcode);
-    setPopupAction(null);
-    setPopupReason("");
-    setPopupNote("");
-    setPopupErr("");
-  }
-
-  function closePopup() {
-    setSelectedBarcode(null);
-    setPopupAction(null);
-    setPopupReason("");
-    setPopupNote("");
-    setPopupErr("");
-    setTimeout(() => scanInputRef.current?.focus(), 100);
-  }
-
-  async function submitPopupAction() {
-    if (!selectedBarcode || !popupAction) return;
-    if (!popupReason) {
-      setPopupErr("사유를 선택해주세요.");
-      return;
-    }
-
-    setPopupSubmitting(true);
-    setPopupErr("");
-
+  // ── 피킹 완료 처리 ──
+  async function handlePickingDone() {
+    setProcessing(true);
     try {
-      const res = await fetch(`/api/admin/picking/${rawId}/items`, {
-        method:  "PATCH",
+      // 주문 상태 PICKING으로 먼저 설정 (PAID/PENDING → PICKING)
+      const startRes = await fetch(`/api/admin/picking/${rawId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          barcodeId: selectedBarcode.id,
-          status:    popupAction,
-          reason:    popupReason,
-          note:      popupNote || undefined,
-        }),
+        body: JSON.stringify({ action: "start" }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setPopupErr(data.error ?? "처리 실패");
+      if (!startRes.ok) {
+        const { error } = await startRes.json();
+        // 이미 PICKING 상태면 계속 진행
+        if (!error?.includes("PICKING")) { alert(error); return; }
+      }
+
+      // PICKING → PICKING_DONE
+      const doneRes = await fetch(`/api/admin/picking/${rawId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "done" }),
+      });
+      if (!doneRes.ok) {
+        const { error } = await doneRes.json();
+        alert(error);
         return;
       }
 
-      // 클라이언트 상태 업데이트
-      const prevStatus = selectedBarcode.picking_status;
-      setBarcodes((prev) =>
-        prev.map((b) =>
-          b.id === selectedBarcode.id
-            ? {
-                ...b,
-                picking_status: popupAction,
-                picking_reason: popupReason,
-                picking_note:   popupNote || null,
-                picked_at:      new Date().toISOString(),
-              }
-            : b,
-        ),
-      );
-      setStats((prev) => {
-        const next = { ...prev };
-        // 이전 상태 감소
-        if (prevStatus === "WAITING")   next.waiting   = Math.max(0, next.waiting - 1);
-        if (prevStatus === "DONE")      next.done      = Math.max(0, next.done - 1);
-        if (prevStatus === "HOLD")      next.hold      = Math.max(0, next.hold - 1);
-        if (prevStatus === "NOT_FOUND") next.not_found = Math.max(0, next.not_found - 1);
-        // 새 상태 증가
-        if (popupAction === "DONE")      next.done      += 1;
-        if (popupAction === "HOLD")      next.hold      += 1;
-        if (popupAction === "NOT_FOUND") next.not_found += 1;
-        return next;
-      });
-
-      closePopup();
-    } catch {
-      setPopupErr("네트워크 오류가 발생했습니다.");
+      router.push(`/outbound/${rawId}`);
     } finally {
-      setPopupSubmitting(false);
+      setProcessing(false);
     }
   }
 
-  // ── 피킹 완료 처리 ──────────────────────────────────────────
+  // ── 계산 ──
+  const effectiveDone = barcodes.filter((b) =>
+    (local[b.id] ?? b.picking_status) === "DONE",
+  ).length;
+  const effectiveHold = barcodes.filter((b) =>
+    (local[b.id] ?? b.picking_status) === "HOLD",
+  ).length;
+  const effectiveNotFound = barcodes.filter((b) =>
+    (local[b.id] ?? b.picking_status) === "NOT_FOUND",
+  ).length;
+  const effectiveWaiting = barcodes.length - effectiveDone - effectiveHold - effectiveNotFound;
 
-  async function handleComplete() {
-    setCompleting(true);
-    setCompleteErr("");
-    try {
-      const res  = await fetch(`/api/admin/picking/${rawId}`, {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ action: "done", type: orderType }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setCompleteErr(data.error ?? "처리 실패");
-        return;
-      }
-      setCompleted(true);
-    } finally {
-      setCompleting(false);
-    }
-  }
+  const allResolved = barcodes.length > 0 && effectiveWaiting === 0;
+  const progressPct = barcodes.length ? ((barcodes.length - effectiveWaiting) / barcodes.length) * 100 : 0;
 
-  // ── 파생 상태 ────────────────────────────────────────────────
+  // ── 위치별 그룹핑 ──
+  const grouped = barcodes.reduce<Record<string, PickBarcode[]>>((acc, b) => {
+    const loc = b.location?.code ?? "위치 없음";
+    if (!acc[loc]) acc[loc] = [];
+    acc[loc].push(b);
+    return acc;
+  }, {});
+  const sortedLocs = Object.keys(grouped).sort();
 
-  const doneCount  = barcodes.filter((b) => b.picking_status === "DONE").length;
-  const totalCount = barcodes.length;
-  const allDone    = totalCount > 0 && doneCount === totalCount;
-
-  const canStart   = order && ["PAID", "PACKING", "PENDING"].includes(order.status);
-  const inPicking  = order?.status === "PICKING";
-
-  const orderLabel = isIntl
-    ? (order as { order_no?: string } | null)?.order_no ?? rawId.slice(5, 13)
-    : `국내-${rawId.slice(4, 12)}`;
-
-  // ── 로딩/에러 ────────────────────────────────────────────────
+  // ── 렌더 ──────────────────────────────────────────────────
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 size={36} className="animate-spin text-indigo-600" />
-        <p className="text-gray-500 text-lg">주문 정보를 불러오는 중…</p>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={32} className="animate-spin text-indigo-600" />
       </div>
     );
   }
-
-  if (loadErr) {
+  if (loadErr || !order) {
     return (
-      <div className="max-w-lg mx-auto px-4 py-10 text-center">
-        <AlertCircle size={48} className="mx-auto text-red-400 mb-4" />
-        <p className="text-xl font-bold text-red-700 mb-2">불러오기 실패</p>
-        <p className="text-gray-600 mb-6">{loadErr}</p>
-        <Link href="/picking" className="text-indigo-600 hover:underline">
-          목록으로 돌아가기
-        </Link>
+      <div className="max-w-lg mx-auto px-4 py-8 text-center">
+        <AlertTriangle size={36} className="mx-auto text-red-400 mb-3" />
+        <p className="text-red-700">{loadErr || "주문을 찾을 수 없습니다."}</p>
+        <Link href="/picking" className="mt-4 inline-block text-indigo-600 hover:underline">← 목록으로</Link>
       </div>
     );
   }
-
-  // ── 피킹 시작 전 화면 ───────────────────────────────────────
-
-  if (canStart) {
-    return <PickingStartScreen order={order!} orderLabel={orderLabel} isIntl={isIntl} rawId={rawId} orderType={orderType} onStarted={loadData} />;
-  }
-
-  // ── 피킹 완료 후 화면 ───────────────────────────────────────
-
-  if (completed) {
-    return <PickingDoneScreen rawId={rawId} />;
-  }
-
-  // ── 메인 피킹 화면 ──────────────────────────────────────────
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
-      {/* ── 고정 헤더 ─────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 shadow-sm">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <Link href="/picking" className="p-2.5 rounded-xl hover:bg-gray-100 text-gray-500 shrink-0">
-            <ArrowLeft size={22} />
-          </Link>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
 
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {isIntl ? (
-              <Globe size={16} className="text-indigo-500 shrink-0" />
-            ) : (
-              <Truck size={16} className="text-emerald-500 shrink-0" />
-            )}
-            <div className="min-w-0">
-              <p className="font-bold text-gray-900 text-base truncate">{orderLabel}</p>
-              <p className="text-xs text-gray-500 truncate">
-                {order?.customers?.customer_code ?? "-"}
-                {order?.customers?.name && ` · ${order.customers.name}`}
+      {/* ── 상단 헤더 ── */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <Link href="/picking" className="p-2 rounded-xl bg-gray-100 text-gray-600 active:bg-gray-200">
+            <ArrowLeft size={20} />
+          </Link>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              {isIntl
+                ? <Globe size={13} className="text-indigo-500 shrink-0" />
+                : <Truck size={13} className="text-emerald-500 shrink-0" />
+              }
+              <p className="font-bold text-gray-900 text-sm truncate">
+                {isIntl ? order.order_no : "국내배송"}
               </p>
             </div>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">
+              {order.customers?.name} · {order.recipient_name}
+              {isIntl ? ` → ${order.recipient_country}` : ""}
+            </p>
           </div>
-
-          {/* 진행 수량 */}
-          <div className="shrink-0 text-right">
-            <div className="text-2xl font-extrabold text-indigo-700 leading-none">
-              {doneCount}
-              <span className="text-base font-semibold text-gray-400">
-                /{totalCount}
-              </span>
-            </div>
-            <p className="text-[11px] text-gray-400 mt-0.5">피킹 완료</p>
-          </div>
-
-          {/* 스캔 상태 표시 */}
-          <div className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border ${
-            scanning
-              ? "bg-blue-50 text-blue-700 border-blue-200"
-              : "bg-green-50 text-green-700 border-green-200"
+          {/* 진행 뱃지 */}
+          <div className={`shrink-0 text-sm font-bold px-3 py-1.5 rounded-full tabular-nums ${
+            allResolved ? "bg-green-600 text-white" : "bg-indigo-100 text-indigo-700"
           }`}>
-            <ScanLine size={14} />
-            {scanning ? "처리중" : "스캔 대기"}
+            {effectiveDone}/{barcodes.length}
           </div>
         </div>
 
-        {/* 스캔 입력 필드 */}
-        <div className="px-4 pb-3">
-          <div className="relative flex items-center">
-            <ScanLine size={18} className="absolute left-3 text-gray-400 pointer-events-none" />
+        {/* 진행바 */}
+        <div className="mt-2.5 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-300 ${allResolved ? "bg-green-500" : "bg-indigo-500"}`}
+            style={{ width: `${progressPct}%` }}
+          />
+        </div>
+
+        {/* 통계 칩 */}
+        <div className="mt-2 flex gap-2 text-[11px] font-semibold">
+          <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full">완료 {effectiveDone}</span>
+          {effectiveHold > 0 && (
+            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full">보류 {effectiveHold}</span>
+          )}
+          {effectiveNotFound > 0 && (
+            <span className="px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full">없음 {effectiveNotFound}</span>
+          )}
+          {effectiveWaiting > 0 && (
+            <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">대기 {effectiveWaiting}</span>
+          )}
+        </div>
+      </div>
+
+      {/* ── 스캔 입력 (sticky) ── */}
+      <div className="bg-indigo-600 px-4 py-3 sticky top-[105px] z-10">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <ScanLine size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300" />
             <input
-              ref={scanInputRef}
+              ref={scanRef}
               type="text"
               value={scanInput}
               onChange={(e) => setScanInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  handleScan(scanInput);
-                }
-              }}
-              placeholder="바코드를 스캔하거나 입력하세요 (Enter 확인)"
-              disabled={scanning}
-              className="w-full pl-10 pr-4 py-3 border-2 border-indigo-300 rounded-xl bg-indigo-50/50 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-indigo-500 focus:bg-white text-base transition-all disabled:opacity-60"
+              onKeyDown={(e) => { if (e.key === "Enter") handleScan(scanInput); }}
+              onBlur={() => setTimeout(() => scanRef.current?.focus(), 80)}
+              placeholder="바코드 스캔 대기 중..."
+              className="w-full pl-9 pr-4 py-3 rounded-xl bg-white text-gray-900 font-mono text-sm focus:outline-none"
+              autoComplete="off"
             />
-            {scanning && (
-              <Loader2 size={18} className="absolute right-3 animate-spin text-indigo-500" />
-            )}
           </div>
-        </div>
-      </div>
-
-      {/* ── 피드백 오버레이 ───────────────────────────────── */}
-      {feedback && <FeedbackOverlay feedback={feedback} onDismiss={() => { setFeedback(null); scanInputRef.current?.focus(); }} />}
-
-      {/* ── 모든 물품 완료 배너 ──────────────────────────── */}
-      {allDone && !completed && (
-        <div className="mx-4 mt-4 bg-green-100 border-2 border-green-400 rounded-2xl p-4 flex items-center gap-3">
-          <CheckCircle2 size={28} className="text-green-600 shrink-0" />
-          <p className="font-bold text-green-800 text-lg">모든 물품 피킹 완료!</p>
-        </div>
-      )}
-
-      {/* ── 물품 카드 그리드 ──────────────────────────────── */}
-      <div className="flex-1 px-4 py-4">
-        {barcodes.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <Package size={48} className="mx-auto mb-3 text-gray-200" />
-            <p className="text-lg">등록된 바코드가 없습니다</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {barcodes.map((bc) => (
-              <BarcodeCard
-                key={bc.id}
-                barcode={bc}
-                onClick={() => openPopup(bc)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* ── 고정 하단 바 ──────────────────────────────────── */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
-        {completeErr && (
-          <p className="text-red-600 text-sm text-center mb-2">{completeErr}</p>
-        )}
-        <button
-          onClick={handleComplete}
-          disabled={!allDone || completing}
-          className={`w-full py-5 rounded-2xl font-extrabold text-xl flex items-center justify-center gap-3 transition-all ${
-            allDone && !completing
-              ? "bg-green-600 text-white shadow-lg shadow-green-200 active:scale-[0.98]"
-              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-          }`}
-        >
-          {completing ? (
-            <Loader2 size={24} className="animate-spin" />
-          ) : (
-            <ClipboardCheck size={24} />
-          )}
-          {allDone
-            ? completing
-              ? "처리 중…"
-              : `피킹 완료 (${doneCount}/${totalCount})`
-            : `피킹 완료 (${doneCount}/${totalCount} 완료 시 활성화)`
-          }
-        </button>
-      </div>
-
-      {/* ── 물품 상세 팝업 ────────────────────────────────── */}
-      {selectedBarcode && (
-        <ItemPopup
-          barcode={selectedBarcode}
-          popupRef={popupRef}
-          popupAction={popupAction}
-          popupReason={popupReason}
-          popupNote={popupNote}
-          popupSubmitting={popupSubmitting}
-          popupErr={popupErr}
-          onSetAction={setPopupAction}
-          onSetReason={setPopupReason}
-          onSetNote={setPopupNote}
-          onSubmit={submitPopupAction}
-          onClose={closePopup}
-        />
-      )}
-    </div>
-  );
-}
-
-// ── 피킹 시작 전 화면 ─────────────────────────────────────────
-
-function PickingStartScreen({
-  order,
-  orderLabel,
-  isIntl,
-  rawId,
-  orderType,
-  onStarted,
-}: {
-  order:      OrderInfo;
-  orderLabel: string;
-  isIntl:     boolean;
-  rawId:      string;
-  orderType:  string;
-  onStarted:  () => void;
-}) {
-  const [starting, setStarting] = useState(false);
-  const [err,      setErr]      = useState("");
-
-  async function handleStart() {
-    setStarting(true);
-    setErr("");
-    try {
-      const res  = await fetch(`/api/admin/picking/${rawId}`, {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ action: "start", type: orderType }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setErr(data.error ?? "처리 실패"); return; }
-      onStarted();
-    } catch {
-      setErr("네트워크 오류가 발생했습니다.");
-    } finally {
-      setStarting(false);
-    }
-  }
-
-  return (
-    <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/picking" className="p-2.5 rounded-xl hover:bg-gray-100 text-gray-500">
-          <ArrowLeft size={22} />
-        </Link>
-        <div>
-          <p className="text-xs text-gray-500">피킹 시작 전</p>
-          <p className="font-bold text-gray-900 text-lg">{orderLabel}</p>
-        </div>
-      </div>
-
-      {/* 주문 요약 */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 space-y-3 text-sm">
-        <div className="flex justify-between">
-          <span className="text-gray-500">고객</span>
-          <span className="font-semibold">{order.customers?.name ?? "-"} <span className="text-gray-400 font-normal">{order.customers?.customer_code}</span></span>
-        </div>
-        {isIntl && order.recipient_country && (
-          <div className="flex justify-between">
-            <span className="text-gray-500">배송 국가</span>
-            <span className="font-bold text-indigo-700">{order.recipient_country}</span>
-          </div>
-        )}
-        {order.delivery_msg && (
-          <div className="flex justify-between gap-4">
-            <span className="text-gray-500 shrink-0">고객 요청</span>
-            <span className="font-semibold text-orange-700 text-right">{order.delivery_msg}</span>
-          </div>
-        )}
-      </div>
-
-      {err && (
-        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-red-700 text-sm">
-          {err}
-        </div>
-      )}
-
-      <button
-        onClick={handleStart}
-        disabled={starting}
-        className="w-full py-6 bg-indigo-600 text-white rounded-2xl font-extrabold text-2xl flex items-center justify-center gap-3 shadow-xl shadow-indigo-200 active:scale-[0.98] transition-all disabled:opacity-60"
-      >
-        {starting ? <Loader2 size={28} className="animate-spin" /> : <ScanLine size={28} />}
-        피킹 시작
-      </button>
-    </div>
-  );
-}
-
-// ── 피킹 완료 화면 ────────────────────────────────────────────
-
-function PickingDoneScreen({ rawId }: { rawId: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 text-center space-y-8">
-      <div className="bg-green-100 rounded-full p-8">
-        <CheckCircle2 size={72} className="text-green-600" />
-      </div>
-      <div>
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-3">피킹 완료!</h1>
-        <p className="text-xl text-gray-600 leading-relaxed">
-          출고 작업대로 이동해주세요.
-        </p>
-      </div>
-      <div className="flex flex-col gap-3 w-full max-w-sm">
-        <Link href="/picking">
-          <button className="w-full py-5 bg-indigo-600 text-white rounded-2xl font-bold text-xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 active:scale-[0.98]">
-            <ArrowLeft size={22} />
-            내 코스 보기
+          <button
+            onClick={() => handleScan(scanInput)}
+            disabled={!scanInput.trim()}
+            className="bg-white text-indigo-600 font-bold px-4 rounded-xl disabled:opacity-40 active:bg-gray-100 text-sm"
+          >
+            입력
           </button>
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ── 바코드 카드 ──────────────────────────────────────────────
-
-function BarcodeCard({
-  barcode,
-  onClick,
-}: {
-  barcode: PickingBarcode;
-  onClick: () => void;
-}) {
-  const cfg = STATUS_CONFIG[barcode.picking_status];
-
-  return (
-    <button
-      onClick={onClick}
-      className={`relative text-left border-2 rounded-2xl p-3 transition-all active:scale-[0.97] w-full ${
-        barcode.picking_status === "WAITING"
-          ? "bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md"
-          : cfg.card
-      }`}
-    >
-      {/* 로케이션 — 가장 크게 표시 */}
-      <div className="mb-2">
-        {barcode.location?.code ? (
-          <div className="flex items-center gap-1.5">
-            <MapPin size={14} className="text-indigo-500 shrink-0" />
-            <span className="text-3xl font-black font-mono text-indigo-700 leading-none tracking-tight">
-              {barcode.location.code}
-            </span>
+        </div>
+        {feedback && (
+          <div className={`mt-2 text-sm font-medium px-3 py-1.5 rounded-lg ${
+            feedback.type === "ok"  ? "bg-green-100 text-green-800"
+            : feedback.type === "warn" ? "bg-yellow-100 text-yellow-800"
+            : "bg-red-100 text-red-800"
+          }`}>
+            {feedback.msg}
           </div>
-        ) : (
-          <span className="text-2xl font-black text-gray-300">위치없음</span>
         )}
       </div>
 
-      {/* 상품명 */}
-      <p className="text-sm font-semibold text-gray-800 leading-tight mb-1.5 line-clamp-2">
-        {barcode.item_name ?? "품목 미등록"}
-      </p>
+      {/* ── 피킹 루트 + 바둑판 ── */}
+      <div className="flex-1 p-4 space-y-4 pb-28">
+        {sortedLocs.map((loc, locIdx) => {
+          const locBarcodes = grouped[loc];
+          const locDone     = locBarcodes.filter((b) => getStatus(b) === "DONE").length;
+          const locAllDone  = locDone === locBarcodes.length;
 
-      {/* 바코드 */}
-      <p className="text-[11px] font-mono text-gray-400 mb-2 truncate">
-        {barcode.barcode_no}
-      </p>
-
-      {/* 상태 뱃지 */}
-      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold ${cfg.badge}`}>
-        <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
-        {cfg.label}
-      </div>
-
-      {/* 완료 아이콘 (우상단) */}
-      {barcode.picking_status === "DONE" && (
-        <CheckCircle2 size={20} className="absolute top-2 right-2 text-green-500" />
-      )}
-    </button>
-  );
-}
-
-// ── 피드백 오버레이 ──────────────────────────────────────────
-
-function FeedbackOverlay({
-  feedback,
-  onDismiss,
-}: {
-  feedback:  FeedbackState;
-  onDismiss: () => void;
-}) {
-  const isSuccess = feedback.type === "success";
-
-  if (isSuccess) {
-    return (
-      <div className="fixed top-28 left-1/2 -translate-x-1/2 z-50 w-[90vw] max-w-md">
-        <div className="bg-green-600 text-white rounded-2xl px-6 py-4 shadow-2xl flex items-center gap-3">
-          <CheckCircle2 size={28} className="shrink-0" />
-          <div>
-            <p className="font-extrabold text-lg">{feedback.title}</p>
-            {feedback.subtitle && <p className="text-green-100 text-sm">{feedback.subtitle}</p>}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const configs: Record<FeedbackType, { bg: string; border: string; icon: React.ReactNode; iconBg: string }> = {
-    success:    { bg: "", border: "", icon: null, iconBg: "" },
-    wrong_order: {
-      bg:     "bg-red-600",
-      border: "border-red-700",
-      icon:   <AlertTriangle size={64} className="text-white" />,
-      iconBg: "bg-red-700/40",
-    },
-    duplicate: {
-      bg:     "bg-orange-500",
-      border: "border-orange-600",
-      icon:   <XCircle size={64} className="text-white" />,
-      iconBg: "bg-orange-600/40",
-    },
-    not_found: {
-      bg:     "bg-purple-700",
-      border: "border-purple-800",
-      icon:   <AlertCircle size={64} className="text-white" />,
-      iconBg: "bg-purple-800/40",
-    },
-  };
-
-  const cfg = configs[feedback.type];
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-6"
-      onClick={onDismiss}
-    >
-      <div className={`${cfg.bg} rounded-3xl p-10 text-center max-w-md w-full shadow-2xl border-2 ${cfg.border}`}>
-        <div className={`${cfg.iconBg} rounded-full p-6 w-fit mx-auto mb-6`}>
-          {cfg.icon}
-        </div>
-        <h2 className="text-3xl font-extrabold text-white mb-3">{feedback.title}</h2>
-        {feedback.subtitle && (
-          <p className="text-white/80 text-xl">{feedback.subtitle}</p>
-        )}
-        <p className="text-white/60 text-sm mt-6">화면을 탭하면 닫힙니다</p>
-      </div>
-    </div>
-  );
-}
-
-// ── 물품 상세 팝업 ────────────────────────────────────────────
-
-function ItemPopup({
-  barcode,
-  popupRef,
-  popupAction,
-  popupReason,
-  popupNote,
-  popupSubmitting,
-  popupErr,
-  onSetAction,
-  onSetReason,
-  onSetNote,
-  onSubmit,
-  onClose,
-}: {
-  barcode:        PickingBarcode;
-  popupRef:       React.RefObject<HTMLDivElement | null>;
-  popupAction:    "DONE" | "HOLD" | "NOT_FOUND" | null;
-  popupReason:    string;
-  popupNote:      string;
-  popupSubmitting: boolean;
-  popupErr:       string;
-  onSetAction:    (a: "DONE" | "HOLD" | "NOT_FOUND" | null) => void;
-  onSetReason:    (r: string) => void;
-  onSetNote:      (n: string) => void;
-  onSubmit:       () => void;
-  onClose:        () => void;
-}) {
-  const cfg = STATUS_CONFIG[barcode.picking_status];
-  const reasons = popupAction ? MANUAL_REASONS[popupAction] : [];
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div
-        ref={popupRef}
-        data-popup="true"
-        className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden"
-      >
-        {/* 팝업 헤더 */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">물품 상세</p>
-            <div className="flex items-center gap-2">
-              {barcode.location?.code && (
-                <span className="text-2xl font-black font-mono text-indigo-700">
-                  {barcode.location.code}
+          return (
+            <div key={loc} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              {/* 위치 헤더 */}
+              <div className={`flex items-center gap-3 px-4 py-3 ${locAllDone ? "bg-green-600" : "bg-indigo-600"}`}>
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-black text-base">
+                  {locIdx + 1}
+                </div>
+                <div className="flex items-center gap-2 flex-1">
+                  <MapPin size={14} className="text-white/70" />
+                  <span className="font-black text-white font-mono text-xl tracking-widest">{loc}</span>
+                </div>
+                <span className="text-white/90 text-sm font-bold tabular-nums">
+                  {locDone}/{locBarcodes.length}
                 </span>
-              )}
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full border ${cfg.badge}`}>
-                {cfg.label}
-              </span>
+                {locAllDone && <CheckCircle2 size={22} className="text-white" />}
+              </div>
+
+              {/* 아이템 카드 그리드 */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 p-3">
+                {locBarcodes.map((bc) => {
+                  const status = getStatus(bc);
+                  return (
+                    <div
+                      key={bc.id}
+                      className={`relative flex flex-col items-start p-3 rounded-xl border-2 transition-all ${STATUS_CARD[status]}`}
+                    >
+                      {/* 상태 아이콘 */}
+                      <div className="absolute top-2.5 right-2.5">
+                        {STATUS_ICON[status]}
+                      </div>
+
+                      <Package size={15} className={`mb-2 ${status === "DONE" ? "text-green-500" : "text-gray-400"}`} />
+
+                      <p className={`font-semibold text-sm leading-tight pr-6 ${status === "DONE" ? "text-green-800" : "text-gray-900"}`}>
+                        {bc.item_name ?? "품목 미등록"}
+                      </p>
+                      <p className="text-[10px] text-gray-400 font-mono mt-1 truncate w-full pr-6">
+                        {bc.barcode_no}
+                      </p>
+
+                      {/* 보류/누락 사유 */}
+                      {bc.picking_reason && (
+                        <p className="text-[10px] text-yellow-700 mt-0.5 leading-tight">{bc.picking_reason}</p>
+                      )}
+
+                      {/* 수동 처리 버튼 (대기 상태만) */}
+                      {status === "WAITING" && (
+                        <div className="flex gap-1 mt-2">
+                          <button
+                            onClick={() => setHoldModal({ barcode_id: bc.id, barcode_no: bc.barcode_no, item_name: bc.item_name, action: "HOLD" })}
+                            className="text-[10px] px-2 py-0.5 rounded border border-yellow-300 text-yellow-700 bg-yellow-50 active:bg-yellow-100"
+                          >
+                            보류
+                          </button>
+                          <button
+                            onClick={() => setHoldModal({ barcode_id: bc.id, barcode_no: bc.barcode_no, item_name: bc.item_name, action: "NOT_FOUND" })}
+                            className="text-[10px] px-2 py-0.5 rounded border border-orange-300 text-orange-700 bg-orange-50 active:bg-orange-100"
+                          >
+                            없음
+                          </button>
+                        </div>
+                      )}
+
+                      {/* DONE → 되돌리기 */}
+                      {status === "DONE" && (
+                        <button
+                          onClick={() => setLocal((prev) => ({ ...prev, [bc.id]: "WAITING" }))}
+                          className="text-[10px] px-2 py-0.5 mt-2 rounded border border-gray-200 text-gray-400 bg-white active:bg-gray-50"
+                        >
+                          취소
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
+          );
+        })}
+
+        {barcodes.length === 0 && (
+          <div className="text-center py-12 text-gray-400">
+            <Package size={36} className="mx-auto mb-3 text-gray-200" />
+            <p className="text-sm">등록된 바코드가 없습니다</p>
+            <p className="text-xs mt-1">입고처리 시 바코드가 생성됩니다</p>
           </div>
-          <button onClick={onClose} className="p-2.5 rounded-xl hover:bg-gray-100 text-gray-400">
-            <X size={22} />
+        )}
+      </div>
+
+      {/* ── 하단 고정 액션 ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-200 px-4 py-3 safe-area-bottom">
+        {allResolved ? (
+          <button
+            onClick={handlePickingDone}
+            disabled={processing}
+            className="w-full bg-green-600 text-white py-4 rounded-2xl font-black text-base flex items-center justify-center gap-3 disabled:opacity-50 active:bg-green-700 shadow-lg"
+          >
+            {processing
+              ? <><Loader2 size={20} className="animate-spin" /> 처리 중...</>
+              : <><CheckCircle2 size={22} /> 피킹 완료 → 출고처리 이동 <ChevronRight size={18} /></>
+            }
           </button>
-        </div>
-
-        {/* 물품 정보 */}
-        <div className="px-6 py-4 space-y-2 border-b border-gray-100">
-          <p className="font-bold text-gray-900 text-lg">
-            {barcode.item_name ?? "품목 미등록"}
-          </p>
-          <p className="text-sm font-mono text-gray-500">{barcode.barcode_no}</p>
-          {barcode.picking_reason && (
-            <p className="text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
-              이전 처리 사유: {barcode.picking_reason}
-            </p>
-          )}
-        </div>
-
-        {/* 액션 선택 */}
-        {!popupAction ? (
-          <div className="px-6 py-5 space-y-3">
-            <p className="text-sm font-semibold text-gray-600 mb-3">처리 방법을 선택하세요</p>
-            <ActionButton
-              label="수동완료"
-              sub="바코드 스캔 없이 피킹 완료 처리"
-              color="bg-green-600 hover:bg-green-700"
-              onClick={() => { onSetAction("DONE"); onSetReason(""); }}
-            />
-            <ActionButton
-              label="물품없음"
-              sub="해당 위치에 물품을 찾을 수 없음"
-              color="bg-red-500 hover:bg-red-600"
-              onClick={() => { onSetAction("NOT_FOUND"); onSetReason(""); }}
-            />
-            <ActionButton
-              label="보류"
-              sub="확인 필요 — 관리자에게 알림"
-              color="bg-yellow-500 hover:bg-yellow-600"
-              onClick={() => { onSetAction("HOLD"); onSetReason(""); }}
-            />
-          </div>
         ) : (
-          /* 사유 선택 폼 */
-          <div className="px-6 py-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => onSetAction(null)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400"
-              >
-                <ArrowLeft size={18} />
-              </button>
-              <p className="font-bold text-gray-800">
-                {popupAction === "DONE" && "수동완료 사유"}
-                {popupAction === "HOLD" && "보류 사유"}
-                {popupAction === "NOT_FOUND" && "물품없음 사유"}
-              </p>
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-gray-700">
+                남은 피킹: <span className="text-indigo-700">{effectiveWaiting}개</span>
+              </div>
+              <div className="text-xs text-gray-400 mt-0.5">
+                모든 항목이 처리되면 피킹 완료 버튼이 활성화됩니다
+              </div>
             </div>
-
-            {/* 사유 선택 */}
-            <div className="space-y-2">
-              {reasons.map((r) => (
-                <label
-                  key={r}
-                  className={`flex items-center gap-3 p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
-                    popupReason === r
-                      ? "border-indigo-500 bg-indigo-50"
-                      : "border-gray-200 hover:border-indigo-200"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="reason"
-                    value={r}
-                    checked={popupReason === r}
-                    onChange={() => onSetReason(r)}
-                    className="accent-indigo-600 w-5 h-5"
-                  />
-                  <span className="font-medium text-gray-800">{r}</span>
-                </label>
-              ))}
-            </div>
-
-            {/* 메모 입력 */}
-            <div>
-              <label className="text-sm font-semibold text-gray-600 block mb-1.5">
-                메모 <span className="text-gray-400 font-normal">(선택)</span>
-              </label>
-              <textarea
-                value={popupNote}
-                onChange={(e) => onSetNote(e.target.value)}
-                placeholder="추가 메모를 입력하세요…"
-                rows={2}
-                className="w-full border-2 border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 resize-none"
-              />
-            </div>
-
-            {popupErr && (
-              <p className="text-red-600 text-sm bg-red-50 rounded-lg px-3 py-2">{popupErr}</p>
-            )}
-
             <button
-              onClick={onSubmit}
-              disabled={!popupReason || popupSubmitting}
-              className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all ${
-                popupReason && !popupSubmitting
-                  ? "bg-indigo-600 text-white shadow-md active:scale-[0.98]"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
+              onClick={() => {
+                setLocal({});
+                setFeedback(null);
+              }}
+              className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 text-xs border border-gray-200 rounded-lg px-3 py-2"
             >
-              {popupSubmitting ? <Loader2 size={20} className="animate-spin" /> : <ChevronRight size={20} />}
-              확인
+              <RotateCcw size={12} /> 초기화
             </button>
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function ActionButton({
-  label,
-  sub,
-  color,
-  onClick,
-}: {
-  label:   string;
-  sub:     string;
-  color:   string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full ${color} text-white rounded-2xl px-5 py-4 text-left flex items-center justify-between active:scale-[0.98] transition-all`}
-    >
-      <div>
-        <p className="font-bold text-lg">{label}</p>
-        <p className="text-white/70 text-sm">{sub}</p>
-      </div>
-      <ChevronRight size={24} className="shrink-0" />
-    </button>
+      {/* ── 보류/누락 모달 ── */}
+      {holdModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 shadow-2xl">
+            <div className={`flex items-center gap-2 mb-4 ${holdModal.action === "HOLD" ? "text-yellow-700" : "text-orange-700"}`}>
+              {holdModal.action === "HOLD" ? <PauseCircle size={20} /> : <XCircle size={20} />}
+              <h3 className="font-bold text-base">
+                {holdModal.action === "HOLD" ? "보류 처리" : "물품 없음 처리"}
+              </h3>
+            </div>
+            <p className="text-sm text-gray-700 mb-1 font-medium">{holdModal.item_name ?? "미등록 품목"}</p>
+            <p className="text-xs text-gray-400 font-mono mb-4">{holdModal.barcode_no}</p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-600 mb-1.5">사유 (선택)</label>
+              <input
+                type="text"
+                value={holdReason}
+                onChange={(e) => setHoldReason(e.target.value)}
+                placeholder={holdModal.action === "HOLD" ? "예: 외관 파손, 재확인 필요" : "예: 로케이션에 없음"}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setHoldModal(null); setHoldReason(""); }}
+                className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl font-medium text-sm"
+              >
+                취소
+              </button>
+              <button
+                onClick={confirmHoldAction}
+                className={`flex-1 text-white py-3 rounded-xl font-bold text-sm ${
+                  holdModal.action === "HOLD" ? "bg-yellow-500 hover:bg-yellow-600" : "bg-orange-500 hover:bg-orange-600"
+                }`}
+              >
+                {holdModal.action === "HOLD" ? "보류 확정" : "없음 처리"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 스캔 오류 오버레이 ── */}
+      {bigAlert && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+          onClick={() => setBigAlert(null)}
+        >
+          <div className={`mx-6 rounded-3xl p-8 text-center shadow-2xl max-w-sm w-full ${
+            bigAlert.type === "err" ? "bg-red-600 text-white" : "bg-yellow-500 text-white"
+          }`}>
+            <AlertTriangle size={48} className="mx-auto mb-4" />
+            {bigAlert.lines.map((line, i) => (
+              <p key={i} className={i === 0 ? "text-2xl font-black" : "text-base mt-2 opacity-90"}>{line}</p>
+            ))}
+            <p className="text-sm mt-5 opacity-70">탭하여 닫기</p>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

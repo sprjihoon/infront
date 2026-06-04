@@ -339,7 +339,10 @@ export default function OutboundWorkstationPage() {
       // 바코드가 현재 주문에 없음 → 시스템 전체 조회
       try {
         const res = await fetch(`/api/admin/transfer/scan?q=${encodeURIComponent(b)}`);
-        if (res.status === 404) {
+        const isNotFound = res.status === 404;
+        const scanResult = isNotFound ? "NOT_FOUND" : "WRONG_ORDER";
+
+        if (isNotFound) {
           setLastFeedback("등록되지 않은 바코드");
           setFeedbackType("err");
           showScanAlert({
@@ -356,12 +359,23 @@ export default function OutboundWorkstationPage() {
             body: "다시 확인해주세요. 잘못된 물품이 섞여 있을 수 있습니다.",
           });
         }
+
+        // picking_scan_logs 에 출고 오스캔/미등록 기록
+        fetch(`/api/admin/picking/${rawId}/scan`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            barcode_no:  b,
+            order_type:  orderType,
+            scan_result: scanResult,
+          }),
+        });
       } catch {
         setLastFeedback("스캔 오류");
         setFeedbackType("err");
       }
     },
-    [items, sessionId, orderId],
+    [items, sessionId, orderId, rawId, orderType],
   );
 
   function showScanAlert(alert: ScanAlert) {

@@ -6,15 +6,21 @@ import { getOrderBarcodes } from "../route";
 /**
  * POST /api/admin/picking/[id]/scan
  *
- * 피킹 현장 바코드 스캔 처리
- * rawId 형식: "intl-{uuid}" or "dom-{uuid}"
+ * 피킹 스캔 1회 처리:
+ *  - picking_scan_logs 에 이력 기록 (항상)
+ *  - 정상 스캔이면 parcel_barcodes.picking_status = 'DONE'
+ *  - 보류/누락이면 parcel_barcodes.picking_status = 'HOLD' | 'NOT_FOUND'
  *
- * Body:  { barcode: string }
- * Returns:
- *   { result: "PICKED"       }  정상 스캔  → picking_status = DONE
- *   { result: "WRONG_ORDER"  }  오스캔     → 상태 변경 없음
- *   { result: "DUPLICATE"    }  중복 스캔  → 상태 변경 없음
- *   { result: "NOT_FOUND"    }  미등록     → 상태 변경 없음
+ * Body:
+ *   barcode_no    string
+ *   order_type    'intl' | 'domestic'
+ *   scan_result?  'PICKED' | 'WRONG_ORDER' | 'DUPLICATE' | 'NOT_FOUND'
+ *                 (생략 시 자동 판별)
+ *   reason?       string   보류·누락 사유
+ *   note?         string   추가 메모
+ *
+ * Response:
+ *   { ok, scan_result, item_name?, barcode_id? }
  */
 export async function POST(
   req: NextRequest,
@@ -28,107 +34,125 @@ export async function POST(
   const orderId   = rawId.replace(/^(intl|dom)-/, "");
   const orderType = isIntl ? "intl" : "domestic";
 
-  const body = (await req.json()) as { barcode?: string };
-  const barcode = body.barcode?.trim();
+  const body = (await req.json()) as {
+    barcode_no: string;
+    scan_result?: "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND";
+    reason?: string;
+    note?: string;
+  };
 
-  if (!barcode)
-    return NextResponse.json({ error: "barcode 필드가 필요합니다." }, { status: 400 });
+  const { barcode_no, reason, note } = body;
+  if (!barcode_no) return NextResponse.json({ error: "barcode_no 필수" }, { status: 400 });
 
-  // ── 1. 바코드가 parcel_barcodes 에 등록돼 있는지 확인 ────────
-  const { data: barcodeRow } = await adminDb
-    .from("parcel_barcodes")
-    .select(`
-      id, barcode_no, seq, item_name,
-      picking_status, parcel_id,
-      storage_location_id,
-      storage_locations(id, code)
-    `)
-    .eq("barcode_no", barcode)
-    .maybeSingle();
+  const now = new Date().toISOString();
 
-  if (!barcodeRow) {
-    await logScan({ orderId, orderType, barcode, result: "NOT_FOUND", userId: admin.id });
-    return NextResponse.json({ result: "NOT_FOUND" });
+  // ── 1. 해당 주문의 바코드 목록에서 조회 ──────────────────────
+  const barcodes = await getOrderBarcodes(orderId, orderType);
+  const found    = barcodes.find((b) => b.barcode_no === barcode_no);
+
+  let scanResult: "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND";
+
+  if (body.scan_result) {
+    // 클라이언트가 명시적으로 결과를 지정한 경우 (보류·누락 수동 처리)
+    scanResult = body.scan_result;
+  } else if (!found) {
+    // 바코드가 시스템에 존재하는지 추가 확인
+    const { data: sysBarcode } = await adminDb
+      .from("parcel_barcodes")
+      .select("id")
+      .eq("barcode_no", barcode_no)
+      .maybeSingle();
+
+    scanResult = sysBarcode ? "WRONG_ORDER" : "NOT_FOUND";
+  } else if (found.picking_status === "DONE") {
+    scanResult = "DUPLICATE";
+  } else {
+    scanResult = "PICKED";
   }
 
-  // ── 2. 이 주문에 속한 바코드인지 확인 ───────────────────────
-  const orderBarcodes = await getOrderBarcodes(orderId, orderType);
-  const belongsToOrder = orderBarcodes.some((b) => b.id === barcodeRow.id);
+  // ── 2. picking_scan_logs 에 이력 저장 ────────────────────────
+  await adminDb.from("picking_scan_logs").insert({
+    order_id:    orderId,
+    order_type:  orderType,
+    barcode_no,
+    scan_result: scanResult,
+    scanned_by:  admin.id,
+    scanned_at:  now,
+  });
 
-  if (!belongsToOrder) {
-    await logScan({ orderId, orderType, barcode, result: "WRONG_ORDER", userId: admin.id });
-    return NextResponse.json({ result: "WRONG_ORDER" });
+  // ── 3. parcel_barcodes 상태 업데이트 ─────────────────────────
+  if (found) {
+    const newStatus =
+      scanResult === "PICKED"    ? "DONE"
+      : scanResult === "DUPLICATE" ? found.picking_status // 변경 없음
+      : null; // WRONG_ORDER는 다른 바코드라 업데이트 불필요
+
+    // 수동 보류·누락도 처리
+    const manualStatus =
+      body.scan_result === "HOLD"      ? "HOLD"
+      : body.scan_result === "NOT_FOUND" ? "NOT_FOUND"
+      : null;
+
+    const statusToSet = manualStatus ?? newStatus;
+    if (statusToSet && statusToSet !== found.picking_status) {
+      await adminDb
+        .from("parcel_barcodes")
+        .update({
+          picking_status: statusToSet,
+          picking_reason: reason ?? null,
+          picking_note:   note   ?? null,
+          picked_at:      statusToSet === "DONE" ? now : null,
+          picked_by:      statusToSet === "DONE" ? admin.id : null,
+        })
+        .eq("id", found.id);
+    }
   }
 
-  // ── 3. 이미 피킹 완료된 바코드인지 확인 ─────────────────────
-  if (barcodeRow.picking_status === "DONE") {
-    await logScan({ orderId, orderType, barcode, result: "DUPLICATE", userId: admin.id });
-    return NextResponse.json({
-      result: "DUPLICATE",
-      barcode: formatBarcode(barcodeRow),
-    });
-  }
+  return NextResponse.json({
+    ok:          true,
+    scan_result: scanResult,
+    item_name:   found?.item_name ?? null,
+    barcode_id:  found?.id        ?? null,
+  });
+}
 
-  // ── 4. 정상 스캔 → DONE 처리 ────────────────────────────────
+/**
+ * PATCH /api/admin/picking/[id]/scan
+ *
+ * 개별 바코드 상태 수동 수정
+ * Body: { barcode_id, picking_status, reason?, note? }
+ */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const admin = await requireAdmin();
+  if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  await params;
+
+  const { barcode_id, picking_status, reason, note } = (await req.json()) as {
+    barcode_id:     string;
+    picking_status: "WAITING" | "DONE" | "HOLD" | "NOT_FOUND";
+    reason?:        string;
+    note?:          string;
+  };
+
+  if (!barcode_id || !picking_status)
+    return NextResponse.json({ error: "barcode_id, picking_status 필수" }, { status: 400 });
+
   const now = new Date().toISOString();
   const { error } = await adminDb
     .from("parcel_barcodes")
     .update({
-      picking_status: "DONE",
-      picked_at:      now,
-      picked_by:      admin.id,
-      picking_reason: null,
-      picking_note:   null,
+      picking_status,
+      picking_reason: reason ?? null,
+      picking_note:   note   ?? null,
+      picked_at:      picking_status === "DONE" ? now : null,
+      picked_by:      picking_status === "DONE" ? admin.id : null,
     })
-    .eq("id", barcodeRow.id);
+    .eq("id", barcode_id);
 
-  if (error)
-    return NextResponse.json({ error: error.message }, { status: 500 });
-
-  await logScan({ orderId, orderType, barcode, result: "PICKED", userId: admin.id });
-
-  return NextResponse.json({
-    result: "PICKED",
-    barcode: {
-      ...formatBarcode(barcodeRow),
-      picking_status: "DONE",
-      picked_at:      now,
-    },
-  });
-}
-
-// ── 헬퍼 ─────────────────────────────────────────────────────
-
-function formatBarcode(row: {
-  id: string;
-  barcode_no: string;
-  seq: number;
-  item_name: string | null;
-  picking_status: string;
-  storage_locations: unknown;
-}) {
-  return {
-    id:             row.id,
-    barcode_no:     row.barcode_no,
-    seq:            row.seq,
-    item_name:      row.item_name,
-    picking_status: row.picking_status,
-    location:       (row.storage_locations as { id: string; code: string } | null) ?? null,
-  };
-}
-
-async function logScan(params: {
-  orderId:   string;
-  orderType: "intl" | "domestic";
-  barcode:   string;
-  result:    "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND";
-  userId:    string;
-}) {
-  await adminDb.from("picking_scan_logs").insert({
-    order_id:    params.orderId,
-    order_type:  params.orderType,
-    barcode_no:  params.barcode,
-    scan_result: params.result,
-    scanned_by:  params.userId,
-  });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ ok: true });
 }

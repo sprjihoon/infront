@@ -36,7 +36,7 @@ export interface DomesticLabelData {
   printAreaCd?: string;
 }
 
-interface LabelLayoutElement {
+export interface LabelLayoutElement {
   fieldKey: string;
   x: number;
   y: number;
@@ -66,7 +66,7 @@ const FONT_STYLE: React.CSSProperties = {
 const BRAND_NAME =
   process.env.NEXT_PUBLIC_BRAND_NAME ?? "인프론트";
 
-const createDefaultLayout = (): LabelLayoutElement[] => {
+export const createDefaultLayout = (): LabelLayoutElement[] => {
   const labelWidth = BASE_WIDTH - mmToPx(10);
   const scale = labelWidth / mmToPx(LABEL_WIDTH_MM);
   const scaleFont = (size: number) => Math.max(10, size * scale * 0.8);
@@ -154,10 +154,12 @@ const mapField = (fieldKey: string, data: DomesticLabelData): string => {
 
 interface Props {
   data: DomesticLabelData;
+  layout?: LabelLayoutElement[];
+  selectedIndex?: number | null;
 }
 
-export function DomesticLabelSheet({ data }: Props) {
-  const layout = createDefaultLayout();
+export function DomesticLabelSheet({ data, layout: customLayout, selectedIndex }: Props) {
+  const layout = customLayout ?? createDefaultLayout();
   const actualWidthPx = 635;
   const layoutBaseWidthPx = 800;
   const fontScaleFactor = actualWidthPx / layoutBaseWidthPx;
@@ -198,11 +200,16 @@ export function DomesticLabelSheet({ data }: Props) {
           const value = mapField(el.fieldKey, data);
           if (!value) return null;
 
+          const isSelected = selectedIndex === i;
+          const highlightStyle: React.CSSProperties = isSelected
+            ? { outline: "2px solid #3b82f6", outlineOffset: "1px", zIndex: 10 }
+            : {};
+
           if (el.type === "barcode") {
             return (
               <div
                 key={`${el.fieldKey}-${i}`}
-                style={{ position: "absolute", left: x, top: y, width: w, height: h, overflow: "hidden" }}
+                style={{ position: "absolute", left: x, top: y, width: w, height: h, overflow: "hidden", ...highlightStyle }}
               >
                 <img
                   src={`https://barcode.tec-it.com/barcode.ashx?data=${encodeURIComponent(value)}&code=Code128&dpi=203&translate-esc=on`}
@@ -229,6 +236,7 @@ export function DomesticLabelSheet({ data }: Props) {
                 overflow: "visible",
                 wordBreak: "break-word",
                 letterSpacing: el.letterSpacing ? `${el.letterSpacing}px` : "normal",
+                ...highlightStyle,
               }}
             >
               {value}
