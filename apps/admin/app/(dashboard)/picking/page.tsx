@@ -447,6 +447,14 @@ function OrderCard({ row }: { row: OrderRow }) {
           )}
         </div>
 
+        {/* 결제 전 안내 */}
+        {isPrePay && (
+          <div className="flex items-center gap-2 py-2.5 px-3 bg-purple-50 rounded-xl text-purple-700 text-xs font-semibold border border-purple-200">
+            <AlertCircle size={14} />
+            결제 완료 전 주문 — 미리 피킹 준비 가능
+          </div>
+        )}
+
         {/* 피킹 시작 버튼 */}
         {!isDone && (
           <Link href={`/picking/${row.rawId}`}>
@@ -454,6 +462,8 @@ function OrderCard({ row }: { row: OrderRow }) {
               className={`w-full py-4 rounded-xl font-bold text-base flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
                 inPicking
                   ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                  : isPrePay
+                  ? "bg-purple-600 text-white shadow-md shadow-purple-200"
                   : "bg-indigo-600 text-white shadow-md shadow-indigo-200"
               }`}
             >
