@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '국내 배송 신청을 찾을 수 없습니다.' }, { status: 404 });
     }
 
-    if (order.status !== 'PENDING') {
+    if (!['PENDING', 'PICKING_DONE'].includes(order.status)) {
       return NextResponse.json(
         { error: `이미 처리된 신청입니다. 현재 상태: ${order.status}` },
         { status: 409 },

@@ -21,6 +21,8 @@ import {
   ScanLine,
   MoveRight,
   LucideIcon,
+  ClipboardList,
+  Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +45,15 @@ const NAV_GROUPS: NavGroup[] = [
     title: "메인",
     icon: LayoutDashboard,
     items: [{ title: "대시보드", href: "/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    id: "outbound",
+    title: "출고",
+    icon: Send,
+    items: [
+      { title: "피킹 지시서", href: "/picking", icon: ClipboardList },
+      { title: "출고처리", href: "/outbound", icon: Send },
+    ],
   },
   {
     id: "operations",
@@ -75,7 +86,7 @@ const STORAGE_COLLAPSED = "infront-admin-nav-collapsed";
 export default function DashboardNav() {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["main", "operations"]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["main", "outbound", "operations"]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
