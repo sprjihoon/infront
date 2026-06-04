@@ -49,25 +49,50 @@ export async function getOrderBarcodes(
 
   if (parcelIds.length === 0) return [];
 
+  // 바코드 조회 (바코드 자체의 위치 포함)
   const { data: barcodes } = await adminDb
     .from("parcel_barcodes")
     .select(
-      "id, barcode_no, seq, item_name, picking_status, picking_reason, picking_note, picked_at, storage_location_id, storage_locations(id, code)",
+      "id, parcel_id, barcode_no, seq, item_name, picking_status, picking_reason, picking_note, picked_at, storage_location_id, storage_locations(id, code)",
     )
     .in("parcel_id", parcelIds)
     .order("seq");
 
-  return (barcodes ?? []).map((b) => ({
-    id: b.id,
-    barcode_no: b.barcode_no,
-    seq: b.seq,
-    item_name: b.item_name,
-    picking_status: (b.picking_status ?? "WAITING") as PickingBarcode["picking_status"],
-    picking_reason: b.picking_reason ?? null,
-    picking_note: b.picking_note ?? null,
-    picked_at: b.picked_at ?? null,
-    location: (b.storage_locations as unknown as { id: string; code: string } | null) ?? null,
-  }));
+  // 바코드에 위치가 없으면 소포(parcels)의 위치로 폴백
+  const barcodesWithoutLoc = (barcodes ?? []).filter(
+    (b) => !b.storage_location_id,
+  );
+
+  let parcelLocMap: Record<string, { id: string; code: string } | null> = {};
+  if (barcodesWithoutLoc.length > 0) {
+    const uniqueParcelIds = [...new Set(barcodesWithoutLoc.map((b) => b.parcel_id as string))];
+    const { data: parcels } = await adminDb
+      .from("parcels")
+      .select("id, storage_location_id, storage_locations(id, code)")
+      .in("id", uniqueParcelIds);
+    parcelLocMap = Object.fromEntries(
+      (parcels ?? []).map((p) => [
+        p.id,
+        (p.storage_locations as unknown as { id: string; code: string } | null) ?? null,
+      ]),
+    );
+  }
+
+  return (barcodes ?? []).map((b) => {
+    const barcodeLocation = (b.storage_locations as unknown as { id: string; code: string } | null) ?? null;
+    const fallbackLocation = parcelLocMap[b.parcel_id as string] ?? null;
+    return {
+      id: b.id,
+      barcode_no: b.barcode_no,
+      seq: b.seq,
+      item_name: b.item_name,
+      picking_status: (b.picking_status ?? "WAITING") as PickingBarcode["picking_status"],
+      picking_reason: b.picking_reason ?? null,
+      picking_note: b.picking_note ?? null,
+      picked_at: b.picked_at ?? null,
+      location: barcodeLocation ?? fallbackLocation,
+    };
+  });
 }
 
 export function computeStats(barcodes: PickingBarcode[]): PickingStats {
