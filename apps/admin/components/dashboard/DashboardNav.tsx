@@ -24,6 +24,7 @@ import {
   ClipboardList,
   Send,
   Printer,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,27 +49,12 @@ const NAV_GROUPS: NavGroup[] = [
     items: [{ title: "대시보드", href: "/dashboard", icon: LayoutDashboard }],
   },
   {
-    id: "inbound",
-    title: "입고",
-    icon: ScanLine,
+    id: "work",
+    title: "작업",
+    icon: Wrench,
     items: [
       { title: "입고처리", href: "/inbound", icon: ScanLine },
-      { title: "수거·입고 목록", href: "/parcels", icon: Package },
-    ],
-  },
-  {
-    id: "picking",
-    title: "피킹",
-    icon: ClipboardList,
-    items: [
       { title: "피킹 지시서", href: "/picking", icon: ClipboardList },
-    ],
-  },
-  {
-    id: "outbound",
-    title: "출고",
-    icon: Send,
-    items: [
       { title: "출고처리", href: "/outbound", icon: Send },
     ],
   },
@@ -77,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
     title: "운영",
     icon: Package,
     items: [
+      { title: "수거·입고 목록", href: "/parcels", icon: Package },
       { title: "해외배송", href: "/orders", icon: ShoppingBag },
       { title: "국내배송", href: "/domestic-orders", icon: Truck },
       { title: "고객", href: "/customers", icon: Users },
@@ -109,7 +96,7 @@ const STORAGE_COLLAPSED = "infront-admin-nav-collapsed";
 export default function DashboardNav() {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["main", "inbound", "picking", "outbound", "operations"]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["main", "work", "operations"]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
