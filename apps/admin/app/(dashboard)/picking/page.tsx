@@ -388,19 +388,23 @@ function OrderCard({ row }: { row: OrderRow }) {
         </div>
 
         {/* 로케이션 */}
-        {row.locations.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <MapPin size={14} className="text-gray-400 shrink-0" />
-            {row.locations.map((loc) => (
+        <div className="flex items-center gap-2 flex-wrap">
+          <MapPin size={14} className="text-gray-400 shrink-0" />
+          {row.locations.length > 0 ? (
+            row.locations.map((loc) => (
               <span
                 key={loc}
                 className="text-sm font-black font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-lg"
               >
                 {loc}
               </span>
-            ))}
-          </div>
-        )}
+            ))
+          ) : (
+            <span className="text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 px-2.5 py-1 rounded-lg">
+              로케이션 미지정
+            </span>
+          )}
+        </div>
 
         {/* 포장옵션 + 고객 요청사항 */}
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
