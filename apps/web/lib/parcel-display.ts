@@ -12,7 +12,7 @@ export type WarehouseFilterKey =
 export const WAREHOUSE_FILTER_TABS: { key: WarehouseFilterKey; label: string }[] = [
   { key: "ALL", label: "전체" },
   { key: "IN_TRANSIT", label: "오는 중" },
-  { key: "AT_WAREHOUSE", label: "센터 보관" },
+  { key: "AT_WAREHOUSE", label: "검수 중" },
   { key: "READY_TO_SHIP", label: "출고 가능" },
   { key: "ATTENTION", label: "확인 필요" },
 ];
@@ -157,23 +157,23 @@ export function getParcelDisplaySummary(
           phase,
           badgeLabel: "출고 가능",
           ...BADGE.ready,
-          subtitle: "검수 완료 · 해외배송 신청 가능",
+          subtitle: "검수 완료 · 출고신청 가능",
           meta: joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]),
         };
       }
       return {
         phase,
-        badgeLabel: "센터 보관",
+        badgeLabel: "검수 중",
         ...BADGE.warehouse,
-        subtitle: "센터 입고 · 검수 진행 중",
+        subtitle: "센터 입고 완료 · 검수 후 출고신청 가능",
         meta: joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]),
       };
     case "INSPECTION":
       return {
         phase,
-        badgeLabel: "센터 보관",
+        badgeLabel: "검수 중",
         ...BADGE.warehouse,
-        subtitle: "검수 중",
+        subtitle: "검수 진행 중 · 완료 후 출고신청 가능",
         meta: joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]),
       };
     case "HOLD":
@@ -187,7 +187,7 @@ export function getParcelDisplaySummary(
     default:
       return {
         phase,
-        badgeLabel: "센터 보관",
+        badgeLabel: "검수 중",
         ...BADGE.warehouse,
         subtitle: formatInboundDate(parcel.inbound_at) ?? "처리 중",
         meta: formatWeight(parcel.weight_actual) ?? undefined,
@@ -204,8 +204,8 @@ export function getWarehouseEmptyMessage(filter: WarehouseFilterKey): { title: s
       };
     case "AT_WAREHOUSE":
       return {
-        title: "센터에 보관 중인 물품이 없어요",
-        desc: "입고 후 검수가 진행되면\n여기에서 확인할 수 있어요",
+        title: "검수 중인 물품이 없어요",
+        desc: "센터 입고 후 검수가 시작되면\n여기에서 확인할 수 있어요",
       };
     case "READY_TO_SHIP":
       return {
