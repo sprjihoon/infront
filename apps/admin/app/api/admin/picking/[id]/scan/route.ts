@@ -36,7 +36,7 @@ export async function POST(
 
   const body = (await req.json()) as {
     barcode_no: string;
-    scan_result?: "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND";
+    scan_result?: "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND" | "HOLD";
     reason?: string;
     note?: string;
   };
@@ -50,7 +50,7 @@ export async function POST(
   const barcodes = await getOrderBarcodes(orderId, orderType);
   const found    = barcodes.find((b) => b.barcode_no === barcode_no);
 
-  let scanResult: "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND";
+  let scanResult: "PICKED" | "WRONG_ORDER" | "DUPLICATE" | "NOT_FOUND" | "HOLD";
 
   if (body.scan_result) {
     // 클라이언트가 명시적으로 결과를 지정한 경우 (보류·누락 수동 처리)
