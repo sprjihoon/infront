@@ -18,8 +18,13 @@ import {
 
 // ── 상태 설정 ─────────────────────────────────────────────────
 
-const INTL_PICK_STATUSES = ["PAID", "PACKING", "PICKING", "PICKING_DONE"] as const;
-const DOM_PICK_STATUSES  = ["PENDING", "PICKING", "PICKING_DONE"] as const;
+// 고객 출고신청(DRAFT)부터 피킹 완료까지 모두 포함
+const INTL_PICK_STATUSES = [
+  "DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE",
+  "QUOTE_SENT", "PENDING_PAYMENT", "PAID",
+  "PACKING", "PICKING", "PICKING_DONE",
+] as const;
+const DOM_PICK_STATUSES = ["PENDING", "PICKING", "PICKING_DONE"] as const;
 
 const PACKAGING_LABEL: Record<string, string> = {
   NONE:        "포장 없음",
@@ -31,11 +36,18 @@ const PACKAGING_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-  PAID:         { label: "피킹 대기",  cls: "bg-amber-100 text-amber-800 border-amber-200" },
-  PACKING:      { label: "피킹 대기",  cls: "bg-amber-100 text-amber-800 border-amber-200" },
-  PENDING:      { label: "피킹 대기",  cls: "bg-amber-100 text-amber-800 border-amber-200" },
-  PICKING:      { label: "피킹 중",    cls: "bg-blue-100 text-blue-800 border-blue-200" },
-  PICKING_DONE: { label: "피킹 완료",  cls: "bg-green-100 text-green-800 border-green-200" },
+  // 결제 전
+  DRAFT:               { label: "출고신청",    cls: "bg-purple-100 text-purple-800 border-purple-200" },
+  PACKAGING_REQUESTED: { label: "포장요청",    cls: "bg-purple-100 text-purple-800 border-purple-200" },
+  PACKAGING_DONE:      { label: "포장완료",    cls: "bg-indigo-100 text-indigo-800 border-indigo-200" },
+  QUOTE_SENT:          { label: "견적발송",    cls: "bg-sky-100    text-sky-800    border-sky-200" },
+  PENDING_PAYMENT:     { label: "결제대기",    cls: "bg-orange-100 text-orange-800 border-orange-200" },
+  // 결제 후
+  PAID:                { label: "피킹 대기",   cls: "bg-amber-100  text-amber-800  border-amber-200" },
+  PACKING:             { label: "피킹 대기",   cls: "bg-amber-100  text-amber-800  border-amber-200" },
+  PENDING:             { label: "피킹 대기",   cls: "bg-amber-100  text-amber-800  border-amber-200" },
+  PICKING:             { label: "피킹 중",     cls: "bg-blue-100   text-blue-800   border-blue-200" },
+  PICKING_DONE:        { label: "피킹 완료",   cls: "bg-green-100  text-green-800  border-green-200" },
 };
 
 // ── 타입 ──────────────────────────────────────────────────────
@@ -221,7 +233,10 @@ export default async function PickingPage() {
 
   // ── 통계 ──────────────────────────────────────────────────
 
-  const waitingCount  = rows.filter((r) => ["PAID", "PACKING", "PENDING"].includes(r.status)).length;
+  const PRE_PAYMENT = ["DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE", "QUOTE_SENT", "PENDING_PAYMENT"];
+  const READY       = ["PAID", "PACKING", "PENDING"];
+  const prePayCount = rows.filter((r) => PRE_PAYMENT.includes(r.status)).length;
+  const waitingCount  = rows.filter((r) => READY.includes(r.status)).length;
   const pickingCount  = rows.filter((r) => r.status === "PICKING").length;
   const doneCount     = rows.filter((r) => r.status === "PICKING_DONE").length;
   const totalCount    = rows.length;
@@ -269,10 +284,13 @@ export default async function PickingPage() {
 
         {/* 진행 상태 뱃지 */}
         <div className="flex gap-2 flex-wrap">
-          <StatusBadge icon={<Clock size={14} />}       label="대기"    count={waitingCount} cls="bg-amber-400/30 border-amber-300/40" />
-          <StatusBadge icon={<PlayCircle size={14} />}  label="진행중"  count={pickingCount} cls="bg-blue-400/30 border-blue-300/40" />
-          <StatusBadge icon={<CheckCircle2 size={14} />} label="완료"   count={doneCount}    cls="bg-green-400/30 border-green-300/40" />
-          <StatusBadge icon={<AlertCircle size={14} />} label="전체"    count={totalCount}   cls="bg-white/20 border-white/20" />
+          {prePayCount > 0 && (
+            <StatusBadge icon={<AlertCircle size={14} />} label="결제전" count={prePayCount} cls="bg-purple-400/30 border-purple-300/40" />
+          )}
+          <StatusBadge icon={<Clock size={14} />}        label="피킹대기"  count={waitingCount} cls="bg-amber-400/30 border-amber-300/40" />
+          <StatusBadge icon={<PlayCircle size={14} />}   label="진행중"    count={pickingCount} cls="bg-blue-400/30 border-blue-300/40" />
+          <StatusBadge icon={<CheckCircle2 size={14} />} label="완료"      count={doneCount}    cls="bg-green-400/30 border-green-300/40" />
+          <StatusBadge icon={<AlertCircle size={14} />}  label="전체"      count={totalCount}   cls="bg-white/20 border-white/20" />
         </div>
       </div>
 
@@ -327,7 +345,8 @@ function OrderCard({ row }: { row: OrderRow }) {
   const isIntl = row.kind === "intl";
   const pkgLabel = PACKAGING_LABEL[row.packagingType] ?? row.packagingType;
 
-  const canStart  = ["PAID", "PACKING", "PENDING"].includes(row.status);
+  const PRE_PAY   = ["DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE", "QUOTE_SENT", "PENDING_PAYMENT"];
+  const isPrePay  = PRE_PAY.includes(row.status);
   const inPicking = row.status === "PICKING";
   const isDone    = row.status === "PICKING_DONE";
 
@@ -338,6 +357,8 @@ function OrderCard({ row }: { row: OrderRow }) {
           ? "border-green-200 opacity-70"
           : inPicking
           ? "border-blue-300 shadow-blue-100"
+          : isPrePay
+          ? "border-purple-200"
           : "border-gray-100"
       }`}
     >
