@@ -144,7 +144,7 @@ function PrintBarcodesContent() {
           body { background: white; }
           @page { size: A4; margin: 5mm; }
 
-          /* 라벨 90도 회전: 70mm×30mm → 30mm×70mm 공간에 인쇄 */
+          /* 라벨 90도 회전: translate(30mm,0) rotate(-90deg) 수식으로 70×30 → 30×70 */
           .labels-grid {
             display: flex;
             flex-wrap: wrap;
@@ -156,16 +156,17 @@ function PrintBarcodesContent() {
             width: 30mm;
             height: 70mm;
             position: relative;
-            overflow: hidden;
+            overflow: visible;
+            vertical-align: top;
             break-inside: avoid;
             page-break-inside: avoid;
           }
           .label-card {
             position: absolute !important;
-            top: 70mm !important;
+            top: 0 !important;
             left: 0 !important;
-            transform: rotate(90deg) !important;
-            transform-origin: left top !important;
+            transform: translate(30mm, 0) rotate(-90deg) !important;
+            transform-origin: 0 0 !important;
           }
         }
       `}</style>
