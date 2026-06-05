@@ -16,7 +16,6 @@ import {
   User,
   CheckCircle2,
   Clock,
-  AlertCircle,
   PlayCircle,
 } from "lucide-react";
 
@@ -25,12 +24,9 @@ const PAGE_SIZE = 12;
 
 // ── 상태 설정 ─────────────────────────────────────────────────
 
-const INTL_PICK_STATUSES = [
-  "DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE",
-  "QUOTE_SENT", "PENDING_PAYMENT", "PAID",
-  "PACKING", "PICKING", "PICKING_DONE",
-] as const;
-const DOM_PICK_STATUSES = ["PENDING", "PICKING", "PICKING_DONE"] as const;
+// 결제 완료 이후 상태만 피킹 대상
+const INTL_PICK_STATUSES = ["PAID", "PACKING", "PICKING", "PICKING_DONE"] as const;
+const DOM_PICK_STATUSES  = ["PENDING", "PICKING", "PICKING_DONE"] as const;
 
 const PACKAGING_LABEL: Record<string, string> = {
   NONE:        "포장 없음",
@@ -42,16 +38,11 @@ const PACKAGING_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; bar: string }> = {
-  DRAFT:               { label: "출고신청",  cls: "bg-purple-100 text-purple-800 border-purple-200", bar: "bg-purple-400" },
-  PACKAGING_REQUESTED: { label: "포장요청",  cls: "bg-purple-100 text-purple-800 border-purple-200", bar: "bg-purple-400" },
-  PACKAGING_DONE:      { label: "포장완료",  cls: "bg-indigo-100 text-indigo-800 border-indigo-200", bar: "bg-indigo-400" },
-  QUOTE_SENT:          { label: "견적발송",  cls: "bg-sky-100    text-sky-800    border-sky-200",    bar: "bg-sky-400"    },
-  PENDING_PAYMENT:     { label: "결제대기",  cls: "bg-orange-100 text-orange-800 border-orange-200", bar: "bg-orange-400" },
-  PAID:                { label: "피킹 대기", cls: "bg-amber-100  text-amber-800  border-amber-200",  bar: "bg-amber-400"  },
-  PACKING:             { label: "피킹 대기", cls: "bg-amber-100  text-amber-800  border-amber-200",  bar: "bg-amber-400"  },
-  PENDING:             { label: "피킹 대기", cls: "bg-amber-100  text-amber-800  border-amber-200",  bar: "bg-amber-400"  },
-  PICKING:             { label: "피킹 중",   cls: "bg-blue-100   text-blue-800   border-blue-200",   bar: "bg-blue-500"   },
-  PICKING_DONE:        { label: "피킹 완료", cls: "bg-green-100  text-green-800  border-green-200",  bar: "bg-green-500"  },
+  PAID:         { label: "피킹 대기", cls: "bg-amber-100  text-amber-800  border-amber-200",  bar: "bg-amber-400"  },
+  PACKING:      { label: "피킹 대기", cls: "bg-amber-100  text-amber-800  border-amber-200",  bar: "bg-amber-400"  },
+  PENDING:      { label: "피킹 대기", cls: "bg-amber-100  text-amber-800  border-amber-200",  bar: "bg-amber-400"  },
+  PICKING:      { label: "피킹 중",   cls: "bg-blue-100   text-blue-800   border-blue-200",   bar: "bg-blue-500"   },
+  PICKING_DONE: { label: "피킹 완료", cls: "bg-green-100  text-green-800  border-green-200",  bar: "bg-green-500"  },
 };
 
 // ── 타입 ──────────────────────────────────────────────────────
@@ -75,14 +66,12 @@ type OrderRow = {
 
 // ── 필터 ──────────────────────────────────────────────────────
 
-type FilterKey = "all" | "waiting" | "picking" | "done" | "prepay";
+type FilterKey = "all" | "waiting" | "picking" | "done";
 
-const PRE_PAY_STATUSES = ["DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE", "QUOTE_SENT", "PENDING_PAYMENT"];
 const WAITING_STATUSES = ["PAID", "PACKING", "PENDING"];
 
 function applyFilter(rows: OrderRow[], filter: FilterKey): OrderRow[] {
   switch (filter) {
-    case "prepay":  return rows.filter((r) => PRE_PAY_STATUSES.includes(r.status));
     case "waiting": return rows.filter((r) => WAITING_STATUSES.includes(r.status));
     case "picking": return rows.filter((r) => r.status === "PICKING");
     case "done":    return rows.filter((r) => r.status === "PICKING_DONE");
@@ -106,7 +95,7 @@ export default async function PickingPage({
   searchParams: Promise<{ filter?: string; page?: string }>;
 }) {
   const { filter: rawFilter, page: rawPage } = await searchParams;
-  const filter: FilterKey = (["all", "waiting", "picking", "done", "prepay"].includes(rawFilter ?? "")
+  const filter: FilterKey = (["all", "waiting", "picking", "done"].includes(rawFilter ?? "")
     ? rawFilter : "all") as FilterKey;
   const page = Math.max(1, parseInt(rawPage ?? "1", 10) || 1);
 
@@ -209,9 +198,7 @@ export default async function PickingPage({
   rows.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   // ── 통계 ──────────────────────────────────────────────────
-  const PRE_PAYMENT  = ["DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE", "QUOTE_SENT", "PENDING_PAYMENT"];
   const READY        = ["PAID", "PACKING", "PENDING"];
-  const prePayCount  = rows.filter((r) => PRE_PAYMENT.includes(r.status)).length;
   const waitingCount = rows.filter((r) => READY.includes(r.status)).length;
   const pickingCount = rows.filter((r) => r.status === "PICKING").length;
   const doneCount    = rows.filter((r) => r.status === "PICKING_DONE").length;
@@ -233,7 +220,6 @@ export default async function PickingPage({
     { key: "picking" as FilterKey, label: "진행 중",  count: pickingCount, icon: "🔵" },
     { key: "waiting" as FilterKey, label: "피킹 대기", count: waitingCount, icon: "⏳" },
     { key: "done"    as FilterKey, label: "피킹 완료", count: doneCount,    icon: "✅" },
-    ...(prePayCount > 0 ? [{ key: "prepay" as FilterKey, label: "결제 전", count: prePayCount, icon: "💜" }] : []),
   ];
 
   return (
@@ -262,7 +248,6 @@ export default async function PickingPage({
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
-          {prePayCount > 0 && <StatusBadge icon={<AlertCircle size={14} />} label="결제전"   count={prePayCount}  cls="bg-purple-400/30 border-purple-300/40" />}
           <StatusBadge icon={<Clock size={14} />}        label="피킹대기" count={waitingCount} cls="bg-amber-400/30 border-amber-300/40" />
           <StatusBadge icon={<PlayCircle size={14} />}   label="진행중"   count={pickingCount} cls="bg-blue-400/30 border-blue-300/40" />
           <StatusBadge icon={<CheckCircle2 size={14} />} label="완료"     count={doneCount}    cls="bg-green-400/30 border-green-300/40" />
@@ -404,7 +389,6 @@ function StatusBadge({ icon, label, count, cls }: {
 function OrderCard({ row }: { row: OrderRow }) {
   const badge     = STATUS_BADGE[row.status] ?? STATUS_BADGE.PAID;
   const isIntl    = row.kind === "intl";
-  const isPrePay  = ["DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE", "QUOTE_SENT", "PENDING_PAYMENT"].includes(row.status);
   const inPicking = row.status === "PICKING";
   const isDone    = row.status === "PICKING_DONE";
   const pkgLabel  = PACKAGING_LABEL[row.packagingType] ?? "";
@@ -412,7 +396,6 @@ function OrderCard({ row }: { row: OrderRow }) {
   const borderCls = isDone
     ? "border-green-200"
     : inPicking ? "border-blue-300 shadow-blue-100"
-    : isPrePay  ? "border-purple-200"
     : "border-gray-200";
 
   return (
@@ -489,7 +472,6 @@ function OrderCard({ row }: { row: OrderRow }) {
           <div className={`mt-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold ${
             isDone    ? "bg-green-50 text-green-700"
             : inPicking ? "bg-blue-600 text-white"
-            : isPrePay  ? "bg-purple-600 text-white"
             : "bg-indigo-600 text-white"
           }`}>
             {isDone ? (
