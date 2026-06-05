@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Printer, Settings2 } from "lucide-react";
+import { Printer, Settings2, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import {
   BarcodeLabelSettings,
@@ -37,8 +37,17 @@ function LabelCard({
 }) {
   return (
     <div
-      className="label-card"
-      style={{ position: "relative", width: `${s.labelWidth}mm`, height: `${s.labelHeight}mm`, overflow: "hidden" }}
+      style={{
+        position: "relative",
+        width: `${s.labelWidth}mm`,
+        height: `${s.labelHeight}mm`,
+        overflow: "hidden",
+        border: "1px solid #ccc",
+        borderRadius: "3px",
+        background: "white",
+        fontFamily: "'Malgun Gothic', sans-serif",
+        boxSizing: "border-box",
+      }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -82,10 +91,61 @@ function LabelCard({
   );
 }
 
-// useSearchParams를 사용하는 내부 컴포넌트
+/**
+ * 회전 래퍼 (인라인 스타일 — CSS 미디어쿼리 !important 불필요)
+ *
+ * 수학적 검증: translate(W_h, 0) rotate(-90deg) with transform-origin 0 0
+ *   W = labelWidth(70mm), H = labelHeight(30mm)
+ *   TL(0,0) → (H,0)   TR(W,0) → (H,W)
+ *   BL(0,H) → (0,0)   BR(W,H) → (0,W)
+ *   결과: 0~H(x) × 0~W(y) = 30mm × 70mm 영역에 정확히 들어맞음
+ */
+function RotatedLabel({
+  label,
+  s,
+  onImageLoad,
+}: {
+  label: BarcodeLabel;
+  s: BarcodeLabelSettings;
+  onImageLoad?: () => void;
+}) {
+  const W = s.labelWidth;   // 70mm
+  const H = s.labelHeight;  // 30mm
+
+  return (
+    // 외부 박스: 회전 후 크기 (H × W = 30mm × 70mm)
+    <div
+      style={{
+        display: "inline-block",
+        width: `${H}mm`,
+        height: `${W}mm`,
+        position: "relative",
+        overflow: "hidden",
+        verticalAlign: "top",
+        pageBreakInside: "avoid",
+        breakInside: "avoid",
+      }}
+    >
+      {/* 회전 컨테이너 */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          transform: `translate(${H}mm, 0) rotate(-90deg)`,
+          transformOrigin: "0 0",
+        }}
+      >
+        <LabelCard label={label} s={s} onImageLoad={onImageLoad} />
+      </div>
+    </div>
+  );
+}
+
 function PrintBarcodesContent() {
   const searchParams = useSearchParams();
   const [settings, setSettings] = useState<BarcodeLabelSettings>(DEFAULT_SETTINGS);
+  const [rotated, setRotated] = useState(true);
 
   const raw = searchParams.get("data");
   const labels: BarcodeLabel[] = (() => {
@@ -125,49 +185,24 @@ function PrintBarcodesContent() {
         .toolbar button {
           display: flex; align-items: center; gap: 6px;
           background: #2563eb; color: white; border: none;
-          border-radius: 8px; padding: 6px 16px;
-          font-size: 14px; font-weight: 600; cursor: pointer;
+          border-radius: 8px; padding: 6px 14px;
+          font-size: 13px; font-weight: 600; cursor: pointer;
         }
-        .toolbar button:hover { background: #1d4ed8; }
+        .toolbar button.secondary {
+          background: #374151;
+        }
+        .toolbar button.secondary.active {
+          background: #7c3aed;
+        }
+        .toolbar button:hover { filter: brightness(1.1); }
         .toolbar a { color: #9ca3af; font-size: 12px; text-decoration: none; }
         .toolbar a:hover { color: white; text-decoration: underline; }
-        .label-card {
-          border: 1px solid #ccc; border-radius: 3px; background: white;
-          break-inside: avoid; page-break-inside: avoid;
-        }
-        /* 화면 미리보기: 가로 레이아웃 */
-        .labels-grid { display: flex; flex-wrap: wrap; gap: 4mm; padding: 10mm; }
-        .label-wrapper { display: inline-block; }
-
+        .labels-area { display: flex; flex-wrap: wrap; gap: 4mm; padding: 10mm; }
         @media print {
           .toolbar { display: none !important; }
           body { background: white; }
-          @page { size: A4; margin: 5mm; }
-
-          /* 라벨 90도 회전: translate(30mm,0) rotate(-90deg) 수식으로 70×30 → 30×70 */
-          .labels-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6mm;
-            padding: 4mm;
-          }
-          .label-wrapper {
-            display: inline-block;
-            width: 30mm;
-            height: 70mm;
-            position: relative;
-            overflow: visible;
-            vertical-align: top;
-            break-inside: avoid;
-            page-break-inside: avoid;
-          }
-          .label-card {
-            position: absolute !important;
-            top: 0 !important;
-            left: 0 !important;
-            transform: translate(30mm, 0) rotate(-90deg) !important;
-            transform-origin: 0 0 !important;
-          }
+          .labels-area { padding: 3mm; gap: 3mm; }
+          @page { margin: 5mm; }
         }
       `}</style>
 
@@ -175,6 +210,13 @@ function PrintBarcodesContent() {
         <span style={{ flex: 1, fontSize: 14, color: "#9ca3af" }}>
           바코드 라벨 {labels.length}장
         </span>
+        <button
+          className={`secondary${rotated ? " active" : ""}`}
+          onClick={() => setRotated((v) => !v)}
+        >
+          <RotateCcw size={13} />
+          {rotated ? "90° 회전 ON" : "90° 회전 OFF"}
+        </button>
         <Link href="/label-editor/barcode">
           <Settings2 size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
           라벨 설정
@@ -189,19 +231,20 @@ function PrintBarcodesContent() {
           <p>출력할 바코드 데이터가 없습니다.</p>
         </div>
       ) : (
-        <div className="labels-grid">
-          {labels.map((label) => (
-            <div key={label.barcode_no} className="label-wrapper">
-              <LabelCard label={label} s={settings} onImageLoad={onImageLoad} />
-            </div>
-          ))}
+        <div className="labels-area">
+          {labels.map((label) =>
+            rotated ? (
+              <RotatedLabel key={label.barcode_no} label={label} s={settings} onImageLoad={onImageLoad} />
+            ) : (
+              <LabelCard key={label.barcode_no} label={label} s={settings} onImageLoad={onImageLoad} />
+            )
+          )}
         </div>
       )}
     </>
   );
 }
 
-// Suspense 래퍼 — useSearchParams 빌드 오류 방지
 export default function PrintBarcodesPage() {
   return (
     <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>로딩 중...</div>}>
