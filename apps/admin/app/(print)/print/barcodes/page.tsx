@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Printer, Settings2, RotateCcw } from "lucide-react";
+import { Printer, Settings2 } from "lucide-react";
 import Link from "next/link";
 import {
   BarcodeLabelSettings,
@@ -145,7 +145,6 @@ function RotatedLabel({
 function PrintBarcodesContent() {
   const searchParams = useSearchParams();
   const [settings, setSettings] = useState<BarcodeLabelSettings>(DEFAULT_SETTINGS);
-  const [rotated, setRotated] = useState(true);
 
   const raw = searchParams.get("data");
   const labels: BarcodeLabel[] = (() => {
@@ -188,21 +187,28 @@ function PrintBarcodesContent() {
           border-radius: 8px; padding: 6px 14px;
           font-size: 13px; font-weight: 600; cursor: pointer;
         }
-        .toolbar button.secondary {
-          background: #374151;
-        }
-        .toolbar button.secondary.active {
-          background: #7c3aed;
-        }
+        .toolbar button.secondary { background: #374151; }
         .toolbar button:hover { filter: brightness(1.1); }
         .toolbar a { color: #9ca3af; font-size: 12px; text-decoration: none; }
         .toolbar a:hover { color: white; text-decoration: underline; }
         .labels-area { display: flex; flex-wrap: wrap; gap: 4mm; padding: 10mm; }
         @media print {
           .toolbar { display: none !important; }
-          body { background: white; }
-          .labels-area { padding: 3mm; gap: 3mm; }
-          @page { margin: 5mm; }
+          body { background: white; margin: 0; padding: 0; }
+          /* 라벨 1장 = 페이지 1장 */
+          .labels-area { display: block; padding: 0; margin: 0; }
+          .print-label-page {
+            display: block;
+            break-after: page;
+            page-break-after: always;
+            margin: 0;
+            padding: 0;
+          }
+          .print-label-page:last-child {
+            break-after: auto;
+            page-break-after: auto;
+          }
+          @page { size: 30mm 70mm; margin: 0; }
         }
       `}</style>
 
@@ -210,13 +216,6 @@ function PrintBarcodesContent() {
         <span style={{ flex: 1, fontSize: 14, color: "#9ca3af" }}>
           바코드 라벨 {labels.length}장
         </span>
-        <button
-          className={`secondary${rotated ? " active" : ""}`}
-          onClick={() => setRotated((v) => !v)}
-        >
-          <RotateCcw size={13} />
-          {rotated ? "90° 회전 ON" : "90° 회전 OFF"}
-        </button>
         <Link href="/label-editor/barcode">
           <Settings2 size={14} style={{ marginRight: 4, verticalAlign: "middle" }} />
           라벨 설정
@@ -232,13 +231,11 @@ function PrintBarcodesContent() {
         </div>
       ) : (
         <div className="labels-area">
-          {labels.map((label) =>
-            rotated ? (
-              <RotatedLabel key={label.barcode_no} label={label} s={settings} onImageLoad={onImageLoad} />
-            ) : (
-              <LabelCard key={label.barcode_no} label={label} s={settings} onImageLoad={onImageLoad} />
-            )
-          )}
+          {labels.map((label) => (
+            <div key={label.barcode_no} className="print-label-page">
+              <RotatedLabel label={label} s={settings} onImageLoad={onImageLoad} />
+            </div>
+          ))}
         </div>
       )}
     </>
