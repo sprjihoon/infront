@@ -2,44 +2,116 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Package, CreditCard, Loader2 } from "lucide-react";
+import { ArrowLeft, Package, CreditCard, Loader2, Check } from "lucide-react";
 import { SHOP_PRODUCTS } from "../page";
 
 type Product = (typeof SHOP_PRODUCTS)[number];
+
+interface AddressForm {
+  name: string;
+  phone: string;
+  zipcode: string;
+  address: string;
+  addressDetail: string;
+}
+
+const EMPTY_ADDRESS: AddressForm = { name: "", phone: "", zipcode: "", address: "", addressDetail: "" };
+
+function AddressFields({
+  prefix,
+  values,
+  onChange,
+  disabled,
+}: {
+  prefix: string;
+  values: AddressForm;
+  onChange: (field: keyof AddressForm, value: string) => void;
+  disabled?: boolean;
+}) {
+  const cls = `w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors ${disabled ? "bg-gray-50 text-gray-400" : ""}`;
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            이름 <span className="text-red-500">*</span>
+          </label>
+          <input type="text" value={values.name} onChange={(e) => onChange("name", e.target.value)}
+            placeholder="홍길동" disabled={disabled} className={cls} />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            연락처 <span className="text-red-500">*</span>
+          </label>
+          <input type="tel" value={values.phone} onChange={(e) => onChange("phone", e.target.value)}
+            placeholder="010-1234-5678" disabled={disabled} className={cls} />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">우편번호</label>
+        <input type="text" value={values.zipcode} onChange={(e) => onChange("zipcode", e.target.value)}
+          placeholder="12345" disabled={disabled} className={cls} />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          주소 <span className="text-red-500">*</span>
+        </label>
+        <input type="text" value={values.address} onChange={(e) => onChange("address", e.target.value)}
+          placeholder="서울특별시 강남구 테헤란로 123" disabled={disabled} className={cls} />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">상세주소</label>
+        <input type="text" value={values.addressDetail} onChange={(e) => onChange("addressDetail", e.target.value)}
+          placeholder="101동 202호" disabled={disabled} className={cls} />
+      </div>
+    </div>
+  );
+}
 
 export default function ShopCheckoutPage() {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    zipcode: "",
-    address: "",
-    addressDetail: "",
-  });
+  const [email, setEmail] = useState("");
+  const [sender, setSender] = useState<AddressForm>(EMPTY_ADDRESS);
+  const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
+  const [sameAsSender, setSameAsSender] = useState(false);
 
   useEffect(() => {
     const id = sessionStorage.getItem("shop_product_id");
     const found = SHOP_PRODUCTS.find((p) => p.id === id) ?? null;
-    if (!found) {
-      router.replace("/shop");
-      return;
-    }
+    if (!found) { router.replace("/shop"); return; }
     setProduct(found);
   }, [router]);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  function handleSender(field: keyof AddressForm, value: string) {
+    setSender((prev) => {
+      const next = { ...prev, [field]: value };
+      if (sameAsSender) setRecipient(next);
+      return next;
+    });
   }
+
+  function handleRecipient(field: keyof AddressForm, value: string) {
+    setRecipient((prev) => ({ ...prev, [field]: value }));
+  }
+
+  function toggleSameAsSender(checked: boolean) {
+    setSameAsSender(checked);
+    if (checked) setRecipient(sender);
+  }
+
+  const effectiveRecipient = sameAsSender ? sender : recipient;
 
   function isFormValid() {
     return (
-      form.name.trim() &&
-      form.phone.trim() &&
-      form.email.trim() &&
-      form.address.trim()
+      sender.name.trim() &&
+      sender.phone.trim() &&
+      sender.address.trim() &&
+      email.trim() &&
+      effectiveRecipient.name.trim() &&
+      effectiveRecipient.phone.trim() &&
+      effectiveRecipient.address.trim()
     );
   }
 
@@ -49,10 +121,7 @@ export default function ShopCheckoutPage() {
     try {
       const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
       const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
-      if (!clientKey) {
-        alert("결제 설정이 완료되지 않았습니다.");
-        return;
-      }
+      if (!clientKey) { alert("결제 설정이 완료되지 않았습니다."); return; }
       const toss = await loadTossPayments(clientKey);
       const payment = toss.payment({ customerKey: crypto.randomUUID() });
 
@@ -61,9 +130,9 @@ export default function ShopCheckoutPage() {
         amount: { currency: "KRW", value: product.price },
         orderId: `SHOP-${Date.now()}`,
         orderName: product.name,
-        customerName: form.name,
-        customerEmail: form.email,
-        customerMobilePhone: form.phone.replace(/-/g, ""),
+        customerName: sender.name,
+        customerEmail: email,
+        customerMobilePhone: sender.phone.replace(/-/g, ""),
         successUrl: `${window.location.origin}/shop/payment/success?productId=${product.id}`,
         failUrl: `${window.location.origin}/shop/payment/fail`,
       });
@@ -108,95 +177,50 @@ export default function ShopCheckoutPage() {
               <p className="text-sm font-bold text-gray-900">{product.name}</p>
               <p className="text-xs text-gray-400">{product.desc}</p>
             </div>
-            <p className="text-sm font-bold text-gray-900">
-              {product.price.toLocaleString()}원
-            </p>
+            <p className="text-sm font-bold text-gray-900">{product.price.toLocaleString()}원</p>
           </div>
         </section>
 
-        {/* 배송 정보 */}
+        {/* 보내는 분 (수거 주소) */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <p className="text-xs font-bold text-gray-500 mb-4">받는 분 정보</p>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                이름 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                placeholder="홍길동"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                연락처 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={form.phone}
-                onChange={handleChange}
-                placeholder="010-1234-5678"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                이메일 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={form.email}
-                onChange={handleChange}
-                placeholder="example@email.com"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                우편번호
-              </label>
-              <input
-                type="text"
-                name="zipcode"
-                value={form.zipcode}
-                onChange={handleChange}
-                placeholder="12345"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                주소 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="address"
-                value={form.address}
-                onChange={handleChange}
-                placeholder="서울특별시 강남구 테헤란로 123"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                상세주소
-              </label>
-              <input
-                type="text"
-                name="addressDetail"
-                value={form.addressDetail}
-                onChange={handleChange}
-                placeholder="101동 202호"
-                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-              />
-            </div>
+          <p className="text-xs font-bold text-gray-500 mb-4">보내는 분 (수거 주소)</p>
+          <AddressFields prefix="sender" values={sender} onChange={handleSender} />
+          <div className="mt-3 pt-3 border-t border-gray-50">
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              이메일 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@email.com"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
+            />
           </div>
+        </section>
+
+        {/* 받는 분 */}
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-bold text-gray-500">받는 분</p>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <div
+                onClick={() => toggleSameAsSender(!sameAsSender)}
+                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                  sameAsSender ? "bg-[#de2910] border-[#de2910]" : "border-gray-300"
+                }`}
+              >
+                {sameAsSender && <Check size={11} className="text-white" strokeWidth={3} />}
+              </div>
+              <span className="text-xs text-gray-600">보내는 분과 동일</span>
+            </label>
+          </div>
+          <AddressFields
+            prefix="recipient"
+            values={sameAsSender ? sender : recipient}
+            onChange={handleRecipient}
+            disabled={sameAsSender}
+          />
         </section>
 
         {/* 결제 금액 요약 */}
@@ -208,9 +232,7 @@ export default function ShopCheckoutPage() {
           </div>
           <div className="flex justify-between items-center pt-3">
             <span className="text-sm font-bold text-gray-900">최종 결제금액</span>
-            <span className="text-lg font-bold text-[#de2910]">
-              {product.price.toLocaleString()}원
-            </span>
+            <span className="text-lg font-bold text-[#de2910]">{product.price.toLocaleString()}원</span>
           </div>
         </section>
 
@@ -220,11 +242,7 @@ export default function ShopCheckoutPage() {
           disabled={loading || !isFormValid()}
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 active:opacity-80 transition-opacity"
         >
-          {loading ? (
-            <Loader2 size={16} className="animate-spin" />
-          ) : (
-            <CreditCard size={16} />
-          )}
+          {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
           {product.price.toLocaleString()}원 결제하기
         </button>
 
