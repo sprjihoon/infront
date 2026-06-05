@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
         return_url: `${appUrl}/shop/payment/success`,
         status_url: `${appUrl}/api/eximbay/notify`,
       },
+      issuer_country: "KR",
     };
 
     const res = await fetch(`${apiBase}/v1/payments/ready`, {
