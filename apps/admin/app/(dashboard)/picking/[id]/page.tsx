@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, CheckCircle2, Loader2, MapPin, Package,
   ScanLine, AlertTriangle, RotateCcw, ChevronRight,
-  Globe, Truck, PauseCircle, XCircle, ChevronDown,
+  Globe, Truck, PauseCircle, XCircle, ChevronDown, Lock,
 } from "lucide-react";
 
 // ── 타입 ──────────────────────────────────────────────────────
@@ -61,6 +61,8 @@ const STATUS_ROW: Record<PickingStatus, string> = {
 export default function PickingBoardPage() {
   const { id: rawId } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isResume = searchParams.get("resume") === "1";
 
   const isIntl    = !rawId.startsWith("dom-");
   const orderType = isIntl ? "intl" : "domestic";
@@ -70,6 +72,9 @@ export default function PickingBoardPage() {
   const [loading,  setLoading]  = useState(true);
   const [loadErr,  setLoadErr]  = useState("");
   const [local,    setLocal]    = useState<LocalOverride>({});
+
+  // 잠금 경고 모달: 다른 작업자가 이미 피킹 중인 경우
+  const [lockModal, setLockModal] = useState(false);
 
   const [scanInput, setScanInput] = useState("");
   const [feedback,  setFeedback]  = useState<ScanFeedback | null>(null);
@@ -98,12 +103,16 @@ export default function PickingBoardPage() {
       setOrder(data.order);
       setBarcodes(data.barcodes ?? []);
       setLocal({});
+      // 이미 PICKING 상태인데 resume 파라미터 없이 진입하면 잠금 경고
+      if (data.order?.status === "PICKING" && !isResume) {
+        setLockModal(true);
+      }
     } catch {
       setLoadErr("네트워크 오류");
     } finally {
       setLoading(false);
     }
-  }, [rawId]);
+  }, [rawId, isResume]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -560,8 +569,37 @@ export default function PickingBoardPage() {
         )}
       </div>
 
-      {/* ── 보류/누락 모달 ── */}
-      {holdModal && (
+      {/* ── 잠금 경고 모달 (다른 작업자 진행 중) ── */}
+      {lockModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-6">
+          <div className="bg-white rounded-3xl w-full max-w-sm p-7 shadow-2xl text-center">
+            <div className="flex items-center justify-center w-14 h-14 bg-orange-100 rounded-full mx-auto mb-4">
+              <Lock size={26} className="text-orange-600" />
+            </div>
+            <h3 className="text-lg font-black text-gray-900 mb-2">피킹 진행 중</h3>
+            <p className="text-sm text-gray-600 leading-relaxed mb-6">
+              이 주문은 이미 다른 작업자가 피킹을 시작했습니다.<br />
+              중복 작업은 데이터 오류를 유발할 수 있습니다.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => router.push("/picking")}
+                className="w-full py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm"
+              >
+                목록으로 돌아가기
+              </button>
+              <button
+                onClick={() => setLockModal(false)}
+                className="w-full py-3 rounded-2xl border border-gray-200 text-gray-500 font-semibold text-sm"
+              >
+                그래도 이어서 진행 (작업자 본인)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 보류/누락 모달 ── */}      {holdModal && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50">
           <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 shadow-2xl">
             <div className={`flex items-center gap-2 mb-3 ${holdModal.action === "HOLD" ? "text-yellow-700" : "text-orange-700"}`}>

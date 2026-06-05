@@ -16,7 +16,6 @@ import {
   User,
   CheckCircle2,
   Clock,
-  PlayCircle,
 } from "lucide-react";
 
 // ── 상수 ──────────────────────────────────────────────────────
@@ -249,7 +248,7 @@ export default async function PickingPage({
         </div>
         <div className="flex gap-2 flex-wrap">
           <StatusBadge icon={<Clock size={14} />}        label="피킹대기" count={waitingCount} cls="bg-amber-400/30 border-amber-300/40" />
-          <StatusBadge icon={<PlayCircle size={14} />}   label="진행중"   count={pickingCount} cls="bg-blue-400/30 border-blue-300/40" />
+          <StatusBadge icon={<ClipboardList size={14} />}  label="진행중"   count={pickingCount} cls="bg-blue-400/30 border-blue-300/40" />
           <StatusBadge icon={<CheckCircle2 size={14} />} label="완료"     count={doneCount}    cls="bg-green-400/30 border-green-300/40" />
           <StatusBadge icon={<ClipboardList size={14} />} label="전체"    count={totalCount}   cls="bg-white/20 border-white/20" />
         </div>
@@ -384,104 +383,133 @@ function StatusBadge({ icon, label, count, cls }: {
 
 // ── 그리드 카드 (컴팩트 정사각형) ─────────────────────────────
 
-function OrderCard({ row }: { row: OrderRow }) {
+function CardBody({ row }: { row: OrderRow }) {
   const badge     = STATUS_BADGE[row.status] ?? STATUS_BADGE.PAID;
   const isIntl    = row.kind === "intl";
   const inPicking = row.status === "PICKING";
   const isDone    = row.status === "PICKING_DONE";
   const pkgLabel  = PACKAGING_LABEL[row.packagingType] ?? "";
 
-  const borderCls = isDone
-    ? "border-green-200"
-    : inPicking ? "border-blue-300 shadow-blue-100"
-    : "border-gray-200";
-
   return (
-    <Link href={isDone ? "#" : `/picking/${row.rawId}`} className={isDone ? "cursor-default" : ""}>
-      <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col h-full min-h-[200px] transition-all ${borderCls} ${
-        !isDone ? "hover:shadow-md hover:-translate-y-0.5" : "opacity-70"
-      }`}>
-        {/* 상태 컬러 바 */}
-        <div className={`h-1.5 w-full ${badge.bar}`} />
+    <>
+      {/* 상태 컬러 바 */}
+      <div className={`h-1.5 w-full ${badge.bar}`} />
 
-        {/* 본문 */}
-        <div className="flex flex-col flex-1 p-3 gap-2">
-          {/* 헤더: 종류 아이콘 + 상태 뱃지 + 배송 국가 */}
-          <div className="flex items-center justify-between gap-1">
-            <div className="flex items-center gap-1.5">
-              {isIntl
-                ? <Globe size={13} className="text-indigo-500 shrink-0" />
-                : <Truck size={13} className="text-emerald-500 shrink-0" />}
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${badge.cls}`}>
-                {badge.label}
-              </span>
-            </div>
-            {row.recipientCountry && (
-              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
-                {row.recipientCountry}
-              </span>
-            )}
-          </div>
-
-          {/* 고객 정보 */}
-          <div className="leading-tight">
-            <p className="font-bold text-gray-900 text-sm truncate">{row.customerName}</p>
-            <p className="text-[11px] text-gray-400 font-mono truncate">{row.customerCode}</p>
-          </div>
-
-          {/* 로케이션 (핵심 정보 — 크게) */}
-          <div className="flex-1 flex flex-col justify-center min-h-[36px]">
-            <div className="flex items-start gap-1">
-              <MapPin size={11} className="text-gray-400 shrink-0 mt-0.5" />
-              <div className="flex flex-wrap gap-1">
-                {row.locations.length > 0 ? (
-                  row.locations.map((loc) => (
-                    <span key={loc}
-                      className="text-xs font-black font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-md">
-                      {loc}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[10px] font-semibold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-md">
-                    미지정
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* 수량 + 포장 + 메모 */}
-          <div className="flex items-center gap-2 text-xs text-gray-500">
-            <span className="flex items-center gap-0.5">
-              <Package size={11} />
-              <span className="font-bold text-gray-800">{row.itemCount}</span>개
+      {/* 본문 */}
+      <div className="flex flex-col flex-1 p-3 gap-2">
+        {/* 헤더 */}
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5">
+            {isIntl
+              ? <Globe size={13} className="text-indigo-500 shrink-0" />
+              : <Truck size={13} className="text-emerald-500 shrink-0" />}
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${badge.cls}`}>
+              {badge.label}
             </span>
-            {row.packagingType && row.packagingType !== "NONE" && (
-              <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full text-[10px] font-medium">
-                {pkgLabel}
-              </span>
-            )}
-            {row.customerNote && (
-              <span className="text-orange-500 text-[10px]" title={row.customerNote}>📝 메모</span>
-            )}
           </div>
+          {row.recipientCountry && (
+            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
+              {row.recipientCountry}
+            </span>
+          )}
+        </div>
 
-          {/* 액션 버튼 */}
-          <div className={`mt-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold ${
-            isDone    ? "bg-green-50 text-green-700"
-            : inPicking ? "bg-blue-600 text-white"
-            : "bg-indigo-600 text-white"
-          }`}>
-            {isDone ? (
-              <><CheckCircle2 size={13} /> 피킹 완료</>
-            ) : inPicking ? (
-              <><PlayCircle size={13} /> 계속하기 <ChevronRight size={13} /></>
-            ) : (
-              <><ClipboardList size={13} /> 피킹 시작 <ChevronRight size={13} /></>
-            )}
+        {/* 고객 정보 */}
+        <div className="leading-tight">
+          <p className="font-bold text-gray-900 text-sm truncate">{row.customerName}</p>
+          <p className="text-[11px] text-gray-400 font-mono truncate">{row.customerCode}</p>
+        </div>
+
+        {/* 로케이션 */}
+        <div className="flex-1 flex flex-col justify-center min-h-[36px]">
+          <div className="flex items-start gap-1">
+            <MapPin size={11} className="text-gray-400 shrink-0 mt-0.5" />
+            <div className="flex flex-wrap gap-1">
+              {row.locations.length > 0 ? (
+                row.locations.map((loc) => (
+                  <span key={loc}
+                    className="text-xs font-black font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-md">
+                    {loc}
+                  </span>
+                ))
+              ) : (
+                <span className="text-[10px] font-semibold text-orange-500 bg-orange-50 border border-orange-200 px-1.5 py-0.5 rounded-md">
+                  미지정
+                </span>
+              )}
+            </div>
           </div>
         </div>
+
+        {/* 수량 + 포장 + 메모 */}
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <span className="flex items-center gap-0.5">
+            <Package size={11} />
+            <span className="font-bold text-gray-800">{row.itemCount}</span>개
+          </span>
+          {row.packagingType && row.packagingType !== "NONE" && (
+            <span className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded-full text-[10px] font-medium">
+              {pkgLabel}
+            </span>
+          )}
+          {row.customerNote && (
+            <span className="text-orange-500 text-[10px]" title={row.customerNote}>📝 메모</span>
+          )}
+        </div>
+
+        {/* 액션 */}
+        {isDone ? (
+          <div className="mt-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold bg-green-50 text-green-700">
+            <CheckCircle2 size={13} /> 피킹 완료
+          </div>
+        ) : inPicking ? (
+          /* 피킹 중 — 잠금 배너 */
+          <div className="mt-1 space-y-1.5">
+            <div className="flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold bg-orange-100 text-orange-700 border border-orange-200">
+              🔒 다른 작업자 피킹 중
+            </div>
+            {/* 긴급 재진입 — 의도적인 소형 버튼 */}
+            <Link
+              href={`/picking/${row.rawId}?resume=1`}
+              className="block text-center text-[10px] text-gray-400 hover:text-indigo-500 py-0.5 underline underline-offset-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              이어서 진행 (작업자 본인만)
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-1 flex items-center justify-center gap-1 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white">
+            <ClipboardList size={13} /> 피킹 시작 <ChevronRight size={13} />
+          </div>
+        )}
       </div>
+    </>
+  );
+}
+
+function OrderCard({ row }: { row: OrderRow }) {
+  const inPicking = row.status === "PICKING";
+  const isDone    = row.status === "PICKING_DONE";
+
+  const borderCls = isDone
+    ? "border-green-200"
+    : inPicking ? "border-orange-300 shadow-orange-100"
+    : "border-gray-200";
+
+  const inner = (
+    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden flex flex-col h-full min-h-[200px] transition-all ${borderCls} ${
+      !isDone && !inPicking ? "hover:shadow-md hover:-translate-y-0.5" : ""
+    } ${isDone ? "opacity-70" : ""}`}>
+      <CardBody row={row} />
+    </div>
+  );
+
+  /* 피킹 중이거나 완료 → 직접 Link 없음 (CardBody 내부 링크가 별도 처리) */
+  if (inPicking || isDone) return inner;
+
+  return (
+    <Link href={`/picking/${row.rawId}`}>
+      {inner}
     </Link>
   );
 }
