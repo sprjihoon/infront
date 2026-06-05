@@ -228,8 +228,19 @@ export default function BarcodesPrintPage() {
           padding: 10mm;
         }
         @media print {
+          /* 페이지 전체를 숨기고 라벨만 표시 */
+          html body * { visibility: hidden !important; }
+          .labels-print-root,
+          .labels-print-root * { visibility: visible !important; }
+          .labels-print-root {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            background: white !important;
+            z-index: 99999 !important;
+          }
           .no-print { display: none !important; }
-          body { margin: 0; padding: 0; }
           .labels-grid { padding: 3mm; gap: 2mm; }
           @page { size: A4; margin: 5mm; }
         }
@@ -260,28 +271,31 @@ export default function BarcodesPrintPage() {
         </button>
       </div>
 
-      {labels.length === 0 ? (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-          <p>출력할 바코드 데이터가 없습니다.</p>
-          <Link
-            href="/inbound"
-            className="mt-3 text-sm text-blue-600 hover:underline"
-          >
-            ← 입고처리로 돌아가기
-          </Link>
-        </div>
-      ) : (
-        <div className="labels-grid">
-          {labels.map((label) => (
-            <LabelCard
-              key={label.barcode_no}
-              label={label}
-              s={settings}
-              onImageLoad={onImageLoad}
-            />
-          ))}
-        </div>
-      )}
+      {/* 라벨 인쇄 영역 — 이 div만 print에 표시됨 */}
+      <div className="labels-print-root">
+        {labels.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+            <p>출력할 바코드 데이터가 없습니다.</p>
+            <Link
+              href="/inbound"
+              className="mt-3 text-sm text-blue-600 hover:underline"
+            >
+              ← 입고처리로 돌아가기
+            </Link>
+          </div>
+        ) : (
+          <div className="labels-grid">
+            {labels.map((label) => (
+              <LabelCard
+                key={label.barcode_no}
+                label={label}
+                s={settings}
+                onImageLoad={onImageLoad}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }

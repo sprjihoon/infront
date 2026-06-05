@@ -515,7 +515,7 @@ export default function BarcodeLabelEditorPage() {
         },
       ])
     );
-    window.open(`/inbound/test/barcodes?data=${encoded}&auto=0`, "_blank");
+    window.open(`/print/barcodes?data=${encoded}&auto=0`, "_blank");
   };
 
   // 텍스트 필드 행

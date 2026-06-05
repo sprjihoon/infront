@@ -221,7 +221,7 @@ export default function InboundPage() {
       if (json.barcodes?.length > 0) {
         const labelData = buildLabelData(json.barcodes, parcel, json.location_code);
         const encoded = encodeURIComponent(JSON.stringify(labelData));
-        window.open(`/inbound/${parcel.id}/barcodes?data=${encoded}&auto=1`, "_blank");
+        window.open(`/print/barcodes?data=${encoded}&auto=1`, "_blank");
       }
     } finally {
       setProcessing(false);
@@ -638,7 +638,7 @@ export default function InboundPage() {
               <div className="flex gap-2">
                 {resultBarcodes.length > 0 && parcel && (
                   <Link
-                    href={`/inbound/${parcel.id}/barcodes?data=${encodeURIComponent(JSON.stringify(buildLabelDataForDone()))}`}
+                    href={`/print/barcodes?data=${encodeURIComponent(JSON.stringify(buildLabelDataForDone()))}`}
                     target="_blank"
                     className="flex-1 border border-blue-200 text-blue-600 py-3 rounded-xl text-sm font-medium hover:bg-blue-50"
                   >
