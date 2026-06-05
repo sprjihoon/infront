@@ -54,10 +54,11 @@ export async function POST(request: NextRequest) {
 
     const data = await res.json();
 
-    if (!res.ok || data.code !== "0000") {
+    const rescode = data.rescode ?? data.code;
+    if (!res.ok || rescode !== "0000") {
       console.error("Eximbay ready error:", data);
       return NextResponse.json(
-        { error: data.msg ?? "Eximbay API 오류" },
+        { error: data.resmsg ?? data.msg ?? "Eximbay API 오류" },
         { status: 400 }
       );
     }
