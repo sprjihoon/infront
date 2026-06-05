@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
     .from("parcel-media")
     .upload(path, arrayBuffer, { contentType: file.type, upsert: false });
 
-  if (storageErr) return NextResponse.json({ error: storageErr.message }, { status: 500 });
+  if (storageErr) {
+    console.error("[upload-photo] storage upload error:", storageErr);
+    return NextResponse.json({ error: storageErr.message }, { status: 500 });
+  }
 
   const { data: { publicUrl } } = storageClient.storage.from("parcel-media").getPublicUrl(path);
 
@@ -50,6 +53,9 @@ export async function POST(req: NextRequest) {
     uploaded_by: admin.id,
   }).select().single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("[upload-photo] parcel_media insert error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
   return NextResponse.json({ ok: true, media: data, url: publicUrl });
 }
