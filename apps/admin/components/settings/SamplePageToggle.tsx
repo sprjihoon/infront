@@ -40,7 +40,7 @@ export default function SamplePageToggle({ initialEnabled }: Props) {
           <div>
             <p className="text-sm font-semibold text-gray-900">토스 심사용 샘플 결제 페이지</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              ON 시 <span className="font-mono text-gray-700">infront.kr/home</span> 에 샘플 결제 페이지가 표시됩니다.
+              ON 시 <span className="font-mono text-gray-700">infront.kr/home</span> 접속하면 <span className="font-mono text-gray-700">/shop</span> 샘플 결제 페이지로 이동합니다.
               심사 완료 후 반드시 OFF 해주세요.
             </p>
           </div>

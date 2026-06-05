@@ -4,12 +4,16 @@ import { redirect } from "next/navigation";
 import SamplePageToggle from "@/components/settings/SamplePageToggle";
 
 async function getSamplePageEnabled(): Promise<boolean> {
-  const { data } = await adminDb
-    .from("admin_config")
-    .select("value")
-    .eq("key", "sample_page_mode")
-    .maybeSingle();
-  return (data?.value as { enabled?: boolean })?.enabled ?? false;
+  try {
+    const { data } = await adminDb
+      .from("admin_config")
+      .select("value")
+      .eq("key", "sample_page_mode")
+      .maybeSingle();
+    return (data?.value as { enabled?: boolean })?.enabled ?? false;
+  } catch {
+    return false;
+  }
 }
 
 export default async function SettingsPage() {

@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
+import { redirect } from "next/navigation";
 import HomeClient from "./HomeClient";
-import SampleHomePage from "./SampleHomePage";
+
+export const dynamic = "force-dynamic";
 
 async function isSamplePageEnabled(): Promise<boolean> {
   try {
@@ -21,6 +23,6 @@ async function isSamplePageEnabled(): Promise<boolean> {
 
 export default async function HomePage() {
   const sampleMode = await isSamplePageEnabled();
-  if (sampleMode) return <SampleHomePage />;
+  if (sampleMode) redirect("/shop");
   return <HomeClient />;
 }
