@@ -354,6 +354,12 @@ export async function POST(req: NextRequest) {
     const { error: opErr } = await supabase.from('order_parcels').insert(orderParcelsData);
     if (opErr) {
       console.error('[ORDERS] order_parcels insert error:', opErr);
+      // order_parcels 연결 실패 시 주문도 롤백
+      await supabase.from('orders').delete().eq('id', order.id);
+      return NextResponse.json(
+        { error: '주문 소포 연결에 실패했습니다. 다시 시도해 주세요.' },
+        { status: 500 },
+      );
     }
 
     // 배송 박스 1개 자동 생성 (실측값은 관리자가 나중에 입력)

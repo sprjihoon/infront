@@ -139,7 +139,7 @@ infront/
 │   │   ├── android/      # Android 프로젝트
 │   │   └── capacitor.config.ts
 │   ├── edge/             # Supabase Edge Functions (Deno) — 예정
-│   └── sql/              # Postgres DDL 및 마이그레이션 (001~021)
+│   └── sql/              # Postgres DDL 및 마이그레이션 (001~038)
 ├── docs/                 # 개발 현황·설계 문서
 │   └── DEVELOPMENT_STATUS.md
 ├── vercel.json
@@ -262,16 +262,26 @@ infront/
 | `/parcels` | 입고 물품 목록 | ✅ (상태 필터, 검색, 입고 동기화) |
 | `/parcels/[id]` | 물품 상세 | ✅ (위치이력, 로케이션 이동) |
 | `/inbound` | 입고처리 | ✅ (바코드 스캔, 사진촬영, 자동 로케이션 배정) |
+| `/inbound/[id]/barcodes` | 바코드 발행 | ✅ |
+| `/picking` | 피킹 목록 | ✅ (결제완료 주문 목록) |
+| `/picking/[id]` | 피킹 상세 | ✅ (바코드 스캔, 물품별 피킹 상태) |
+| `/outbound` | 출고 목록 | ✅ (출고대기 주문 목록) |
+| `/outbound/[id]` | 출고 세션 | ✅ (박스 스캔, 출고 영상 업로드) |
 | `/transfer` | 로케이션 이동처리 | ✅ (바코드 스캔 2번으로 즉시 이동) |
 | `/orders` | 국제 주문 목록 | ✅ |
 | `/orders/[id]` | 주문 상세 | ✅ |
 | `/orders/[id]/label` | 배송 라벨 | ✅ (보험·세관 필드) |
+| `/orders/[id]/packing-slip` | 패킹 슬립 | ✅ |
+| `/domestic-orders` | 국내 주문 목록 | ✅ |
+| `/domestic-orders/[id]` | 국내 주문 상세 | ✅ |
+| `/domestic-orders/[id]/label` | 국내 배송 라벨 | ✅ |
 | `/customers` | 고객 관리 | 🔄 (고객별 물품·주문 조회) |
 | `/customers/[code]` | 고객 상세 | 🔄 |
 | `/returns` | 반품 신청 목록 | ✅ |
 | `/storage` | 로케이션 현황 | ✅ (Zone별 현황, 타입 뱃지, 용량 표시) |
 | `/storage/[id]` | 로케이션 상세 | ✅ (리터 용량 바, 소포 이동, 고객 배정) |
 | `/storage/manage` | Zone·슬롯 관리 | ✅ (타입 설정, 가격·용량 편집, 일괄 변경) |
+| `/label-editor` | 라벨 레이아웃 편집 | ✅ |
 
 ---
 
@@ -292,6 +302,9 @@ infront/
 | `QUOTE_SENT` | 견적발송 | 국제배송비 + 서비스 요금 고객에게 발송 |
 | `PENDING_PAYMENT` | 결제대기 | 고객 결제 대기 |
 | `PAID` | 결제완료 | 토스페이먼츠 결제 승인 |
+| `PICKING` | 피킹중 | 창고 직원이 물품 수거 중 |
+| `PICKING_DONE` | 피킹완료 | 창고 내 물품 수거 완료 |
+| `OUTBOUND_WAIT` | 출고대기 | 출고 작업 대기 |
 | `CUSTOMS_FILING` | 접수중 | EMS/K-Packet 접수 등록 + 패킹 영상 촬영 |
 | `IN_TRANSIT` | 배송중 | 국제 운송 중 |
 | `DELIVERED` | 배송완료 | 해외 수취인 수령 |
@@ -320,7 +333,7 @@ infront/
 
 ---
 
-## 🗄 DB 스키마 (마이그레이션 001~035)
+## 🗄 DB 스키마 (마이그레이션 001~038)
 
 | 파일 | 내용 |
 |------|------|
@@ -360,6 +373,10 @@ infront/
 | `034_parcel_size_code.sql` | parcels.parcel_size_code 컬럼 추가 |
 | `035_parcel_location_history.sql` | parcel_location_events 테이블 (소포 위치 이동 이력) + 임시보관 공간 |
 | `035_parcel_size_code_migrate.sql` | parcel_size_code 값 MINI/STANDARD/LONG/XL/OVERSIZE로 마이그레이션, pickup_weight_kg 기반 자동 채우기 |
+| `036_parcel_barcode_location.sql` | parcel_barcodes: 아이템별 독립 storage_location_id 컬럼 추가 |
+| `037_outbound_picking.sql` | orders/domestic_orders: 피킹·출고 컬럼 추가; 상태 확장 PAID→PICKING→PICKING_DONE→OUTBOUND_WAIT→IN_TRANSIT |
+| `038_outbound_sessions.sql` | outbound_sessions 테이블 (출고 작업 세션 — 스캔 로그, 박스, 영상, 담당자) |
+| `038_picking_item_tracking.sql` | parcel_barcodes: 피킹 상태 컬럼 (WAITING/DONE/HOLD/NOT_FOUND); picking_scan_logs 테이블 |
 
 > 상세 개발 현황: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -469,10 +486,15 @@ parcels/orders ──< parcel_media            사진/영상 미디어
 | **스토리지 타입 요금 설정** | ✅ 완료 | MINI~OVERSIZE 주간요금·상한요금·최대건수 인라인 편집 |
 | **로케이션 이동처리** | ✅ 완료 | `/transfer` 전용 페이지, 바코드 2번 스캔으로 즉시 이동 |
 | **자동 로케이션 배정** | ✅ 완료 | 입고 시 size code → 단계적 업사이징 → 분할 배정 |
+| **피킹 목록 · 상세** | ✅ 완료 | PAID 주문 피킹 대기 목록, 바코드 스캔 물품별 DONE/HOLD/NOT_FOUND |
+| **피킹 스캔 로그** | ✅ 완료 | picking_scan_logs — 스캔 이력, 담당자, 타임스탬프 |
+| **출고 목록 · 세션** | ✅ 완료 | PICKING_DONE→OUTBOUND_WAIT 흐름, 박스 스캔, 세션 관리 |
+| **출고 영상 업로드** | ✅ 완료 | Cloudflare Stream tus 청크 업로드 (`outbound_sessions`) |
+| 국내 주문 관리 | ✅ 완료 | 국내 배송 주문 목록·상세·라벨 |
 | 고객 관리 | 🔄 진행 중 | 고객 검색, 고객별 물품·주문 조회 |
 | 입고 자동 동기화 | 🔄 진행 중 | GetResInfo + tracker.delivery, Cron·스케줄 설정 |
 | 접수건 벌크 상태 변경 | 🔲 예정 | 다중 선택 상태 변경 |
-| 오픈박스 영상 업로드 | 🔲 예정 | Cloudflare Stream tus 청크 업로드 |
+| 오픈박스 영상 업로드 | 🔲 예정 | 입고 시 Cloudflare Stream 영상 촬영 |
 | 검수 결과 입력 | 🔲 예정 | 체크리스트 + 사진 업로드 |
 | 실측 무게/부피 입력 | 🔲 예정 | 부피중량 자동 계산 |
 | 견적 확정 + 결제 요청 | 🔄 부분 완료 | 실측→결제 플로우 완료, QUOTE_SENT 알림·마진 UI 예정 |
@@ -544,6 +566,19 @@ Next.js 웹앱
 - [x] 로케이션 이동처리 전용 페이지 (바코드 2-스캔 워크플로우)
 - [x] 소포 위치 이동 이력 타임라인
 
+### Phase 1.7 — 피킹·출고 워크플로우 ✅ 완료
+
+- [x] 피킹·출고 상태 확장 (037.sql): PAID → PICKING → PICKING_DONE → OUTBOUND_WAIT → IN_TRANSIT
+- [x] parcel_barcodes 아이템 단위 storage_location_id (036.sql)
+- [x] 피킹 아이템 추적 (038_picking_item_tracking.sql): WAITING/DONE/HOLD/NOT_FOUND 상태, picking_scan_logs 테이블
+- [x] 출고 세션 DB (038_outbound_sessions.sql): outbound_sessions 테이블 (스캔 로그, 박스 목록, 영상 업로드, 담당자)
+- [x] 관리자 피킹 목록 `/picking` — 결제완료 주문 목록
+- [x] 관리자 피킹 상세 `/picking/[id]` — 바코드 스캔, 물품별 상태 처리
+- [x] 관리자 출고 목록 `/outbound` — 출고대기 주문 목록
+- [x] 관리자 출고 세션 `/outbound/[id]` — 박스 스캔, Cloudflare Stream 영상 업로드
+- [x] 국내 주문 목록·상세·라벨 페이지 (`/domestic-orders`)
+- [x] 패킹 슬립 출력 (`/orders/[id]/packing-slip`)
+
 ### Phase 2 — 부가 서비스 + 관리자 워크플로우
 
 - [ ] **입고 자동 동기화** 🔄 — GetResInfo + tracker.delivery, Cron·스케줄 (020~021)
@@ -610,6 +645,35 @@ Next.js 웹앱
 ---
 
 ## 📝 변경 이력
+
+### 2026-06-04
+
+#### 피킹·출고 워크플로우 완성 (Phase 1.7)
+
+**DB 스키마 확장 (036~038)**
+- `036_parcel_barcode_location.sql`: `parcel_barcodes.storage_location_id` — 아이템 단위 보관 위치 추적
+- `037_outbound_picking.sql`: `orders` / `domestic_orders`에 피킹·출고 컬럼 추가; 주문 상태 확장 (`PICKING` / `PICKING_DONE` / `OUTBOUND_WAIT`)
+- `038_outbound_sessions.sql`: `outbound_sessions` 테이블 — 출고 작업 세션 (박스 목록, 영상 URL, 스캔 로그, 담당자)
+- `038_picking_item_tracking.sql`: `parcel_barcodes` 피킹 상태 (`WAITING/DONE/HOLD/NOT_FOUND`), `picking_scan_logs` 테이블 신설
+
+**관리자 피킹 페이지**
+- `apps/admin/app/(dashboard)/picking/page.tsx` — PAID 상태 주문 피킹 대기 목록 (국제/국내 통합)
+- `apps/admin/app/(dashboard)/picking/[id]/page.tsx` — 피킹 상세: 바코드 스캔 → 물품별 DONE/HOLD/NOT_FOUND 처리, 전체 완료 시 PICKING_DONE 전환
+- `apps/admin/app/api/admin/picking/[id]/route.ts` — 피킹 세션 조회/상태 업데이트
+- `apps/admin/app/api/admin/picking/[id]/scan/route.ts` — 피킹 바코드 스캔 처리
+
+**관리자 출고 페이지**
+- `apps/admin/app/(dashboard)/outbound/page.tsx` — PICKING_DONE 주문 출고 대기 목록
+- `apps/admin/app/api/admin/outbound/[id]/route.ts` — 출고 세션 조회/업데이트
+- `apps/admin/app/api/admin/outbound/[id]/session/route.ts` — 출고 세션 생성/완료
+- `apps/admin/app/api/admin/outbound/[id]/stream-upload/route.ts` — Cloudflare Stream 영상 업로드
+
+**관리자 국내 주문 · 기타**
+- `/domestic-orders`, `/domestic-orders/[id]`, `/domestic-orders/[id]/label` — 국내 배송 주문 관리
+- `/orders/[id]/packing-slip` — 패킹 슬립 출력
+- `DashboardNav.tsx`: 워크 섹션에 "피킹", "출고" 메뉴 추가
+
+---
 
 ### 2026-06-02
 

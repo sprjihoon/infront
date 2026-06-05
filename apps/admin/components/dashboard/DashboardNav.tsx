@@ -25,6 +25,7 @@ import {
   Send,
   Printer,
   Wrench,
+  Barcode,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +87,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: SlidersHorizontal,
     items: [
       { title: "송장 레이아웃 에디터", href: "/label-editor", icon: Printer },
+      { title: "바코드 라벨 에디터", href: "/label-editor/barcode", icon: Printer },
     ],
   },
 ];
@@ -96,7 +98,7 @@ const STORAGE_COLLAPSED = "infront-admin-nav-collapsed";
 export default function DashboardNav() {
   const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState("");
-  const [expandedGroups, setExpandedGroups] = useState<string[]>(["main", "work", "operations"]);
+  const [expandedGroups, setExpandedGroups] = useState<string[]>(["main", "work", "operations", "settings"]);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
@@ -130,6 +132,10 @@ export default function DashboardNav() {
         return pathname === "/storage" || (
           pathname.startsWith("/storage/") && !pathname.startsWith("/storage/manage")
         );
+      }
+      // /label-editor 는 /label-editor/barcode 와 구분
+      if (href === "/label-editor") {
+        return pathname === "/label-editor";
       }
       return pathname === href || pathname.startsWith(`${href}/`);
     },

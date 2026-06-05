@@ -113,6 +113,7 @@ export default function OutboundWorkstationPage() {
   const [recSec, setRecSec]       = useState(0);
   const timerRef                  = useRef<ReturnType<typeof setInterval> | null>(null);
   const [firstParcelId, setFirstParcelId] = useState<string | null>(null);
+  const [lastScannedItem, setLastScannedItem] = useState<WorkItem | null>(null);
 
   // ── 박스 실측 ──
   const [showMeasure, setShowMeasure] = useState(false);
@@ -317,6 +318,7 @@ export default function OutboundWorkstationPage() {
         );
         setLastFeedback(`✓ ${found.item_name ?? b} — 스캔 완료`);
         setFeedbackType("ok");
+        setLastScannedItem({ ...found, scan_status: "scanned", scanned_at: now });
 
         // 세션 업데이트 (debounce 불필요 — 각 스캔 즉시 저장)
         if (sessionId) {
@@ -392,6 +394,11 @@ export default function OutboundWorkstationPage() {
   );
   const allScanned = items.length > 0 && items.every(
     (it) => it.scan_status === "scanned" || it.scan_status === "hold" || it.scan_status === "missing",
+  );
+
+  const nextWaitingItem = useMemo(
+    () => items.find((it) => it.scan_status === "waiting"),
+    [items],
   );
 
   useEffect(() => {
@@ -626,62 +633,157 @@ export default function OutboundWorkstationPage() {
       </header>
 
       {/* ── 메인 작업 영역 ──────────────────────────────── */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden">
 
-        {/* ── 왼쪽: 카메라 패널 ── */}
-        <div className="w-[360px] shrink-0 bg-black border-r border-gray-800 flex flex-col">
-          {/* 영상 영역 */}
-          <div className="relative flex-1 min-h-0 bg-gray-950">
-            <video
-              ref={videoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            {!camReady && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
-                <Video size={40} className="mb-3" />
-                <p className="text-sm">
-                  {camError || (step === "idle" ? "작업 시작 시 카메라 활성화" : "카메라 초기화 중...")}
-                </p>
-              </div>
-            )}
-            {recording && (
-              <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 text-red-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                녹화 중 {fmt(recSec)}
-              </div>
-            )}
-          </div>
-
-          {/* 카메라 컨트롤 */}
-          <div className="h-14 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-3 px-4">
-            {step === "idle" ? (
-              <p className="text-xs text-gray-600">작업 시작 시 자동 녹화</p>
-            ) : recording ? (
-              <button
-                onClick={() => {
-                  if (recorderRef.current && sessionId) stopRecordingAndUpload(sessionId);
-                  setRecording(false);
-                  if (timerRef.current) clearInterval(timerRef.current);
-                }}
-                className="flex items-center gap-2 text-xs text-red-400 hover:text-red-300 border border-red-800 rounded-lg px-3 py-1.5"
-              >
-                <Square size={12} /> 녹화 중지
-              </button>
-            ) : (
-              <button
-                onClick={startRecording}
-                className="flex items-center gap-2 text-xs text-emerald-400 hover:text-emerald-300 border border-emerald-800 rounded-lg px-3 py-1.5"
-              >
-                <Play size={12} /> 녹화 재시작
-              </button>
-            )}
-          </div>
+        {/* ── 상단: 카메라 (가로 전체 와이드) ── */}
+        <div
+          className="relative bg-black shrink-0 w-full"
+          style={{ height: "clamp(140px, 35vh, 360px)" }}
+        >
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className="w-full h-full object-cover"
+          />
+          {!camReady && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
+              <Video size={40} className="mb-3" />
+              <p className="text-sm">
+                {camError || (step === "idle" ? "작업 시작 시 카메라 활성화" : "카메라 초기화 중...")}
+              </p>
+            </div>
+          )}
+          {recording && (
+            <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-black/70 text-red-400 text-xs font-semibold px-2.5 py-1.5 rounded-lg">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              녹화 중 {fmt(recSec)}
+            </div>
+          )}
+          {/* 카메라 컨트롤 — 영상 우하단 오버레이 */}
+          {step !== "idle" && (
+            <div className="absolute bottom-3 right-3">
+              {recording ? (
+                <button
+                  onClick={() => {
+                    if (recorderRef.current && sessionId) stopRecordingAndUpload(sessionId);
+                    setRecording(false);
+                    if (timerRef.current) clearInterval(timerRef.current);
+                  }}
+                  className="flex items-center gap-2 text-xs text-red-400 bg-black/70 hover:bg-black/90 border border-red-800/60 rounded-lg px-3 py-1.5 backdrop-blur-sm"
+                >
+                  <Square size={12} /> 녹화 중지
+                </button>
+              ) : (
+                <button
+                  onClick={startRecording}
+                  className="flex items-center gap-2 text-xs text-emerald-400 bg-black/70 hover:bg-black/90 border border-emerald-800/60 rounded-lg px-3 py-1.5 backdrop-blur-sm"
+                >
+                  <Play size={12} /> 녹화 재시작
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ── 오른쪽: 작업 패널 ── */}
+        {/* ── 중단: 제품 정보 표시 패널 ── */}
+        <div className="bg-gray-900 border-b border-gray-800 shrink-0">
+          {step === "idle" ? (
+            /* idle: 주문 요약 */
+            <div className="px-4 py-3 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">출고 준비 중</p>
+                <p className="text-white font-bold truncate">{orderData.recipient_name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  내품 <span className="text-white font-semibold">{items.length}</span>개 ·{" "}
+                  {orderType === "intl"
+                    ? `${orderData.recipient_country} · ${orderData.shipping_method}`
+                    : `국내 ${orderData.recipient_addr1?.slice(0, 20) ?? ""}`}
+                </p>
+              </div>
+              <p className="text-xs text-gray-500 shrink-0">작업 시작 시 카메라·녹화 자동 시작</p>
+            </div>
+          ) : (
+            /* working/scan_done: 마지막 스캔 제품 상세 */
+            <div className="px-4 py-3 flex items-center gap-4">
+
+              {/* 마지막 스캔 제품 정보 */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">마지막 스캔</p>
+                  {lastScannedItem && (
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_COLOR[lastScannedItem.scan_status]}`}>
+                      {STATUS_LABEL[lastScannedItem.scan_status]}
+                    </span>
+                  )}
+                </div>
+                <p className="text-white font-bold text-base leading-tight truncate">
+                  {lastScannedItem?.item_name ?? "—"}
+                </p>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  <span className="font-mono text-[11px] text-gray-400">
+                    {lastScannedItem?.barcode_no ?? "—"}
+                  </span>
+                  {lastScannedItem?.location_code && (
+                    <span className="font-mono text-[11px] font-bold text-indigo-300 bg-indigo-900/50 px-2 py-0.5 rounded flex items-center gap-0.5">
+                      <MapPin size={9} className="inline shrink-0" />
+                      {lastScannedItem.location_code}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 다음 대기 아이템 */}
+              {nextWaitingItem && step === "working" && (
+                <div className="shrink-0 text-right hidden sm:block border-l border-gray-800 pl-4">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">다음 대기</p>
+                  <p className="text-gray-300 text-sm font-semibold truncate max-w-36">
+                    {nextWaitingItem.item_name ?? "—"}
+                  </p>
+                  {nextWaitingItem.location_code && (
+                    <span className="font-mono text-[10px] text-indigo-400 flex items-center justify-end gap-0.5 mt-0.5">
+                      <MapPin size={8} className="shrink-0" />
+                      {nextWaitingItem.location_code}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* 스캔 피드백 */}
+              {lastFeedback && (
+                <div className={`shrink-0 text-sm font-semibold px-3 py-1.5 rounded-lg border max-w-48 ${
+                  feedbackType === "ok"
+                    ? "text-green-400 bg-green-900/20 border-green-800/40"
+                    : feedbackType === "warn"
+                    ? "text-yellow-400 bg-yellow-900/20 border-yellow-800/40"
+                    : "text-red-400 bg-red-900/20 border-red-800/40"
+                }`}>
+                  {lastFeedback}
+                </div>
+              )}
+
+              {/* 진행 카운터 */}
+              <div className="shrink-0 text-right border-l border-gray-800 pl-4">
+                <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">진행</p>
+                <p className="text-white font-black text-2xl tabular-nums leading-none">
+                  {scannedCount}
+                  <span className="text-gray-600 text-base font-normal">/{items.length}</span>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 스캔 완료 배너 */}
+          {step === "scan_done" && (
+            <div className="px-4 pb-2.5 flex items-center gap-2 text-sm font-bold text-green-400 border-t border-green-900/30 pt-2">
+              <CheckCircle2 size={14} />
+              모든 내품 확인 완료 — 포장 후 실측을 입력하세요
+            </div>
+          )}
+        </div>
+
+        {/* ── 하단: 내품 리스트 + 스캔 입력 ── */}
         <div className="flex-1 flex flex-col overflow-hidden bg-white">
 
           {/* 내품 리스트 */}
@@ -828,24 +930,6 @@ export default function OutboundWorkstationPage() {
                   <Send size={16} />
                 </button>
               </div>
-
-              {/* 마지막 스캔 결과 */}
-              {lastFeedback && (
-                <div className={`mt-2 text-sm font-medium px-3 py-1.5 rounded-lg ${
-                  feedbackType === "ok"  ? "text-green-700 bg-green-50"
-                  : feedbackType === "warn" ? "text-yellow-700 bg-yellow-50"
-                  : "text-red-700 bg-red-50"
-                }`}>
-                  {lastFeedback}
-                </div>
-              )}
-
-              {/* 완료 메시지 */}
-              {step === "scan_done" && (
-                <div className="mt-2 flex items-center gap-2 text-sm font-bold text-green-700 bg-green-100 px-3 py-2 rounded-lg">
-                  <CheckCircle2 size={16} /> 모든 내품 확인 완료 — 포장 후 실측을 입력하세요
-                </div>
-              )}
             </div>
           )}
         </div>

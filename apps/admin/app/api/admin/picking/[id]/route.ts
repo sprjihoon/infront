@@ -38,6 +38,9 @@ export async function getOrderBarcodes(
       .select("parcel_id")
       .eq("order_id", orderId);
     parcelIds = (ops ?? []).map((r) => r.parcel_id);
+    if (parcelIds.length === 0) {
+      console.warn(`[picking] order_parcels empty for intl order ${orderId} — parcels not linked`);
+    }
   } else {
     const { data: domOrder } = await adminDb
       .from("domestic_orders")
@@ -45,6 +48,9 @@ export async function getOrderBarcodes(
       .eq("id", orderId)
       .single();
     parcelIds = (domOrder?.parcel_ids as string[] | null) ?? [];
+    if (parcelIds.length === 0) {
+      console.warn(`[picking] parcel_ids empty for domestic order ${orderId}`);
+    }
   }
 
   if (parcelIds.length === 0) return [];
@@ -143,6 +149,7 @@ export async function GET(
       order,
       barcodes,
       stats: computeStats(barcodes),
+      ...(barcodes.length === 0 ? { warn: "no_parcels_linked" } : {}),
     });
   } else {
     const { data: order } = await adminDb
@@ -164,6 +171,7 @@ export async function GET(
       order,
       barcodes,
       stats: computeStats(barcodes),
+      ...(barcodes.length === 0 ? { warn: "no_parcels_linked" } : {}),
     });
   }
 }
@@ -202,10 +210,10 @@ export async function PATCH(
     if (fetchErr || !row)
       return NextResponse.json({ error: "주문을 찾을 수 없습니다." }, { status: 404 });
 
-    const allowedFrom = type === "domestic" ? ["PENDING"] : ["PAID", "PACKING"];
+    const allowedFrom = type === "domestic" ? ["PENDING"] : ["DRAFT", "PAID", "PACKING"];
     if (!allowedFrom.includes(row.status)) {
       return NextResponse.json(
-        { error: `현재 상태(${row.status})에서 피킹을 시작할 수 없습니다.` },
+        { error: `현재 상태(${row.status})에서 피킹을 시작할 수 없습니다.`, current_status: row.status },
         { status: 409 },
       );
     }

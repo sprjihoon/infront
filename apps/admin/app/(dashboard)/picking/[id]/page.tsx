@@ -245,8 +245,9 @@ export default function PickingBoardPage() {
         body: JSON.stringify({ action: "start" }),
       });
       if (!startRes.ok) {
-        const { error } = await startRes.json();
-        if (!error?.includes("PICKING")) { alert(error); return; }
+        const body = await startRes.json();
+        // 이미 PICKING 상태면 start를 건너뛰고 done으로 진행
+        if (body.current_status !== "PICKING") { alert(body.error); return; }
       }
       const doneRes = await fetch(`/api/admin/picking/${rawId}`, {
         method: "PATCH",
@@ -398,7 +399,10 @@ export default function PickingBoardPage() {
           <div className="text-center py-16 text-gray-400">
             <Package size={40} className="mx-auto mb-3 text-gray-200" />
             <p className="text-sm font-medium">등록된 바코드가 없습니다</p>
-            <p className="text-xs mt-1">입고처리 시 바코드가 생성됩니다</p>
+            <p className="text-xs mt-1 text-orange-500 font-semibold">
+              소포가 주문에 연결되지 않았거나 입고 처리가 완료되지 않은 상태입니다
+            </p>
+            <p className="text-xs mt-1 text-gray-400">관리자에게 문의하세요</p>
           </div>
         ) : (
           sortedLocs.map((loc, locIdx) => {
