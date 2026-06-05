@@ -255,7 +255,8 @@ export default function PickingBoardPage() {
         body: JSON.stringify({ action: "done" }),
       });
       if (!doneRes.ok) { alert((await doneRes.json()).error); return; }
-      router.push(`/outbound/${rawId}`);
+      // 피킹 완료 → 피킹 목록으로 돌아감 (출고는 별도 출고처리 메뉴에서 진행)
+      router.push("/picking");
     } finally {
       setProcessing(false);
     }
@@ -530,7 +531,7 @@ export default function PickingBoardPage() {
           >
             {processing
               ? <><Loader2 size={20} className="animate-spin" /> 처리 중...</>
-              : <><CheckCircle2 size={22} /> 피킹 완료 → 출고처리로 이동 <ChevronRight size={20} /></>}
+              : <><CheckCircle2 size={22} /> 피킹 완료</>}
           </button>
         ) : currentLocAllDone && activeLocIdx < sortedLocs.length - 1 ? (
           <button
