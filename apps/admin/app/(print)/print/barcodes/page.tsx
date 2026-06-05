@@ -135,12 +135,38 @@ function PrintBarcodesContent() {
           border: 1px solid #ccc; border-radius: 3px; background: white;
           break-inside: avoid; page-break-inside: avoid;
         }
+        /* 화면 미리보기: 가로 레이아웃 */
         .labels-grid { display: flex; flex-wrap: wrap; gap: 4mm; padding: 10mm; }
+        .label-wrapper { display: inline-block; }
+
         @media print {
           .toolbar { display: none !important; }
           body { background: white; }
-          .labels-grid { padding: 3mm; gap: 2mm; }
           @page { size: A4; margin: 5mm; }
+
+          /* 라벨 90도 회전: 70mm×30mm → 30mm×70mm 공간에 인쇄 */
+          .labels-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6mm;
+            padding: 4mm;
+          }
+          .label-wrapper {
+            display: inline-block;
+            width: 30mm;
+            height: 70mm;
+            position: relative;
+            overflow: hidden;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .label-card {
+            position: absolute !important;
+            top: 70mm !important;
+            left: 0 !important;
+            transform: rotate(90deg) !important;
+            transform-origin: left top !important;
+          }
         }
       `}</style>
 
@@ -164,7 +190,9 @@ function PrintBarcodesContent() {
       ) : (
         <div className="labels-grid">
           {labels.map((label) => (
-            <LabelCard key={label.barcode_no} label={label} s={settings} onImageLoad={onImageLoad} />
+            <div key={label.barcode_no} className="label-wrapper">
+              <LabelCard label={label} s={settings} onImageLoad={onImageLoad} />
+            </div>
           ))}
         </div>
       )}
