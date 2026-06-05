@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Printer, Settings2 } from "lucide-react";
@@ -37,29 +38,16 @@ function LabelCard({
   return (
     <div
       className="label-card"
-      style={{
-        position: "relative",
-        width: `${s.labelWidth}mm`,
-        height: `${s.labelHeight}mm`,
-        overflow: "hidden",
-      }}
+      style={{ position: "relative", width: `${s.labelWidth}mm`, height: `${s.labelHeight}mm`, overflow: "hidden" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={barcodeImgUrl(label.barcode_no)}
         alt={label.barcode_no}
-        style={{
-          position: "absolute",
-          left: `${s.barcodeImage.x}mm`,
-          top: `${s.barcodeImage.y}mm`,
-          width: `${s.barcodeImage.width}mm`,
-          height: `${s.barcodeImage.height}mm`,
-          objectFit: "contain",
-        }}
+        style={{ position: "absolute", left: `${s.barcodeImage.x}mm`, top: `${s.barcodeImage.y}mm`, width: `${s.barcodeImage.width}mm`, height: `${s.barcodeImage.height}mm`, objectFit: "contain" }}
         onLoad={onImageLoad}
         onError={onImageLoad}
       />
-
       {s.customerCode.show && (
         <span style={{ position: "absolute", left: `${s.customerCode.x}mm`, top: `${s.customerCode.y}mm`, fontSize: `${s.customerCode.fontSize}pt`, fontWeight: s.customerCode.bold ? 700 : 400, color: "#555", whiteSpace: "nowrap" }}>
           {label.customer_code}
@@ -94,7 +82,8 @@ function LabelCard({
   );
 }
 
-export default function PrintBarcodesPage() {
+// useSearchParams를 사용하는 내부 컴포넌트
+function PrintBarcodesContent() {
   const searchParams = useSearchParams();
   const [settings, setSettings] = useState<BarcodeLabelSettings>(DEFAULT_SETTINGS);
 
@@ -129,49 +118,24 @@ export default function PrintBarcodesPage() {
         * { box-sizing: border-box; }
         body { margin: 0; padding: 0; background: #f5f5f5; font-family: 'Malgun Gothic', sans-serif; }
         .toolbar {
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          background: #1f2937;
-          color: white;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 10px 20px;
+          position: sticky; top: 0; z-index: 100;
+          background: #1f2937; color: white;
+          display: flex; align-items: center; gap: 12px; padding: 10px 20px;
         }
         .toolbar button {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          background: #2563eb;
-          color: white;
-          border: none;
-          border-radius: 8px;
-          padding: 6px 16px;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
+          display: flex; align-items: center; gap: 6px;
+          background: #2563eb; color: white; border: none;
+          border-radius: 8px; padding: 6px 16px;
+          font-size: 14px; font-weight: 600; cursor: pointer;
         }
         .toolbar button:hover { background: #1d4ed8; }
-        .toolbar a {
-          color: #9ca3af;
-          font-size: 12px;
-          text-decoration: none;
-        }
+        .toolbar a { color: #9ca3af; font-size: 12px; text-decoration: none; }
         .toolbar a:hover { color: white; text-decoration: underline; }
         .label-card {
-          border: 1px solid #ccc;
-          border-radius: 3px;
-          background: white;
-          break-inside: avoid;
-          page-break-inside: avoid;
+          border: 1px solid #ccc; border-radius: 3px; background: white;
+          break-inside: avoid; page-break-inside: avoid;
         }
-        .labels-grid {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4mm;
-          padding: 10mm;
-        }
+        .labels-grid { display: flex; flex-wrap: wrap; gap: 4mm; padding: 10mm; }
         @media print {
           .toolbar { display: none !important; }
           body { background: white; }
@@ -180,7 +144,6 @@ export default function PrintBarcodesPage() {
         }
       `}</style>
 
-      {/* 인쇄 툴바 — print 시 자동 숨김 */}
       <div className="toolbar">
         <span style={{ flex: 1, fontSize: 14, color: "#9ca3af" }}>
           바코드 라벨 {labels.length}장
@@ -201,15 +164,19 @@ export default function PrintBarcodesPage() {
       ) : (
         <div className="labels-grid">
           {labels.map((label) => (
-            <LabelCard
-              key={label.barcode_no}
-              label={label}
-              s={settings}
-              onImageLoad={onImageLoad}
-            />
+            <LabelCard key={label.barcode_no} label={label} s={settings} onImageLoad={onImageLoad} />
           ))}
         </div>
       )}
     </>
+  );
+}
+
+// Suspense 래퍼 — useSearchParams 빌드 오류 방지
+export default function PrintBarcodesPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: 40, textAlign: "center", color: "#9ca3af" }}>로딩 중...</div>}>
+      <PrintBarcodesContent />
+    </Suspense>
   );
 }
