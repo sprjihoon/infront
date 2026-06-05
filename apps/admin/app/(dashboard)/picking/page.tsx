@@ -97,9 +97,35 @@ async function getParcelInfo(parcelIds: string[]): Promise<{
   return { locations: [...locationSet].sort(), itemCount };
 }
 
+// ── 필터 정의 ──────────────────────────────────────────────────
+
+type FilterKey = "all" | "waiting" | "picking" | "done" | "prepay";
+
+const PRE_PAY_STATUSES   = ["DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE", "QUOTE_SENT", "PENDING_PAYMENT"];
+const WAITING_STATUSES   = ["PAID", "PACKING", "PENDING"];
+
+function applyFilter(rows: OrderRow[], filter: FilterKey): OrderRow[] {
+  switch (filter) {
+    case "prepay":  return rows.filter((r) => PRE_PAY_STATUSES.includes(r.status));
+    case "waiting": return rows.filter((r) => WAITING_STATUSES.includes(r.status));
+    case "picking": return rows.filter((r) => r.status === "PICKING");
+    case "done":    return rows.filter((r) => r.status === "PICKING_DONE");
+    default:        return rows;
+  }
+}
+
 // ── 서버 컴포넌트 ─────────────────────────────────────────────
 
-export default async function PickingPage() {
+export default async function PickingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const { filter: rawFilter } = await searchParams;
+  const filter: FilterKey = (["all", "waiting", "picking", "done", "prepay"].includes(rawFilter ?? "")
+    ? rawFilter
+    : "all") as FilterKey;
+
   const admin = await requireAdmin();
   const workerName = admin?.email?.split("@")[0] ?? "작업자";
 
@@ -238,12 +264,11 @@ export default async function PickingPage() {
 
   const PRE_PAYMENT = ["DRAFT", "PACKAGING_REQUESTED", "PACKAGING_DONE", "QUOTE_SENT", "PENDING_PAYMENT"];
   const READY       = ["PAID", "PACKING", "PENDING"];
-  const prePayCount = rows.filter((r) => PRE_PAYMENT.includes(r.status)).length;
+  const prePayCount   = rows.filter((r) => PRE_PAYMENT.includes(r.status)).length;
   const waitingCount  = rows.filter((r) => READY.includes(r.status)).length;
   const pickingCount  = rows.filter((r) => r.status === "PICKING").length;
   const doneCount     = rows.filter((r) => r.status === "PICKING_DONE").length;
   const totalCount    = rows.length;
-  const totalItems    = rows.reduce((s, r) => s + r.itemCount, 0);
 
   const progressPct   = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
@@ -254,6 +279,9 @@ export default async function PickingPage() {
   });
   const todayOrders   = todayRows.length;
   const todayItems    = todayRows.reduce((s, r) => s + r.itemCount, 0);
+
+  // ── 필터 적용 ──────────────────────────────────────────────
+  const filteredRows = applyFilter(rows, filter);
 
   return (
     <div className="max-w-3xl mx-auto pb-10">
@@ -297,22 +325,74 @@ export default async function PickingPage() {
         </div>
       </div>
 
+      {/* ── 필터 탭 ───────────────────────────────────────────── */}
+      <div className="flex gap-2 overflow-x-auto pb-1 mb-3 scrollbar-hide">
+        {(
+          [
+            { key: "all",     label: "전체",    count: totalCount,   icon: "🗂️" },
+            { key: "picking", label: "진행 중", count: pickingCount, icon: "🔵" },
+            { key: "waiting", label: "피킹 대기", count: waitingCount, icon: "⏳" },
+            { key: "done",    label: "피킹 완료", count: doneCount,   icon: "✅" },
+            ...(prePayCount > 0
+              ? [{ key: "prepay", label: "결제 전", count: prePayCount, icon: "💜" }]
+              : []),
+          ] as { key: FilterKey; label: string; count: number; icon: string }[]
+        ).map(({ key, label, count, icon }) => {
+          const isActive = filter === key;
+          return (
+            <a
+              key={key}
+              href={key === "all" ? "/picking" : `/picking?filter=${key}`}
+              className={`flex-none flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold border transition-all whitespace-nowrap ${
+                isActive
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200"
+                  : "bg-white text-gray-600 border-gray-200 hover:border-indigo-300 hover:text-indigo-600"
+              }`}
+            >
+              <span>{icon}</span>
+              <span>{label}</span>
+              <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-xs font-extrabold ${
+                isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+              }`}>
+                {count}
+              </span>
+            </a>
+          );
+        })}
+      </div>
+
       {/* ── 주문 카드 목록 ───────────────────────────────────── */}
       <div className="flex items-center gap-2 mb-3 px-1">
         <ClipboardList size={18} className="text-indigo-600" />
-        <h2 className="text-base font-bold text-gray-900">피킹 코스 목록</h2>
-        <span className="text-sm text-gray-400 ml-auto">{totalCount}건</span>
+        <h2 className="text-base font-bold text-gray-900">
+          {filter === "all"     && "전체 목록"}
+          {filter === "picking" && "진행 중"}
+          {filter === "waiting" && "피킹 대기"}
+          {filter === "done"    && "피킹 완료"}
+          {filter === "prepay"  && "결제 전"}
+        </h2>
+        <span className="text-sm text-gray-400 ml-auto">{filteredRows.length}건</span>
       </div>
 
-      {rows.length === 0 ? (
+      {filteredRows.length === 0 ? (
         <div className="bg-white rounded-2xl shadow-sm text-center py-16 text-gray-400 border border-gray-100">
           <ClipboardList size={48} className="mx-auto mb-3 text-gray-200" />
-          <p className="font-medium">피킹 대상 주문이 없습니다</p>
-          <p className="text-sm mt-1">출고 대기 주문이 생기면 여기에 표시됩니다.</p>
+          <p className="font-medium">
+            {filter === "all"     && "피킹 대상 주문이 없습니다"}
+            {filter === "picking" && "진행 중인 피킹이 없습니다"}
+            {filter === "waiting" && "피킹 대기 주문이 없습니다"}
+            {filter === "done"    && "완료된 피킹이 없습니다"}
+            {filter === "prepay"  && "결제 전 주문이 없습니다"}
+          </p>
+          {filter !== "all" && (
+            <a href="/picking" className="mt-3 inline-block text-sm text-indigo-600 hover:underline">
+              전체 보기 →
+            </a>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
-          {rows.map((row) => (
+          {filteredRows.map((row) => (
             <OrderCard key={`${row.kind}-${row.id}`} row={row} />
           ))}
         </div>
