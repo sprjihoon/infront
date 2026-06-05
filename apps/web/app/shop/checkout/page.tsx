@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Package, CreditCard, Loader2, Check } from "lucide-react";
 import { SHOP_PRODUCTS } from "../page";
 
+declare global {
+  interface Window {
+    EXIMBAY?: {
+      request_pay: (params: object) => void;
+    };
+  }
+}
+
 type Product = (typeof SHOP_PRODUCTS)[number];
 
 interface AddressForm {
@@ -72,6 +80,7 @@ export default function ShopCheckoutPage() {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sdkReady, setSdkReady] = useState(false);
   const [email, setEmail] = useState("");
   const [sender, setSender] = useState<AddressForm>(EMPTY_ADDRESS);
   const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
@@ -83,6 +92,17 @@ export default function ShopCheckoutPage() {
     if (!found) { router.replace("/shop"); return; }
     setProduct(found);
   }, [router]);
+
+  /* Eximbay SDK를 동적으로 로드 */
+  useEffect(() => {
+    if (document.querySelector('script[data-eximbay]')) { setSdkReady(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://api-test.eximbay.com/v2/javascriptSDK.js";
+    script.setAttribute("data-eximbay", "1");
+    script.onload = () => setSdkReady(true);
+    script.onerror = () => console.error("Eximbay SDK 로드 실패");
+    document.head.appendChild(script);
+  }, []);
 
   function handleSender(field: keyof AddressForm, value: string) {
     setSender((prev) => {
@@ -117,24 +137,34 @@ export default function ShopCheckoutPage() {
 
   async function handlePayment() {
     if (!product || !isFormValid()) return;
+    if (!sdkReady || !window.EXIMBAY) {
+      alert("결제 모듈을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.");
+      return;
+    }
     setLoading(true);
     try {
-      const { loadTossPayments } = await import("@tosspayments/tosspayments-sdk");
-      const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
-      if (!clientKey) { alert("결제 설정이 완료되지 않았습니다."); return; }
-      const toss = await loadTossPayments(clientKey);
-      const payment = toss.payment({ customerKey: crypto.randomUUID() });
+      const orderId = `SHOP-${Date.now()}`;
 
-      await payment.requestPayment({
-        method: "CARD",
-        amount: { currency: "KRW", value: product.price },
-        orderId: `SHOP-${Date.now()}`,
-        orderName: product.name,
-        customerName: sender.name,
-        customerEmail: email,
-        customerMobilePhone: sender.phone.replace(/-/g, ""),
-        successUrl: `${window.location.origin}/shop/payment/success?productId=${product.id}`,
-        failUrl: `${window.location.origin}/shop/payment/fail`,
+      const res = await fetch("/api/eximbay/ready", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          order_id: orderId,
+          amount: product.price,
+          buyer_name: sender.name,
+          buyer_email: email,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.fgkey) {
+        alert(data.error ?? "결제 준비에 실패했습니다.");
+        return;
+      }
+
+      window.EXIMBAY.request_pay({
+        fgkey: data.fgkey,
+        ...data.payload,
       });
     } catch (e) {
       console.error(e);
@@ -239,7 +269,7 @@ export default function ShopCheckoutPage() {
         {/* 결제 버튼 */}
         <button
           onClick={handlePayment}
-          disabled={loading || !isFormValid()}
+          disabled={loading || !isFormValid() || !sdkReady}
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 active:opacity-80 transition-opacity"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
@@ -247,7 +277,7 @@ export default function ShopCheckoutPage() {
         </button>
 
         <p className="text-center text-[10px] text-gray-400">
-          결제는 토스페이먼츠를 통해 안전하게 처리됩니다
+          결제는 엑심베이(Eximbay)를 통해 안전하게 처리됩니다
         </p>
 
         {/* 사업자 정보 */}

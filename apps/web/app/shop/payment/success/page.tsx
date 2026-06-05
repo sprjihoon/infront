@@ -10,13 +10,28 @@ function SuccessContent() {
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const orderId = searchParams.get("orderId") ?? "-";
-  const amount  = parseInt(searchParams.get("amount") ?? "0", 10);
+  const orderId = searchParams.get("order_id") ?? searchParams.get("orderId") ?? "-";
+  const amount = searchParams.get("amount") ?? "-";
 
   useEffect(() => {
+    const resCd = searchParams.get("res_cd");
+    const resMsg = searchParams.get("res_msg");
+
+    if (resCd !== null) {
+      /* Eximbay return_url 응답 처리 */
+      if (resCd === "0000") {
+        setStatus("done");
+      } else {
+        setErrorMsg(resMsg ?? `결제 실패 (코드: ${resCd})`);
+        setStatus("error");
+      }
+      return;
+    }
+
+    /* 구 Toss 파라미터 호환 (paymentKey가 있을 경우) */
     const paymentKey = searchParams.get("paymentKey");
-    const productId  = searchParams.get("productId");
-    const amountStr  = searchParams.get("amount");
+    const productId = searchParams.get("productId");
+    const amountStr = searchParams.get("amount");
 
     if (!paymentKey || !orderId || orderId === "-" || !amountStr || !productId) {
       setErrorMsg("결제 정보가 올바르지 않습니다.");
@@ -84,12 +99,19 @@ function SuccessContent() {
               빠른 시일 내에 처리해 드리겠습니다.
             </p>
             <div className="w-full bg-gray-50 rounded-2xl p-4 mt-2 text-left space-y-1.5">
-              <p className="text-xs text-gray-500">
-                주문번호: <span className="font-medium text-gray-700">{orderId}</span>
-              </p>
-              <p className="text-xs text-gray-500">
-                결제금액: <span className="font-medium text-gray-700">{amount.toLocaleString()}원</span>
-              </p>
+              {orderId !== "-" && (
+                <p className="text-xs text-gray-500">
+                  주문번호: <span className="font-medium text-gray-700">{orderId}</span>
+                </p>
+              )}
+              {amount !== "-" && (
+                <p className="text-xs text-gray-500">
+                  결제금액:{" "}
+                  <span className="font-medium text-gray-700">
+                    {parseInt(amount).toLocaleString()}원
+                  </span>
+                </p>
+              )}
             </div>
             <button
               onClick={() => router.replace("/shop")}

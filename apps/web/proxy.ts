@@ -22,6 +22,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/ems/quote",
   "/api/ems/exchange-rate",
   "/api/ems/nations",
+  "/api/eximbay",
 ];
 
 function isPublicPath(pathname: string): boolean {
