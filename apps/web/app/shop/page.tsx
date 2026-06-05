@@ -120,10 +120,37 @@ export default function ShopPage() {
           ))}
         </div>
 
-        <p className="text-center text-[10px] text-gray-400">
-          결제는 토스페이먼츠를 통해 안전하게 처리됩니다
-        </p>
+        {/* 환불 정책 */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1">
+          <p className="text-xs font-bold text-amber-800">📋 취소 및 환불 정책</p>
+          <ul className="text-xs text-amber-700 leading-relaxed space-y-0.5 list-disc list-inside">
+            <li>포장 작업 시작 전: 전액 환불 가능</li>
+            <li>포장 작업 시작 후: 취소 불가</li>
+            <li>회사 귀책 사유(불량 포장, 의뢰 내용 상이 등): 전액 환불 또는 재작업</li>
+            <li>환불 처리 기간: 결제 취소 후 카드사 기준 3~5 영업일</li>
+          </ul>
+        </div>
       </main>
+
+      {/* 사업자 정보 Footer */}
+      <footer className="border-t border-gray-200 bg-white mt-8 px-4 py-6">
+        <div className="max-w-2xl mx-auto space-y-3">
+          <p className="text-xs font-bold text-gray-700">인프론트</p>
+          <div className="text-[11px] text-gray-500 leading-relaxed space-y-0.5">
+            <p><span className="text-gray-400">상호명</span> 틸리언 &nbsp;|&nbsp; <span className="text-gray-400">대표자</span> 장지훈</p>
+            <p><span className="text-gray-400">사업자등록번호</span> 766-55-00323</p>
+            <p><span className="text-gray-400">통신판매업신고</span> 제 2022-대구동구-1034 호</p>
+            <p><span className="text-gray-400">주소</span> 대구시 동구 안심로188 2층, 3층</p>
+            <p><span className="text-gray-400">고객센터</span> 010-2723-9490 &nbsp;|&nbsp; <span className="text-gray-400">이메일</span> info@tillion.kr</p>
+            <p><span className="text-gray-400">개인정보관리책임자</span> 장지훈</p>
+          </div>
+          <div className="flex gap-3 pt-1">
+            <a href="/terms" className="text-[11px] text-gray-500 underline underline-offset-2 hover:text-gray-700">이용약관</a>
+            <a href="/privacy" className="text-[11px] text-gray-500 underline underline-offset-2 hover:text-gray-700">개인정보처리방침</a>
+          </div>
+          <p className="text-[10px] text-gray-400">© 2026 틸리언. All rights reserved.</p>
+        </div>
+      </footer>
     </div>
   );
 }

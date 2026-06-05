@@ -249,6 +249,21 @@ export default function ShopCheckoutPage() {
         <p className="text-center text-[10px] text-gray-400">
           결제는 토스페이먼츠를 통해 안전하게 처리됩니다
         </p>
+
+        {/* 사업자 정보 */}
+        <div className="border-t border-gray-200 pt-4 space-y-1.5">
+          <p className="text-[10px] font-bold text-gray-500">인프론트 · 틸리언</p>
+          <div className="text-[10px] text-gray-400 leading-relaxed space-y-0.5">
+            <p>대표자 장지훈 &nbsp;|&nbsp; 사업자등록번호 766-55-00323</p>
+            <p>통신판매업 제 2022-대구동구-1034 호</p>
+            <p>대구시 동구 안심로188 2층, 3층</p>
+            <p>고객센터 010-2723-9490 &nbsp;|&nbsp; info@tillion.kr</p>
+          </div>
+          <div className="flex gap-3 pt-0.5">
+            <a href="/terms" className="text-[10px] text-gray-400 underline">이용약관</a>
+            <a href="/privacy" className="text-[10px] text-gray-400 underline">개인정보처리방침</a>
+          </div>
+        </div>
       </div>
     </div>
   );
