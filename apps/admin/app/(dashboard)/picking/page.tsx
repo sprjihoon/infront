@@ -251,7 +251,7 @@ export default async function PickingPage({
           <StatusBadge icon={<Clock size={14} />}        label="피킹대기" count={waitingCount} cls="bg-amber-400/30 border-amber-300/40" />
           <StatusBadge icon={<PlayCircle size={14} />}   label="진행중"   count={pickingCount} cls="bg-blue-400/30 border-blue-300/40" />
           <StatusBadge icon={<CheckCircle2 size={14} />} label="완료"     count={doneCount}    cls="bg-green-400/30 border-green-300/40" />
-          <StatusBadge icon={<AlertCircle size={14} />}  label="전체"     count={totalCount}   cls="bg-white/20 border-white/20" />
+          <StatusBadge icon={<ClipboardList size={14} />} label="전체"    count={totalCount}   cls="bg-white/20 border-white/20" />
         </div>
       </div>
 
@@ -285,7 +285,6 @@ export default async function PickingPage({
           {filter === "picking" && "진행 중"}
           {filter === "waiting" && "피킹 대기"}
           {filter === "done"    && "피킹 완료"}
-          {filter === "prepay"  && "결제 전"}
         </h2>
         <span className="text-sm text-gray-400 ml-auto">
           {filteredRows.length}건 · {safePage}/{totalPages}p
@@ -301,7 +300,6 @@ export default async function PickingPage({
             {filter === "picking" && "진행 중인 피킹이 없습니다"}
             {filter === "waiting" && "피킹 대기 주문이 없습니다"}
             {filter === "done"    && "완료된 피킹이 없습니다"}
-            {filter === "prepay"  && "결제 전 주문이 없습니다"}
           </p>
           {filter !== "all" && (
             <a href="/picking" className="mt-3 inline-block text-sm text-indigo-600 hover:underline">전체 보기 →</a>
