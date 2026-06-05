@@ -645,7 +645,7 @@ export default function OutboundWorkstationPage() {
             autoPlay
             muted
             playsInline
-            className="w-full h-full object-cover"
+            className="w-full h-full object-contain bg-black"
           />
           {!camReady && (
             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
