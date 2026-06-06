@@ -25,6 +25,31 @@ const PUBLIC_API_PREFIXES = [
   "/api/eximbay",
 ];
 
+/** IP별 요청 카운터 (서버리스 인스턴스 내 기본 방어) */
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_API = 60;    // API: 1분에 60회
+const RATE_LIMIT_WINDOW = 60_000; // 1분
+
+function checkRateLimit(ip: string, limit: number): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+  if (entry.count >= limit) return false;
+  entry.count++;
+  return true;
+}
+
+function getClientIp(request: NextRequest): string {
+  return (
+    request.headers.get("cf-connecting-ip") ??       // Cloudflare 실제 IP
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
+    "unknown"
+  );
+}
+
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_API_PREFIXES.some((p) => pathname.startsWith(p))) return true;
   return PUBLIC_PATHS.some(
@@ -33,6 +58,19 @@ function isPublicPath(pathname: string): boolean {
 }
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  const ip = getClientIp(request);
+
+  // API 경로에 Rate Limiting 적용
+  if (pathname.startsWith("/api/")) {
+    if (!checkRateLimit(ip, RATE_LIMIT_API)) {
+      return new NextResponse("Too Many Requests", {
+        status: 429,
+        headers: { "Retry-After": "60" },
+      });
+    }
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -60,7 +98,6 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathname = request.nextUrl.pathname;
   const isPublic = isPublicPath(pathname);
 
   if (!user && !isPublic) {
