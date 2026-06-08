@@ -51,7 +51,7 @@ export const t = {
     /* 배송비 안내 */
     shippingTitle: "🚚 배송비 안내",
     shippingItems: [
-      "포장대행 요금은 박스 규격별 서비스 요금이며, 실제 배송비는 별도 청구됩니다.",
+      "포장대행 요금은 박스 규격별 서비스 요금이며, 기본 배송비 3,000원이 포함됩니다.",
       "국내 배송: 택배사 기준 요금 적용 (무게·거리에 따라 상이)",
       "해외 배송: EMS·K-Packet 등 국제우편 요금 기준 적용",
       "배송비는 포장 완료 후 확인된 실중량 기준으로 안내 드립니다.",
@@ -77,6 +77,7 @@ export const t = {
     placeholderEmail: "example@email.com",
     paymentSummary: "결제 금액",
     totalAmount: "최종 결제금액",
+    shippingFeeLabel: "기본 배송비",
     payBtn: (price: string) => `${price}원 결제하기`,
     paymentNotice: "결제는 KG이니시스(포트원)를 통해 안전하게 처리됩니다",
     payFail: "결제 준비에 실패했습니다.",
@@ -142,7 +143,7 @@ export const t = {
     /* Shipping notice */
     shippingTitle: "🚚 Shipping Fee Notice",
     shippingItems: [
-      "The packaging fee is for the packing service only. Actual shipping costs are billed separately.",
+      "The packaging fee includes a basic shipping charge of ₩3,000.",
       "Domestic shipping: Based on carrier rates (varies by weight and distance)",
       "International shipping: Based on EMS / K-Packet postal rates",
       "Shipping costs will be confirmed after packaging, based on actual weight.",
@@ -168,6 +169,7 @@ export const t = {
     placeholderEmail: "example@email.com",
     paymentSummary: "Payment Summary",
     totalAmount: "Total",
+    shippingFeeLabel: "Basic Shipping Fee",
     payBtn: (price: string) => `Pay ₩${price}`,
     paymentNotice: "Payment is securely processed via KG Inicis (PortOne).",
     payFail: "Failed to prepare payment.",

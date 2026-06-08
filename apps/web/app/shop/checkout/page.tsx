@@ -10,6 +10,8 @@ import { t, type Lang } from "../translations";
 type Product = (typeof SHOP_PRODUCTS)[number];
 type TxType = (typeof t)[Lang];
 
+const SHIPPING_FEE = 3_000; // 기본 배송비
+
 interface AddressForm {
   name: string;
   phone: string;
@@ -199,7 +201,7 @@ export default function ShopCheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          price: product.price,
+          price: product.price + SHIPPING_FEE,
           goodname: product.name[lang],
           buyername: sender.name,
           buyertel: sender.phone.replace(/-/g, ""),
@@ -349,13 +351,19 @@ export default function ShopCheckoutPage() {
         {/* 결제 금액 요약 */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-3">{tx.paymentSummary}</p>
-          <div className="flex justify-between items-center py-2 border-b border-gray-50">
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">{productName}</span>
             <span className="text-sm text-gray-900">{product.price.toLocaleString()}원</span>
           </div>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <span className="text-sm text-gray-600">{tx.shippingFeeLabel}</span>
+            <span className="text-sm text-gray-900">{SHIPPING_FEE.toLocaleString()}원</span>
+          </div>
           <div className="flex justify-between items-center pt-3">
             <span className="text-sm font-bold text-gray-900">{tx.totalAmount}</span>
-            <span className="text-lg font-bold text-[#de2910]">{product.price.toLocaleString()}원</span>
+            <span className="text-lg font-bold text-[#de2910]">
+              {(product.price + SHIPPING_FEE).toLocaleString()}원
+            </span>
           </div>
         </section>
 
@@ -366,7 +374,7 @@ export default function ShopCheckoutPage() {
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 active:opacity-80 transition-opacity"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
-          {tx.payBtn(product.price.toLocaleString())}
+          {tx.payBtn((product.price + SHIPPING_FEE).toLocaleString())}
         </button>
 
         <p className="text-center text-[10px] text-gray-400">{tx.paymentNotice}</p>
