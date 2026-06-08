@@ -106,6 +106,12 @@ export default function ShopPage() {
           </ul>
         </div>
 
+        {/* 주문 처리 기간 배너 */}
+        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 flex items-center gap-2">
+          <span className="text-lg">⏱️</span>
+          <p className="text-xs font-semibold text-green-800">{tx.processingNotice}</p>
+        </div>
+
         {/* 상품 목록 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {SHOP_PRODUCTS.map((product) => (

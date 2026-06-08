@@ -43,13 +43,14 @@ export const t = {
     ],
 
     /* 이용 절차 */
-    howTitle: "📋 이용 절차",
+    howTitle: "📋 이용 절차 및 처리 기간",
     howSteps: [
-      { step: "1", label: "서비스 신청", desc: "원하는 박스 규격 선택 후 결제" },
-      { step: "2", label: "물품 수거", desc: "입력한 주소에서 물품 수거" },
-      { step: "3", label: "검품·포장", desc: "센터에서 검품 및 안전 포장" },
-      { step: "4", label: "배송 발송", desc: "국내·해외 배송편으로 발송" },
+      { step: "1", label: "서비스 신청", desc: "박스 규격 선택 후 결제 (즉시)" },
+      { step: "2", label: "물품 수거", desc: "결제 후 1~2 영업일 내 수거" },
+      { step: "3", label: "검품·포장", desc: "수거 후 당일~1 영업일 내 완료" },
+      { step: "4", label: "배송 발송", desc: "포장 완료 후 즉시 발송" },
     ],
+    processingNotice: "📦 주문 완료 후 평균 2~5 영업일 내 발송됩니다.",
 
     /* 배송비 안내 */
     shippingTitle: "🚚 배송비 안내",
@@ -136,13 +137,14 @@ export const t = {
     ],
 
     /* How it works */
-    howTitle: "📋 How It Works",
+    howTitle: "📋 How It Works & Processing Time",
     howSteps: [
-      { step: "1", label: "Place Order", desc: "Select a box size and pay" },
-      { step: "2", label: "Pickup", desc: "We collect your items from the address provided" },
-      { step: "3", label: "Inspect & Pack", desc: "Inspection and safe packaging at our center" },
-      { step: "4", label: "Ship", desc: "Dispatched via domestic or international courier" },
+      { step: "1", label: "Place Order", desc: "Select box size and pay (instant)" },
+      { step: "2", label: "Pickup", desc: "Pickup within 1–2 business days" },
+      { step: "3", label: "Inspect & Pack", desc: "Packed same day or within 1 business day" },
+      { step: "4", label: "Ship", desc: "Dispatched immediately after packing" },
     ],
+    processingNotice: "📦 Orders are typically dispatched within 2–5 business days.",
 
     /* Shipping notice */
     shippingTitle: "🚚 Shipping Fee Notice",
