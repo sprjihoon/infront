@@ -84,6 +84,7 @@ export const t = {
     paymentNotice: "결제는 KG이니시스를 통해 안전하게 처리됩니다",
     payFail: "결제 준비에 실패했습니다.",
     payError: "결제 초기화에 실패했습니다.",
+    termsAgree: "이용약관 및 개인정보처리방침에 동의합니다.",
 
     /* success/fail */
     paySuccess: "결제 완료!",
@@ -178,6 +179,7 @@ export const t = {
     paymentNotice: "Payment is securely processed via KG Inicis.",
     payFail: "Failed to prepare payment.",
     payError: "Failed to initialize payment.",
+    termsAgree: "I agree to the Terms of Service and Privacy Policy.",
 
     /* success/fail */
     paySuccess: "Payment Complete!",

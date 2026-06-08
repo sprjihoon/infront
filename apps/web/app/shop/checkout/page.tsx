@@ -127,6 +127,7 @@ export default function ShopCheckoutPage() {
   const [sender, setSender] = useState<AddressForm>(EMPTY_ADDRESS);
   const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
   const [sameAsSender, setSameAsSender] = useState(false);
+  const [termsAgreed, setTermsAgreed] = useState(false);
 
   /* KG이니시스 INIStdPay 파라미터 (숨김 폼에 세팅) */
   const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
@@ -167,7 +168,8 @@ export default function ShopCheckoutPage() {
       email.trim() &&
       effectiveRecipient.name.trim() &&
       effectiveRecipient.phone.trim() &&
-      effectiveRecipient.address.trim()
+      effectiveRecipient.address.trim() &&
+      termsAgreed
     );
   }
 
@@ -366,6 +368,26 @@ export default function ShopCheckoutPage() {
             </span>
           </div>
         </section>
+
+        {/* 약관 동의 */}
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={termsAgreed}
+            onChange={(e) => setTermsAgreed(e.target.checked)}
+            className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
+          />
+          <span className="text-xs text-gray-600 leading-relaxed">
+            <a href="/terms" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
+              {lang === "ko" ? "이용약관" : "Terms of Service"}
+            </a>
+            {lang === "ko" ? " 및 " : " and "}
+            <a href="/privacy" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
+              {lang === "ko" ? "개인정보처리방침" : "Privacy Policy"}
+            </a>
+            {lang === "ko" ? "에 동의합니다. (필수)" : " (Required)"}
+          </span>
+        </label>
 
         {/* 결제 버튼 */}
         <button
