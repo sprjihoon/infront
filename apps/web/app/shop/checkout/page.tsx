@@ -96,11 +96,15 @@ export default function ShopCheckoutPage() {
   /* Eximbay SDK를 동적으로 로드 */
   useEffect(() => {
     if (document.querySelector('script[data-eximbay]')) { setSdkReady(true); return; }
+
+    const sdkUrl = process.env.NEXT_PUBLIC_EXIMBAY_SDK_URL
+      ?? "https://api-test.eximbay.com/v2/javascriptSDK.js";
+
     const script = document.createElement("script");
-    script.src = "https://api-test.eximbay.com/v2/javascriptSDK.js";
+    script.src = sdkUrl;
     script.setAttribute("data-eximbay", "1");
     script.onload = () => setSdkReady(true);
-    script.onerror = () => console.error("Eximbay SDK 로드 실패");
+    script.onerror = () => console.error("결제 모듈 로드 실패");
     document.head.appendChild(script);
   }, []);
 

@@ -38,10 +38,10 @@ export default function SamplePageToggle({ initialEnabled }: Props) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-gray-900">토스 심사용 샘플 결제 페이지</p>
+            <p className="text-sm font-semibold text-gray-900">결제 서비스 공개 모드</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              ON 시 <span className="font-mono text-gray-700">infront.kr/home</span> 접속하면 <span className="font-mono text-gray-700">/shop</span> 샘플 결제 페이지로 이동합니다.
-              심사 완료 후 반드시 OFF 해주세요.
+              ON 시 <span className="font-mono text-gray-700">infront.kr/home</span> 접속하면 <span className="font-mono text-gray-700">/shop</span> 결제 서비스 페이지로 이동합니다.
+              엑심베이 심사 완료 후 반드시 OFF 해주세요.
             </p>
           </div>
           <button
@@ -67,7 +67,7 @@ export default function SamplePageToggle({ initialEnabled }: Props) {
           </button>
         </div>
         <div className={`mt-3 text-xs px-3 py-2 rounded-lg ${enabled ? "bg-blue-50 text-blue-700" : "bg-gray-50 text-gray-500"}`}>
-          현재 상태: <span className="font-semibold">{enabled ? "🟢 샘플 페이지 표시 중" : "⚫ 일반 홈 표시 중"}</span>
+          현재 상태: <span className="font-semibold">{enabled ? "🟢 결제 서비스 페이지 공개 중" : "⚫ 일반 홈 표시 중"}</span>
         </div>
       </div>
     </div>
