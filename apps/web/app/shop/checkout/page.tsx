@@ -302,7 +302,7 @@ export default function ShopCheckoutPage() {
               <p className="text-sm font-bold text-gray-900">{productName}</p>
               <p className="text-xs text-gray-400">{product.desc[lang]}</p>
             </div>
-            <p className="text-sm font-bold text-gray-900">{product.price.toLocaleString()}원</p>
+            <p className="text-sm font-bold text-gray-900">{tx.formatPrice(product.price)}</p>
           </div>
         </section>
 
@@ -353,16 +353,16 @@ export default function ShopCheckoutPage() {
           <p className="text-xs font-bold text-gray-500 mb-3">{tx.paymentSummary}</p>
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">{productName}</span>
-            <span className="text-sm text-gray-900">{product.price.toLocaleString()}원</span>
+            <span className="text-sm text-gray-900">{tx.formatPrice(product.price)}</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">{tx.shippingFeeLabel}</span>
-            <span className="text-sm text-gray-900">{SHIPPING_FEE.toLocaleString()}원</span>
+            <span className="text-sm text-gray-900">{tx.formatPrice(SHIPPING_FEE)}</span>
           </div>
           <div className="flex justify-between items-center pt-3">
             <span className="text-sm font-bold text-gray-900">{tx.totalAmount}</span>
             <span className="text-lg font-bold text-[#de2910]">
-              {(product.price + SHIPPING_FEE).toLocaleString()}원
+              {tx.formatPrice(product.price + SHIPPING_FEE)}
             </span>
           </div>
         </section>
@@ -375,7 +375,6 @@ export default function ShopCheckoutPage() {
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
           {tx.payBtn((product.price + SHIPPING_FEE).toLocaleString())}
-        </button>
 
         <p className="text-center text-[10px] text-gray-400">{tx.paymentNotice}</p>
 

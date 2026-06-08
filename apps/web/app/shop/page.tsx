@@ -125,8 +125,7 @@ export default function ShopPage() {
 
               <div className="flex items-center justify-between pt-2 border-t border-gray-50">
                 <span className="text-lg font-bold text-gray-900">
-                  {product.price.toLocaleString()}
-                  <span className="text-sm font-normal text-gray-500 ml-0.5">원</span>
+                  {tx.formatPrice(product.price)}
                 </span>
                 <button
                   onClick={() => handleBuy(product.id)}

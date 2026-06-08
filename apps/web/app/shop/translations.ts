@@ -23,6 +23,7 @@ export const t = {
       "위조품·지적재산권 침해 물품",
       "동식물, 의약품 (처방전 필요 품목)",
     ],
+    formatPrice: (n: number) => `${n.toLocaleString()}원`,
     buyBtn: "구매하기",
     includesTitle: "서비스 포함 내용",
     includesItems: [
@@ -77,7 +78,7 @@ export const t = {
     totalAmount: "최종 결제금액",
     shippingFeeLabel: "기본 배송비",
     payBtn: (price: string) => `${price}원 결제하기`,
-    paymentNotice: "결제는 KG이니시스(포트원)를 통해 안전하게 처리됩니다",
+    paymentNotice: "결제는 KG이니시스를 통해 안전하게 처리됩니다",
     payFail: "결제 준비에 실패했습니다.",
     payError: "결제 초기화에 실패했습니다.",
 
@@ -113,6 +114,7 @@ export const t = {
       "Counterfeit goods or items infringing intellectual property rights",
       "Live animals/plants, prescription medications",
     ],
+    formatPrice: (n: number) => `₩${n.toLocaleString()}`,
     buyBtn: "Order Now",
     includesTitle: "Service Includes",
     includesItems: [
@@ -167,7 +169,7 @@ export const t = {
     totalAmount: "Total",
     shippingFeeLabel: "Basic Shipping Fee",
     payBtn: (price: string) => `Pay ₩${price}`,
-    paymentNotice: "Payment is securely processed via KG Inicis (PortOne).",
+    paymentNotice: "Payment is securely processed via KG Inicis.",
     payFail: "Failed to prepare payment.",
     payError: "Failed to initialize payment.",
 
