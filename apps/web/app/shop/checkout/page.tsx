@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Package, CreditCard, Loader2, Check } from "lucide-react";
 import { SHOP_PRODUCTS } from "../page";
 import { useLanguage } from "../useLanguage";
-import { t } from "../translations";
+import { t, type Lang } from "../translations";
 
 type Product = (typeof SHOP_PRODUCTS)[number];
+type TxType = (typeof t)[Lang];
 
 interface AddressForm {
   name: string;
@@ -39,7 +40,7 @@ function AddressFields({
   values: AddressForm;
   onChange: (field: keyof AddressForm, value: string) => void;
   disabled?: boolean;
-  tx: typeof t["ko"];
+  tx: TxType;
 }) {
   const cls = `w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors ${disabled ? "bg-gray-50 text-gray-400" : ""}`;
   return (
