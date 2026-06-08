@@ -412,8 +412,8 @@ export default function ShopCheckoutPage() {
             <p>고객센터 010-2723-9490 &nbsp;|&nbsp; info@tillion.kr</p>
           </div>
           <div className="flex gap-3 pt-0.5">
-            <a href="/terms" className="text-[10px] text-gray-400 underline">이용약관</a>
-            <a href="/privacy" className="text-[10px] text-gray-400 underline">개인정보처리방침</a>
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">이용약관</a>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">개인정보처리방침</a>
           </div>
         </div>
       </div>
