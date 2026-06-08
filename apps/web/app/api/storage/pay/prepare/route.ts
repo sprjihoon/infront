@@ -2,17 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import crypto from "crypto";
-import {
-  PICKUP_BOX_SIZE_MAP,
-  type PickupBoxSizeCode,
-} from "@/lib/epost/pickup-boxes";
 
 /* ────────────────────────────────────────────────────────────────
    스토리지 결제 준비 엔드포인트
-   - PICKUP_FEE  : 박스 크기·수량별 수거비 합산
+   - PICKUP_FEE  : DB pickup_box_fees 기반 박스 크기·수량별 수거비 합산
    - SHORT_TERM_STORAGE : 단기보관 정산 (주수 × 주간요금)
    - RELEASE_FEE : 출고 처리비 (고정 1,000원)
-   - OID 포맷: STG-{storageId(8자)}-{timestamp}-{randomHex}
 ──────────────────────────────────────────────────────────────── */
 
 const TEST_MID = "INIpayTest";
@@ -52,7 +47,7 @@ export async function POST(request: NextRequest) {
     buyertel: string;
     buyeremail: string;
     /** PICKUP_FEE: 수거할 박스 목록 */
-    pickup_boxes?: Array<{ size_code: PickupBoxSizeCode; qty: number }>;
+    pickup_boxes?: Array<{ size_code: string; qty: number }>;
     /** SHORT_TERM_STORAGE 정산 시만 사용 */
     billing_weeks?: number;
     billing_plan_type?: string;
@@ -83,20 +78,31 @@ export async function POST(request: NextRequest) {
   let billing_plan_type: string | null = null;
 
   if (payment_type === "PICKUP_FEE") {
-    /* 박스 크기별 요금 합산 */
+    /* DB에서 박스 요금 조회 */
+    const { data: feeRows, error: feeErr } = await supabase
+      .from("pickup_box_fees")
+      .select("size_code, label_ko, pickup_fee")
+      .eq("is_active", true);
+
+    if (feeErr || !feeRows?.length) {
+      return NextResponse.json({ error: "박스 요금 정보를 불러올 수 없습니다." }, { status: 500 });
+    }
+
+    const feeMap = Object.fromEntries(feeRows.map((r) => [r.size_code, r]));
+
     const boxes = body.pickup_boxes?.length
       ? body.pickup_boxes
-      : [{ size_code: "DEFAULT" as PickupBoxSizeCode, qty: 1 }];
+      : [{ size_code: "DEFAULT", qty: 1 }];
 
     const boxLines: string[] = [];
     for (const b of boxes) {
-      const spec = PICKUP_BOX_SIZE_MAP[b.size_code];
+      const spec = feeMap[b.size_code];
       if (!spec) {
         return NextResponse.json({ error: `잘못된 박스 규격: ${b.size_code}` }, { status: 400 });
       }
       const qty = Math.max(1, Math.floor(b.qty ?? 1));
       amount += spec.pickup_fee * qty;
-      boxLines.push(`${spec.label} ${qty}개 × ${spec.pickup_fee.toLocaleString()}원`);
+      boxLines.push(`${spec.label_ko} ${qty}개 × ${spec.pickup_fee.toLocaleString()}원`);
     }
 
     goodname = `인프론트 보관 서비스 수거비`;

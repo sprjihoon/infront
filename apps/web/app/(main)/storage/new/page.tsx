@@ -4,19 +4,24 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, ChevronRight, CreditCard, Loader2, Minus, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import {
-  PICKUP_BOX_SIZES,
-  PICKUP_BOX_SIZE_MAP,
-  type PickupBoxSizeCode,
-} from "@/lib/epost/pickup-boxes";
 
 interface PlanConfig {
   plan_type: string;
   label_ko: string;
   description_ko: string | null;
-  capacity_score: number;
+  capacity_score: number | null;
   monthly_amount: number | null;
   weekly_rate: number | null;
+}
+
+interface BoxFee {
+  size_code: string;
+  label_ko: string;
+  desc_ko: string | null;
+  weight_kg: number;
+  volume_cm: number;
+  pickup_fee: number;
+  sort_order: number;
 }
 
 interface CustomerProfile {
@@ -26,7 +31,7 @@ interface CustomerProfile {
 }
 
 interface BoxSelection {
-  size_code: PickupBoxSizeCode;
+  size_code: string;
   qty: number;
 }
 
@@ -35,6 +40,7 @@ export default function StorageNewPage() {
   const formRef = useRef<HTMLFormElement>(null);
 
   const [plans, setPlans] = useState<PlanConfig[]>([]);
+  const [boxFees, setBoxFees] = useState<BoxFee[]>([]);
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
   const [mode, setMode] = useState<"short_term" | "long_term">("short_term");
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -48,6 +54,10 @@ export default function StorageNewPage() {
     fetch("/api/storage/plans")
       .then((r) => r.json())
       .then((d) => setPlans(d.plans ?? []));
+
+    fetch("/api/storage/box-fees")
+      .then((r) => r.json())
+      .then((d) => setBoxFees(d.fees ?? []));
 
     const supabase = createClient();
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -75,7 +85,7 @@ export default function StorageNewPage() {
     document.head.appendChild(script);
   }, [payParams, jsUrl]);
 
-  function updateBox(code: PickupBoxSizeCode, delta: number) {
+  function updateBox(code: string, delta: number) {
     setBoxes((prev) => {
       const existing = prev.find((b) => b.size_code === code);
       if (!existing) {
@@ -88,8 +98,10 @@ export default function StorageNewPage() {
     });
   }
 
+  const boxFeeMap = Object.fromEntries(boxFees.map((f) => [f.size_code, f]));
+
   const totalPickupFee = boxes.reduce((sum, b) => {
-    const spec = PICKUP_BOX_SIZE_MAP[b.size_code];
+    const spec = boxFeeMap[b.size_code];
     return sum + (spec?.pickup_fee ?? 0) * b.qty;
   }, 0);
 
@@ -262,15 +274,15 @@ export default function StorageNewPage() {
             <p className="text-xs text-gray-400">박스 크기별 수거비</p>
           </div>
           <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-50 overflow-hidden">
-            {PICKUP_BOX_SIZES.map((spec) => {
-              const selected = boxes.find((b) => b.size_code === spec.code);
+            {boxFees.map((spec) => {
+              const selected = boxes.find((b) => b.size_code === spec.size_code);
               const qty = selected?.qty ?? 0;
               return (
-                <div key={spec.code} className="px-4 py-3 flex items-center gap-3">
+                <div key={spec.size_code} className="px-4 py-3 flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-gray-800">{spec.label}</span>
-                      <span className="text-xs text-gray-400">{spec.desc}</span>
+                      <span className="text-sm font-semibold text-gray-800">{spec.label_ko}</span>
+                      <span className="text-xs text-gray-400">{spec.desc_ko}</span>
                     </div>
                     <p className="text-xs font-bold text-brand-600 mt-0.5">
                       {spec.pickup_fee.toLocaleString()}원/개
@@ -278,7 +290,7 @@ export default function StorageNewPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => updateBox(spec.code, -1)}
+                      onClick={() => updateBox(spec.size_code, -1)}
                       disabled={qty === 0}
                       className="w-7 h-7 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 disabled:opacity-30 hover:bg-gray-50"
                     >
@@ -288,7 +300,7 @@ export default function StorageNewPage() {
                       {qty}
                     </span>
                     <button
-                      onClick={() => updateBox(spec.code, 1)}
+                      onClick={() => updateBox(spec.size_code, 1)}
                       className="w-7 h-7 rounded-full border border-brand-200 bg-brand-50 flex items-center justify-center text-brand-600 hover:bg-brand-100"
                     >
                       <Plus size={13} />
@@ -320,11 +332,11 @@ export default function StorageNewPage() {
           <p className="text-xs font-bold text-gray-700 mb-3">결제 요약</p>
           {hasBoxes ? (
             boxes.filter((b) => b.qty > 0).map((b) => {
-              const spec = PICKUP_BOX_SIZE_MAP[b.size_code];
+              const spec = boxFeeMap[b.size_code];
               return (
                 <div key={b.size_code} className="flex justify-between text-sm">
                   <span className="text-gray-600">
-                    수거비 — {spec?.label} × {b.qty}개
+                    수거비 — {spec?.label_ko} × {b.qty}개
                   </span>
                   <span className="font-semibold text-gray-800">
                     {((spec?.pickup_fee ?? 0) * b.qty).toLocaleString()}원

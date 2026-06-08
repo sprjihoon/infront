@@ -88,6 +88,7 @@ const NAV_GROUPS: NavGroup[] = [
     icon: SlidersHorizontal,
     items: [
       { title: "서비스 설정", href: "/settings", icon: SlidersHorizontal },
+      { title: "수거 요금 설정", href: "/settings/pickup-fees", icon: Truck },
       { title: "송장 레이아웃 에디터", href: "/label-editor", icon: Printer },
       { title: "바코드 라벨 에디터", href: "/label-editor/barcode", icon: Barcode },
     ],
