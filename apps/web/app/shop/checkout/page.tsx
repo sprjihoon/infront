@@ -375,6 +375,7 @@ export default function ShopCheckoutPage() {
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
           {tx.payBtn((product.price + SHIPPING_FEE).toLocaleString())}
+        </button>
 
         <p className="text-center text-[10px] text-gray-400">{tx.paymentNotice}</p>
 
