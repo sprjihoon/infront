@@ -51,10 +51,10 @@ export async function POST(request: NextRequest) {
     return redirectHtml("/shop/payment/fail?message=" + encodeURIComponent("응답 파싱 오류"));
   }
 
-  const { resultCode, resultMsg, authToken, authUrl, mid, oid, price } = fields;
+  const { resultCode, resultMsg, authToken, authUrl, idc_name, netCancelUrl, mid, oid, price } = fields;
 
   /* 인증 단계 실패 */
-  if (resultCode !== "00") {
+  if (resultCode !== "0000") {
     const msg = resultMsg ?? "결제 인증 실패";
     console.error("[inicis/return] auth failed:", resultCode, msg);
     return redirectHtml(`/shop/payment/fail?message=${encodeURIComponent(msg)}&code=${resultCode}`);
@@ -62,6 +62,18 @@ export async function POST(request: NextRequest) {
 
   if (!authToken || !authUrl) {
     return redirectHtml("/shop/payment/fail?message=" + encodeURIComponent("인증 토큰 누락"));
+  }
+
+  /* idc_name으로 authUrl 검증 (보안) */
+  const IDC_URLS: Record<string, string> = {
+    fc:  "https://fcstdpay.inicis.com/api/payAuth",
+    ks:  "https://ksstdpay.inicis.com/api/payAuth",
+    stg: "https://stgstdpay.inicis.com/api/payAuth",
+  };
+  const expectedAuthUrl = idc_name ? IDC_URLS[idc_name] : null;
+  if (expectedAuthUrl && authUrl !== expectedAuthUrl) {
+    console.error("[inicis/return] authUrl mismatch:", authUrl, "expected:", expectedAuthUrl);
+    return redirectHtml("/shop/payment/fail?message=" + encodeURIComponent("승인 URL 검증 실패"));
   }
 
   /* ── 네트결제 승인 요청 ── */
@@ -107,7 +119,7 @@ export async function POST(request: NextRequest) {
 
     const netCode = net.resultCode ?? net.P_STATUS;
 
-    if (netCode !== "00") {
+    if (netCode !== "0000") {
       const msg = net.resultMsg ?? net.P_RMESG1 ?? "결제 승인 실패";
       console.error("[inicis/return] netpay failed:", netCode, msg);
       return redirectHtml(
@@ -121,6 +133,31 @@ export async function POST(request: NextRequest) {
 
   } catch (e) {
     console.error("[inicis/return] netpay error:", e);
+    /* 망취소 시도 */
+    if (netCancelUrl && authToken) {
+      try {
+        const signKey = process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1RS";
+        const ts = Date.now().toString();
+        const ncParams = new URLSearchParams({
+          mid: mid ?? (process.env.INICIS_MID ?? "INIpayTest"),
+          authToken,
+          timestamp: ts,
+          signature: sha256hex(`authToken=${authToken}&timestamp=${ts}`),
+          verification: sha256hex(`authToken=${authToken}&signKey=${signKey}&timestamp=${ts}`),
+          charset: "UTF-8",
+          format: "JSON",
+        });
+        const IDC_CANCEL: Record<string, string> = {
+          fc: "https://fcstdpay.inicis.com/api/netCancel",
+          ks: "https://ksstdpay.inicis.com/api/netCancel",
+          stg: "https://stgstdpay.inicis.com/api/netCancel",
+        };
+        const cancelUrl = idc_name ? (IDC_CANCEL[idc_name] ?? netCancelUrl) : netCancelUrl;
+        if (cancelUrl) await fetch(cancelUrl, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: ncParams.toString() });
+      } catch (ncErr) {
+        console.error("[inicis/return] netCancel error:", ncErr);
+      }
+    }
     return redirectHtml("/shop/payment/fail?message=" + encodeURIComponent("승인 처리 오류"));
   }
 }
