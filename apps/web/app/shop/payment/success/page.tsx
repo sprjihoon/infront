@@ -3,10 +3,14 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { CheckCircle, Loader2 } from "lucide-react";
+import { useLanguage } from "../../useLanguage";
+import { t } from "../../translations";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { lang } = useLanguage();
+  const tx = t[lang];
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -18,7 +22,6 @@ function SuccessContent() {
     const resMsg = searchParams.get("res_msg");
 
     if (resCd !== null) {
-      /* Eximbay return_url 응답 처리 */
       if (resCd === "0000") {
         setStatus("done");
       } else {
@@ -28,13 +31,12 @@ function SuccessContent() {
       return;
     }
 
-    /* 구 Toss 파라미터 호환 (paymentKey가 있을 경우) */
     const paymentKey = searchParams.get("paymentKey");
     const productId = searchParams.get("productId");
     const amountStr = searchParams.get("amount");
 
     if (!paymentKey || !orderId || orderId === "-" || !amountStr || !productId) {
-      setErrorMsg("결제 정보가 올바르지 않습니다.");
+      setErrorMsg(tx.invalidPayment);
       setStatus("error");
       return;
     }
@@ -42,26 +44,15 @@ function SuccessContent() {
     fetch("/api/shop/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        paymentKey,
-        orderId,
-        amount: parseInt(amountStr, 10),
-        productId,
-      }),
+      body: JSON.stringify({ paymentKey, orderId, amount: parseInt(amountStr, 10), productId }),
     })
       .then((r) => r.json())
       .then((data) => {
         if (data.success) setStatus("done");
-        else {
-          setErrorMsg(data.error ?? "결제 확인 실패");
-          setStatus("error");
-        }
+        else { setErrorMsg(data.error ?? "결제 확인 실패"); setStatus("error"); }
       })
-      .catch(() => {
-        setErrorMsg("서버 오류가 발생했습니다.");
-        setStatus("error");
-      });
-  }, [searchParams, orderId]);
+      .catch(() => { setErrorMsg("서버 오류가 발생했습니다."); setStatus("error"); });
+  }, [searchParams, orderId, tx.invalidPayment]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-6">
@@ -69,8 +60,8 @@ function SuccessContent() {
         {status === "loading" && (
           <div className="flex flex-col items-center gap-3">
             <Loader2 size={40} className="text-[#de2910] animate-spin" />
-            <p className="text-sm font-semibold text-gray-700">결제 확인 중...</p>
-            <p className="text-xs text-gray-400">잠시만 기다려주세요</p>
+            <p className="text-sm font-semibold text-gray-700">{tx.verifying}</p>
+            <p className="text-xs text-gray-400">{tx.verifyingDesc}</p>
           </div>
         )}
         {status === "error" && (
@@ -78,13 +69,13 @@ function SuccessContent() {
             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center">
               <span className="text-3xl">❌</span>
             </div>
-            <p className="text-lg font-bold text-gray-900">결제 실패</p>
+            <p className="text-lg font-bold text-gray-900">{tx.paymentFailed}</p>
             <p className="text-sm text-gray-500">{errorMsg}</p>
             <button
               onClick={() => router.replace("/shop")}
               className="mt-4 bg-gray-800 text-white font-bold px-6 py-3 rounded-2xl text-sm"
             >
-              상품 목록으로
+              {tx.backToList}
             </button>
           </div>
         )}
@@ -93,20 +84,19 @@ function SuccessContent() {
             <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-2">
               <CheckCircle size={44} className="text-green-500" />
             </div>
-            <p className="text-xl font-bold text-gray-900">결제 완료!</p>
-            <p className="text-sm text-gray-500 leading-relaxed">
-              포장대행 서비스 결제가 완료되었습니다.<br />
-              빠른 시일 내에 처리해 드리겠습니다.
+            <p className="text-xl font-bold text-gray-900">{tx.paymentDone}</p>
+            <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">
+              {tx.paymentDoneDesc}
             </p>
             <div className="w-full bg-gray-50 rounded-2xl p-4 mt-2 text-left space-y-1.5">
               {orderId !== "-" && (
                 <p className="text-xs text-gray-500">
-                  주문번호: <span className="font-medium text-gray-700">{orderId}</span>
+                  {tx.orderNo}: <span className="font-medium text-gray-700">{orderId}</span>
                 </p>
               )}
               {amount !== "-" && (
                 <p className="text-xs text-gray-500">
-                  결제금액:{" "}
+                  {tx.paidAmount}:{" "}
                   <span className="font-medium text-gray-700">
                     {parseInt(amount).toLocaleString()}원
                   </span>
@@ -117,7 +107,7 @@ function SuccessContent() {
               onClick={() => router.replace("/shop")}
               className="mt-2 bg-[#de2910] text-white font-bold px-8 py-3.5 rounded-2xl text-sm w-full"
             >
-              쇼핑 계속하기
+              {tx.continueShopping}
             </button>
           </div>
         )}

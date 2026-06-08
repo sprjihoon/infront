@@ -1,45 +1,49 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Package, Home } from "lucide-react";
+import { Package, Home, Globe } from "lucide-react";
+import { useLanguage } from "./useLanguage";
+import { t } from "./translations";
 
 export const SHOP_PRODUCTS = [
   {
     id: "BOX_S",
-    name: "S박스 포장대행",
-    desc: "20×15×10cm · 1kg 이하 소형 물품",
+    name: { ko: "S박스 포장대행", en: "S Box Packaging" },
+    desc: { ko: "20×15×10cm · 1kg 이하 소형 물품", en: "20×15×10cm · up to 1kg" },
     price: 5000,
-    badge: "소형",
+    badge: { ko: "소형", en: "Small" },
     badgeColor: "bg-emerald-100 text-emerald-700",
   },
   {
     id: "BOX_M",
-    name: "M박스 포장대행",
-    desc: "30×25×20cm · 3kg 이하 중형 물품",
+    name: { ko: "M박스 포장대행", en: "M Box Packaging" },
+    desc: { ko: "30×25×20cm · 3kg 이하 중형 물품", en: "30×25×20cm · up to 3kg" },
     price: 8000,
-    badge: "중형",
+    badge: { ko: "중형", en: "Medium" },
     badgeColor: "bg-blue-100 text-blue-700",
   },
   {
     id: "BOX_L",
-    name: "L박스 포장대행",
-    desc: "40×35×25cm · 5kg 이하 대형 물품",
+    name: { ko: "L박스 포장대행", en: "L Box Packaging" },
+    desc: { ko: "40×35×25cm · 5kg 이하 대형 물품", en: "40×35×25cm · up to 5kg" },
     price: 12000,
-    badge: "대형",
+    badge: { ko: "대형", en: "Large" },
     badgeColor: "bg-orange-100 text-orange-700",
   },
   {
     id: "BOX_XL",
-    name: "XL박스 포장대행",
-    desc: "50×45×35cm · 10kg 이하 특대형 물품",
+    name: { ko: "XL박스 포장대행", en: "XL Box Packaging" },
+    desc: { ko: "50×45×35cm · 10kg 이하 특대형 물품", en: "50×45×35cm · up to 10kg" },
     price: 18000,
-    badge: "특대형",
+    badge: { ko: "특대형", en: "X-Large" },
     badgeColor: "bg-purple-100 text-purple-700",
   },
 ] as const;
 
 export default function ShopPage() {
   const router = useRouter();
+  const { lang, toggle } = useLanguage();
+  const tx = t[lang];
 
   function handleBuy(productId: string) {
     sessionStorage.setItem("shop_product_id", productId);
@@ -56,47 +60,47 @@ export default function ShopPage() {
               <Package size={18} className="text-white" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-gray-900">인프론트 포장대행</h1>
-              <p className="text-xs text-gray-400">박스 사이즈별 포장 서비스</p>
+              <h1 className="text-base font-bold text-gray-900">{tx.headerTitle}</h1>
+              <p className="text-xs text-gray-400">{tx.headerSub}</p>
             </div>
           </div>
-          <button
-            onClick={() => router.push("/home")}
-            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
-          >
-            <Home size={14} />
-            홈으로
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => router.push("/home")}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
+            >
+              <Home size={14} />
+              {tx.home}
+            </button>
+            <button
+              onClick={toggle}
+              className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <Globe size={12} />
+              {tx.langLabel}
+            </button>
+          </div>
         </div>
       </div>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {/* 서비스 정의 안내 */}
         <div className="bg-[#de2910]/5 border border-[#de2910]/20 rounded-xl px-4 py-4">
-          <p className="text-sm font-semibold text-[#de2910] mb-2">📦 인프론트 물류대행 서비스</p>
-          <p className="text-xs text-gray-600 leading-relaxed">
-            고객이 국내에서 구매하거나 보유한 물품을 센터에서 수령한 후,
-            고객 요청에 따라 <strong>검품·포장·재포장 및 국내·해외 배송 준비</strong>를 제공하는 물류대행 서비스입니다.
-            유학생 짐 발송도 지원합니다.
-          </p>
+          <p className="text-sm font-semibold text-[#de2910] mb-2">{tx.serviceTitle}</p>
+          <p className="text-xs text-gray-600 leading-relaxed">{tx.serviceDesc}</p>
           <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-[#de2910]/10 leading-relaxed">
-            ※ 본 서비스는 상품 판매 또는 구매대행이 아닙니다. 고객이 소유한 물품의 포장 및 배송 준비만을 대행하며,
-            제3자 간 거래를 중개하지 않습니다.
+            {tx.serviceNote}
           </p>
         </div>
 
         {/* 취급 금지 물품 안내 */}
         <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1.5">
-          <p className="text-xs font-bold text-gray-700">🚫 취급 금지 물품</p>
-          <p className="text-xs text-gray-500 leading-relaxed">
-            아래 물품은 접수 및 포장이 불가합니다.
-          </p>
+          <p className="text-xs font-bold text-gray-700">{tx.prohibitedTitle}</p>
+          <p className="text-xs text-gray-500 leading-relaxed">{tx.prohibitedDesc}</p>
           <ul className="text-xs text-gray-600 leading-relaxed space-y-0.5 list-disc list-inside">
-            <li>리튬배터리 단품, 인화성·폭발성 물질</li>
-            <li>마약류, 총기류 및 관련 부품</li>
-            <li>목적국 반입 금지 물품</li>
-            <li>위조품·지적재산권 침해 물품</li>
-            <li>동식물, 의약품 (처방전 필요 품목)</li>
+            {tx.prohibitedItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
           </ul>
         </div>
 
@@ -110,10 +114,10 @@ export default function ShopPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full mb-2 ${product.badgeColor}`}>
-                    {product.badge}
+                    {product.badge[lang]}
                   </span>
-                  <h2 className="text-sm font-bold text-gray-900">{product.name}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">{product.desc}</p>
+                  <h2 className="text-sm font-bold text-gray-900">{product.name[lang]}</h2>
+                  <p className="text-xs text-gray-400 mt-0.5">{product.desc[lang]}</p>
                 </div>
               </div>
 
@@ -126,7 +130,7 @@ export default function ShopPage() {
                   onClick={() => handleBuy(product.id)}
                   className="bg-[#de2910] text-white text-xs font-bold px-4 py-2 rounded-xl active:opacity-80 transition-opacity"
                 >
-                  구매하기
+                  {tx.buyBtn}
                 </button>
               </div>
             </div>
@@ -135,28 +139,22 @@ export default function ShopPage() {
 
         {/* 서비스 안내 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-2">
-          <p className="text-xs font-bold text-gray-700 mb-2">서비스 포함 내용</p>
-          {[
-            { icon: "✅", text: "박스 규격에 맞는 안전 포장" },
-            { icon: "✅", text: "에어캡·완충재 보강" },
-            { icon: "✅", text: "포장 완료 사진 제공" },
-            { icon: "✅", text: "해외 배송 준비 완료" },
-          ].map((item) => (
-            <div key={item.text} className="flex items-center gap-2">
-              <span className="text-sm">{item.icon}</span>
-              <span className="text-xs text-gray-600">{item.text}</span>
+          <p className="text-xs font-bold text-gray-700 mb-2">{tx.includesTitle}</p>
+          {tx.includesItems.map((item) => (
+            <div key={item} className="flex items-center gap-2">
+              <span className="text-sm">✅</span>
+              <span className="text-xs text-gray-600">{item}</span>
             </div>
           ))}
         </div>
 
         {/* 환불 정책 */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1">
-          <p className="text-xs font-bold text-amber-800">📋 취소 및 환불 정책</p>
+          <p className="text-xs font-bold text-amber-800">{tx.refundTitle}</p>
           <ul className="text-xs text-amber-700 leading-relaxed space-y-0.5 list-disc list-inside">
-            <li>포장 작업 시작 전: 전액 환불 가능</li>
-            <li>포장 작업 시작 후: 취소 불가</li>
-            <li>회사 귀책 사유(불량 포장, 의뢰 내용 상이 등): 전액 환불 또는 재작업</li>
-            <li>환불 처리 기간: 결제 취소 후 카드사 기준 3~5 영업일</li>
+            {tx.refundItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
           </ul>
         </div>
       </main>
