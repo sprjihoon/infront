@@ -15,6 +15,7 @@ const PUBLIC_PATHS = [
   "/notices",
   "/support",
   "/shop",
+  "/postcode",
 ];
 
 /** 계산기 등 비로그인 기능에서 호출하는 API */
