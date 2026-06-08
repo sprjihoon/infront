@@ -11,7 +11,7 @@ CREATE TABLE storage_plan_config (
   label_ko         TEXT NOT NULL,             -- '소형 스토리지'
   label_en         TEXT NOT NULL,             -- 'Small Storage'
   description_ko   TEXT,                      -- '계절 의류, 신발, 잡화 소량'
-  capacity_score   INTEGER NOT NULL,          -- 최대 수용 점수
+  capacity_score   INTEGER,                   -- 최대 수용 점수 (XL은 별도 견적이므로 NULL 허용)
   monthly_amount   NUMERIC(10,0),             -- 장기보관 월 이용료 (NULL=별도견적)
   weekly_rate      NUMERIC(10,0),             -- 단기보관 주간 요금
   sort_order       INTEGER NOT NULL DEFAULT 0
