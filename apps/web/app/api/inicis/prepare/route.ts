@@ -35,6 +35,12 @@ export async function POST(request: NextRequest) {
     const oid = `SHOP-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
     const priceStr = String(price);
 
+    /* buyertel: 숫자와 하이픈만 허용 (KG이니시스 한글 불가) */
+    const cleanTel = buyertel.replace(/[^0-9\-]/g, "");
+    if (!cleanTel) {
+      return NextResponse.json({ error: "연락처를 올바르게 입력해 주세요." }, { status: 400 });
+    }
+
     /* KG이니시스 필수 서명값 */
     const signature = sha256hex(`oid=${oid}&price=${priceStr}&timestamp=${timestamp}`);
     const verification = sha256hex(
@@ -54,7 +60,7 @@ export async function POST(request: NextRequest) {
       mKey,
       goodname,
       buyername,
-      buyertel,
+      buyertel: cleanTel,
       buyeremail,
       returnUrl: `${appUrl}/api/inicis/return`,
       closeUrl: `${appUrl}/shop/payment/close`,

@@ -66,7 +66,7 @@ function AddressFields({
           <input
             type="tel"
             value={values.phone}
-            onChange={(e) => onChange("phone", e.target.value)}
+            onChange={(e) => onChange("phone", e.target.value.replace(/[^0-9\-]/g, ""))}
             placeholder={tx.placeholderPhone}
             disabled={disabled}
             className={cls}
