@@ -105,7 +105,7 @@ function SuccessContent() {
       <h1 className="text-lg font-bold text-gray-900">{tx.paySuccess}</h1>
       {amount && (
         <p className="text-2xl font-bold text-[#de2910]">
-          {Number(amount).toLocaleString()}원
+          {tx.formatPrice(Number(amount))}
         </p>
       )}
       {paymentId && (
