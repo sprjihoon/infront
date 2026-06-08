@@ -273,6 +273,7 @@ export default function ShopCheckoutPage() {
           <input type="hidden" name="returnUrl" value={payParams.returnUrl} />
           <input type="hidden" name="closeUrl" value={payParams.closeUrl} />
           <input type="hidden" name="payViewType" value="overlay" />
+          <input type="hidden" name="acceptmethod" value="centerCd(Y)" />
           <input type="hidden" name="charset" value="UTF-8" />
         </form>
       )}

@@ -4,10 +4,10 @@ import crypto from "crypto";
 /* ────────────────────────────────────────────────────────────────
    KG이니시스 테스트 자격증명 (실서비스 시 환경변수로 교체)
    MID: INIpayTest
-   signKey: SU5JTElURV9UUklQTEVERVNfS0VZU1JS
+   signKey: SU5JTElURV9UUklQTEVERVNfS0VZU1RS
 ──────────────────────────────────────────────────────────────── */
 const TEST_MID = "INIpayTest";
-const TEST_SIGN_KEY = "SU5JTElURV9UUklQTEVERVNfS0VZU1JS";
+const TEST_SIGN_KEY = "SU5JTElURV9UUklQTEVERVNfS0VZU1RS";
 
 function sha256hex(str: string): string {
   return crypto.createHash("sha256").update(str, "utf8").digest("hex");

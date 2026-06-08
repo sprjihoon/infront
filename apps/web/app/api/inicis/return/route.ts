@@ -66,9 +66,16 @@ export async function POST(request: NextRequest) {
 
   /* ── 네트결제 승인 요청 ── */
   try {
+    const signKey = process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1RS";
     const timestamp = Date.now().toString();
-    /* KG이니시스 signature: authToken + oid + price + timestamp 순서 */
-    const signature = sha256hex(`authToken=${authToken}&timestamp=${timestamp}&mid=${mid}&price=${price}`);
+
+    /*
+     * KG이니시스 공식 스펙 (manual.inicis.com/pay/)
+     * signature  = SHA256(authToken={authToken}&timestamp={timestamp})   ← 알파벳 순 NVP
+     * verification = SHA256(authToken={authToken}&signKey={signKey}&timestamp={timestamp})
+     */
+    const signature = sha256hex(`authToken=${authToken}&timestamp=${timestamp}`);
+    const verification = sha256hex(`authToken=${authToken}&signKey=${signKey}&timestamp=${timestamp}`);
 
     const params = new URLSearchParams({
       authToken,
@@ -78,7 +85,9 @@ export async function POST(request: NextRequest) {
       price: price ?? "",
       currency: "WON",
       signature,
+      verification,
       returnCharSet: "utf-8",
+      format: "JSON",
     });
 
     const netRes = await fetch(authUrl, {
