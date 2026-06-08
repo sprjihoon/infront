@@ -79,6 +79,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: "로케이션 현황", href: "/storage", icon: LayoutGrid },
       { title: "Zone·슬롯 관리", href: "/storage/manage", icon: SlidersHorizontal },
+      { title: "고객 보관 서비스", href: "/customer-storages", icon: Package },
     ],
   },
   {

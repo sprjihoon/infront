@@ -1,10 +1,29 @@
 ﻿# 인프론트 개발 현황
 
-> **최종 갱신:** 2026-06-04  
-> **DB 마이그레이션:** `001` ~ `038` (+ `999_mock_seed.sql`)
+> **최종 갱신:** 2026-06-08  
+> **DB 마이그레이션:** `001` ~ `042` (+ `999_mock_seed.sql`)
 
 이 문서는 [README.md](../README.md)의 로드맵·기능 표를 보완하는 **상세 개발 일지**입니다.  
 기능 단위로 완료/진행/예정을 추적하고, README는 온보딩·아키텍처 개요용으로 유지합니다.
+
+---
+
+## Phase 3 — 고객 보관 서비스 (진행 중)
+
+> PDF 기반 스토리지 결제·보관 서비스 구현. KG Inicis 계약 기준.
+
+| 단계 | 상태 | 비고 |
+|------|------|------|
+| DB 스키마 (`040`~`042`) | ✅ | `customer_storages`, `customer_storage_items`, `storage_payments`, `storage_recurring_profiles`, `storage_escalation_logs` |
+| Web 고객 스토리지 대시보드 | ✅ | `/storage`, `/storage/[id]`, `/storage/new` |
+| Admin 고객 보관 관리 | ✅ | `/customer-storages`, `/customer-storages/[id]` |
+| 단기보관 결제 API | 🔲 | `/api/storage/[id]/pay` (KG Inicis 단건결제) |
+| 결제 실패 에스컬레이션 cron | 🔲 | D+0/3/7/14/30 단계별 처리 |
+| 해외배송 오픈 확인비 | 🔲 | 기존 배송 흐름 확장 |
+| 장기보관 빌링 | 🔲 | 빌링 계약 후 월정액 자동결제 |
+
+### DB 마이그레이션 적용 방법
+Supabase 대시보드 → SQL Editor에서 `040_customer_storages.sql`, `041_storage_payments.sql`, `042_storage_recurring_profiles.sql` 순서대로 실행.
 
 ---
 
@@ -19,7 +38,10 @@
 
 ---
 
-## 프로젝트 구조 요약
+## DB 마이그레이션
+
+> **최종 갱신:** 2026-06-04  
+> **DB 마이그레이션:** `001` ~ `038` (+ `999_mock_seed.sql`)
 
 ```
 infront/
