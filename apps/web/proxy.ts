@@ -23,6 +23,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/ems/exchange-rate",
   "/api/ems/nations",
   "/api/eximbay",
+  "/api/portone",
 ];
 
 /** IP별 요청 카운터 (서버리스 인스턴스 내 기본 방어) */

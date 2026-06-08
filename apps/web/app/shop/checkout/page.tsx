@@ -7,14 +7,6 @@ import { SHOP_PRODUCTS } from "../page";
 import { useLanguage } from "../useLanguage";
 import { t } from "../translations";
 
-declare global {
-  interface Window {
-    EXIMBAY?: {
-      request_pay: (params: object) => void;
-    };
-  }
-}
-
 type Product = (typeof SHOP_PRODUCTS)[number];
 
 interface AddressForm {
@@ -84,7 +76,6 @@ export default function ShopCheckoutPage() {
   const tx = t[lang];
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
-  const [sdkReady, setSdkReady] = useState(false);
   const [email, setEmail] = useState("");
   const [sender, setSender] = useState<AddressForm>(EMPTY_ADDRESS);
   const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
@@ -96,19 +87,6 @@ export default function ShopCheckoutPage() {
     if (!found) { router.replace("/shop"); return; }
     setProduct(found);
   }, [router]);
-
-  /* 결제 SDK 동적 로드 */
-  useEffect(() => {
-    if (document.querySelector('script[data-eximbay]')) { setSdkReady(true); return; }
-    const sdkUrl = process.env.NEXT_PUBLIC_EXIMBAY_SDK_URL
-      ?? "https://api-test.eximbay.com/v2/javascriptSDK.js";
-    const script = document.createElement("script");
-    script.src = sdkUrl;
-    script.setAttribute("data-eximbay", "1");
-    script.onload = () => setSdkReady(true);
-    script.onerror = () => console.error("결제 모듈 로드 실패");
-    document.head.appendChild(script);
-  }, []);
 
   function handleSender(field: keyof AddressForm, value: string) {
     setSender((prev) => {
@@ -143,29 +121,42 @@ export default function ShopCheckoutPage() {
 
   async function handlePayment() {
     if (!product || !isFormValid()) return;
-    if (!sdkReady || !window.EXIMBAY) {
-      alert(tx.sdkLoading);
-      return;
-    }
     setLoading(true);
     try {
-      const orderId = `SHOP-${Date.now()}`;
-      const res = await fetch("/api/eximbay/ready", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_id: orderId,
-          amount: product.price,
-          buyer_name: sender.name,
-          buyer_email: email,
-        }),
+      const { requestPayment } = await import("@portone/browser-sdk/v2");
+
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID
+        ?? "store-4ff4af41-85e3-4559-8eb8-0d08a2c6ceec";
+      const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY
+        ?? "channel-key-9987cb87-6458-4888-b94e-68d9a2da896d";
+      const paymentId = `SHOP-${crypto.randomUUID()}`;
+
+      const response = await requestPayment({
+        storeId,
+        channelKey,
+        paymentId,
+        orderName: product.name[lang],
+        totalAmount: product.price,
+        currency: "CURRENCY_KRW",
+        payMethod: "CARD",
+        customer: {
+          fullName: sender.name,
+          phoneNumber: sender.phone.replace(/-/g, ""),
+          email,
+        },
+        redirectUrl: `${window.location.origin}/shop/payment/success`,
       });
-      const data = await res.json();
-      if (!res.ok || !data.fgkey) {
-        alert(data.error ?? tx.payFail);
+
+      /* 데스크탑: 팝업 방식으로 결과 직접 수신 */
+      if (response?.code !== undefined) {
+        alert(response.message ?? tx.payFail);
         return;
       }
-      window.EXIMBAY.request_pay({ fgkey: data.fgkey, ...data.payload });
+
+      /* 결제 성공 → 검증 후 이동 */
+      router.push(
+        `/shop/payment/success?paymentId=${encodeURIComponent(paymentId)}&amount=${product.price}`,
+      );
     } catch (e) {
       console.error(e);
       alert(tx.payError);
@@ -271,7 +262,7 @@ export default function ShopCheckoutPage() {
         {/* 결제 버튼 */}
         <button
           onClick={handlePayment}
-          disabled={loading || !isFormValid() || !sdkReady}
+          disabled={loading || !isFormValid()}
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 active:opacity-80 transition-opacity"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
