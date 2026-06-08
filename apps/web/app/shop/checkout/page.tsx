@@ -379,11 +379,11 @@ export default function ShopCheckoutPage() {
             className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
           />
           <span className="text-xs text-gray-600 leading-relaxed">
-            <a href="/terms" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
+            <a href="/shop/terms" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
               {lang === "ko" ? "이용약관" : "Terms of Service"}
             </a>
             {lang === "ko" ? " 및 " : " and "}
-            <a href="/privacy" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
+            <a href="/shop/privacy" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
               {lang === "ko" ? "개인정보처리방침" : "Privacy Policy"}
             </a>
             {lang === "ko" ? "에 동의합니다. (필수)" : " (Required)"}
@@ -412,8 +412,8 @@ export default function ShopCheckoutPage() {
             <p>고객센터 010-2723-9490 &nbsp;|&nbsp; info@tillion.kr</p>
           </div>
           <div className="flex gap-3 pt-0.5">
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">이용약관</a>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">개인정보처리방침</a>
+            <a href="/shop/terms" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">이용약관</a>
+            <a href="/shop/privacy" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">개인정보처리방침</a>
           </div>
         </div>
       </div>

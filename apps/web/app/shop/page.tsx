@@ -208,8 +208,8 @@ export default function ShopPage() {
             <p><span className="text-gray-400">개인정보관리책임자</span> 장지훈</p>
           </div>
           <div className="flex gap-3 pt-1">
-            <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-500 underline underline-offset-2 hover:text-gray-700">이용약관</a>
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-500 underline underline-offset-2 hover:text-gray-700">개인정보처리방침</a>
+            <a href="/shop/terms" target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-500 underline underline-offset-2 hover:text-gray-700">이용약관</a>
+            <a href="/shop/privacy" target="_blank" rel="noopener noreferrer" className="text-[11px] text-gray-500 underline underline-offset-2 hover:text-gray-700">개인정보처리방침</a>
           </div>
           <p className="text-[10px] text-gray-400">© 2026 틸리언. All rights reserved.</p>
         </div>
