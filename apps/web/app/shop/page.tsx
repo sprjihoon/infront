@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Package } from "lucide-react";
+import { Package, Home } from "lucide-react";
 
 export const SHOP_PRODUCTS = [
   {
@@ -50,14 +50,23 @@ export default function ShopPage() {
     <div className="min-h-screen bg-gray-50">
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 px-4 py-4">
-        <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="w-8 h-8 bg-[#de2910] rounded-lg flex items-center justify-center">
-            <Package size={18} className="text-white" />
+        <div className="max-w-2xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#de2910] rounded-lg flex items-center justify-center">
+              <Package size={18} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-base font-bold text-gray-900">인프론트 포장대행</h1>
+              <p className="text-xs text-gray-400">박스 사이즈별 포장 서비스</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-bold text-gray-900">인프론트 포장대행</h1>
-            <p className="text-xs text-gray-400">박스 사이즈별 포장 서비스</p>
-          </div>
+          <button
+            onClick={() => router.push("/home")}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
+          >
+            <Home size={14} />
+            홈으로
+          </button>
         </div>
       </div>
 
