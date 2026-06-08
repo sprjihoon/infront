@@ -55,7 +55,7 @@ export const t = {
     /* 배송비 안내 */
     shippingTitle: "🚚 배송비 안내",
     shippingItems: [
-      "포장대행 요금에 기본 배송비 3,000원이 포함되어 있습니다.",
+      "기본 배송비 3,000원이 포장대행 요금과 별도로 청구됩니다.",
       "결제 완료 후 담당자가 수거 일정 및 배송 확인 연락을 드립니다.",
     ],
 
@@ -149,7 +149,7 @@ export const t = {
     /* Shipping notice */
     shippingTitle: "🚚 Shipping Fee Notice",
     shippingItems: [
-      "A basic shipping fee of ₩3,000 is included in the packaging service price.",
+      "A basic shipping fee of ₩3,000 is charged separately from the packaging service price.",
       "After payment, our team will contact you to confirm the pickup schedule and delivery details.",
     ],
 
