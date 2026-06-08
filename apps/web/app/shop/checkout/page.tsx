@@ -6,6 +6,7 @@ import { ArrowLeft, Package, CreditCard, Loader2, Check } from "lucide-react";
 import { SHOP_PRODUCTS } from "../page";
 import { useLanguage } from "../useLanguage";
 import { t, type Lang } from "../translations";
+import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 
 type Product = (typeof SHOP_PRODUCTS)[number];
 type TxType = (typeof t)[Lang];
@@ -36,11 +37,13 @@ declare global {
 function AddressFields({
   values,
   onChange,
+  onAddressSelect,
   disabled,
   tx,
 }: {
   values: AddressForm;
   onChange: (field: keyof AddressForm, value: string) => void;
+  onAddressSelect: (zipcode: string, address: string) => void;
   disabled?: boolean;
   tx: TxType;
 }) {
@@ -76,28 +79,25 @@ function AddressFields({
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">{tx.labelZip}</label>
-        <input
-          type="text"
-          value={values.zipcode}
-          onChange={(e) => onChange("zipcode", e.target.value)}
-          placeholder={tx.placeholderZip}
-          disabled={disabled}
-          className={cls}
-        />
-      </div>
-      <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">
           {tx.labelAddress} <span className="text-red-500">*</span>
         </label>
-        <input
-          type="text"
-          value={values.address}
-          onChange={(e) => onChange("address", e.target.value)}
-          placeholder={tx.placeholderAddress}
-          disabled={disabled}
-          className={cls}
-        />
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={values.zipcode ? `(${values.zipcode}) ${values.address}` : values.address}
+            readOnly
+            placeholder={tx.placeholderAddress}
+            className={`${cls} flex-1 bg-gray-50 cursor-default`}
+          />
+          {!disabled && (
+            <AddressSearchButton
+              label={tx.searchAddress}
+              onSelect={onAddressSelect}
+              className="shrink-0 bg-[#de2910] text-white text-xs font-semibold rounded-xl px-3 py-2.5 whitespace-nowrap"
+            />
+          )}
+        </div>
       </div>
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -311,7 +311,7 @@ export default function ShopCheckoutPage() {
         {/* 보내는 분 */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-4">{tx.senderSection}</p>
-          <AddressFields values={sender} onChange={handleSender} tx={tx} />
+          <AddressFields values={sender} onChange={handleSender} onAddressSelect={(z, a) => setSender(f => ({ ...f, zipcode: z, address: a, addressDetail: "" }))} tx={tx} />
           <div className="mt-3 pt-3 border-t border-gray-50">
             <label className="block text-xs font-medium text-gray-600 mb-1">
               {tx.labelEmail} <span className="text-red-500">*</span>
@@ -345,6 +345,7 @@ export default function ShopCheckoutPage() {
           <AddressFields
             values={sameAsSender ? sender : recipient}
             onChange={handleRecipient}
+            onAddressSelect={(z, a) => setRecipient(f => ({ ...f, zipcode: z, address: a, addressDetail: "" }))}
             disabled={sameAsSender}
             tx={tx}
           />
