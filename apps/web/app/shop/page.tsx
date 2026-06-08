@@ -150,6 +150,35 @@ export default function ShopPage() {
           ))}
         </div>
 
+        {/* 이용 절차 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <p className="text-xs font-bold text-gray-700 mb-3">{tx.howTitle}</p>
+          <div className="flex items-start gap-0">
+            {tx.howSteps.map((s, i) => (
+              <div key={s.step} className="flex-1 flex flex-col items-center text-center relative">
+                {i < tx.howSteps.length - 1 && (
+                  <div className="absolute top-3.5 left-1/2 w-full h-px bg-gray-200" />
+                )}
+                <div className="w-7 h-7 rounded-full bg-[#de2910] text-white text-xs font-bold flex items-center justify-center relative z-10 shrink-0">
+                  {s.step}
+                </div>
+                <p className="text-[11px] font-semibold text-gray-800 mt-1.5">{s.label}</p>
+                <p className="text-[10px] text-gray-400 leading-tight mt-0.5 px-1">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 배송비 안내 */}
+        <div className="bg-sky-50 border border-sky-200 rounded-xl px-4 py-3 space-y-1">
+          <p className="text-xs font-bold text-sky-800">{tx.shippingTitle}</p>
+          <ul className="text-xs text-sky-700 leading-relaxed space-y-0.5 list-disc list-inside">
+            {tx.shippingItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+
         {/* 환불 정책 */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1">
           <p className="text-xs font-bold text-amber-800">{tx.refundTitle}</p>

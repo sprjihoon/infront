@@ -39,6 +39,24 @@ export const t = {
       "환불 처리 기간: 결제 취소 후 카드사 기준 3~5 영업일",
     ],
 
+    /* 이용 절차 */
+    howTitle: "📋 이용 절차",
+    howSteps: [
+      { step: "1", label: "서비스 신청", desc: "원하는 박스 규격 선택 후 결제" },
+      { step: "2", label: "물품 수거", desc: "입력한 주소에서 물품 수거" },
+      { step: "3", label: "검품·포장", desc: "센터에서 검품 및 안전 포장" },
+      { step: "4", label: "배송 발송", desc: "국내·해외 배송편으로 발송" },
+    ],
+
+    /* 배송비 안내 */
+    shippingTitle: "🚚 배송비 안내",
+    shippingItems: [
+      "포장대행 요금은 박스 규격별 서비스 요금이며, 실제 배송비는 별도 청구됩니다.",
+      "국내 배송: 택배사 기준 요금 적용 (무게·거리에 따라 상이)",
+      "해외 배송: EMS·K-Packet 등 국제우편 요금 기준 적용",
+      "배송비는 포장 완료 후 확인된 실중량 기준으로 안내 드립니다.",
+    ],
+
     /* checkout/page */
     checkoutTitle: "주문 / 결제",
     orderProduct: "주문 상품",
@@ -110,6 +128,24 @@ export const t = {
       "After packaging begins: Cancellation not available",
       "Company fault (poor packaging, discrepancy, etc.): Full refund or redo",
       "Refund processing: 3–5 business days after cancellation",
+    ],
+
+    /* How it works */
+    howTitle: "📋 How It Works",
+    howSteps: [
+      { step: "1", label: "Place Order", desc: "Select a box size and pay" },
+      { step: "2", label: "Pickup", desc: "We collect your items from the address provided" },
+      { step: "3", label: "Inspect & Pack", desc: "Inspection and safe packaging at our center" },
+      { step: "4", label: "Ship", desc: "Dispatched via domestic or international courier" },
+    ],
+
+    /* Shipping notice */
+    shippingTitle: "🚚 Shipping Fee Notice",
+    shippingItems: [
+      "The packaging fee is for the packing service only. Actual shipping costs are billed separately.",
+      "Domestic shipping: Based on carrier rates (varies by weight and distance)",
+      "International shipping: Based on EMS / K-Packet postal rates",
+      "Shipping costs will be confirmed after packaging, based on actual weight.",
     ],
 
     /* checkout/page */
