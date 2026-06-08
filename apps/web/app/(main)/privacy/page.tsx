@@ -4,45 +4,65 @@ import SubPageHeader from "@/components/layout/SubPageHeader";
 
 const SECTIONS = [
   {
-    title: "1. 수집하는 개인정보",
-    body: "회원가입 시 이메일, 이름, 휴대폰 번호를 수집합니다. 서비스 이용 과정에서 수거지·해외 배송지, 주문·결제 정보, 물품 관련 정보가 추가로 수집될 수 있습니다.",
+    title: "제1조 (개인정보의 처리 목적)",
+    body: "틸리언(이하 \"회사\")은 다음의 목적을 위하여 개인정보를 처리합니다. 처리하는 개인정보는 다음 목적 이외의 용도로는 사용되지 않으며, 목적이 변경되는 경우 별도 동의를 받겠습니다.\n\n① 회원 가입 및 관리: 회원 식별, 서비스 이용에 따른 본인 확인\n② 서비스 제공: 수거·포장·해외배송 대행 처리, 견적 산출, 결제 처리\n③ 고객 지원: 불만 처리, 고지사항 전달\n④ 법령 준수: 전자상거래 등에서의 소비자 보호에 관한 법률 등 관련 법령 의무 이행",
   },
   {
-    title: "2. 개인정보의 이용 목적",
-    body: "회원 식별, 수거·입고·배송 대행, 견적·결제 처리, 고객 문의 응대, 서비스 개선 및 법령상 의무 이행을 위해 이용합니다.",
+    title: "제2조 (처리하는 개인정보 항목)",
+    body: "회사는 다음의 개인정보를 수집·처리합니다.\n\n[필수]\n· 이름, 이메일 주소, 휴대폰 번호\n· 수거 주소 (국내), 배송지 주소 (해외)\n· 결제 정보 (카드사 제공 결제 완료 정보, 실제 카드번호는 수집하지 않습니다)\n\n[자동 수집]\n· 접속 IP, 쿠키, 서비스 이용 기록, 불량 이용 기록\n\n[선택]\n· 물품 관련 사진 및 메모",
   },
   {
-    title: "3. 보관 기간",
-    body: "회원 탈퇴 시 지체 없이 파기합니다. 다만 관련 법령에 따라 거래 기록 등은 일정 기간 보관할 수 있습니다.",
+    title: "제3조 (개인정보의 처리 및 보유 기간)",
+    body: "① 회원정보: 회원 탈퇴 시까지 (탈퇴 즉시 파기)\n② 계약·청약철회 기록: 5년 (전자상거래법)\n③ 대금결제 및 재화공급 기록: 5년 (전자상거래법)\n④ 소비자 불만 또는 분쟁처리 기록: 3년 (전자상거래법)\n⑤ 접속 로그: 3개월 (통신비밀보호법)\n\n보유 기간이 경과하거나 처리 목적이 달성된 경우에는 해당 개인정보를 지체 없이 파기합니다.",
   },
   {
-    title: "4. 제3자 제공",
-    body: "배송 이행을 위해 우체국(EMS/K-Packet), 엑심베이(Eximbay, 결제대행) 등 필요한 범위 내에서만 제공하며, 그 외 목적으로 제3자에게 제공하지 않습니다.",
+    title: "제4조 (개인정보의 제3자 제공)",
+    body: "회사는 정보주체의 동의 없이 개인정보를 제3자에게 제공하지 않습니다. 다음의 경우에 한하여 서비스 이행을 위해 최소한의 정보를 제공합니다.\n\n· 우정사업본부(EMS/K-Packet): 해외배송 처리를 위한 수취인 정보\n· 엑심베이(Eximbay, 결제대행): 결제 처리를 위한 구매자 정보 (이름, 이메일)\n\n법령에 의해 요구되는 경우(수사기관 요청 등)에는 관련 법령에 따라 제공할 수 있습니다.",
   },
   {
-    title: "5. 이용자의 권리",
-    body: "이용자는 개인정보 열람·정정·삭제·처리정지를 요청할 수 있습니다. 문의: support@infront.kr",
+    title: "제5조 (개인정보 처리 위탁)",
+    body: "회사는 서비스 향상을 위해 아래와 같이 개인정보 처리를 위탁하고 있습니다.\n\n· Supabase Inc.: 데이터베이스 및 인증 서비스 운영\n· Vercel Inc.: 웹 서비스 호스팅\n\n위탁 계약 시 개인정보 보호 관련 법규의 준수 및 개인정보 안전성 확보를 계약서에 명시하여 관리·감독합니다.",
+  },
+  {
+    title: "제6조 (정보주체의 권리·의무)",
+    body: "이용자는 언제든지 다음의 권리를 행사할 수 있습니다.\n\n① 개인정보 처리 현황 열람 요청\n② 오류 등이 있는 개인정보 정정 요청\n③ 불필요한 개인정보 삭제 요청\n④ 개인정보 처리 정지 요청\n\n권리 행사는 고객센터(info@tillion.kr)를 통해 요청하시면 지체 없이 처리합니다. 정보주체는 개인정보 보호를 위해 정확한 정보를 유지할 의무가 있습니다.",
+  },
+  {
+    title: "제7조 (개인정보의 파기)",
+    body: "① 전자적 파일: 복구 불가능한 방법으로 영구 삭제\n② 종이 문서: 분쇄 또는 소각\n\n보유 기간이 경과한 개인정보는 해당 기간 종료일로부터 5일 이내에 파기합니다.",
+  },
+  {
+    title: "제8조 (개인정보의 안전성 확보 조치)",
+    body: "회사는 개인정보의 안전성 확보를 위해 다음의 조치를 취하고 있습니다.\n\n· 개인정보 취급 직원의 최소화 및 교육\n· 개인정보 접근 권한 관리 및 접근 로그 기록\n· 개인정보 암호화 전송 (HTTPS/TLS)\n· 비밀번호 및 민감정보 암호화 저장\n· 해킹 등 외부 침입 방지를 위한 보안 시스템 운영",
+  },
+  {
+    title: "제9조 (개인정보 보호책임자)",
+    body: "회사는 개인정보 처리에 관한 업무를 총괄해서 책임지는 개인정보 보호책임자를 지정하고 있습니다.\n\n개인정보 보호책임자\n· 성명: 장지훈\n· 직책: 대표\n· 연락처: info@tillion.kr\n\n개인정보 처리에 관한 문의·불만·피해구제 등은 위 연락처로 문의하시기 바랍니다.",
+  },
+  {
+    title: "제10조 (개인정보 처리방침의 변경)",
+    body: "본 방침은 2026년 6월 1일부터 시행됩니다. 내용이 변경되는 경우 시행 7일 전에 서비스 내 공지사항을 통해 고지합니다.",
   },
 ];
 
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
-      <SubPageHeader title="개인정보처리방침" subtitle="최종본 준비 중 · 2026.05.26" />
+      <SubPageHeader title="개인정보처리방침" subtitle="시행일: 2026년 6월 1일" />
 
       <div className="px-4 py-5 space-y-4">
-        <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-4 py-3 leading-relaxed">
-          아래 내용은 서비스 이용을 위한 요약 안내입니다. 법무 검토 후 최종본으로
-          교체될 예정입니다.
-        </p>
-
-        <div className="bg-white rounded-2xl p-5 shadow-sm space-y-5">
+        <div className="bg-white rounded-2xl p-5 shadow-sm space-y-6">
           {SECTIONS.map((section) => (
             <section key={section.title}>
-              <h2 className="text-sm font-bold text-gray-900 mb-1.5">{section.title}</h2>
-              <p className="text-sm text-gray-600 leading-relaxed">{section.body}</p>
+              <h2 className="text-sm font-bold text-gray-900 mb-2">{section.title}</h2>
+              <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-line">{section.body}</p>
             </section>
           ))}
+        </div>
+
+        <div className="text-center pb-4">
+          <p className="text-xs text-gray-400">개인정보 보호책임자: 장지훈 · info@tillion.kr</p>
+          <p className="text-xs text-gray-400">틸리언 · 대구시 동구 안심로188 2층, 3층</p>
         </div>
       </div>
     </div>
