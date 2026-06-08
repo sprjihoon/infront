@@ -197,8 +197,44 @@ export default function ShopCheckoutPage() {
   async function handlePayment() {
     if (!product || !isFormValid()) return;
     setLoading(true);
+
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
     try {
-      /* 1. 서버에서 서명 파라미터 획득 */
+      if (isMobile) {
+        /* ── 모바일 결제 플로우 ── */
+        const res = await fetch("/api/inicis/mobile-prepare", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            price: product.price + SHIPPING_FEE,
+            goodname: product.name[lang],
+            buyername: sender.name,
+            buyertel: sender.phone.replace(/-/g, ""),
+            buyeremail: email,
+          }),
+        });
+        const data = await res.json() as Record<string, string>;
+        if (!res.ok || data.error) { alert(data.error ?? tx.payError); setLoading(false); return; }
+
+        /* 모바일: 폼 직접 POST to mobile.inicis.com */
+        const form = document.createElement("form");
+        form.method = "POST";
+        form.action = data.payUrl;
+        form.acceptCharset = "euc-kr";
+        const fields = { ...data };
+        delete fields.payUrl;
+        Object.entries(fields).forEach(([k, v]) => {
+          const input = document.createElement("input");
+          input.type = "hidden"; input.name = k; input.value = v;
+          form.appendChild(input);
+        });
+        document.body.appendChild(form);
+        form.submit();
+        return;
+      }
+
+      /* ── PC 결제 플로우 ── */
       const res = await fetch("/api/inicis/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
