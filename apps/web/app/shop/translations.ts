@@ -51,10 +51,8 @@ export const t = {
     /* 배송비 안내 */
     shippingTitle: "🚚 배송비 안내",
     shippingItems: [
-      "포장대행 요금은 박스 규격별 서비스 요금이며, 기본 배송비 3,000원이 포함됩니다.",
-      "국내 배송: 택배사 기준 요금 적용 (무게·거리에 따라 상이)",
-      "해외 배송: EMS·K-Packet 등 국제우편 요금 기준 적용",
-      "배송비는 포장 완료 후 확인된 실중량 기준으로 안내 드립니다.",
+      "포장대행 요금에 기본 배송비 3,000원이 포함되어 있습니다.",
+      "결제 완료 후 담당자가 수거 일정 및 배송 확인 연락을 드립니다.",
     ],
 
     /* checkout/page */
@@ -143,10 +141,8 @@ export const t = {
     /* Shipping notice */
     shippingTitle: "🚚 Shipping Fee Notice",
     shippingItems: [
-      "The packaging fee includes a basic shipping charge of ₩3,000.",
-      "Domestic shipping: Based on carrier rates (varies by weight and distance)",
-      "International shipping: Based on EMS / K-Packet postal rates",
-      "Shipping costs will be confirmed after packaging, based on actual weight.",
+      "A basic shipping fee of ₩3,000 is included in the packaging service price.",
+      "After payment, our team will contact you to confirm the pickup schedule and delivery details.",
     ],
 
     /* checkout/page */
