@@ -1,12 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   ArrowLeft, Package, RefreshCw, Plus, Tag,
   MapPin, CheckCircle, Clock, AlertTriangle,
   XCircle, Archive, Edit3, X, Check, ChevronDown,
+  CreditCard, Loader2, TruckIcon,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 interface PlanConfig {
   label_ko: string;
@@ -102,6 +104,7 @@ export default function StorageDetailPage() {
   const [saving, setSaving] = useState(false);
   const [showAddItem, setShowAddItem] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("ALL");
+  const [showReleaseSheet, setShowReleaseSheet] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -289,6 +292,29 @@ export default function StorageDetailPage() {
           </div>
         )}
 
+        {/* 단기보관 — 출고 요청 + 정산 버튼 */}
+        {storage.storage_mode === "short_term" &&
+          storage.status === "ACTIVE" &&
+          inStorageCount > 0 && (
+            <button
+              onClick={() => setShowReleaseSheet(true)}
+              className="w-full bg-brand-600 text-white rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 text-sm font-bold shadow-sm"
+            >
+              <TruckIcon size={16} />
+              출고 요청 및 보관료 정산
+            </button>
+          )}
+
+        {/* 단기보관 — 결제 대기 안내 */}
+        {storage.status === "PENDING_PAYMENT" && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-center">
+            <p className="text-sm font-bold text-yellow-800 mb-1">수거비 결제 대기 중</p>
+            <p className="text-xs text-yellow-700">
+              수거비 결제가 완료되지 않았습니다. 신청 페이지로 돌아가 결제를 완료해 주세요.
+            </p>
+          </div>
+        )}
+
         {/* 내품 목록 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
@@ -385,6 +411,14 @@ export default function StorageDetailPage() {
           storageId={id}
           onClose={() => setShowAddItem(false)}
           onAdded={() => { setShowAddItem(false); load(true); }}
+        />
+      )}
+
+      {/* 출고 요청 + 보관료 정산 바텀시트 */}
+      {showReleaseSheet && storage && (
+        <ReleasePaymentSheet
+          storage={storage}
+          onClose={() => setShowReleaseSheet(false)}
         />
       )}
     </div>
@@ -579,6 +613,169 @@ function AddItemSheet({
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   출고 요청 + 단기보관 정산 바텀시트
+───────────────────────────────────────────── */
+function ReleasePaymentSheet({
+  storage,
+  onClose,
+}: {
+  storage: Storage;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
+  const [jsUrl, setJsUrl] = useState("");
+
+  const weeksUsed = calcWeeksUsed(storage.short_term_started_at);
+  const weeklyRate = storage.storage_plan_config?.weekly_rate ?? 0;
+  const maxPlan = storage.max_plan_type ?? storage.current_plan_type ?? storage.plan_type ?? "S";
+  const storageFee = weeksUsed * weeklyRate;
+  const releaseFee = 1000;
+  const totalAmount = storageFee + releaseFee;
+
+  useEffect(() => {
+    if (!payParams || !jsUrl) return;
+    const prev = document.getElementById("inicis-release-script");
+    if (prev) prev.remove();
+    const script = document.createElement("script");
+    script.id = "inicis-release-script";
+    script.src = jsUrl;
+    script.onload = () => {
+      const INIStdPay = (window as Window & { INIStdPay?: { pay: (id: string) => void } }).INIStdPay;
+      if (INIStdPay?.pay) INIStdPay.pay("frmReleasePayment");
+    };
+    document.head.appendChild(script);
+  }, [payParams, jsUrl]);
+
+  async function handlePay() {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from("customers")
+        .select("name, phone, email")
+        .eq("id", user?.id ?? "")
+        .single();
+
+      const res = await fetch("/api/storage/pay/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storage_id: storage.id,
+          payment_type: "SHORT_TERM_STORAGE",
+          buyername: profile?.name ?? "고객",
+          buyertel: (profile?.phone ?? "").replace(/[^0-9\-]/g, "") || "010-0000-0000",
+          buyeremail: profile?.email ?? "",
+          billing_weeks: weeksUsed,
+          billing_plan_type: maxPlan,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        alert(json.error ?? "결제 준비에 실패했습니다.");
+        return;
+      }
+      setJsUrl(json.jsUrl);
+      setPayParams(json);
+    } catch (e) {
+      console.error(e);
+      alert("오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl">
+        <div className="px-4 pt-4 pb-2 flex items-center justify-between border-b border-gray-100">
+          <p className="text-base font-bold text-gray-900">출고 요청 및 보관료 정산</p>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100">
+            <X size={18} className="text-gray-500" />
+          </button>
+        </div>
+
+        <div className="px-4 py-4 space-y-4">
+          {/* 정산 내역 */}
+          <div className="bg-gray-50 rounded-2xl p-4 space-y-2.5">
+            <p className="text-xs font-bold text-gray-600 mb-1">정산 내역</p>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">
+                단기보관료
+                <span className="text-xs text-gray-400 ml-1">
+                  ({maxPlan}플랜 {weeksUsed}주 × {weeklyRate.toLocaleString()}원)
+                </span>
+              </span>
+              <span className="font-semibold text-gray-800">{storageFee.toLocaleString()}원</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">출고 처리비</span>
+              <span className="font-semibold text-gray-800">{releaseFee.toLocaleString()}원</span>
+            </div>
+            <div className="border-t border-gray-200 pt-2 flex justify-between">
+              <span className="text-sm font-bold text-gray-800">합계</span>
+              <span className="text-base font-black text-brand-600">
+                {totalAmount.toLocaleString()}원
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500">
+            결제 완료 후 출고 처리가 진행됩니다. 배송 정보는 별도 안내됩니다.
+          </p>
+
+          <button
+            onClick={handlePay}
+            disabled={loading || weeksUsed <= 0}
+            className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {loading ? (
+              <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
+            ) : (
+              <><CreditCard size={16} /> {totalAmount.toLocaleString()}원 결제하기</>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* KG Inicis 결제 폼 */}
+      {payParams && (
+        <form
+          id="frmReleasePayment"
+          ref={formRef}
+          method="POST"
+          acceptCharset="UTF-8"
+          style={{ display: "none" }}
+        >
+          <input type="hidden" name="version"      value="1.0" />
+          <input type="hidden" name="gopaymethod"  value="Card" />
+          <input type="hidden" name="mid"          value={payParams.mid} />
+          <input type="hidden" name="oid"          value={payParams.oid} />
+          <input type="hidden" name="price"        value={payParams.price} />
+          <input type="hidden" name="timestamp"    value={payParams.timestamp} />
+          <input type="hidden" name="signature"    value={payParams.signature} />
+          <input type="hidden" name="verification" value={payParams.verification} />
+          <input type="hidden" name="mKey"         value={payParams.mKey} />
+          <input type="hidden" name="goodname"     value={payParams.goodname} />
+          <input type="hidden" name="buyername"    value={payParams.buyername} />
+          <input type="hidden" name="buyertel"     value={payParams.buyertel} />
+          <input type="hidden" name="buyeremail"   value={payParams.buyeremail} />
+          <input type="hidden" name="currency"     value="WON" />
+          <input type="hidden" name="langWallet"   value="ko" />
+          <input type="hidden" name="returnUrl"    value={payParams.returnUrl} />
+          <input type="hidden" name="closeUrl"     value={payParams.closeUrl} />
+          <input type="hidden" name="acceptmethod" value="centerCd(Y):HPP(2)" />
+        </form>
       )}
     </div>
   );

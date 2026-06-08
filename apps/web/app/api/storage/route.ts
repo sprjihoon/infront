@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
     storage_name?: string;
     storage_mode: "short_term" | "long_term";
     plan_type?: string;
+    status?: string;
   };
 
   if (!body.storage_mode) {
@@ -78,6 +79,12 @@ export async function POST(request: NextRequest) {
     planConfig = data;
   }
 
+  // 허용된 상태값 (클라이언트에서 PENDING_PAYMENT 가능)
+  const ALLOWED_INIT_STATUS = ["ACTIVE", "PENDING_PAYMENT"];
+  const initStatus = body.status && ALLOWED_INIT_STATUS.includes(body.status)
+    ? body.status
+    : "ACTIVE";
+
   const { data, error } = await supabase
     .from("customer_storages")
     .insert({
@@ -87,6 +94,7 @@ export async function POST(request: NextRequest) {
       plan_type: body.plan_type ?? null,
       capacity_score: planConfig?.capacity_score ?? null,
       monthly_amount: planConfig?.monthly_amount ?? null,
+      status: initStatus,
       short_term_started_at:
         body.storage_mode === "short_term" ? new Date().toISOString() : null,
     })
