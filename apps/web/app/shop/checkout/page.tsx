@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Package, CreditCard, Loader2, Check } from "lucide-react";
 import { SHOP_PRODUCTS } from "../page";
@@ -17,7 +17,18 @@ interface AddressForm {
   addressDetail: string;
 }
 
-const EMPTY_ADDRESS: AddressForm = { name: "", phone: "", zipcode: "", address: "", addressDetail: "" };
+const EMPTY_ADDRESS: AddressForm = {
+  name: "",
+  phone: "",
+  zipcode: "",
+  address: "",
+  addressDetail: "",
+};
+
+declare global {
+  /* eslint-disable no-var */
+  var INIStdPay: { pay: (formId: string) => void } | undefined;
+}
 
 function AddressFields({
   values,
@@ -38,33 +49,65 @@ function AddressFields({
           <label className="block text-xs font-medium text-gray-600 mb-1">
             {tx.labelName} <span className="text-red-500">*</span>
           </label>
-          <input type="text" value={values.name} onChange={(e) => onChange("name", e.target.value)}
-            placeholder={tx.placeholderName} disabled={disabled} className={cls} />
+          <input
+            type="text"
+            value={values.name}
+            onChange={(e) => onChange("name", e.target.value)}
+            placeholder={tx.placeholderName}
+            disabled={disabled}
+            className={cls}
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">
             {tx.labelPhone} <span className="text-red-500">*</span>
           </label>
-          <input type="tel" value={values.phone} onChange={(e) => onChange("phone", e.target.value)}
-            placeholder={tx.placeholderPhone} disabled={disabled} className={cls} />
+          <input
+            type="tel"
+            value={values.phone}
+            onChange={(e) => onChange("phone", e.target.value)}
+            placeholder={tx.placeholderPhone}
+            disabled={disabled}
+            className={cls}
+          />
         </div>
       </div>
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">{tx.labelZip}</label>
-        <input type="text" value={values.zipcode} onChange={(e) => onChange("zipcode", e.target.value)}
-          placeholder={tx.placeholderZip} disabled={disabled} className={cls} />
+        <input
+          type="text"
+          value={values.zipcode}
+          onChange={(e) => onChange("zipcode", e.target.value)}
+          placeholder={tx.placeholderZip}
+          disabled={disabled}
+          className={cls}
+        />
       </div>
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">
           {tx.labelAddress} <span className="text-red-500">*</span>
         </label>
-        <input type="text" value={values.address} onChange={(e) => onChange("address", e.target.value)}
-          placeholder={tx.placeholderAddress} disabled={disabled} className={cls} />
+        <input
+          type="text"
+          value={values.address}
+          onChange={(e) => onChange("address", e.target.value)}
+          placeholder={tx.placeholderAddress}
+          disabled={disabled}
+          className={cls}
+        />
       </div>
       <div>
-        <label className="block text-xs font-medium text-gray-600 mb-1">{tx.labelAddressDetail}</label>
-        <input type="text" value={values.addressDetail} onChange={(e) => onChange("addressDetail", e.target.value)}
-          placeholder={tx.placeholderAddressDetail} disabled={disabled} className={cls} />
+        <label className="block text-xs font-medium text-gray-600 mb-1">
+          {tx.labelAddressDetail}
+        </label>
+        <input
+          type="text"
+          value={values.addressDetail}
+          onChange={(e) => onChange("addressDetail", e.target.value)}
+          placeholder={tx.placeholderAddressDetail}
+          disabled={disabled}
+          className={cls}
+        />
       </div>
     </div>
   );
@@ -74,12 +117,18 @@ export default function ShopCheckoutPage() {
   const router = useRouter();
   const { lang, mounted } = useLanguage();
   const tx = t[lang];
+
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [sender, setSender] = useState<AddressForm>(EMPTY_ADDRESS);
   const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
   const [sameAsSender, setSameAsSender] = useState(false);
+
+  /* KG이니시스 INIStdPay 파라미터 (숨김 폼에 세팅) */
+  const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const sdkScriptRef = useRef<HTMLScriptElement | null>(null);
 
   useEffect(() => {
     const id = sessionStorage.getItem("shop_product_id");
@@ -119,48 +168,67 @@ export default function ShopCheckoutPage() {
     );
   }
 
+  /** KG이니시스 SDK를 동적으로 로드한 후 콜백 실행 */
+  function loadSdk(jsUrl: string, callback: () => void) {
+    if (typeof window !== "undefined" && window.INIStdPay) {
+      callback();
+      return;
+    }
+    if (sdkScriptRef.current) {
+      sdkScriptRef.current.addEventListener("load", callback, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = jsUrl;
+    script.onload = callback;
+    script.onerror = () => {
+      setLoading(false);
+      alert(tx.payError);
+    };
+    sdkScriptRef.current = script;
+    document.head.appendChild(script);
+  }
+
   async function handlePayment() {
     if (!product || !isFormValid()) return;
     setLoading(true);
     try {
-      const { requestPayment } = await import("@portone/browser-sdk/v2");
-
-      const storeId = process.env.NEXT_PUBLIC_PORTONE_STORE_ID
-        ?? "store-4ff4af41-85e3-4559-8eb8-0d08a2c6ceec";
-      const channelKey = process.env.NEXT_PUBLIC_PORTONE_CHANNEL_KEY
-        ?? "channel-key-9987cb87-6458-4888-b94e-68d9a2da896d";
-      const paymentId = `SHOP-${crypto.randomUUID()}`;
-
-      const response = await requestPayment({
-        storeId,
-        channelKey,
-        paymentId,
-        orderName: product.name[lang],
-        totalAmount: product.price,
-        currency: "CURRENCY_KRW",
-        payMethod: "CARD",
-        customer: {
-          fullName: sender.name,
-          phoneNumber: sender.phone.replace(/-/g, ""),
-          email,
-        },
-        redirectUrl: `${window.location.origin}/shop/payment/success`,
+      /* 1. 서버에서 서명 파라미터 획득 */
+      const res = await fetch("/api/inicis/prepare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          price: product.price,
+          goodname: product.name[lang],
+          buyername: sender.name,
+          buyertel: sender.phone.replace(/-/g, ""),
+          buyeremail: email,
+        }),
       });
 
-      /* 데스크탑: 팝업 방식으로 결과 직접 수신 */
-      if (response?.code !== undefined) {
-        alert(response.message ?? tx.payFail);
+      const data = await res.json() as Record<string, string>;
+      if (!res.ok || data.error) {
+        alert(data.error ?? tx.payError);
         return;
       }
 
-      /* 결제 성공 → 검증 후 이동 */
-      router.push(
-        `/shop/payment/success?paymentId=${encodeURIComponent(paymentId)}&amount=${product.price}`,
-      );
+      /* 2. 폼 파라미터 세팅 → 렌더 후 SDK 호출 */
+      setPayParams(data);
+
+      /* 3. SDK 로드 후 결제창 호출 (setPayParams 렌더 이후 실행) */
+      requestAnimationFrame(() => {
+        loadSdk(data.jsUrl, () => {
+          if (typeof window !== "undefined" && window.INIStdPay && formRef.current) {
+            window.INIStdPay.pay(formRef.current.id);
+          } else {
+            alert(tx.payError);
+            setLoading(false);
+          }
+        });
+      });
     } catch (e) {
       console.error(e);
       alert(tx.payError);
-    } finally {
       setLoading(false);
     }
   }
@@ -177,6 +245,37 @@ export default function ShopCheckoutPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
+      {/* KG이니시스 숨김 결제 폼 */}
+      {payParams && (
+        <form
+          id="frmPayment"
+          ref={formRef}
+          method="POST"
+          acceptCharset="UTF-8"
+          style={{ display: "none" }}
+        >
+          <input type="hidden" name="version" value="1.0" />
+          <input type="hidden" name="gopaymethod" value="" />
+          <input type="hidden" name="mid" value={payParams.mid} />
+          <input type="hidden" name="oid" value={payParams.oid} />
+          <input type="hidden" name="price" value={payParams.price} />
+          <input type="hidden" name="timestamp" value={payParams.timestamp} />
+          <input type="hidden" name="use_chkfake" value="Y" />
+          <input type="hidden" name="signature" value={payParams.signature} />
+          <input type="hidden" name="verification" value={payParams.verification} />
+          <input type="hidden" name="mKey" value={payParams.mKey} />
+          <input type="hidden" name="currency" value="WON" />
+          <input type="hidden" name="goodname" value={payParams.goodname} />
+          <input type="hidden" name="buyername" value={payParams.buyername} />
+          <input type="hidden" name="buyertel" value={payParams.buyertel} />
+          <input type="hidden" name="buyeremail" value={payParams.buyeremail} />
+          <input type="hidden" name="returnUrl" value={payParams.returnUrl} />
+          <input type="hidden" name="closeUrl" value={payParams.closeUrl} />
+          <input type="hidden" name="payViewType" value="overlay" />
+          <input type="hidden" name="charset" value="UTF-8" />
+        </form>
+      )}
+
       {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
@@ -188,7 +287,6 @@ export default function ShopCheckoutPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
-
         {/* 주문 상품 */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-3">{tx.orderProduct}</p>

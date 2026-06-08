@@ -66,6 +66,7 @@ export const t = {
 
     /* success/fail */
     paySuccess: "결제 완료!",
+    verifying: "결제 확인 중...",
     successMsg: "포장대행 서비스 결제가 완료되었습니다.\n빠른 시일 내에 처리해 드리겠습니다.",
     goBack: "쇼핑으로 돌아가기",
     orderNo: "주문번호",
@@ -138,6 +139,7 @@ export const t = {
 
     /* success/fail */
     paySuccess: "Payment Complete!",
+    verifying: "Verifying payment...",
     successMsg: "Your packaging service payment is confirmed.\nWe will process your order as soon as possible.",
     goBack: "Back to Shop",
     orderNo: "Order No.",

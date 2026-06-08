@@ -20,12 +20,13 @@ function SuccessContent() {
   const [amount, setAmount] = useState<string | null>(null);
 
   useEffect(() => {
-    const pId = searchParams.get("paymentId");
+    const pId = searchParams.get("paymentId");  // KG이니시스: oid
     const amt = searchParams.get("amount");
-    const code = searchParams.get("code"); // PortOne 에러 코드 (실패 시)
+    const verified = searchParams.get("verified"); // KG이니시스 return route가 1로 세팅
+    const code = searchParams.get("code");         // PortOne 실패 코드 (레거시 호환)
     const message = searchParams.get("message");
 
-    /* PortOne 결제 실패 리다이렉트 */
+    /* 실패 리다이렉트 */
     if (code) {
       setErrorMsg(message ?? `결제 실패 (${code})`);
       setStatus("error");
@@ -41,7 +42,13 @@ function SuccessContent() {
     setPaymentId(pId);
     setAmount(amt);
 
-    /* 서버에서 결제 검증 */
+    /* KG이니시스: returnUrl에서 이미 검증 완료 */
+    if (verified === "1") {
+      setStatus("done");
+      return;
+    }
+
+    /* 레거시 PortOne 검증 경로 (있을 경우) */
     (async () => {
       try {
         const res = await fetch("/api/portone/verify", {
@@ -65,8 +72,9 @@ function SuccessContent() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <Loader2 size={28} className="animate-spin text-gray-300" />
+        <p className="text-sm text-gray-400">{tx.verifying ?? "결제 확인 중..."}</p>
       </div>
     );
   }
@@ -103,15 +111,13 @@ function SuccessContent() {
       {paymentId && (
         <p className="text-xs text-gray-400">{tx.orderNo} {paymentId}</p>
       )}
-      <p className="text-sm text-gray-500 text-center">{tx.successMsg}</p>
-      <div className="flex gap-3 mt-2">
-        <button
-          onClick={() => router.replace("/shop")}
-          className="px-6 py-3 bg-[#de2910] text-white text-sm font-bold rounded-xl"
-        >
-          {tx.goBack}
-        </button>
-      </div>
+      <p className="text-sm text-gray-500 text-center whitespace-pre-line">{tx.successMsg}</p>
+      <button
+        onClick={() => router.replace("/shop")}
+        className="mt-2 px-6 py-3 bg-[#de2910] text-white text-sm font-bold rounded-xl"
+      >
+        {tx.goBack}
+      </button>
     </div>
   );
 }
