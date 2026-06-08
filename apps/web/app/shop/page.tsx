@@ -72,15 +72,16 @@ export default function ShopPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         {/* 서비스 정의 안내 */}
-        <div className="bg-[#de2910]/5 border border-[#de2910]/20 rounded-xl px-4 py-3">
-          <p className="text-sm font-semibold text-[#de2910] mb-1">📦 포장대행 서비스란?</p>
+        <div className="bg-[#de2910]/5 border border-[#de2910]/20 rounded-xl px-4 py-4">
+          <p className="text-sm font-semibold text-[#de2910] mb-2">📦 인프론트 물류대행 서비스</p>
           <p className="text-xs text-gray-600 leading-relaxed">
-            고객이 <strong>이미 보유하고 있는 물품</strong>을 에어캡·완충재로 안전하게 재포장하여
-            해외 배송 준비를 도와드리는 서비스입니다.
+            고객이 국내에서 구매하거나 보유한 물품을 센터에서 수령한 후,
+            고객 요청에 따라 <strong>검품·포장·재포장 및 국내·해외 배송 준비</strong>를 제공하는 물류대행 서비스입니다.
+            유학생 짐 발송도 지원합니다.
           </p>
-          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-            ※ 본 서비스는 <strong>구매대행이 아닙니다.</strong> 물품 구매·중개·판매를 대행하지 않으며,
-            고객이 소유한 물품의 포장 작업만 수행합니다.
+          <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-[#de2910]/10 leading-relaxed">
+            ※ 본 서비스는 상품 판매 또는 구매대행이 아닙니다. 고객이 소유한 물품의 포장 및 배송 준비만을 대행하며,
+            제3자 간 거래를 중개하지 않습니다.
           </p>
         </div>
 
