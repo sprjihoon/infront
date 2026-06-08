@@ -2,11 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import {
+  PICKUP_BOX_SIZE_MAP,
+  type PickupBoxSizeCode,
+} from "@/lib/epost/pickup-boxes";
 
 /* ────────────────────────────────────────────────────────────────
    스토리지 결제 준비 엔드포인트
-   - 결제 유형: PICKUP_FEE(수거비) | SHORT_TERM_STORAGE(단기보관 정산)
-   - 새 storage_payments 레코드 생성 → KG Inicis 서명 파라미터 반환
+   - PICKUP_FEE  : 박스 크기·수량별 수거비 합산
+   - SHORT_TERM_STORAGE : 단기보관 정산 (주수 × 주간요금)
+   - RELEASE_FEE : 출고 처리비 (고정 1,000원)
    - OID 포맷: STG-{storageId(8자)}-{timestamp}-{randomHex}
 ──────────────────────────────────────────────────────────────── */
 
@@ -46,6 +51,8 @@ export async function POST(request: NextRequest) {
     buyername: string;
     buyertel: string;
     buyeremail: string;
+    /** PICKUP_FEE: 수거할 박스 목록 */
+    pickup_boxes?: Array<{ size_code: PickupBoxSizeCode; qty: number }>;
     /** SHORT_TERM_STORAGE 정산 시만 사용 */
     billing_weeks?: number;
     billing_plan_type?: string;
@@ -56,14 +63,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
   }
 
-  /* ── 스토리지 소유권 및 플랜 확인 ── */
+  /* ── 스토리지 소유권 확인 ── */
   const { data: storage, error: sErr } = await supabase
     .from("customer_storages")
-    .select(`
-      id, user_id, storage_mode, plan_type, max_plan_type,
-      short_term_started_at,
-      storage_plan_config!plan_type (weekly_rate)
-    `)
+    .select("id, user_id, storage_mode, plan_type, max_plan_type, short_term_started_at")
     .eq("id", storage_id)
     .eq("user_id", user.id)
     .single();
@@ -80,9 +83,24 @@ export async function POST(request: NextRequest) {
   let billing_plan_type: string | null = null;
 
   if (payment_type === "PICKUP_FEE") {
-    amount = 3000;
-    goodname = "인프론트 보관 서비스 수거비";
-    billing_memo = "수거비 3,000원";
+    /* 박스 크기별 요금 합산 */
+    const boxes = body.pickup_boxes?.length
+      ? body.pickup_boxes
+      : [{ size_code: "DEFAULT" as PickupBoxSizeCode, qty: 1 }];
+
+    const boxLines: string[] = [];
+    for (const b of boxes) {
+      const spec = PICKUP_BOX_SIZE_MAP[b.size_code];
+      if (!spec) {
+        return NextResponse.json({ error: `잘못된 박스 규격: ${b.size_code}` }, { status: 400 });
+      }
+      const qty = Math.max(1, Math.floor(b.qty ?? 1));
+      amount += spec.pickup_fee * qty;
+      boxLines.push(`${spec.label} ${qty}개 × ${spec.pickup_fee.toLocaleString()}원`);
+    }
+
+    goodname = `인프론트 보관 서비스 수거비`;
+    billing_memo = boxLines.join(" / ");
 
   } else if (payment_type === "RELEASE_FEE") {
     amount = 1000;
@@ -90,7 +108,6 @@ export async function POST(request: NextRequest) {
     billing_memo = "출고 처리비 1,000원";
 
   } else if (payment_type === "SHORT_TERM_STORAGE") {
-    /* 단기보관 정산: weeks × weekly_rate(max_plan_type 기준) */
     billing_weeks = body.billing_weeks ?? null;
     billing_plan_type = body.billing_plan_type ?? (storage.max_plan_type as string | null);
 
@@ -101,7 +118,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "과금 플랜을 확인할 수 없습니다." }, { status: 400 });
     }
 
-    /* 플랜별 주간 요금 조회 */
     const { data: planData } = await supabase
       .from("storage_plan_config")
       .select("weekly_rate, label_ko")
@@ -132,7 +148,6 @@ export async function POST(request: NextRequest) {
   const isTest = !process.env.INICIS_MID;
 
   const timestamp = Date.now().toString();
-  /* OID에 storageId 앞 8자리 포함 → 콜백에서 파싱 */
   const shortId = storage_id.replace(/-/g, "").substring(0, 8);
   const oid = `STG-${shortId}-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
   const priceStr = String(amount);

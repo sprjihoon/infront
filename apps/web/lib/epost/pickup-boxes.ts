@@ -25,6 +25,8 @@ export interface PickupBoxSizeSpec {
   desc: string;
   weight: number;
   volume: number;
+  /** 수거비 (원) — 스토리지 서비스 수거 신청 시 적용 */
+  pickup_fee: number;
 }
 
 export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
@@ -34,6 +36,7 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
     desc: "2kg · 60cm (세변의 합)",
     weight: 2,
     volume: 60,
+    pickup_fee: 3000,
   },
   {
     code: "SMALL",
@@ -41,6 +44,7 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
     desc: "5kg · 80cm (세변의 합)",
     weight: 5,
     volume: 80,
+    pickup_fee: 5000,
   },
   {
     code: "MEDIUM",
@@ -48,6 +52,7 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
     desc: "10kg · 100cm (세변의 합)",
     weight: 10,
     volume: 100,
+    pickup_fee: 8000,
   },
   {
     code: "LARGE",
@@ -55,6 +60,7 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
     desc: "20kg · 120cm (세변의 합)",
     weight: 20,
     volume: 120,
+    pickup_fee: 12000,
   },
   {
     code: "XL",
@@ -62,6 +68,7 @@ export const PICKUP_BOX_SIZES: PickupBoxSizeSpec[] = [
     desc: "30kg · 160cm (세변의 합)",
     weight: 30,
     volume: 160,
+    pickup_fee: 18000,
   },
 ];
 
