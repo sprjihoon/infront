@@ -71,13 +71,32 @@ export default function ShopPage() {
       </div>
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* 안내 */}
+        {/* 서비스 정의 안내 */}
         <div className="bg-[#de2910]/5 border border-[#de2910]/20 rounded-xl px-4 py-3">
           <p className="text-sm font-semibold text-[#de2910] mb-1">📦 포장대행 서비스란?</p>
           <p className="text-xs text-gray-600 leading-relaxed">
-            국내에서 수령한 상품을 에어캡·완충재로 안전하게 재포장하여
+            고객이 <strong>이미 보유하고 있는 물품</strong>을 에어캡·완충재로 안전하게 재포장하여
             해외 배송 준비를 도와드리는 서비스입니다.
           </p>
+          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+            ※ 본 서비스는 <strong>구매대행이 아닙니다.</strong> 물품 구매·중개·판매를 대행하지 않으며,
+            고객이 소유한 물품의 포장 작업만 수행합니다.
+          </p>
+        </div>
+
+        {/* 취급 금지 물품 안내 */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1.5">
+          <p className="text-xs font-bold text-gray-700">🚫 취급 금지 물품</p>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            아래 물품은 접수 및 포장이 불가합니다.
+          </p>
+          <ul className="text-xs text-gray-600 leading-relaxed space-y-0.5 list-disc list-inside">
+            <li>리튬배터리 단품, 인화성·폭발성 물질</li>
+            <li>마약류, 총기류 및 관련 부품</li>
+            <li>목적국 반입 금지 물품</li>
+            <li>위조품·지적재산권 침해 물품</li>
+            <li>동식물, 의약품 (처방전 필요 품목)</li>
+          </ul>
         </div>
 
         {/* 상품 목록 */}
