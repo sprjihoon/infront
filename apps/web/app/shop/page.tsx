@@ -42,7 +42,7 @@ export const SHOP_PRODUCTS = [
 
 export default function ShopPage() {
   const router = useRouter();
-  const { lang, toggle } = useLanguage();
+  const { lang, toggle, mounted } = useLanguage();
   const tx = t[lang];
 
   function handleBuy(productId: string) {
@@ -66,19 +66,21 @@ export default function ShopPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => router.push("/home")}
+              onClick={() => router.push("/")}
               className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
             >
               <Home size={14} />
               {tx.home}
             </button>
-            <button
-              onClick={toggle}
-              className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <Globe size={12} />
-              {tx.langLabel}
-            </button>
+            {mounted && (
+              <button
+                onClick={toggle}
+                className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <Globe size={12} />
+                {tx.langLabel}
+              </button>
+            )}
           </div>
         </div>
       </div>

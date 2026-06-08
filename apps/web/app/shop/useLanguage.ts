@@ -7,10 +7,12 @@ const STORAGE_KEY = "shop_lang";
 
 export function useLanguage() {
   const [lang, setLangState] = useState<Lang>("ko");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY) as Lang | null;
     if (saved === "en" || saved === "ko") setLangState(saved);
+    setMounted(true);
   }, []);
 
   const setLang = useCallback((l: Lang) => {
@@ -22,5 +24,5 @@ export function useLanguage() {
     setLang(lang === "ko" ? "en" : "ko");
   }, [lang, setLang]);
 
-  return { lang, setLang, toggle };
+  return { lang, setLang, toggle, mounted };
 }

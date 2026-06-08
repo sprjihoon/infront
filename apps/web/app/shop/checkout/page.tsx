@@ -80,7 +80,7 @@ function AddressFields({
 
 export default function ShopCheckoutPage() {
   const router = useRouter();
-  const { lang } = useLanguage();
+  const { lang, mounted } = useLanguage();
   const tx = t[lang];
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(false);
@@ -174,7 +174,7 @@ export default function ShopCheckoutPage() {
     }
   }
 
-  if (!product) {
+  if (!product || !mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 size={28} className="animate-spin text-gray-300" />
