@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
 
-/** GET /api/admin/customer-storages — 전체 고객 스토리지 목록 */
+/** GET /api/admin/customer-storages - ?? ?? ???? ?? */
 export async function GET(request: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       status, short_term_started_at, paid_until_date, next_billing_date,
       created_at, updated_at,
       customers!user_id (name, email, customer_code),
-      storage_plan_config!plan_type (label_ko)
+      storage_plan_config!customer_storages_plan_type_fkey (label_ko)
     `)
     .order("created_at", { ascending: false });
 

@@ -62,6 +62,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     notes?: string;
     paid_until_date?: string;
     next_billing_date?: string;
+    /** 관리자 수동 용량 설정 (개수). null이면 플랜 기본값으로 복원 */
+    capacity_override?: number | null;
   };
 
   const { data, error } = await adminDb

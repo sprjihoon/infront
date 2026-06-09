@@ -187,7 +187,7 @@ function StorageCard({ storage: s, onClick }: { storage: Storage; onClick: () =>
           <div className="flex justify-between text-[11px] text-gray-500 mb-1">
             <span>보관 용량</span>
             <span className="font-medium">
-              {s.used_score} / {s.capacity_score} 점
+              {s.used_score}개 / 최대 {s.capacity_score}개
               <span className="text-gray-400 ml-1">({Math.round(s.usage_percent ?? 0)}%)</span>
             </span>
           </div>

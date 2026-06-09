@@ -25,6 +25,7 @@ interface StorageDetail {
   max_plan_type: string | null;
   monthly_amount: number | null;
   capacity_score: number | null;
+  capacity_override: number | null;
   used_score: number;
   usage_percent: number;
   status: string;
@@ -109,6 +110,8 @@ export default function AdminStorageDetailPage() {
   const [locationInput, setLocationInput] = useState<Record<string, string>>({});
   const [storageNotes, setStorageNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
+  const [capacityInput, setCapacityInput] = useState<string>("");
+  const [savingCapacity, setSavingCapacity] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -120,6 +123,7 @@ export default function AdminStorageDetailPage() {
       setItems(json.items ?? []);
       setPayments(json.payments ?? []);
       setStorageNotes(json.storage?.notes ?? "");
+      setCapacityInput(String(json.storage?.capacity_override ?? json.storage?.capacity_score ?? ""));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -185,6 +189,45 @@ export default function AdminStorageDetailPage() {
       setStorage((s) => s ? { ...s, notes: json.storage.notes } : s);
     }
     setSavingNotes(false);
+  }
+
+  async function saveCapacity() {
+    const val = parseInt(capacityInput, 10);
+    if (isNaN(val) || val <= 0) return;
+    setSavingCapacity(true);
+    const res = await fetch(`/api/admin/customer-storages/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ capacity_override: val }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      setStorage((s) => s ? {
+        ...s,
+        capacity_override: json.storage.capacity_override,
+        capacity_score: json.storage.capacity_score,
+      } : s);
+    }
+    setSavingCapacity(false);
+  }
+
+  async function resetCapacity() {
+    setSavingCapacity(true);
+    const res = await fetch(`/api/admin/customer-storages/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ capacity_override: null }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      setStorage((s) => s ? {
+        ...s,
+        capacity_override: null,
+        capacity_score: json.storage.capacity_score,
+      } : s);
+      setCapacityInput(String(json.storage.capacity_score ?? ""));
+    }
+    setSavingCapacity(false);
   }
 
   if (loading) {
@@ -253,11 +296,62 @@ export default function AdminStorageDetailPage() {
             </select>
           </div>
         </InfoCell>
-        <InfoCell label="용량" value={
-          storage.capacity_score != null
-            ? `${storage.used_score}/${storage.capacity_score}점 (${Math.round(storage.usage_percent ?? 0)}%)`
-            : "-"
-        } />
+        <InfoCell label="용량 현황">
+          <div className="mt-1 space-y-2">
+            {/* 게이지 */}
+            {storage.capacity_score != null && storage.capacity_score > 0 ? (
+              <>
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>보관 물품</span>
+                  <span className="font-semibold text-gray-700">
+                    {storage.used_score}개 / {storage.capacity_score}개
+                    <span className="ml-1 text-gray-400">({Math.round(storage.usage_percent ?? 0)}%)</span>
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all ${
+                      (storage.usage_percent ?? 0) >= 90 ? "bg-red-500" :
+                      (storage.usage_percent ?? 0) >= 70 ? "bg-orange-400" : "bg-brand-500"
+                    }`}
+                    style={{ width: `${Math.min(storage.usage_percent ?? 0, 100)}%` }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-gray-400">용량 미설정</p>
+            )}
+            {/* 관리자 수동 설정 */}
+            <div className="flex items-center gap-2 pt-1">
+              <input
+                type="number"
+                min={1}
+                value={capacityInput}
+                onChange={(e) => setCapacityInput(e.target.value)}
+                placeholder="최대 개수"
+                className="w-24 text-sm border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-brand-400"
+              />
+              <span className="text-xs text-gray-400">개</span>
+              <button
+                onClick={saveCapacity}
+                disabled={savingCapacity}
+                className="text-xs bg-brand-600 text-white px-3 py-1.5 rounded-lg font-semibold disabled:opacity-50"
+              >저장</button>
+              {storage.capacity_override != null && (
+                <button
+                  onClick={resetCapacity}
+                  disabled={savingCapacity}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline"
+                >플랜 기본값 복원</button>
+              )}
+            </div>
+            {storage.capacity_override != null && (
+              <p className="text-[11px] text-brand-600">
+                ✓ 관리자 수동 설정 ({storage.capacity_override}개)
+              </p>
+            )}
+          </div>
+        </InfoCell>
         {storage.storage_mode === "short_term" ? (
           <>
             <InfoCell label="보관 기간" value={`${weeksUsed}주 경과`} />
