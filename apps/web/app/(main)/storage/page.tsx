@@ -388,6 +388,8 @@ export default function StoragePage() {
                   )}
                 </>
               )}
+            </>
+          )}
             </div>
           </>
         )}
