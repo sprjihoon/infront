@@ -148,9 +148,9 @@ export default function StorageDetailPage() {
   }
 
   const parcelInboundCount = parcels.filter((p) => p.status === "INBOUND").length;
-  // 상세 페이지에서는 출고 가능 물품만 표시
+  // 상세 페이지에서는 출고 가능 물품만 표시 (SHIPPABLE/READY 상태만)
   const shippableParcels = parcels.filter(
-    (p) => p.status === "SHIPPABLE" || p.status === "READY" || p.is_shippable === true
+    (p) => p.status === "SHIPPABLE" || p.status === "READY"
   );
 
   if (loading) {
