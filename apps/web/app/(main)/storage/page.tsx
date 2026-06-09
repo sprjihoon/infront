@@ -32,12 +32,15 @@ interface Storage {
   storage_plan_config: PlanConfig | null;
 }
 
-interface MockItem {
+interface ProductItem {
   id: string;
-  storage_id: string;
+  parcel_id: string;
+  tracking_no: string | null;
+  storage_id: string | null;
   name: string;
-  status: "보관 중" | "출고 요청" | "출고 완료";
-  image_url: string | null;
+  quantity: number;
+  parcel_status: string;
+  inbound_at: string | null;
 }
 
 /* ─── 상수 ──────────────────────────────────────── */
@@ -45,20 +48,15 @@ const PLAN_SIZE_LABEL: Record<string, string> = {
   S: "소형", M: "중형", L: "대형", XL: "특대형",
 };
 
-const ITEM_STATUS_COLOR: Record<string, string> = {
-  "보관 중":  "bg-green-100 text-green-700",
-  "출고 요청": "bg-blue-100 text-blue-700",
-  "출고 완료": "bg-gray-100 text-gray-500",
+const PARCEL_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
+  CREATED:          { label: "수거 대기",  color: "bg-yellow-100 text-yellow-700" },
+  PICKUP_REQUESTED: { label: "수거 신청",  color: "bg-blue-100 text-blue-700" },
+  IN_TRANSIT:       { label: "이동 중",   color: "bg-purple-100 text-purple-700" },
+  INBOUND:          { label: "보관 중",   color: "bg-green-100 text-green-700" },
+  INSPECTING:       { label: "검수 중",   color: "bg-blue-100 text-blue-700" },
+  HOLD:             { label: "보류",      color: "bg-orange-100 text-orange-700" },
+  READY:            { label: "출고 가능",  color: "bg-teal-100 text-teal-700" },
 };
-
-const MOCK_ITEMS: MockItem[] = [
-  { id: "m1", storage_id: "__first__", name: "MOCK-KR-1780542676907-1", status: "보관 중",  image_url: null },
-  { id: "m2", storage_id: "__first__", name: "MOCK-JP-1780542676907-1", status: "보관 중",  image_url: null },
-  { id: "m3", storage_id: "__first__", name: "MOCK-JP-1780542676907-2", status: "보관 중",  image_url: null },
-  { id: "m4", storage_id: "__first__", name: "MOCK-KR-1780542487354-1", status: "보관 중",  image_url: null },
-  { id: "m5", storage_id: "__first__", name: "MOCK-JP-1780542487354-1", status: "출고 요청", image_url: null },
-  { id: "m6", storage_id: "__first__", name: "MOCK-JP-1780542487354-2", status: "출고 완료", image_url: null },
-];
 
 /* ─── 유틸 ──────────────────────────────────────── */
 const FREE_DAYS = 3;
@@ -90,6 +88,7 @@ function ProgressBar({ percent }: { percent: number }) {
 export default function StoragePage() {
   const router = useRouter();
   const [storages, setStorages] = useState<Storage[]>([]);
+  const [items, setItems] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("전체");
@@ -98,10 +97,15 @@ export default function StoragePage() {
     if (!quiet) setLoading(true);
     else setRefreshing(true);
     try {
-      const res = await fetch("/api/storage");
-      if (res.status === 401) { router.push("/login"); return; }
-      const json = await res.json();
-      setStorages(json.storages ?? []);
+      const [storageRes, itemsRes] = await Promise.all([
+        fetch("/api/storage"),
+        fetch("/api/storage/all-items"),
+      ]);
+      if (storageRes.status === 401) { router.push("/login"); return; }
+      const storageJson = await storageRes.json();
+      const itemsJson = itemsRes.ok ? await itemsRes.json() : { items: [] };
+      setStorages(storageJson.storages ?? []);
+      setItems(itemsJson.items ?? []);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -119,18 +123,11 @@ export default function StoragePage() {
     .filter(Boolean)
     .sort()[0] ?? null;
 
-  /* mock 물품: __first__ → 첫 번째 스토리지 id 치환 */
-  const firstId = active[0]?.id ?? "";
-  const mockItems = MOCK_ITEMS.map((it) => ({
-    ...it,
-    storage_id: it.storage_id === "__first__" ? firstId : it.storage_id,
-  }));
-
   const filterTabs = ["전체", ...active.map((s) => s.storage_name)];
   const filteredItems =
     itemFilter === "전체"
-      ? mockItems
-      : mockItems.filter((it) => {
+      ? items
+      : items.filter((it) => {
           const s = active.find((st) => st.id === it.storage_id);
           return s?.storage_name === itemFilter;
         });
@@ -201,7 +198,7 @@ export default function StoragePage() {
               <StorageCard
                 key={s.id}
                 storage={s}
-                itemCount={mockItems.filter((it) => it.storage_id === s.id).length}
+                itemCount={items.filter((it) => it.storage_id === s.id).length}
                 onDetail={() => router.push(`/storage/${s.id}`)}
               />
             ))}
@@ -242,25 +239,27 @@ export default function StoragePage() {
                   {filteredItems.map((item) => {
                     const storageName =
                       active.find((s) => s.id === item.storage_id)?.storage_name ?? "-";
+                    const statusCfg =
+                      PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-green-100 text-green-700" };
                     return (
                       <div key={item.id} className="px-4 py-3 flex items-center gap-3">
-                        {/* 썸네일 */}
-                        <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden">
-                          {item.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <Package size={16} className="text-gray-400" />
-                          )}
+                        {/* 아이콘 */}
+                        <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                          <Package size={16} className="text-gray-400" />
                         </div>
                         {/* 텍스트 */}
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">{item.name}</p>
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {item.name}
+                            {item.quantity > 1 && (
+                              <span className="ml-1.5 text-xs text-gray-400 font-normal">{item.quantity}개</span>
+                            )}
+                          </p>
                           <p className="text-[11px] text-gray-400 mt-0.5">{storageName}</p>
                         </div>
                         {/* 상태 배지 */}
-                        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${ITEM_STATUS_COLOR[item.status]}`}>
-                          {item.status}
+                        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${statusCfg.color}`}>
+                          {statusCfg.label}
                         </span>
                       </div>
                     );
