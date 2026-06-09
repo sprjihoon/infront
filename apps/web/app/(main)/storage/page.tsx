@@ -694,7 +694,7 @@ function CapacityChangeSheet({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-[520px] bg-white rounded-3xl max-h-[80vh] flex flex-col shadow-2xl">
         {/* 헤더 */}
-        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white">
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
           <div>
             <p className="text-base font-bold text-gray-900">용량 변경</p>
             <p className="text-xs text-gray-400 mt-0.5">
