@@ -475,7 +475,13 @@ export default function StorageDetailPage() {
             <div className="px-4 py-3 border-b border-gray-50">
               <p className="text-sm font-bold text-gray-900">수거 완료 물품</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                센터 입고 완료 {parcelInboundCount}개 · 전체 {parcels.length}개
+                {(() => {
+                  const totalItems = parcels.reduce((sum, p) =>
+                    sum + (Array.isArray(p.pre_invoice_items) && p.pre_invoice_items.length > 0
+                      ? p.pre_invoice_items.length
+                      : 1), 0);
+                  return `${totalItems}개 물품 · ${parcels.length}개 운송장`;
+                })()}
               </p>
             </div>
             <div className="divide-y divide-gray-50">
@@ -570,10 +576,50 @@ function ItemRow({ item }: { item: StorageItem }) {
 
 function ParcelRow({ parcel }: { parcel: StorageParcel }) {
   const s = PARCEL_STATUS_MAP[parcel.status] ?? { label: parcel.status, color: "bg-gray-100 text-gray-500" };
-  const declaredNames = Array.isArray(parcel.pre_invoice_items)
-    ? parcel.pre_invoice_items.map((it) => it.name).filter(Boolean).slice(0, 2).join(", ")
+  const declaredItems = Array.isArray(parcel.pre_invoice_items) && parcel.pre_invoice_items.length > 0
+    ? parcel.pre_invoice_items.filter((it) => it.name)
     : null;
 
+  const metaLine = [
+    parcel.inbound_at
+      ? new Date(parcel.inbound_at).toLocaleDateString("ko-KR") + " 입고"
+      : null,
+    parcel.weight_actual != null ? `${parcel.weight_actual}kg` : null,
+    parcel.tracking_no ?? null,
+  ].filter(Boolean).join(" · ");
+
+  if (declaredItems && declaredItems.length > 0) {
+    // 신고 품목별로 개별 행 표시
+    return (
+      <>
+        {declaredItems.map((item, idx) => (
+          <div key={`${parcel.id}-${idx}`} className="px-4 py-3 flex items-center gap-3">
+            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+              <Package size={16} className="text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">
+                {item.name}
+                {item.qty && item.qty > 1 && (
+                  <span className="ml-1.5 text-xs text-gray-400 font-normal">{item.qty}개</span>
+                )}
+              </p>
+              {idx === 0 && metaLine && (
+                <p className="text-[10px] text-gray-400 mt-0.5 truncate">{metaLine}</p>
+              )}
+            </div>
+            {idx === 0 && (
+              <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${s.color}`}>
+                {s.label}
+              </span>
+            )}
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  // 신고 품목 없으면 운송장 번호로 단일 행
   return (
     <div className="px-4 py-3 flex items-center gap-3">
       <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
@@ -583,21 +629,9 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
         <p className="text-sm font-medium text-gray-800 truncate">
           {parcel.tracking_no ?? "운송장 미확인"}
         </p>
-        <div className="flex items-center gap-2 mt-0.5">
-          {parcel.inbound_at && (
-            <span className="text-[10px] text-gray-400">
-              {new Date(parcel.inbound_at).toLocaleDateString("ko-KR")} 입고
-            </span>
-          )}
-          {parcel.weight_actual != null && (
-            <span className="text-[10px] text-gray-400">{parcel.weight_actual}kg</span>
-          )}
-          {declaredNames && (
-            <span className="text-[10px] text-gray-400 truncate max-w-[120px]">
-              {declaredNames}
-            </span>
-          )}
-        </div>
+        {metaLine && (
+          <p className="text-[10px] text-gray-400 mt-0.5 truncate">{metaLine}</p>
+        )}
       </div>
       <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${s.color}`}>
         {s.label}
