@@ -145,7 +145,7 @@ export default function StoragePage() {
     itemFilter === "전체"
       ? items
       : itemFilter === "출고 가능"
-        ? items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable)
+        ? items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY")
         : items.filter((it) => {
             const s = active.find((st) => st.id === it.storage_id);
             return s?.storage_name === itemFilter;
@@ -245,9 +245,9 @@ export default function StoragePage() {
                   <p className="text-sm font-bold text-gray-900">물품 목록</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     전체 {items.length}개
-                    {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable).length > 0 && (
+                    {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY").length > 0 && (
                       <span className="ml-2 text-green-600 font-semibold">
-                        출고 가능 {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable).length}개
+                        출고 가능 {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY").length}개
                       </span>
                     )}
                   </p>
