@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
-  ArrowLeft, Package, RefreshCw, Plus, Tag,
-  MapPin, CheckCircle, Clock, AlertTriangle,
-  XCircle, Archive, Edit3, X, Check, ChevronDown,
+  ArrowLeft, Package, RefreshCw,
+  CheckCircle, Clock, AlertTriangle,
+  XCircle, Archive, Edit3, X, Check,
   CreditCard, Loader2, TruckIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -36,20 +36,6 @@ interface Storage {
   storage_plan_config: PlanConfig | null;
 }
 
-interface StorageItem {
-  id: string;
-  product_name: string;
-  category: string | null;
-  image_url: string | null;
-  capacity_score: number;
-  location_code: string | null;
-  status: string;
-  source: string;
-  verification_status: string;
-  received_at: string | null;
-  created_at: string;
-}
-
 interface StorageParcel {
   id: string;
   tracking_no: string | null;
@@ -71,24 +57,6 @@ const PARCEL_STATUS_MAP: Record<string, { label: string; color: string }> = {
   INSPECTING:       { label: "검수 중",   color: "bg-blue-100 text-blue-700" },
   HOLD:             { label: "보류",      color: "bg-orange-100 text-orange-700" },
   READY:            { label: "출고 가능",  color: "bg-teal-100 text-teal-700" },
-};
-
-const ITEM_STATUS_MAP: Record<string, { label: string; color: string }> = {
-  PENDING_INBOUND: { label: "입고 대기",  color: "bg-yellow-100 text-yellow-700" },
-  IN_STORAGE:      { label: "보관 중",    color: "bg-green-100 text-green-700" },
-  PENDING_RELEASE: { label: "출고 요청",  color: "bg-blue-100 text-blue-700" },
-  RELEASED:        { label: "출고 완료",  color: "bg-gray-100 text-gray-500" },
-};
-
-const CATEGORY_LABELS: Record<string, string> = {
-  shirt: "티셔츠",
-  pants: "바지",
-  coat: "코트",
-  padding: "패딩",
-  shoes: "신발",
-  box_small: "소형 박스",
-  box_medium: "중형 박스",
-  box_large: "대형 박스",
 };
 
 const STORAGE_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {
@@ -133,15 +101,12 @@ export default function StorageDetailPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const [storage, setStorage] = useState<Storage | null>(null);
-  const [items, setItems] = useState<StorageItem[]>([]);
   const [parcels, setParcels] = useState<StorageParcel[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editName, setEditName] = useState(false);
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
-  const [showAddItem, setShowAddItem] = useState(false);
-  const [itemFilter, setItemFilter] = useState<string>("ALL");
   const [showReleaseSheet, setShowReleaseSheet] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
@@ -153,7 +118,6 @@ export default function StorageDetailPage() {
       if (res.status === 404) { router.push("/storage"); return; }
       const json = await res.json();
       setStorage(json.storage);
-      setItems(json.items ?? []);
       setParcels(json.parcels ?? []);
       setNameInput(json.storage?.storage_name ?? "");
     } finally {
@@ -180,12 +144,6 @@ export default function StorageDetailPage() {
     setSaving(false);
   }
 
-  const filteredItems = itemFilter === "ALL"
-    ? items
-    : items.filter((it) => it.status === itemFilter);
-
-  const inStorageCount = items.filter((it) => it.status === "IN_STORAGE").length;
-  const pendingCount   = items.filter((it) => it.status === "PENDING_INBOUND").length;
   const parcelInboundCount = parcels.filter((p) => p.status === "INBOUND").length;
 
   if (loading) {
@@ -376,7 +334,7 @@ export default function StorageDetailPage() {
         {/* 단기보관 — 출고 요청 + 정산 버튼 */}
         {storage.storage_mode === "short_term" &&
           storage.status === "ACTIVE" &&
-          inStorageCount > 0 && (
+          parcels.length > 0 && (
             <button
               onClick={() => setShowReleaseSheet(true)}
               className="w-full bg-brand-600 text-white rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 text-sm font-bold shadow-sm"
@@ -395,79 +353,6 @@ export default function StorageDetailPage() {
             </p>
           </div>
         )}
-
-        {/* 내품 목록 */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-bold text-gray-900">보관 내품</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                보관 중 {inStorageCount}개
-                {pendingCount > 0 && ` · 입고 대기 ${pendingCount}개`}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAddItem(true)}
-              className="flex items-center gap-1 text-xs font-semibold text-brand-600 bg-brand-50 px-2.5 py-1.5 rounded-xl"
-            >
-              <Plus size={13} />
-              내품 추가
-            </button>
-          </div>
-
-          {/* 필터 탭 */}
-          <div className="flex border-b border-gray-50 px-2">
-            {["ALL", "IN_STORAGE", "PENDING_INBOUND", "PENDING_RELEASE"].map((f) => {
-              const labels: Record<string, string> = {
-                ALL: "전체",
-                IN_STORAGE: "보관중",
-                PENDING_INBOUND: "입고대기",
-                PENDING_RELEASE: "출고요청",
-              };
-              return (
-                <button
-                  key={f}
-                  onClick={() => setItemFilter(f)}
-                  className={`px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${
-                    itemFilter === f
-                      ? "border-brand-600 text-brand-600"
-                      : "border-transparent text-gray-400"
-                  }`}
-                >
-                  {labels[f]}
-                  {f !== "ALL" && items.filter((it) => it.status === f).length > 0 && (
-                    <span className="ml-1 bg-gray-100 text-gray-500 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
-                      {items.filter((it) => it.status === f).length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {filteredItems.length === 0 ? (
-            <div className="py-10 flex flex-col items-center gap-2">
-              <Package size={24} className="text-gray-200" />
-              <p className="text-xs text-gray-400">
-                {itemFilter === "ALL" ? "내품이 없습니다" : "해당하는 내품이 없습니다"}
-              </p>
-              {itemFilter === "ALL" && (
-                <button
-                  onClick={() => setShowAddItem(true)}
-                  className="mt-1 text-xs font-semibold text-brand-600 underline"
-                >
-                  내품 추가하기
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {filteredItems.map((item) => (
-                <ItemRow key={item.id} item={item} />
-              ))}
-            </div>
-          )}
-        </div>
 
         {/* 수거 완료 물품 (parcels) */}
         {parcels.length > 0 && (
@@ -509,15 +394,6 @@ export default function StorageDetailPage() {
         </div>
       </div>
 
-      {/* 내품 추가 바텀시트 */}
-      {showAddItem && (
-        <AddItemSheet
-          storageId={id}
-          onClose={() => setShowAddItem(false)}
-          onAdded={() => { setShowAddItem(false); load(true); }}
-        />
-      )}
-
       {/* 출고 요청 + 보관료 정산 바텀시트 */}
       {showReleaseSheet && storage && (
         <ReleasePaymentSheet
@@ -534,42 +410,6 @@ function InfoCell({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[11px] text-gray-400">{label}</p>
       <p className="text-sm font-semibold text-gray-800 mt-0.5">{value}</p>
-    </div>
-  );
-}
-
-function ItemRow({ item }: { item: StorageItem }) {
-  const s = ITEM_STATUS_MAP[item.status] ?? ITEM_STATUS_MAP.IN_STORAGE;
-  const catLabel = item.category ? (CATEGORY_LABELS[item.category] ?? item.category) : null;
-
-  return (
-    <div className="px-4 py-3 flex items-center gap-3">
-      <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
-        <Package size={16} className="text-gray-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 truncate">{item.product_name}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          {catLabel && (
-            <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-              <Tag size={9} />
-              {catLabel}
-            </span>
-          )}
-          {item.location_code && (
-            <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
-              <MapPin size={9} />
-              {item.location_code}
-            </span>
-          )}
-          {item.capacity_score > 1 && (
-            <span className="text-[10px] text-gray-400">{item.capacity_score}점</span>
-          )}
-        </div>
-      </div>
-      <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${s.color}`}>
-        {s.label}
-      </span>
     </div>
   );
 }
@@ -640,154 +480,6 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
   );
 }
 
-
-const CATEGORIES = [
-  { value: "shirt",      label: "티셔츠/상의" },
-  { value: "pants",      label: "바지" },
-  { value: "coat",       label: "코트/자켓" },
-  { value: "padding",    label: "패딩" },
-  { value: "shoes",      label: "신발" },
-  { value: "box_small",  label: "소형 박스" },
-  { value: "box_medium", label: "중형 박스" },
-  { value: "box_large",  label: "대형 박스" },
-];
-
-function AddItemSheet({
-  storageId,
-  onClose,
-  onAdded,
-}: {
-  storageId: string;
-  onClose: () => void;
-  onAdded: () => void;
-}) {
-  const [rows, setRows] = useState([{ product_name: "", category: "", notes: "" }]);
-  const [saving, setSaving] = useState(false);
-  const [showCatPicker, setShowCatPicker] = useState<number | null>(null);
-
-  function addRow() {
-    setRows((r) => [...r, { product_name: "", category: "", notes: "" }]);
-  }
-
-  function removeRow(i: number) {
-    setRows((r) => r.filter((_, idx) => idx !== i));
-  }
-
-  function updateRow(i: number, field: string, value: string) {
-    setRows((r) => r.map((row, idx) => idx === i ? { ...row, [field]: value } : row));
-  }
-
-  async function submit() {
-    const valid = rows.filter((r) => r.product_name.trim());
-    if (!valid.length) return;
-    setSaving(true);
-    const res = await fetch(`/api/storage/${storageId}/items`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: valid.map((r) => ({
-          product_name: r.product_name.trim(),
-          category: r.category || undefined,
-          notes: r.notes || undefined,
-        })),
-      }),
-    });
-    setSaving(false);
-    if (res.ok) onAdded();
-  }
-
-  return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto">
-        <div className="px-4 pt-4 pb-2 flex items-center justify-between border-b border-gray-100">
-          <p className="text-base font-bold text-gray-900">내품 추가</p>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100">
-            <X size={18} className="text-gray-500" />
-          </button>
-        </div>
-        <div className="px-4 py-4 space-y-3">
-          <p className="text-xs text-gray-500">
-            수거 신청 시 보관할 물품 목록을 입력해 주세요.
-            정확한 확인은 센터 입고 후 별도 안내됩니다.
-          </p>
-
-          {rows.map((row, i) => (
-            <div key={i} className="bg-gray-50 rounded-2xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-gray-600">내품 {i + 1}</span>
-                {rows.length > 1 && (
-                  <button onClick={() => removeRow(i)} className="p-1 text-gray-400">
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-              <input
-                value={row.product_name}
-                onChange={(e) => updateRow(i, "product_name", e.target.value)}
-                placeholder="물품명 (예: 패딩 점퍼, 신발 박스)"
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-400"
-              />
-              <button
-                onClick={() => setShowCatPicker(i)}
-                className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-sm text-left flex items-center justify-between"
-              >
-                <span className={row.category ? "text-gray-800" : "text-gray-400"}>
-                  {row.category
-                    ? CATEGORIES.find((c) => c.value === row.category)?.label ?? row.category
-                    : "카테고리 선택 (선택)"}
-                </span>
-                <ChevronDown size={14} className="text-gray-400" />
-              </button>
-            </div>
-          ))}
-
-          <button
-            onClick={addRow}
-            className="w-full py-2.5 border-2 border-dashed border-gray-200 rounded-2xl text-xs font-semibold text-gray-400 flex items-center justify-center gap-1 hover:border-brand-300 hover:text-brand-600 transition-colors"
-          >
-            <Plus size={14} />
-            내품 추가
-          </button>
-
-          <button
-            onClick={submit}
-            disabled={saving || !rows.some((r) => r.product_name.trim())}
-            className="w-full bg-brand-600 text-white text-sm font-bold py-3.5 rounded-2xl disabled:opacity-50 mt-2"
-          >
-            {saving ? "저장 중..." : "내품 목록 저장"}
-          </button>
-        </div>
-      </div>
-
-      {showCatPicker !== null && (
-        <div className="absolute inset-0 bg-black/40 z-10 flex items-end" onClick={() => setShowCatPicker(null)}>
-          <div className="w-full bg-white rounded-t-3xl p-4" onClick={(e) => e.stopPropagation()}>
-            <p className="text-sm font-bold text-gray-900 mb-3">카테고리 선택</p>
-            <div className="grid grid-cols-2 gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.value}
-                  onClick={() => {
-                    updateRow(showCatPicker, "category", c.value);
-                    setShowCatPicker(null);
-                  }}
-                  className={`py-2.5 px-3 rounded-xl text-sm font-medium border transition-colors ${
-                    rows[showCatPicker]?.category === c.value
-                      ? "border-brand-400 bg-brand-50 text-brand-700"
-                      : "border-gray-200 text-gray-700"
-                  }`}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ─────────────────────────────────────────────
    출고 요청 + 단기보관 정산 바텀시트
