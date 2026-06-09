@@ -380,7 +380,7 @@ function StorageCard({
     : "/월";
 
   // 뱃지: 무료기간이면 GREEN, 사용률 기반
-  const badgeColor   = freeInfo?.inFreePeriod ? "#22c55e" : usagePct >= 80 ? "#ef4444" : "#a78bfa";
+  const badgeColor   = freeInfo?.inFreePeriod ? "#22c55e" : usagePct >= 80 ? "#ef4444" : "#f87171";
   const badgeText    = freeInfo?.inFreePeriod
     ? `+${freeInfo.freeDaysLeft}일 무료`
     : `${usagePct}%`;
@@ -402,7 +402,7 @@ function StorageCard({
       <button onClick={onDetail} className="w-full text-left px-3.5 pt-3.5 flex items-center gap-2">
         <div
           className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+          style={{ background: "linear-gradient(135deg,#dc2626,#b91c1c)" }}
         >
           <Package size={13} className="text-white" />
         </div>
@@ -443,7 +443,7 @@ function StorageCard({
               style={{
                 height: `${heightPct}%`,
                 backgroundColor: isFilled
-                  ? usagePct >= 80 ? "#ef4444" : "#7c3aed"
+                  ? usagePct >= 80 ? "#ef4444" : "#dc2626"
                   : "rgba(255,255,255,0.08)",
               }}
             />
@@ -475,7 +475,7 @@ function StorageCard({
             onRelease(parcelIds as string[]);
           }}
           className="py-1.5 rounded-xl text-[11px] font-bold text-white transition-colors"
-          style={{ background: "linear-gradient(90deg,#7c3aed,#6d28d9)" }}
+          style={{ background: "linear-gradient(90deg,#dc2626,#b91c1c)" }}
         >
           출고 요청
         </button>
