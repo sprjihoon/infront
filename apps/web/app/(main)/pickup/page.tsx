@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package,
+  MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package, Archive,
 } from "lucide-react";
 import {
   normalizeEpostZip,
@@ -120,6 +120,11 @@ export default function PickupPage() {
     is_test: boolean;
   } | null>(null);
 
+  // 장기보관 연계 옵션
+  const [storageOptIn, setStorageOptIn] = useState(false);
+  const [storagePlans, setStoragePlans] = useState<{ plan_type: string; label_ko: string; capacity_score: number | null; monthly_amount: number | null }[]>([]);
+  const [selectedStoragePlan, setSelectedStoragePlan] = useState<string | null>(null);
+
   const disabledDates = Array.from({ length: 21 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() + i + 1);
@@ -132,6 +137,18 @@ export default function PickupPage() {
       if (user) setCustomerId(user.id);
     });
   }, []);
+
+  // 장기보관 플랜 불러오기 (연계 옵션 열면 fetch)
+  useEffect(() => {
+    if (!storageOptIn || storagePlans.length > 0) return;
+    fetch("/api/storage/plans")
+      .then((r) => r.json())
+      .then((d) => {
+        const plans = (d.plans ?? []).filter((p: { plan_type: string }) => p.plan_type !== "XL");
+        setStoragePlans(plans);
+        if (plans.length > 0 && !selectedStoragePlan) setSelectedStoragePlan(plans[0].plan_type);
+      });
+  }, [storageOptIn]);
 
   const validateStep1 = useCallback((): string | null => {
     if (!pickupAddress) return "수거 주소를 선택해주세요.";
@@ -388,6 +405,19 @@ export default function PickupPage() {
       const parcelIds: string[] = data.parcel_ids ?? (data.parcel_id ? [String(data.parcel_id)] : []);
       const trackingNos: string[] = data.tracking_nos ?? (data.tracking_no ? [data.tracking_no] : []);
 
+      // 장기보관 연계: 수거 완료 후 스토리지 생성
+      if (storageOptIn && selectedStoragePlan) {
+        await fetch("/api/storage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storage_mode: "long_term",
+            plan_type: selectedStoragePlan,
+            status: "ACTIVE",
+          }),
+        }).catch(() => {});
+      }
+
       setResult({
         parcel_id: parcelIds[0] ?? "",
         parcel_ids: parcelIds,
@@ -471,10 +501,10 @@ export default function PickupPage() {
         </p>
         <button
           type="button"
-          onClick={() => router.push("/warehouse")}
+          onClick={() => router.push(storageOptIn ? "/storage" : "/warehouse")}
           className="w-full py-3.5 bg-brand-600 text-white font-bold rounded-xl text-sm"
         >
-          스토리지에서 확인
+          {storageOptIn ? "스토리지에서 확인" : "배송현황에서 확인"}
         </button>
       </div>
     );
@@ -985,12 +1015,78 @@ export default function PickupPage() {
               </div>
             )}
 
+            {/* 장기보관 연계 옵션 */}
+            <div className={`rounded-xl border-2 overflow-hidden transition-all ${storageOptIn ? "border-brand-400" : "border-gray-200"}`}>
+              <button
+                type="button"
+                onClick={() => setStorageOptIn(!storageOptIn)}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left bg-white"
+              >
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${storageOptIn ? "bg-brand-100" : "bg-gray-100"}`}>
+                  <Archive size={18} className={storageOptIn ? "text-brand-600" : "text-gray-400"} />
+                </div>
+                <div className="flex-1">
+                  <p className={`text-sm font-bold ${storageOptIn ? "text-brand-700" : "text-gray-800"}`}>
+                    장기보관 서비스 함께 신청
+                    <span className="ml-1.5 text-[10px] font-normal text-gray-400">(선택)</span>
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-0.5">
+                    수거 완료 후 월정액 보관 서비스 바로 시작
+                  </p>
+                </div>
+                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                  storageOptIn ? "bg-brand-600 border-brand-600" : "border-gray-300"
+                }`}>
+                  {storageOptIn && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                </div>
+              </button>
+
+              {storageOptIn && (
+                <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-2">
+                  <p className="text-[11px] font-bold text-gray-600">플랜 선택</p>
+                  {storagePlans.length === 0 ? (
+                    <p className="text-xs text-gray-400">불러오는 중...</p>
+                  ) : (
+                    storagePlans.map((plan) => (
+                      <button
+                        key={plan.plan_type}
+                        type="button"
+                        onClick={() => setSelectedStoragePlan(plan.plan_type)}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
+                          selectedStoragePlan === plan.plan_type
+                            ? "border-brand-500 bg-brand-50"
+                            : "border-gray-200 bg-white"
+                        }`}
+                      >
+                        <div className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
+                          selectedStoragePlan === plan.plan_type ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
+                        }`}>{plan.plan_type}</div>
+                        <div className="flex-1">
+                          <span className="text-sm font-semibold text-gray-800">{plan.label_ko}</span>
+                          {plan.capacity_score != null && (
+                            <span className="text-[10px] text-gray-400 ml-1.5">최대 {plan.capacity_score}개</span>
+                          )}
+                          {plan.monthly_amount != null && (
+                            <span className="text-xs text-brand-700 font-bold ml-1.5">
+                              {plan.monthly_amount.toLocaleString()}원/월
+                            </span>
+                          )}
+                        </div>
+                        {selectedStoragePlan === plan.plan_type && (
+                          <CheckCircle size={16} className="text-brand-600 shrink-0" />
+                        )}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-1.5 mb-1">
                 <Info className="w-4 h-4 text-gray-500 shrink-0" />
                 <p className="text-xs font-bold text-gray-600">서비스 안내</p>
-              </div>
-              <ul className="space-y-1.5">
+              </div>              <ul className="space-y-1.5">
                 {[
                   "수거 후 물품이 인프론트 물류센터로 입고됩니다.",
                   "입고 후 검수(사진·영상)를 진행하고 결과를 알려드립니다.",
