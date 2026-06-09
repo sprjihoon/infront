@@ -101,6 +101,8 @@ export default function StoragePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("전체");
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [page, setPage] = useState<number>(1);
   const [releaseSheet, setReleaseSheet] = useState<string[] | null>(null);
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
@@ -148,6 +150,10 @@ export default function StoragePage() {
             const s = active.find((st) => st.id === it.storage_id);
             return s?.storage_name === itemFilter;
           });
+
+  const PAGE_SIZE_OPTIONS = [10, 30, 50, 0] as const; // 0 = 전체
+  const totalPages = pageSize === 0 ? 1 : Math.ceil(filteredItems.length / pageSize);
+  const pagedItems = pageSize === 0 ? filteredItems : filteredItems.slice((page - 1) * pageSize, page * pageSize);
 
   if (loading) {
     return (
@@ -246,7 +252,17 @@ export default function StoragePage() {
                     )}
                   </p>
                 </div>
-                <span className="text-xs text-gray-400">{filteredItems.length}개</span>
+                {/* 페이지 사이즈 선택 */}
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="text-xs text-gray-500 border border-gray-200 rounded-lg px-2 py-1 outline-none bg-white"
+                >
+                  <option value={10}>10개</option>
+                  <option value={30}>30개</option>
+                  <option value={50}>50개</option>
+                  <option value={0}>전체</option>
+                </select>
               </div>
 
               {/* 필터 탭 */}
@@ -254,7 +270,7 @@ export default function StoragePage() {
                 {filterTabs.map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => setItemFilter(tab)}
+                    onClick={() => { setItemFilter(tab); setPage(1); }}
                     className={`shrink-0 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                       itemFilter === tab
                         ? "border-brand-600 text-brand-600"
@@ -273,56 +289,71 @@ export default function StoragePage() {
                   <p className="text-xs text-gray-400">물품이 없습니다</p>
                 </div>
               ) : (
-                <div className="divide-y divide-gray-50">
-                  {filteredItems.map((item) => {
-                    const storageName =
-                      active.find((s) => s.id === item.storage_id)?.storage_name ?? "-";
-                    const statusCfg =
-                      PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-green-100 text-green-700" };
-                    return (
-                      <div key={item.id} className="px-4 py-3 flex items-center gap-3">
-                        {/* 썸네일 (사진 있으면 표시, 없으면 아이콘) */}
-                        <div className="relative group shrink-0">
-                          {item.photo_url ? (
-                            <>
-                              <img
-                                src={item.photo_url}
-                                alt={item.name}
-                                className="w-10 h-10 rounded-xl object-cover"
-                              />
-                              {/* 호버 확대 */}
-                              <div className="absolute left-0 bottom-12 z-50 hidden group-hover:block pointer-events-none">
-                                <img
-                                  src={item.photo_url}
-                                  alt={item.name}
-                                  className="w-48 h-48 rounded-2xl object-cover shadow-2xl border-2 border-white"
-                                />
+                <>
+                  <div className="divide-y divide-gray-50">
+                    {pagedItems.map((item) => {
+                      const storageName =
+                        active.find((s) => s.id === item.storage_id)?.storage_name ?? "-";
+                      const statusCfg =
+                        PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-green-100 text-green-700" };
+                      return (
+                        <div key={item.id} className="px-4 py-3 flex items-center gap-3">
+                          {/* 썸네일 */}
+                          <div className="relative group shrink-0">
+                            {item.photo_url ? (
+                              <>
+                                <img src={item.photo_url} alt={item.name} className="w-10 h-10 rounded-xl object-cover" />
+                                <div className="absolute left-0 bottom-12 z-50 hidden group-hover:block pointer-events-none">
+                                  <img src={item.photo_url} alt={item.name} className="w-48 h-48 rounded-2xl object-cover shadow-2xl border-2 border-white" />
+                                </div>
+                              </>
+                            ) : (
+                              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                                <Package size={16} className="text-gray-400" />
                               </div>
-                            </>
-                          ) : (
-                            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                              <Package size={16} className="text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                        {/* 텍스트 */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-800 truncate">
-                            {item.name}
-                            {item.quantity > 1 && (
-                              <span className="ml-1.5 text-xs text-gray-400 font-normal">{item.quantity}개</span>
                             )}
-                          </p>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{storageName}</p>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">
+                              {item.name}
+                              {item.quantity > 1 && (
+                                <span className="ml-1.5 text-xs text-gray-400 font-normal">{item.quantity}개</span>
+                              )}
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-0.5">{storageName}</p>
+                          </div>
+                          <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${statusCfg.color}`}>
+                            {statusCfg.label}
+                          </span>
                         </div>
-                        {/* 상태 배지 */}
-                        <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${statusCfg.color}`}>
-                          {statusCfg.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* 페이지네이션 */}
+                  {totalPages > 1 && (
+                    <div className="px-4 py-3 flex items-center justify-between border-t border-gray-50">
+                      <button
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page === 1}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg disabled:opacity-30"
+                      >
+                        이전
+                      </button>
+                      <span className="text-xs text-gray-400">
+                        {page} / {totalPages}
+                        <span className="ml-1 text-gray-300">({filteredItems.length}개)</span>
+                      </span>
+                      <button
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        disabled={page === totalPages}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg disabled:opacity-30"
+                      >
+                        다음
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </>
