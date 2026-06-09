@@ -103,6 +103,7 @@ export default function StoragePage() {
   const [itemFilter, setItemFilter] = useState<string>("전체");
   const [pageSize, setPageSize] = useState<number>(10);
   const [page, setPage] = useState<number>(1);
+  const [itemListOpen, setItemListOpen] = useState(true);
   const [releaseSheet, setReleaseSheet] = useState<string[] | null>(null);
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
@@ -257,8 +258,12 @@ export default function StoragePage() {
 
             {/* ── 물품 목록 ────────────────────────── */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              {/* 헤더 */}
-              <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+              {/* 헤더 — 클릭으로 아코디언 토글 */}
+              <button
+                type="button"
+                onClick={() => setItemListOpen((o) => !o)}
+                className="w-full px-4 py-3 flex items-center justify-between text-left"
+              >
                 <div>
                   <p className="text-sm font-bold text-gray-900">물품 목록</p>
                   <p className="text-xs text-gray-400 mt-0.5">
@@ -270,19 +275,29 @@ export default function StoragePage() {
                     )}
                   </p>
                 </div>
-                {/* 페이지 사이즈 선택 */}
-                <select
-                  value={pageSize}
-                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                  className="text-xs text-gray-500 border border-gray-200 rounded-lg px-2 py-1 outline-none bg-white"
-                >
-                  <option value={10}>10개</option>
-                  <option value={30}>30개</option>
-                  <option value={50}>50개</option>
-                  <option value={0}>전체</option>
-                </select>
-              </div>
+                <div className="flex items-center gap-2">
+                  {itemListOpen && (
+                    <select
+                      value={pageSize}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                      className="text-xs text-gray-500 border border-gray-200 rounded-lg px-2 py-1 outline-none bg-white"
+                    >
+                      <option value={10}>10개</option>
+                      <option value={30}>30개</option>
+                      <option value={50}>50개</option>
+                      <option value={0}>전체</option>
+                    </select>
+                  )}
+                  <ChevronRight
+                    size={16}
+                    className={`text-gray-400 transition-transform duration-200 ${itemListOpen ? "rotate-90" : ""}`}
+                  />
+                </div>
+              </button>
 
+              {itemListOpen && (
+                <>
               {/* 필터 탭 */}
               <div className="flex overflow-x-auto border-b border-gray-50 px-2 gap-0.5">
                 {filterTabs.map((tab) => (

@@ -211,9 +211,9 @@ infront/
 | `/warehouse/[id]` | 물품 상세 | 인라인 수정, 추적, 부가 서비스 |
 | `/shipping-request` | 출고 신청 | 다단계 플로우 (물품→옵션→주소→인보이스) |
 | `/orders` | 배송현황 | 주문 목록, 상태 표시, 운송장 조회 |
-| `/storage` | 보관 서비스 | 고객 보관함 목록, 상태 확인 |
-| `/storage/new` | 보관 신청 | 플랜 선택 · 수거 정보 입력 · KG Inicis 결제 |
-| `/storage/[id]` | 보관 상세 | 아이템 목록, 사진, 결제 현황 |
+| `/storage` | 보관 서비스 | 보관함 대시보드 — 요약카드·스톡위젯형 카드 그리드·물품 목록 아코디언·페이징 |
+| `/storage/new` | 보관 신청 | 장기보관 플랜 선택 · 보관함 생성 |
+| `/storage/[id]` | 보관 상세 | 출고 가능 물품 목록, 사진, 결제 현황 |
 | `/storage/payment/success` | 보관 결제 성공 | KG Inicis 단건결제 결과 처리 |
 | `/storage/payment/fail` | 보관 결제 실패 | 결제 실패·취소 처리 |
 | `/mypage` | MY | 프로필, 고객번호, 입고주소 확인 |
@@ -281,9 +281,12 @@ infront/
 
 | 엔드포인트 | 메서드 | 역할 |
 |-----------|--------|------|
-| `/api/storage` | GET, POST | 고객 보관함 목록 조회 / 신청 |
+| `/api/storage` | GET, POST | 고객 보관함 목록 조회 / 신청 (자동 순번 이름 생성) |
 | `/api/storage/[id]` | GET, PATCH | 보관함 상세 / 상태 변경 |
 | `/api/storage/[id]/items` | GET, POST | 보관 아이템 목록 / 추가 |
+| `/api/storage/all-items` | GET | 전체 보관 소포의 사전신고 제품 목록 (제품명·썸네일·상태) |
+| `/api/storage/my-locations` | GET | 고객 배정 storage_locations + 타입·요금 요약 |
+| `/api/storage/types` | GET | 활성 storage_types 목록 (용량변경 UI용) |
 | `/api/storage/plans` | GET | 보관 플랜 목록 (storage_plan_config) |
 | `/api/storage/box-fees` | GET | 수거 박스 크기별 요금 조회 (pickup_box_fees) |
 | `/api/storage/pay/prepare` | POST | 보관 서비스 결제 준비 |
@@ -431,6 +434,9 @@ infront/
 | `042_storage_recurring_profiles.sql` | storage_recurring_profiles 테이블 — 장기보관 자동결제 프로파일 (빌링키, 다음 결제일, 연체 처리 준비) |
 | `043_storage_status_pending_payment.sql` | customer_storages 상태 확장: PENDING_PAYMENT (수거비 미결제) 추가 |
 | `044_pickup_box_fees.sql` | pickup_box_fees 테이블 — 수거 박스 크기별(DEFAULT/SMALL/MEDIUM/LARGE/XL) 요금 관리 (Admin 설정) |
+| `045_capacity_item_count.sql` | customer_storages 용량 시스템 개편 — 점수 기반 → 아이템 수 기반 (capacity_score = 최대 아이템 수, capacity_override, used_score 트리거 수정) |
+| `046_parcel_storage_link.sql` | parcels.customer_storage_id FK 추가 — 소포를 보관함에 직접 연결, auto_link 트리거, used_score 트리거 확장 |
+| `047_mock_parcel_items.sql` + `047b` | MOCK 소포 pre_invoice_items 샘플 데이터 채우기 (제품명 표시용) |
 
 > 상세 개발 현황: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -650,12 +656,23 @@ Next.js 웹앱
 
 > PDF 기반 스토리지 결제·보관 서비스. KG Inicis 단건결제 연동 완료, 에스컬레이션·장기보관 예정.
 
-- [x] DB 스키마 (040~044): customer_storages, storage_payments, storage_recurring_profiles, pickup_box_fees
+- [x] DB 스키마 (040~047): customer_storages, storage_payments, storage_recurring_profiles, pickup_box_fees, 용량 아이템 수 전환, parcels FK 연결
 - [x] 웹 고객 스토리지 대시보드 (`/storage`, `/storage/new`, `/storage/[id]`)
+  - 전체 요약카드 (이용 중 · 주간요금 · 다음 결제일)
+  - 스톡위젯형 2-컬럼 카드 그리드 (이름 편집, 슬롯 추가 카드 포함)
+  - 물품 목록 아코디언 (접기/펼치기) + 필터 탭 + 페이징 (10/30/50/전체)
+  - 검수 사진 썸네일 (hover 확대 미리보기)
+  - 출고 요청 → 국내/해외 유형 선택 바텀시트 → shipping-request / domestic-shipping 연결
+  - 용량 변경 바텀시트 (storage_types 기반 선택)
+  - 보관함 이름 고객 직접 편집 (RenameSheet)
 - [x] Admin 고객 보관 관리 (`/customer-storages`, `/customer-storages/[id]`)
 - [x] 수거비 동적 산정: 박스 크기별 요금 DB 관리 + Admin 설정 화면
 - [x] 단기보관 결제 API: KG Inicis 단건결제 (`/api/inicis/storage-return`)
 - [x] PENDING_PAYMENT 상태 처리 (수거비 미결제 흐름)
+- [x] 수거 신청 시 장기보관 동시 신청 옵션 (`/pickup` Step 3 토글)
+- [x] 단기보관 무료기간(3일) + 잔여일/과금 주차 표시
+- [x] 소포 → 보관함 자동 연결 (auto_link 트리거, used_score 통합)
+- [x] 해외/국내 출고 신청 시 ?parcels= URL로 사전신고 인보이스 자동 채움
 - [ ] **결제 실패 에스컬레이션 cron** (→ Phase 6, 4순위)
 - [ ] **해외배송 오픈 확인비** (→ Phase 7, 5순위)
 
@@ -779,6 +796,45 @@ Next.js 웹앱
 ---
 
 ## 📝 변경 이력
+
+### 2026-06-09
+
+#### 고객 보관 서비스 Phase 3 — 스토리지 UX 전면 개선
+
+**DB 스키마 확장 (045~047)**
+- `045_capacity_item_count.sql`: 용량 단위 점수 → 아이템 수 기반 전환 (capacity_score = 최대 물품 수)
+- `046_parcel_storage_link.sql`: `parcels.customer_storage_id` FK 추가, auto_link 트리거, used_score 트리거 확장
+- `047_mock_parcel_items.sql` + `047b`: MOCK 소포 사전신고 데이터 채우기
+
+**스토리지 대시보드 UI 전면 재설계 (`/storage`)**
+- 요약 카드: 이용 중 N개 · 주간 요금 · 다음 결제일
+- 스톡위젯 스타일 2-컬럼 카드 그리드 (레드 그라디언트, 사용량 바, 스탯 칩)
+- 스토리지 슬롯 추가 카드 (그리드 내 + 버튼)
+- 물품 목록 아코디언 (헤더 클릭으로 접기/펼치기)
+- 물품 목록 페이징 (10/30/50/전체, 기본 10개)
+- 검수 사진 썸네일 + hover 256px 확대 미리보기
+- 파슬 상태 레이블 정확화 (검수 대기 / 출고 가능 / 출고 완료)
+
+**신규 API 엔드포인트**
+- `/api/storage/all-items`: 전체 소포 사전신고 제품 목록 (제품명·썸네일·상태·shippable)
+- `/api/storage/my-locations`: 고객 배정 로케이션 + 타입·주간요금 요약
+- `/api/storage/types`: 활성 storage_types 전체 목록
+
+**UX 기능 추가**
+- `ReleaseTypeSheet`: 출고 요청 시 국내/해외 유형 선택 바텀시트
+- `CapacityChangeSheet`: 용량 변경 바텀시트 (600px 제한, 하단바 위 버튼 고정)
+- `RenameSheet`: 보관함 이름 고객 직접 편집
+- 보관함 자동 순번 이름 ("내 스토리지", "내 스토리지 2", ...)
+- `/pickup`: 장기보관 동시 신청 토글 (Step 3)
+- `/storage/new`: 장기보관 전용 단순화
+- 단기보관 무료기간(3일) + 잔여일/과금 주차 표시
+- 스토리지 상세(`/storage/[id]`): 출고 가능 물품만 표시
+
+**출고 연동**
+- `/shipping-request`: `?parcels=` URL → 사전신고 인보이스 자동 채움
+- `/domestic-shipping`: `?parcels=` URL → 박스구성 단계 건너뛰기
+
+---
 
 ### 2026-06-08
 
