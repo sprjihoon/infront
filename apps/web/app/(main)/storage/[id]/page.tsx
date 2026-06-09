@@ -462,11 +462,11 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
             alt="입고 사진"
             className="w-9 h-9 rounded-xl object-cover"
           />
-          <div className="absolute left-0 bottom-11 z-50 hidden group-hover:block pointer-events-none">
+          <div className="absolute left-1/2 -translate-x-1/2 bottom-12 z-50 hidden group-hover:block pointer-events-none">
             <img
               src={photoUrl}
               alt="입고 사진 확대"
-              className="w-48 h-48 rounded-2xl object-cover shadow-2xl border-2 border-white"
+              className="w-64 h-64 rounded-2xl object-cover shadow-2xl border-2 border-white"
             />
           </div>
         </>

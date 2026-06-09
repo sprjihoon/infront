@@ -303,8 +303,8 @@ export default function StoragePage() {
                             {item.photo_url ? (
                               <>
                                 <img src={item.photo_url} alt={item.name} className="w-10 h-10 rounded-xl object-cover" />
-                                <div className="absolute left-0 bottom-12 z-50 hidden group-hover:block pointer-events-none">
-                                  <img src={item.photo_url} alt={item.name} className="w-48 h-48 rounded-2xl object-cover shadow-2xl border-2 border-white" />
+                                <div className="absolute left-1/2 -translate-x-1/2 bottom-14 z-50 hidden group-hover:block pointer-events-none">
+                                  <img src={item.photo_url} alt={item.name} className="w-64 h-64 rounded-2xl object-cover shadow-2xl border-2 border-white" />
                                 </div>
                               </>
                             ) : (
