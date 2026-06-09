@@ -108,13 +108,6 @@ function CapacityBar({ percent }: { percent: number }) {
   );
 }
 
-function calcWeeksUsed(startedAt: string | null): number {
-  if (!startedAt) return 0;
-  return Math.ceil(
-    (Date.now() - new Date(startedAt).getTime()) / (7 * 24 * 60 * 60 * 1000)
-  );
-}
-
 const FREE_DAYS = 3;
 
 function calcFreeInfo(startedAt: string | null) {
@@ -127,6 +120,13 @@ function calcFreeInfo(startedAt: string | null) {
   const billingStartDate = new Date(started.getTime() + FREE_DAYS * 24 * 60 * 60 * 1000)
     .toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
   return { daysElapsed, freeDaysLeft, inFreePeriod, billableWeeks, billingStartDate };
+}
+
+function calcWeeksUsed(startedAt: string | null): number {
+  if (!startedAt) return 0;
+  return Math.ceil(
+    (Date.now() - new Date(startedAt).getTime()) / (7 * 24 * 60 * 60 * 1000)
+  );
 }
 
 export default function StorageDetailPage() {
@@ -202,7 +202,7 @@ export default function StorageDetailPage() {
   const SIcon = sCfg.icon;
   const planLabel = storage.storage_plan_config?.label_ko ?? storage.plan_type ?? "-";
   const freeInfo = storage.storage_mode === "short_term" ? calcFreeInfo(storage.short_term_started_at) : null;
-  const weeksUsed = freeInfo?.billableWeeks ?? 0;
+  const weeksUsed = freeInfo?.billableWeeks ?? calcWeeksUsed(storage.short_term_started_at);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -264,7 +264,7 @@ export default function StorageDetailPage() {
                 ? "bg-green-50 border border-green-100"
                 : "bg-gray-50 border border-gray-100"
             }`}>
-              <Clock size={14} className={freeInfo.inFreePeriod ? "text-green-500 mt-0.5 shrink-0" : "text-gray-400 mt-0.5 shrink-0"} />
+              <Clock size={14} className={`${freeInfo.inFreePeriod ? "text-green-500" : "text-gray-400"} mt-0.5 shrink-0`} />
               <div>
                 {freeInfo.inFreePeriod ? (
                   <>
@@ -326,14 +326,11 @@ export default function StorageDetailPage() {
           <div className="mt-3 pt-3 border-t border-gray-50 grid grid-cols-2 gap-3">
             {storage.storage_mode === "short_term" ? (
               <>
-                <InfoCell
-                  label="총 보관 기간"
-                  value={`${freeInfo?.daysElapsed ?? 0}일 경과`}
-                />
+                <InfoCell label="보관 기간" value={`${weeksUsed}주 경과`} />
                 {storage.storage_plan_config?.weekly_rate != null && (
                   <InfoCell
                     label="주간 요금"
-                    value={`${storage.storage_plan_config.weekly_rate.toLocaleString()}원/주`}
+                    value={`${storage.storage_plan_config.weekly_rate.toLocaleString()}원`}
                   />
                 )}
                 {storage.max_plan_type && (
@@ -774,8 +771,7 @@ function ReleasePaymentSheet({
   const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
   const [jsUrl, setJsUrl] = useState("");
 
-  const freeInfo = calcFreeInfo(storage.short_term_started_at);
-  const weeksUsed = freeInfo.billableWeeks;
+  const weeksUsed = calcWeeksUsed(storage.short_term_started_at);
   const weeklyRate = storage.storage_plan_config?.weekly_rate ?? 0;
   const maxPlan = storage.max_plan_type ?? storage.current_plan_type ?? storage.plan_type ?? "S";
   const storageFee = weeksUsed * weeklyRate;
