@@ -139,7 +139,7 @@ infront/
 │   │   ├── android/      # Android 프로젝트
 │   │   └── capacitor.config.ts
 │   ├── edge/             # Supabase Edge Functions (Deno) — 예정
-│   └── sql/              # Postgres DDL 및 마이그레이션 (001~038)
+│   └── sql/              # Postgres DDL 및 마이그레이션 (001~044)
 ├── docs/                 # 개발 현황·설계 문서
 │   └── DEVELOPMENT_STATUS.md
 ├── vercel.json
@@ -201,6 +201,8 @@ infront/
 
 ## 🖥 고객 웹앱 페이지 구조 (`apps/web`)
 
+### 메인 앱 (`/(main)`) — 로그인 필요
+
 | 경로 | 페이지 | 설명 |
 |------|--------|------|
 | `/home` | 홈 | 액션 대시보드, 최근 배송 현황, 창고 요약, 빠른 링크 |
@@ -209,6 +211,11 @@ infront/
 | `/warehouse/[id]` | 물품 상세 | 인라인 수정, 추적, 부가 서비스 |
 | `/shipping-request` | 출고 신청 | 다단계 플로우 (물품→옵션→주소→인보이스) |
 | `/orders` | 배송현황 | 주문 목록, 상태 표시, 운송장 조회 |
+| `/storage` | 보관 서비스 | 고객 보관함 목록, 상태 확인 |
+| `/storage/new` | 보관 신청 | 플랜 선택 · 수거 정보 입력 · KG Inicis 결제 |
+| `/storage/[id]` | 보관 상세 | 아이템 목록, 사진, 결제 현황 |
+| `/storage/payment/success` | 보관 결제 성공 | KG Inicis 단건결제 결과 처리 |
+| `/storage/payment/fail` | 보관 결제 실패 | 결제 실패·취소 처리 |
 | `/mypage` | MY | 프로필, 고객번호, 입고주소 확인 |
 | `/addresses` | 주소록 | 수거지·해외 배송지 관리 |
 | `/register-parcel` | 물품 등록 | 수동 물품 등록 |
@@ -217,6 +224,8 @@ infront/
 | `/pricing` | 해외배송 가격표 | 우체국 공식 EMS/K-Packet 요금표 |
 | `/domestic-rates` | 국내배송 가격표 | 창구접수 등기소포 요금·규격·무게 안내 |
 | `/guide` | 이용 가이드 | 서비스 이용 안내 |
+| `/notices` | 공지사항 | 공지 목록 |
+| `/notifications` | 알림 | in-app 알림 목록 |
 | `/postcode` | 주소 검색 | 다음 우편번호 검색 래퍼 |
 | `/payment/success` | 결제 성공 | Toss 결제 결과 처리 |
 | `/payment/fail` | 결제 실패 | Toss 결제 실패 처리 |
@@ -229,9 +238,23 @@ infront/
 - 국내배송 경로 (`/domestic-shipping`, `/domestic-rates`): 창구접수 등기소포 계산기 (도서산간 체크박스)
 - `/shipping-calc`: 해외배송 요율표·통관 정보 패널
 
+### 포장대행 서비스 (`/shop`) — 로그인 불필요 (독립 서비스)
+
+| 경로 | 페이지 | 설명 |
+|------|--------|------|
+| `/shop` | 상품 목록 | S/M/L/XL 박스 포장대행, KO/EN 바이링구얼, KG Inicis 결제 |
+| `/shop/checkout` | 결제 폼 | 주문정보 입력, 다음 우편번호 주소 검색, 이용약관 동의 |
+| `/shop/payment/success` | 결제 성공 | KG Inicis 결제 완료 처리 |
+| `/shop/payment/fail` | 결제 실패 | 결제 실패·취소 처리 |
+| `/shop/payment/close` | 결제 창 닫기 | INIpay 팝업 종료 처리 |
+| `/shop/terms` | 이용약관 | 포장대행 서비스 이용약관 (독립 페이지) |
+| `/shop/privacy` | 개인정보처리방침 | 포장대행 서비스 개인정보처리방침 (독립 페이지) |
+
 ---
 
 ## 🛠 고객 API 라우트 (`apps/web/app/api/`)
+
+### 메인 서비스 API
 
 | 엔드포인트 | 메서드 | 역할 |
 |-----------|--------|------|
@@ -246,10 +269,35 @@ infront/
 | `/api/ems/nations` | GET | EMS 배송 가능 국가 목록 |
 | `/api/ems/quote` | GET, POST | EMS/K-Packet 배송비 견적 |
 | `/api/ems/apply` | POST | EMS 접수 등록 |
+| `/api/ems/exchange-rate` | GET | USD/KRW 환율 조회 |
 | `/api/payment/confirm` | POST | Toss 결제 승인 + EMS 자동 접수 |
 | `/api/return-requests` | GET, POST | 반품 신청 |
+| `/api/domestic-orders` | GET, POST | 국내 주문 목록 / 생성 |
 | `/api/cron/sync-inbound` | GET | 입고 전 구간 자동 동기화 (Vercel Cron) |
 | `/api/cron/sync-intl-tracking` | GET | 국제 운송장 추적 동기화 (Vercel Cron) |
+| `/api/cron/sync-usd-krw-rate` | GET | USD/KRW 환율 갱신 (Vercel Cron, 주 1회) |
+
+### 보관 서비스 API
+
+| 엔드포인트 | 메서드 | 역할 |
+|-----------|--------|------|
+| `/api/storage` | GET, POST | 고객 보관함 목록 조회 / 신청 |
+| `/api/storage/[id]` | GET, PATCH | 보관함 상세 / 상태 변경 |
+| `/api/storage/[id]/items` | GET, POST | 보관 아이템 목록 / 추가 |
+| `/api/storage/plans` | GET | 보관 플랜 목록 (storage_plan_config) |
+| `/api/storage/box-fees` | GET | 수거 박스 크기별 요금 조회 (pickup_box_fees) |
+| `/api/storage/pay/prepare` | POST | 보관 서비스 결제 준비 |
+| `/api/inicis/prepare` | POST | KG Inicis PC 결제 서명 생성 |
+| `/api/inicis/return` | POST | KG Inicis PC 결제 결과 처리 |
+| `/api/inicis/mobile-prepare` | POST | KG Inicis 모바일 결제 준비 |
+| `/api/inicis/mobile-return` | POST | KG Inicis 모바일 결제 결과 처리 |
+| `/api/inicis/storage-return` | POST | KG Inicis 보관 서비스 결제 결과 처리 |
+
+### 포장대행 서비스 API
+
+| 엔드포인트 | 메서드 | 역할 |
+|-----------|--------|------|
+| `/api/shop/confirm` | POST | KG Inicis 포장대행 결제 승인 처리 |
 
 ---
 
@@ -333,7 +381,7 @@ infront/
 
 ---
 
-## 🗄 DB 스키마 (마이그레이션 001~038)
+## 🗄 DB 스키마 (마이그레이션 001~044)
 
 | 파일 | 내용 |
 |------|------|
@@ -377,6 +425,12 @@ infront/
 | `037_outbound_picking.sql` | orders/domestic_orders: 피킹·출고 컬럼 추가; 상태 확장 PAID→PICKING→PICKING_DONE→OUTBOUND_WAIT→IN_TRANSIT |
 | `038_outbound_sessions.sql` | outbound_sessions 테이블 (출고 작업 세션 — 스캔 로그, 박스, 영상, 담당자) |
 | `038_picking_item_tracking.sql` | parcel_barcodes: 피킹 상태 컬럼 (WAITING/DONE/HOLD/NOT_FOUND); picking_scan_logs 테이블 |
+| `039_parcel_media_bucket.sql` | Supabase Storage `parcel-media` 버킷 생성 정책 |
+| `040_customer_storages.sql` | 고객 보관 서비스 핵심 테이블: storage_plan_config (S/M/L/XL 플랜), item_capacity_scores (점수 기준표), customer_storages (보관함), customer_storage_items (보관 아이템) |
+| `041_storage_payments.sql` | storage_payments 테이블 — 보관 서비스 결제 내역 (단건·정기) |
+| `042_storage_recurring_profiles.sql` | storage_recurring_profiles 테이블 — 장기보관 자동결제 프로파일 (빌링키, 다음 결제일, 연체 처리 준비) |
+| `043_storage_status_pending_payment.sql` | customer_storages 상태 확장: PENDING_PAYMENT (수거비 미결제) 추가 |
+| `044_pickup_box_fees.sql` | pickup_box_fees 테이블 — 수거 박스 크기별(DEFAULT/SMALL/MEDIUM/LARGE/XL) 요금 관리 (Admin 설정) |
 
 > 상세 개발 현황: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -579,23 +633,103 @@ Next.js 웹앱
 - [x] 국내 주문 목록·상세·라벨 페이지 (`/domestic-orders`)
 - [x] 패킹 슬립 출력 (`/orders/[id]/packing-slip`)
 
-### Phase 2 — 부가 서비스 + 관리자 워크플로우
+### Phase 2 — 포장대행 서비스 + 모바일 결제 ✅ 완료
+
+> 재중교민 대상 독립 포장대행 서비스 (`/shop`). 로그인 불필요, KG Inicis 결제.
+
+- [x] 포장대행 상품 목록 (S/M/L/XL 박스, 가격 15,000~28,000원)
+- [x] KO/EN 바이링구얼 UI (언어 토글)
+- [x] 다음 우편번호 주소 검색 연동 (`/postcode`)
+- [x] KG Inicis INIStdPay PC 결제 연동
+- [x] KG Inicis INImobile 모바일 결제 (UA 감지 자동 분기)
+- [x] 이용약관·개인정보처리방침 독립 페이지 (`/shop/terms`, `/shop/privacy`)
+- [x] 취급금지물품·환불정책·이용절차 안내
+- [x] API 보안 헤더 + rate limiting
+
+### Phase 3 — 고객 보관 서비스 🔄 진행 중
+
+> PDF 기반 스토리지 결제·보관 서비스. KG Inicis 단건결제 연동 완료, 에스컬레이션·장기보관 예정.
+
+- [x] DB 스키마 (040~044): customer_storages, storage_payments, storage_recurring_profiles, pickup_box_fees
+- [x] 웹 고객 스토리지 대시보드 (`/storage`, `/storage/new`, `/storage/[id]`)
+- [x] Admin 고객 보관 관리 (`/customer-storages`, `/customer-storages/[id]`)
+- [x] 수거비 동적 산정: 박스 크기별 요금 DB 관리 + Admin 설정 화면
+- [x] 단기보관 결제 API: KG Inicis 단건결제 (`/api/inicis/storage-return`)
+- [x] PENDING_PAYMENT 상태 처리 (수거비 미결제 흐름)
+- [ ] **결제 실패 에스컬레이션 cron** (→ Phase 6, 4순위)
+- [ ] **해외배송 오픈 확인비** (→ Phase 7, 5순위)
+
+---
+
+> **아래 Phase 4~8은 계획된 다음 개발 단계입니다.**  
+> 우선순위는 각 Phase 옆에 표기했습니다.
+
+### Phase 4 — 장기보관 빌링 🔲 (6순위 · 빌링 계약 후 실연동)
+
+> KG Inicis 정기결제(빌링) 계약이 완료되면 실연동. 그 전까지 로직 먼저 개발.
+
+- [ ] storage_recurring_profiles 기반 월정액 자동결제 로직 구현
+- [ ] 연체 처리 (1~30일 단계별 재시도)
+- [ ] 빌링키 등록·갱신·해지 흐름
+- [ ] 고객 이메일 알림 (결제 예정·성공·실패)
+- [ ] Admin 정기결제 현황 대시보드
+
+### Phase 5 — 단기→장기 전환 cron 🔲 (7순위 · Phase 4 직후)
+
+> 단기보관 만료 후 장기보관으로 자동 전환하는 Cron 잡.
+
+- [ ] 단기보관 만료 감지 cron (Vercel Cron)
+- [ ] 고객 전환 동의 알림 발송 (in-app + 이메일)
+- [ ] 장기보관 자동 전환 처리 (storage_recurring_profiles 생성)
+- [ ] 전환 취소 시 출고 안내 흐름
+
+### Phase 6 — 결제 실패 에스컬레이션 cron 🔲 (4순위)
+
+> 보관 서비스 결제 실패 시 D+0/3/7/14/30 단계별 자동 처리.
+
+- [ ] storage_escalation_logs 테이블 활용 (Phase 3 DB 이미 준비됨)
+- [ ] Vercel Cron: 매일 미납 건 스캔 → 단계별 재결제 시도
+- [ ] D+0: 즉시 재시도 + 고객 알림
+- [ ] D+3·7: 재시도 + 경고 알림
+- [ ] D+14: 보관함 SUSPENDED 처리 + 출고 안내
+- [ ] D+30: OVERDUE 처리 + 운영팀 에스컬레이션
+
+### Phase 7 — 해외배송 오픈 확인비 🔲 (5순위)
+
+> 기존 해외배송 신청 흐름에 "오픈 확인비" 옵션을 확장.
+
+- [ ] 해외배송 신청 단계에 오픈 확인비 옵션 추가 (UI)
+- [ ] 견적 API에 오픈 확인비 항목 반영
+- [ ] 결제 단계에 오픈 확인비 포함 처리
+- [ ] Admin: 오픈 확인 완료 처리 + 사진 업로드
+
+---
+
+> ⚠️ **Phase 8은 별도 계약 완료 후 착수하는 다음 개발 단계입니다.**
+
+### Phase 8 — 글로벌 결제 ⏸ (다음 개발 단계 · 별도 계약 완료 후)
+
+> 해외 카드 및 글로벌 결제 수단(PayPal, Alipay 등) 지원. 별도 PG 계약 완료 후 착수.
+
+- [ ] 글로벌 PG 벤더 선정 및 계약
+- [ ] 다중 통화 결제 (USD, CNY, EUR 등)
+- [ ] 해외 카드 결제 (Visa/Mastercard)
+- [ ] 위챗페이·알리페이 등 중국 결제 수단
+- [ ] 다국어 결제 UI 확장
+- [ ] 환율 자동 적용 및 정산 처리
+
+---
+
+### 나머지 예정 작업 (Phase 2~3 범위)
 
 - [ ] **입고 자동 동기화** 🔄 — GetResInfo + tracker.delivery, Cron·스케줄 (020~021)
-- [ ] **고객 관리** 🔄 — 고객별 물품·주문 조회
-- [ ] 검수검품 서비스 신청 UI
-- [ ] 빈 박스 배송 신청 UI + 관리자 처리
-- [ ] 반품 신청 전체 플로우 (시점별 처리)
+- [ ] **고객 관리** 🔄 — 고객별 물품·주문 조회 (네비게이션 연결 예정)
 - [ ] 관리자: 오픈박스 영상 업로드 (Cloudflare Stream)
 - [ ] 관리자: 검수 결과 입력 + 사진 업로드 (Supabase Storage)
 - [ ] 관리자: 실측 → 견적 확정 → 결제 요청 알림 (QUOTE_SENT)
 - [ ] 관리자: 반품 처리 워크플로우
 - [ ] 고객: 물품 사진/영상 타임라인 확인
-
-### Phase 3 — 완성도 + 앱
-
 - [ ] FCM 푸시 알림 전체 연동
-- [ ] 국내 운송장 추적 완전 연동 (입고 동기화 완료 후)
 - [ ] Capacitor WebView 앱 빌드 (iOS/Android)
 - [ ] 통계 대시보드 (매출, 국가별, 서비스별)
 
@@ -645,6 +779,45 @@ Next.js 웹앱
 ---
 
 ## 📝 변경 이력
+
+### 2026-06-08
+
+#### 고객 보관 서비스 Phase 3 — 수거비 동적 산정 + 결제 안정화
+
+**DB 스키마 확장 (043~044)**
+- `043_storage_status_pending_payment.sql`: customer_storages 상태 확장 — PENDING_PAYMENT 추가 (수거비 미결제 상태)
+- `044_pickup_box_fees.sql`: pickup_box_fees 테이블 — 박스 크기별 수거요금 Admin 관리
+
+**수거비 동적 산정**
+- `apps/web/app/api/storage/box-fees/route.ts` — 박스 크기별 요금 조회 API
+- Admin 설정 화면에서 수거비 직접 수정 가능 (DEFAULT/SMALL/MEDIUM/LARGE/XL)
+- 신규 보관 신청 시 박스 크기에 따라 수거비 자동 반영
+
+**결제 안정화 (KG Inicis)**
+- INImobile UA 감지 자동 분기 (PC/모바일)
+- resultCode 0000 체크, idc_name authUrl 검증, netCancel 처리
+- HPP(2) acceptmethod 추가 (핸드폰 결제 지원)
+- 하단 네비 보관 탭 → `/storage` 라우팅 수정
+
+---
+
+### 2026-06-05 ~ 06-07
+
+#### 포장대행 서비스 (Phase 2) 완성
+
+**결제 연동**
+- KG Inicis INIStdPay (PC) 직접 연동 완료
+- INImobile (모바일) UA 감지 분기 완료
+- PortOne v2 → KG Inicis 직접 연동으로 전환
+
+**서비스 완성도**
+- 포장대행 박스 가격 최종 확정 (S 15,000 / M 18,000 / L 22,000 / XL 28,000원)
+- 주문 처리 기간 안내 배너 추가
+- 다음 우편번호 주소 검색 연동
+- 이용약관 동의 체크박스 추가
+- `/shop/terms`, `/shop/privacy` 독립 페이지 (메인 사이트 UI 없이)
+
+---
 
 ### 2026-06-04
 

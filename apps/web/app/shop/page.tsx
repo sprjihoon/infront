@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Package, Home, Globe } from "lucide-react";
+import { Package, Globe } from "lucide-react";
 import { useLanguage } from "./useLanguage";
 import { t } from "./translations";
 
@@ -65,13 +65,6 @@ export default function ShopPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => router.push("/")}
-              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 transition-colors px-3 py-2 rounded-xl hover:bg-gray-50"
-            >
-              <Home size={14} />
-              {tx.home}
-            </button>
             {mounted && (
               <button
                 onClick={toggle}

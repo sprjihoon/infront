@@ -43,10 +43,13 @@ interface ProductItem {
   inbound_at: string | null;
 }
 
+interface LocationSummary {
+  slot_count: number;
+  total_weekly_fee: number;
+  dominant_type: { code: string; name: string; count: number; price_per_week: number } | null;
+}
+
 /* ─── 상수 ──────────────────────────────────────── */
-const PLAN_SIZE_LABEL: Record<string, string> = {
-  S: "소형", M: "중형", L: "대형", XL: "특대형",
-};
 
 const PARCEL_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
   CREATED:          { label: "수거 대기",  color: "bg-gray-100 text-gray-500" },
@@ -89,6 +92,7 @@ export default function StoragePage() {
   const router = useRouter();
   const [storages, setStorages] = useState<Storage[]>([]);
   const [items, setItems] = useState<ProductItem[]>([]);
+  const [locationSummary, setLocationSummary] = useState<LocationSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("전체");
@@ -97,15 +101,18 @@ export default function StoragePage() {
     if (!quiet) setLoading(true);
     else setRefreshing(true);
     try {
-      const [storageRes, itemsRes] = await Promise.all([
+      const [storageRes, itemsRes, locRes] = await Promise.all([
         fetch("/api/storage"),
         fetch("/api/storage/all-items"),
+        fetch("/api/storage/my-locations"),
       ]);
       if (storageRes.status === 401) { router.push("/login"); return; }
       const storageJson = await storageRes.json();
       const itemsJson = itemsRes.ok ? await itemsRes.json() : { items: [] };
+      const locJson = locRes.ok ? await locRes.json() : { summary: null };
       setStorages(storageJson.storages ?? []);
       setItems(itemsJson.items ?? []);
+      setLocationSummary(locJson.summary ?? null);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -179,18 +186,19 @@ export default function StoragePage() {
             <div className="bg-brand-600 rounded-2xl p-4 text-white">
               <p className="text-xs font-semibold text-brand-200 mb-3">전체 요약</p>
               <div className="grid grid-cols-3 gap-2">
-                <SummaryCell label="이용 중" value={`${active.length}개`} />
                 <SummaryCell
-                  label="월 이용료"
-                  value={totalMonthly > 0 ? `${totalMonthly.toLocaleString()}원` : "-"}
+                  label="슬롯"
+                  value={locationSummary ? `${locationSummary.slot_count}개` : `${active.length}개`}
                 />
                 <SummaryCell
-                  label="다음 결제일"
-                  value={
-                    nextBilling
-                      ? new Date(nextBilling).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })
-                      : "-"
-                  }
+                  label="주간 요금"
+                  value={locationSummary?.total_weekly_fee
+                    ? `${locationSummary.total_weekly_fee.toLocaleString()}원`
+                    : totalMonthly > 0 ? `${totalMonthly.toLocaleString()}원` : "-"}
+                />
+                <SummaryCell
+                  label="요금제"
+                  value={locationSummary?.dominant_type?.name ?? "-"}
                 />
               </div>
             </div>
@@ -202,6 +210,7 @@ export default function StoragePage() {
                   key={s.id}
                   storage={s}
                   itemCount={items.filter((it) => it.storage_id === s.id).length}
+                  locationSummary={locationSummary}
                   onDetail={() => router.push(`/storage/${s.id}`)}
                 />
               ))}
@@ -302,24 +311,28 @@ function SummaryCell({ label, value }: { label: string; value: string }) {
 function StorageCard({
   storage: s,
   itemCount,
+  locationSummary,
   onDetail,
 }: {
   storage: Storage;
   itemCount: number;
+  locationSummary: LocationSummary | null;
   onDetail: () => void;
 }) {
-  const sizeLabel = PLAN_SIZE_LABEL[s.plan_type ?? ""] ?? s.plan_type ?? "-";
-  const planCfg   = s.storage_plan_config;
   const freeInfo  = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
+
+  // 요금: 로케이션 기반(관리자 배정) 우선, 없으면 plan_config fallback
+  const weeklyFee = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
+  const planName  = locationSummary?.dominant_type?.name ?? s.plan_type ?? "-";
 
   const feeLabel = isShortTerm
     ? (freeInfo?.inFreePeriod
         ? `무료 ${freeInfo.freeDaysLeft}일`
-        : `${freeInfo!.billableWeeks}주 · ${((planCfg?.weekly_rate ?? 0) * freeInfo!.billableWeeks).toLocaleString()}원`)
+        : `${freeInfo!.billableWeeks}주 · ${(weeklyFee * freeInfo!.billableWeeks).toLocaleString()}원`)
     : s.monthly_amount != null
       ? `${s.monthly_amount.toLocaleString()}원/월`
-      : "-";
+      : weeklyFee > 0 ? `${weeklyFee.toLocaleString()}원/주` : "-";
 
   const usagePct = Math.round(s.usage_percent ?? 0);
   const barColor = usagePct >= 90 ? "#ef4444" : usagePct >= 70 ? "#f97316" : "#a78bfa";
@@ -345,7 +358,7 @@ function StorageCard({
           <div className="w-6 h-6 bg-white/10 rounded-md flex items-center justify-center">
             <Package size={13} className="text-white/80" />
           </div>
-          <span className="text-[10px] text-white/50 font-medium">{sizeLabel}</span>
+          <span className="text-[10px] text-white/50 font-medium">{planName}</span>
         </div>
         <p className="text-xs font-bold text-white truncate mt-2 leading-tight">{s.storage_name}</p>
         <p className="text-[10px] text-white/50 mt-0.5">
