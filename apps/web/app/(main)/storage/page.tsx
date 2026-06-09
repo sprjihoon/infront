@@ -195,8 +195,8 @@ export default function StoragePage() {
               <p className="text-xs font-semibold text-brand-200 mb-3">전체 요약</p>
               <div className="grid grid-cols-3 gap-2">
                 <SummaryCell
-                  label="슬롯"
-                  value={locationSummary ? `${locationSummary.slot_count}개` : `${active.length}개`}
+                  label="이용 중"
+                  value={`${active.length}개`}
                 />
                 <SummaryCell
                   label="주간 요금"
@@ -205,8 +205,10 @@ export default function StoragePage() {
                     : totalMonthly > 0 ? `${totalMonthly.toLocaleString()}원` : "-"}
                 />
                 <SummaryCell
-                  label="요금제"
-                  value={locationSummary?.dominant_type?.name ?? "-"}
+                  label="다음 결제일"
+                  value={nextBilling
+                    ? new Date(nextBilling).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })
+                    : "-"}
                 />
               </div>
             </div>
