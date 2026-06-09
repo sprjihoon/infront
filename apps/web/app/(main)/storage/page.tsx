@@ -917,9 +917,9 @@ function RenameSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-[600px] bg-white rounded-t-3xl" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
+      <div className="relative w-full max-w-[480px] bg-white rounded-3xl shadow-2xl">
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
           <p className="text-base font-bold text-gray-900">스토리지 이름 변경</p>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
