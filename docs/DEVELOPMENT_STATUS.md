@@ -1,29 +1,142 @@
 ﻿# 인프론트 개발 현황
 
-> **최종 갱신:** 2026-06-08  
-> **DB 마이그레이션:** `001` ~ `042` (+ `999_mock_seed.sql`)
+> **최종 갱신:** 2026-06-09  
+> **DB 마이그레이션:** `001` ~ `044` (+ `999_mock_seed.sql`)
 
 이 문서는 [README.md](../README.md)의 로드맵·기능 표를 보완하는 **상세 개발 일지**입니다.  
 기능 단위로 완료/진행/예정을 추적하고, README는 온보딩·아키텍처 개요용으로 유지합니다.
 
 ---
 
-## Phase 3 — 고객 보관 서비스 (진행 중)
+## 아키텍처 핵심 결정 사항
+
+### 웨어하우스 + 보관 서비스 통합 방향
+
+현재 `/warehouse` (입고 소포 목록)와 `/storage` (유료 보관 서비스)는 **동일한 물리 센터를 다른 뷰로 보는 것**이므로 통합이 원칙이다.
+
+```
+고객 물품 수거/직접발송
+         ↓
+    parcels 테이블 (기존 — 물리 입고 관리)
+         ↓
+    /storage 통합 화면
+    ├─ 보관 플랜 없음 → 물품 목록 + "보관 서비스 신청" 배너
+    └─ 보관 플랜 있음 → 플랜·요금 + 입고 물품 통합 뷰 (parcel_id FK 연결)
+```
+
+**통합 방법 (예정):**
+- `customer_storage_items.parcel_id` FK 추가 → 기존 소포와 연결
+- `/warehouse` 는 `/storage` 내부로 흡수, 독립 라우트 점진적 deprecate
+- `/storage` 상단: 플랜·요금 현황 / 하단: 입고된 소포 아이템 통합 목록
+
+---
+
+## Phase 3 — 고객 보관 서비스 (완료된 항목)
 
 > PDF 기반 스토리지 결제·보관 서비스 구현. KG Inicis 계약 기준.
 
 | 단계 | 상태 | 비고 |
 |------|------|------|
-| DB 스키마 (`040`~`042`) | ✅ | `customer_storages`, `customer_storage_items`, `storage_payments`, `storage_recurring_profiles`, `storage_escalation_logs` |
+| DB 스키마 (`040`~`043`) | ✅ | `customer_storages`, `customer_storage_items`, `storage_payments`, `storage_recurring_profiles`, `storage_escalation_logs`, `PENDING_PAYMENT` 상태 추가 |
+| 수거 박스 요금 DB (`044`) | ✅ | `pickup_box_fees` — 관리자가 설정 가능, 크기별 동적 요금 |
 | Web 고객 스토리지 대시보드 | ✅ | `/storage`, `/storage/[id]`, `/storage/new` |
 | Admin 고객 보관 관리 | ✅ | `/customer-storages`, `/customer-storages/[id]` |
-| 단기보관 결제 API | 🔲 | `/api/storage/[id]/pay` (KG Inicis 단건결제) |
-| 결제 실패 에스컬레이션 cron | 🔲 | D+0/3/7/14/30 단계별 처리 |
-| 해외배송 오픈 확인비 | 🔲 | 기존 배송 흐름 확장 |
-| 장기보관 빌링 | 🔲 | 빌링 계약 후 월정액 자동결제 |
+| Admin 수거 요금 설정 | ✅ | `/settings/pickup-fees` — 박스 크기별 요금 인라인 편집 |
+| 수거비 동적 계산 | ✅ | 하드코딩 3,000원 제거 → DB `pickup_box_fees` 기준 |
+| 단기보관 결제 API | ✅ | `/api/storage/pay/prepare` (KG Inicis), `/api/inicis/storage-return` |
+| 결제 성공/실패 페이지 | ✅ | `/storage/payment/success`, `/storage/payment/fail` |
+| 하단 네비 "스토리지" 탭 연결 | ✅ | `/warehouse` → `/storage` 로 변경 |
 
-### DB 마이그레이션 적용 방법
-Supabase 대시보드 → SQL Editor에서 `040_customer_storages.sql`, `041_storage_payments.sql`, `042_storage_recurring_profiles.sql` 순서대로 실행.
+### DB 마이그레이션 적용 방법 (CLI)
+```bash
+supabase db query --linked --file apps/sql/040_customer_storages.sql
+supabase db query --linked --file apps/sql/041_storage_payments.sql
+supabase db query --linked --file apps/sql/042_storage_recurring_profiles.sql
+supabase db query --linked --file apps/sql/043_storage_status_pending_payment.sql
+supabase db query --linked --file apps/sql/044_pickup_box_fees.sql
+```
+
+---
+
+## 개발 로드맵 (우선순위 순)
+
+> **범례:** ✅ 완료 · 🔄 진행 중 · 🔲 예정 · ⏸ 다음 단계 (계약/조건 필요)
+
+### Phase 3.5 — 웨어하우스·보관 서비스 통합 🔄 진행 중
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| `/storage` 통합 뷰 설계 | 🔲 | `/warehouse` 내용 흡수, 플랜+소포 통합 화면 |
+| `customer_storage_items.parcel_id` FK 추가 | 🔲 | SQL 마이그레이션 필요 |
+| `/warehouse` → `/storage` 점진적 통합 | 🔲 | 라우트 리다이렉트 또는 탭 전환 |
+
+---
+
+### Phase 4 — 결제 실패 에스컬레이션 (4순위) 🔲
+
+> 결제 실패 시 D+0/3/7/14/30 단계별 자동 처리 Cron
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| 에스컬레이션 cron 엔드포인트 | 🔲 | `/api/cron/storage-escalation` |
+| 단계별 서비스 제한 로직 | 🔲 | 3회 실패 → 입고 중단, 14일 → 강제 출고 안내 |
+| 관리자 에스컬레이션 현황 뷰 | 🔲 | `storage_escalation_logs` 테이블 활용 |
+| 재결제 시도 링크 발송 | 🔲 | 이메일/알림 연동 |
+
+---
+
+### Phase 5 — 해외배송 오픈 확인비 (5순위) 🔲
+
+> 기존 해외배송 흐름에 "보관 물품 오픈 확인" 서비스 요금 추가
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| 오픈확인 서비스 옵션 추가 | 🔲 | 배송 신청 인보이스 단계에서 선택 |
+| 요금 계산 로직 | 🔲 | 기존 배송 결제 흐름 확장 |
+| 관리자 처리 플로우 | 🔲 | 오픈 후 사진 업로드 → 고객 확인 |
+
+---
+
+### Phase 6 — 장기보관 빌링 (6순위) 🔲
+
+> 월정액 자동결제. **KG Inicis 빌링(정기결제) 계약 완료 후 실연동**
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| 빌링 로직 설계 | 🔲 | 매월 n일 자동청구, 실패 시 에스컬레이션 연동 |
+| BillKey 발급·저장 흐름 | 🔲 | KG Inicis 빌링 API, `storage_recurring_profiles` 활용 |
+| 월정액 Cron | 🔲 | `/api/cron/storage-billing` |
+| 관리자 빌링 현황 | 🔲 | 자동결제 성공/실패 목록 |
+| **실연동 조건** | ⏸ | **KG Inicis 빌링 계약 완료 후 진행** |
+
+---
+
+### Phase 7 — 단기→장기 전환 cron (7순위) 🔲
+
+> Phase 6 직후 진행. 단기보관 임계점 도달 시 자동 플랜 전환
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| 전환 조건 정의 | 🔲 | 보관 기간 n주 초과 또는 고객 명시 전환 요청 |
+| 전환 cron | 🔲 | `/api/cron/storage-convert` |
+| 고객 전환 알림 | 🔲 | 이메일/인앱 알림 |
+| **선행 조건** | ⏸ | Phase 6 장기보관 빌링 완료 후 진행 |
+
+---
+
+### Phase 8 — 글로벌 결제 (8순위) ⏸ 다음 개발 단계
+
+> **별도 글로벌 PG 계약 완료 후 진행. 현재 개발 범위 외.**
+
+| 항목 | 상태 | 비고 |
+|------|------|------|
+| 글로벌 PG 연동 (Eximbay 또는 대안) | ⏸ | 계약 협의 중 |
+| 해외 카드 결제 흐름 | ⏸ | 영문 결제 페이지 |
+| 다국어 결제 UI | ⏸ | KO/EN 분기 |
+| 환율 기반 결제 금액 | ⏸ | USD/KRW 실시간 환율 적용 |
+
+> ⚠️ Phase 8은 글로벌 PG 계약이 완료된 이후 **별도 개발 단계**로 진행합니다.  
+> 현재 KG Inicis(국내) 기반 서비스 안정화를 우선합니다.
 
 ---
 
@@ -38,21 +151,18 @@ Supabase 대시보드 → SQL Editor에서 `040_customer_storages.sql`, `041_sto
 
 ---
 
-## DB 마이그레이션
-
-> **최종 갱신:** 2026-06-04  
-> **DB 마이그레이션:** `001` ~ `038` (+ `999_mock_seed.sql`)
+## 전체 디렉토리 구조
 
 ```
 infront/
 ├── apps/web/       # 고객 웹 (infront.kr) — Next.js 16
 ├── apps/admin/     # 관리자 (admin.infront.kr) — Next.js 16
-├── apps/sql/       # Postgres DDL (001~038 + 999_mock_seed)
+├── apps/sql/       # Postgres DDL (001~044 + 999_mock_seed)
 ├── supabase/       # Supabase CLI 설정
 └── docs/           # 개발·설계 문서
 ```
 
-**핵심 연동:** Supabase (Auth/DB/RLS) · 토스페이먼츠 · 우체국 ePost API (국내수거/EMS) · tracker.delivery (타택배 추적) · Cloudflare Stream (영상)
+**핵심 연동:** Supabase (Auth/DB/RLS) · KG Inicis (국내 결제/빌링) · 우체국 ePost API (국내수거/EMS) · tracker.delivery (타택배 추적) · Cloudflare Stream (영상)
 
 ---
 
@@ -64,8 +174,8 @@ infront/
 | 회원가입 → 고객번호·입고주소 자동 발급 | ✅ | `018` 트리거 중복 호출 수정 |
 | 수거 신청 (우체국 ePost) | ✅ | SEED128, 다박스·박스 규격 선택 |
 | 수거 취소 + GetResInfo 상태 조회 | ✅ | `PICKUP_CANCELLED` 상태 |
-| **수거 취소 안정성 강화** | ✅ | ERR-211(reqNo 누락) graceful 처리, `||` fallback 수정 |
-| 스토리지 | ✅ | 상태 필터, 검색, 다중 선택 |
+| **수거 취소 안정성 강화** | ✅ | ERR-211(reqNo 누락) graceful 처리, `\|\|` fallback 수정 |
+| 스토리지 (웨어하우스) | ✅ | 상태 필터, 검색, 다중 선택 |
 | 물품 직접 등록 | ✅ | 타택배·직접 발송 경로 |
 | 해외배송 신청 (다단계) | ✅ | 다중 박스, 인보이스, 주소록 |
 | EMS/K-Packet 견적 | ✅ | 사이드바 계산기 + `/shipping-calc` |
@@ -183,6 +293,12 @@ IN_TRANSIT
 | `037_outbound_picking.sql` | 피킹·출고 상태 확장 | ✅ |
 | `038_outbound_sessions.sql` | 출고 세션 테이블 | ✅ |
 | `038_picking_item_tracking.sql` | 피킹 아이템 추적 | ✅ |
+| `039_parcel_media_bucket.sql` | 미디어 스토리지 버킷 | ✅ |
+| `040_customer_storages.sql` | 고객 보관 서비스 스키마 | ✅ |
+| `041_storage_payments.sql` | 보관 결제 테이블 | ✅ |
+| `042_storage_recurring_profiles.sql` | 정기결제 프로파일 | ✅ |
+| `043_storage_status_pending_payment.sql` | PENDING_PAYMENT 상태 추가 | ✅ |
+| `044_pickup_box_fees.sql` | 수거 박스 크기별 요금 | ✅ |
 | `999_mock_seed.sql` | 테스트 목업 데이터 | ✅ (개발용) |
 
 ---
@@ -203,7 +319,7 @@ IN_TRANSIT
 | 버그 | 원인 | 수정 파일 |
 |------|------|-----------|
 | 수거 취소 ERR-211: reqNo 값이 없습니다 | EPost 파서 reqNo 인식 실패 | `api/pickup/[id]/route.ts` — ERR-211 graceful 처리 |
-| reqNo/resNo 빈 문자열 fallback 누락 | `??` 연산자가 빈 문자열을 건너뜀 | `||` 연산자로 교체 |
+| reqNo/resNo 빈 문자열 fallback 누락 | `??` 연산자가 빈 문자열을 건너뜀 | `\|\|` 연산자로 교체 |
 | getResInfo ERR-111: reqYmd UTC 날짜 | UTC 기준 날짜 — KST 새벽에 하루 이전으로 계산 | `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' })` |
 | `buildKeyedPlaintext` required 필드 silent skip | required+undefined 조합 시 오류 없이 건너뜀 | 즉시 throw로 수정 |
 
@@ -241,30 +357,6 @@ IN_TRANSIT
 
 ---
 
-## Phase 2 — 아직 예정
-
-README 로드맵과 동일. 피킹·출고 완료 후 우선순위 제안 순입니다.
-
-1. **입고 자동 동기화 완료** — GetResInfo + tracker.delivery Cron 프로덕션 확인
-2. **관리자 입고 처리** — 오픈박스 영상 업로드 (Cloudflare Stream)
-3. **검수 결과 입력** — 사진 업로드, 발송 가능/불가/보류
-4. **견적 확정 → QUOTE_SENT 알림** — 마진 필드(019) UI 연동
-5. **반품 전체 워크플로우** — 시점별 처리
-6. **고객 물품 타임라인** — 입고영상·검품사진·출고영상
-7. **고객 관리 페이지 완성** — 네비게이션 연결
-
----
-
-## Phase 3 — 예정
-
-- FCM 푸시 알림
-- EMS/K-Packet 운송장 자동 등록·고객 알림 (국제 추적 Cron 확장)
-- Capacitor WebView 앱 (iOS/Android)
-- 통계 대시보드 (매출·국가별·서비스별)
-- 검수검품·빈박스 배송 신청 UI
-
----
-
 ## API 엔드포인트 (최근 추가)
 
 | Method | Path | 설명 |
@@ -280,17 +372,17 @@ README 로드맵과 동일. 피킹·출고 완료 후 우선순위 제안 순입
 | GET | `/api/cron/sync-inbound` | 입고 전 구간 Cron (CRON_SECRET) |
 | POST | `/api/admin/parcels/sync-inbound` | admin 수동 입고 동기화 |
 | GET, PATCH | `/api/admin/settings/inbound-sync` | 동기화 스케줄 설정 |
-
----
-
-## 다음 작업 체크리스트
-
-- [ ] 입고 동기화 Cron 프로덕션 동작 확인 (KST 평일 3회)
-- [ ] admin 견적 화면에 `quote_ems_cost` / `shipping_margin` 입력 UI
-- [ ] 고객 관리 페이지 네비게이션 연결 (`DashboardNav`)
-- [ ] 오픈박스 영상 업로드 (Cloudflare Stream) — 입고처리 화면
-- [ ] 검수 결과 입력 UI + 사진 업로드
-- [ ] QUOTE_SENT 알림 발송 트리거
+| GET, POST | `/api/storage` | 고객 보관 서비스 목록/생성 |
+| GET, PATCH | `/api/storage/[id]` | 보관 서비스 상세/업데이트 |
+| GET, POST | `/api/storage/[id]/items` | 보관 아이템 목록/추가 |
+| GET | `/api/storage/plans` | 보관 플랜 목록 |
+| GET | `/api/storage/box-fees` | 수거 박스 요금 목록 |
+| POST | `/api/storage/pay/prepare` | KG Inicis 결제 준비 |
+| POST | `/api/inicis/storage-return` | KG Inicis 결제 콜백 |
+| GET | `/api/admin/customer-storages` | 관리자 보관 서비스 목록 |
+| GET, PATCH | `/api/admin/customer-storages/[id]` | 관리자 보관 서비스 상세 |
+| PATCH | `/api/admin/customer-storages/[id]/items/[itemId]` | 관리자 아이템 상태 업데이트 |
+| GET, PATCH | `/api/admin/pickup-box-fees` | 수거 박스 요금 관리 |
 
 ---
 
@@ -301,3 +393,4 @@ README 로드맵과 동일. 피킹·출고 완료 후 우선순위 제안 순입
 | 2026-05-27 | 최초 작성 — Phase 1 완료, Phase 1.5·입고 동기화 진행 현황 정리 |
 | 2026-05-28 | SEED128 SS1[109] 핵심 버그 수정. inqTelCn 매핑 수정 |
 | 2026-06-04 | Phase 1.6 스토리지 시스템, Phase 1.7 피킹·출고 워크플로우 완료 반영. 전체 마이그레이션 현황 갱신 (001~038) |
+| 2026-06-09 | Phase 3 고객 보관 서비스 완료 현황 반영 (040~044). 수거비 동적 계산, Admin 요금 설정 UI. Phase 4~8 로드맵 추가. 웨어하우스+보관 서비스 통합 아키텍처 결정 사항 추가 |
