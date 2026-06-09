@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           monthly_amount, capacity_score, used_score, usage_percent,
           status, short_term_started_at, paid_until_date, next_billing_date,
           created_at, updated_at,
-          storage_plan_config!plan_type (label_ko, label_en, weekly_rate, monthly_amount)
+          storage_plan_config!customer_storages_plan_type_fkey (label_ko, label_en, weekly_rate, monthly_amount)
         `)
         .eq("id", id)
         .eq("user_id", user.id)

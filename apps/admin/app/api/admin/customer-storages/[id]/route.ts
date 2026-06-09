@@ -21,7 +21,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
           long_term_notified_at, long_term_requested_at, notes,
           created_at, updated_at,
           customers!user_id (id, name, email, customer_code, phone),
-          storage_plan_config!plan_type (label_ko, label_en, weekly_rate, monthly_amount)
+          storage_plan_config!customer_storages_plan_type_fkey (label_ko, label_en, weekly_rate, monthly_amount)
         `)
         .eq("id", id)
         .single(),
