@@ -235,6 +235,24 @@ export default function StoragePage() {
                   onRename={() => setRenameSheet(s)}
                 />
               ))}
+
+              {/* ── 슬롯 추가 카드 ── */}
+              <Link
+                href="/storage/new"
+                className="rounded-2xl overflow-hidden flex flex-col items-center justify-center gap-2 py-6 border-2 border-dashed border-white/20 hover:border-white/40 transition-colors"
+                style={{
+                  background: "linear-gradient(160deg, #1c1c2e 0%, #12122a 100%)",
+                  minHeight: 190,
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+                }}
+              >
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                  <Plus size={18} className="text-white/60" />
+                </div>
+                <p className="text-[11px] font-semibold text-white/50 text-center leading-tight px-3">
+                  스토리지<br />슬롯 추가
+                </p>
+              </Link>
             </div>
 
             {/* ── 물품 목록 ────────────────────────── */}
