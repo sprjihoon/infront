@@ -690,9 +690,9 @@ function CapacityChangeSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-[600px] bg-white rounded-t-3xl max-h-[85vh] flex flex-col" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
+      <div className="relative w-full max-w-[520px] bg-white rounded-3xl max-h-[80vh] flex flex-col shadow-2xl">
         {/* 헤더 */}
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white">
           <div>
@@ -789,8 +789,8 @@ function CapacityChangeSheet({
               )}
             </div>
 
-            {/* 버튼 — 하단 고정 */}
-            <div className="px-4 pt-3 pb-4 border-t border-gray-100 bg-white shrink-0">
+            {/* 버튼 — 하단 */}
+            <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
               <button
                 onClick={handleRequest}
                 disabled={!selected || submitting}
