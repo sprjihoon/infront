@@ -5,41 +5,40 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, Package } from "lucide-react";
 import { Suspense } from "react";
 
-interface PlanConfig {
-  plan_type: string;
-  label_ko: string;
-  description_ko: string | null;
-  capacity_score: number | null;
-  monthly_amount: number | null;
-  weekly_rate: number | null;
+interface StorageType {
+  id: string;
+  code: string;
+  name: string;
+  price_per_week: number;
+  price_max: number | null;
+  max_parcels: number | null;
+  volume_liter: number | null;
 }
 
 function StorageNewInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const preselectedPlan = searchParams.get("plan");
+  const preselectedPlan = searchParams.get("plan"); // storage_type code
 
-  const [plans, setPlans] = useState<PlanConfig[]>([]);
-  const [selectedPlan, setSelectedPlan] = useState<string | null>(preselectedPlan);
+  const [types, setTypes] = useState<StorageType[]>([]);
+  const [selectedCode, setSelectedCode] = useState<string | null>(preselectedPlan);
   const [storageName, setStorageName] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch("/api/storage/plans")
+    fetch("/api/storage/types")
       .then((r) => r.json())
       .then((d) => {
-        const filtered: PlanConfig[] = (d.plans ?? []).filter(
-          (p: PlanConfig) => p.plan_type !== "XL"
-        );
-        setPlans(filtered);
-        if (!selectedPlan && filtered.length > 0) {
-          setSelectedPlan(filtered[0].plan_type);
+        const list: StorageType[] = d.types ?? [];
+        setTypes(list);
+        if (!selectedCode && list.length > 0) {
+          setSelectedCode(list[0].code);
         }
       });
   }, []);
 
   async function handleApply() {
-    if (!selectedPlan) return;
+    if (!selectedCode) return;
     setLoading(true);
     try {
       const res = await fetch("/api/storage", {
@@ -47,7 +46,7 @@ function StorageNewInner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           storage_mode: "long_term",
-          plan_type: selectedPlan,
+          plan_type: selectedCode,
           storage_name: storageName.trim() || undefined,
           status: "ACTIVE",
         }),
@@ -65,7 +64,7 @@ function StorageNewInner() {
     }
   }
 
-  const selectedConfig = plans.find((p) => p.plan_type === selectedPlan);
+  const selectedType = types.find((t) => t.code === selectedCode);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -87,7 +86,7 @@ function StorageNewInner() {
           <ul className="space-y-0.5">
             {[
               "수거 신청 시 함께 신청하면 수거 완료 후 바로 보관 시작",
-              "월정액 플랜 · 자동결제 (최초 1개월 선납)",
+              "선택한 사이즈 기준으로 로케이션 배정 후 주 단위 자동 정산",
               "단기보관: 입고 후 3일 무료, 4일차부터 주 단위 자동 정산 (별도 신청 불필요)",
             ].map((t) => (
               <li key={t} className="flex items-start gap-1.5">
@@ -98,48 +97,56 @@ function StorageNewInner() {
           </ul>
         </div>
 
-        {/* 플랜 선택 */}
+        {/* 사이즈 선택 */}
         <section>
-          <p className="text-xs font-bold text-gray-700 mb-2">플랜 선택</p>
+          <p className="text-xs font-bold text-gray-700 mb-2">사이즈 선택</p>
           <div className="space-y-2">
-            {plans.map((plan) => (
-              <button
-                key={plan.plan_type}
-                onClick={() => setSelectedPlan(plan.plan_type)}
-                className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-3 transition-all ${
-                  selectedPlan === plan.plan_type
-                    ? "border-brand-500 bg-brand-50"
-                    : "border-gray-200 bg-white"
-                }`}
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-black shrink-0 ${
-                  selectedPlan === plan.plan_type ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
-                }`}>
-                  {plan.plan_type}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-bold text-gray-900">{plan.label_ko}</span>
-                    {plan.capacity_score != null && (
-                      <span className="text-xs text-gray-400">최대 {plan.capacity_score}개</span>
+            {types.length === 0 ? (
+              <div className="py-6 text-center text-xs text-gray-400">사이즈 목록을 불러오는 중...</div>
+            ) : (
+              types.map((type) => {
+                const isSelected = selectedCode === type.code;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => setSelectedCode(type.code)}
+                    className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-3 transition-all ${
+                      isSelected
+                        ? "border-brand-500 bg-brand-50"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0 ${
+                      isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
+                    }`}>
+                      {type.code}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-sm font-bold text-gray-900">{type.name}</span>
+                        {type.max_parcels != null && (
+                          <span className="text-xs text-gray-400">최대 {type.max_parcels}개</span>
+                        )}
+                        {type.volume_liter != null && (
+                          <span className="text-xs text-gray-400">{type.volume_liter}L</span>
+                        )}
+                      </div>
+                      <span className={`text-xs font-bold mt-1 block ${isSelected ? "text-brand-700" : "text-gray-500"}`}>
+                        {type.price_per_week.toLocaleString()}원/주
+                        <span className="font-normal text-gray-400 ml-1">
+                          (월 약 {(type.price_per_week * 4).toLocaleString()}원)
+                        </span>
+                      </span>
+                    </div>
+                    {isSelected && (
+                      <div className="w-5 h-5 bg-brand-600 rounded-full flex items-center justify-center shrink-0">
+                        <Check size={12} className="text-white" />
+                      </div>
                     )}
-                  </div>
-                  {plan.description_ko && (
-                    <p className="text-xs text-gray-500 mt-0.5">{plan.description_ko}</p>
-                  )}
-                  {plan.monthly_amount != null && (
-                    <span className="text-xs font-bold text-brand-700 mt-1 block">
-                      {plan.monthly_amount.toLocaleString()}원/월
-                    </span>
-                  )}
-                </div>
-                {selectedPlan === plan.plan_type && (
-                  <div className="w-5 h-5 bg-brand-600 rounded-full flex items-center justify-center shrink-0">
-                    <Check size={12} className="text-white" />
-                  </div>
-                )}
-              </button>
-            ))}
+                  </button>
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -158,15 +165,17 @@ function StorageNewInner() {
         </section>
 
         {/* 합계 */}
-        {selectedConfig?.monthly_amount != null && (
+        {selectedType && (
           <div className="bg-white rounded-2xl border border-gray-100 p-4">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">첫 달 결제 금액</span>
+              <span className="text-sm text-gray-600">주간 요금</span>
               <span className="text-lg font-black text-brand-600">
-                {selectedConfig.monthly_amount.toLocaleString()}원
+                {selectedType.price_per_week.toLocaleString()}원/주
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">이후 매월 자동결제됩니다</p>
+            <p className="text-xs text-gray-400 mt-1">
+              월 약 {(selectedType.price_per_week * 4).toLocaleString()}원 · 로케이션 배정 후 자동 정산
+            </p>
           </div>
         )}
 
@@ -181,7 +190,7 @@ function StorageNewInner() {
 
         <button
           onClick={handleApply}
-          disabled={!selectedPlan || loading}
+          disabled={!selectedCode || loading}
           className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading ? "신청 중..." : "장기보관 신청하기"}

@@ -122,7 +122,7 @@ export default function PickupPage() {
 
   // 장기보관 연계 옵션
   const [storageOptIn, setStorageOptIn] = useState(false);
-  const [storagePlans, setStoragePlans] = useState<{ plan_type: string; label_ko: string; capacity_score: number | null; monthly_amount: number | null }[]>([]);
+  const [storageTypes, setStorageTypes] = useState<{ id: string; code: string; name: string; price_per_week: number; max_parcels: number | null; volume_liter: number | null }[]>([]);
   const [selectedStoragePlan, setSelectedStoragePlan] = useState<string | null>(null);
 
   const disabledDates = Array.from({ length: 21 }, (_, i) => {
@@ -138,15 +138,15 @@ export default function PickupPage() {
     });
   }, []);
 
-  // 장기보관 플랜 불러오기 (연계 옵션 열면 fetch)
+  // 장기보관 사이즈 목록 불러오기 (연계 옵션 열면 fetch)
   useEffect(() => {
-    if (!storageOptIn || storagePlans.length > 0) return;
-    fetch("/api/storage/plans")
+    if (!storageOptIn || storageTypes.length > 0) return;
+    fetch("/api/storage/types")
       .then((r) => r.json())
       .then((d) => {
-        const plans = (d.plans ?? []).filter((p: { plan_type: string }) => p.plan_type !== "XL");
-        setStoragePlans(plans);
-        if (plans.length > 0 && !selectedStoragePlan) setSelectedStoragePlan(plans[0].plan_type);
+        const list = d.types ?? [];
+        setStorageTypes(list);
+        if (list.length > 0 && !selectedStoragePlan) setSelectedStoragePlan(list[0].code);
       });
   }, [storageOptIn]);
 
@@ -1043,36 +1043,37 @@ export default function PickupPage() {
 
               {storageOptIn && (
                 <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-2">
-                  <p className="text-[11px] font-bold text-gray-600">플랜 선택</p>
-                  {storagePlans.length === 0 ? (
+                  <p className="text-[11px] font-bold text-gray-600">사이즈 선택</p>
+                  {storageTypes.length === 0 ? (
                     <p className="text-xs text-gray-400">불러오는 중...</p>
                   ) : (
-                    storagePlans.map((plan) => (
+                    storageTypes.map((type) => (
                       <button
-                        key={plan.plan_type}
+                        key={type.id}
                         type="button"
-                        onClick={() => setSelectedStoragePlan(plan.plan_type)}
+                        onClick={() => setSelectedStoragePlan(type.code)}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
-                          selectedStoragePlan === plan.plan_type
+                          selectedStoragePlan === type.code
                             ? "border-brand-500 bg-brand-50"
                             : "border-gray-200 bg-white"
                         }`}
                       >
-                        <div className={`w-7 h-7 rounded-lg text-xs font-black flex items-center justify-center shrink-0 ${
-                          selectedStoragePlan === plan.plan_type ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
-                        }`}>{plan.plan_type}</div>
+                        <div className={`w-7 h-7 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 ${
+                          selectedStoragePlan === type.code ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
+                        }`}>{type.code}</div>
                         <div className="flex-1">
-                          <span className="text-sm font-semibold text-gray-800">{plan.label_ko}</span>
-                          {plan.capacity_score != null && (
-                            <span className="text-[10px] text-gray-400 ml-1.5">최대 {plan.capacity_score}개</span>
+                          <span className="text-sm font-semibold text-gray-800">{type.name}</span>
+                          {type.max_parcels != null && (
+                            <span className="text-[10px] text-gray-400 ml-1.5">최대 {type.max_parcels}개</span>
                           )}
-                          {plan.monthly_amount != null && (
-                            <span className="text-xs text-brand-700 font-bold ml-1.5">
-                              {plan.monthly_amount.toLocaleString()}원/월
-                            </span>
+                          {type.volume_liter != null && (
+                            <span className="text-[10px] text-gray-400 ml-1">{type.volume_liter}L</span>
                           )}
+                          <span className="text-xs text-brand-700 font-bold ml-1.5">
+                            {type.price_per_week.toLocaleString()}원/주
+                          </span>
                         </div>
-                        {selectedStoragePlan === plan.plan_type && (
+                        {selectedStoragePlan === type.code && (
                           <CheckCircle size={16} className="text-brand-600 shrink-0" />
                         )}
                       </button>
