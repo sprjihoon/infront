@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { Home, Package, Truck, Send, Globe, User } from "lucide-react";
 
 const TABS = [
-  { href: "/home",             label: "홈",     icon: Home },
-  { href: "/pickup",           label: "수거신청", icon: Truck },
-  { href: "/warehouse",        label: "스토리지", icon: Package },
-  { href: "/shipping",         label: "출고신청", icon: Send },
-  { href: "/orders",           label: "배송현황", icon: Globe },
-  { href: "/mypage",           label: "MY",     icon: User },
+  { href: "/home",      label: "홈",     icon: Home },
+  { href: "/pickup",    label: "수거신청", icon: Truck },
+  { href: "/storage",   label: "스토리지", icon: Package },
+  { href: "/shipping",  label: "출고신청", icon: Send },
+  { href: "/orders",    label: "배송현황", icon: Globe },
+  { href: "/mypage",    label: "MY",     icon: User },
 ];
 
 export default function BottomTabBar() {
