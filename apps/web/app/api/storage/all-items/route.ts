@@ -32,7 +32,7 @@ export async function GET() {
   const { data: parcels, error } = await supabase
     .from("parcels")
     .select(
-      "id, tracking_no, status, inbound_at, pre_invoice_items, customer_storage_id"
+      "id, tracking_no, status, inbound_at, pre_invoice_items, customer_storage_id, is_shippable"
     )
     .eq("customer_id", user.id)
     .not("status", "in", '("SHIPPED","RETURNED","PICKUP_CANCELLED","DISPOSED")')
@@ -66,6 +66,7 @@ export async function GET() {
           name: parcel.tracking_no ?? "운송장 미확인",
           quantity: 1,
           parcel_status: parcel.status,
+          is_shippable: parcel.is_shippable ?? false,
           inbound_at: parcel.inbound_at,
         },
       ];
@@ -79,6 +80,7 @@ export async function GET() {
       name: it.product_name ?? it.name ?? it.name_en ?? "알 수 없는 물품",
       quantity: it.quantity ?? 1,
       parcel_status: parcel.status,
+      is_shippable: parcel.is_shippable ?? false,
       inbound_at: parcel.inbound_at,
     }));
   });

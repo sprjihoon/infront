@@ -53,10 +53,12 @@ const PARCEL_STATUS_MAP: Record<string, { label: string; color: string }> = {
   CREATED:          { label: "수거 대기",  color: "bg-yellow-100 text-yellow-700" },
   PICKUP_REQUESTED: { label: "수거 신청",  color: "bg-blue-100 text-blue-700" },
   IN_TRANSIT:       { label: "이동 중",   color: "bg-purple-100 text-purple-700" },
-  INBOUND:          { label: "입고 완료",  color: "bg-green-100 text-green-700" },
+  INBOUND:          { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
   INSPECTING:       { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
+  INSPECTION:       { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
   HOLD:             { label: "보류",      color: "bg-orange-100 text-orange-700" },
-  READY:            { label: "출고 가능",  color: "bg-teal-100 text-teal-700" },
+  SHIPPABLE:        { label: "출고 가능",  color: "bg-green-100 text-green-700" },
+  READY:            { label: "출고 가능",  color: "bg-green-100 text-green-700" },
 };
 
 const STORAGE_STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ElementType }> = {

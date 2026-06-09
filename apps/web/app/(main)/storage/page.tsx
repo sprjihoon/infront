@@ -40,6 +40,7 @@ interface ProductItem {
   name: string;
   quantity: number;
   parcel_status: string;
+  is_shippable: boolean;
   inbound_at: string | null;
 }
 
@@ -57,8 +58,11 @@ const PARCEL_STATUS_DISPLAY: Record<string, { label: string; color: string }> = 
   IN_TRANSIT:       { label: "이동 중",   color: "bg-purple-100 text-purple-700" },
   INBOUND:          { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
   INSPECTING:       { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
+  INSPECTION:       { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
   HOLD:             { label: "보류",      color: "bg-orange-100 text-orange-700" },
+  SHIPPABLE:        { label: "출고 가능",  color: "bg-green-100 text-green-700" },
   READY:            { label: "출고 가능",  color: "bg-green-100 text-green-700" },
+  SHIPPED:          { label: "출고 완료",  color: "bg-gray-100 text-gray-500" },
 };
 
 /* ─── 유틸 ──────────────────────────────────────── */
@@ -136,7 +140,7 @@ export default function StoragePage() {
     itemFilter === "전체"
       ? items
       : itemFilter === "출고 가능"
-        ? items.filter((it) => it.parcel_status === "READY")
+        ? items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable)
         : items.filter((it) => {
             const s = active.find((st) => st.id === it.storage_id);
             return s?.storage_name === itemFilter;
@@ -228,9 +232,9 @@ export default function StoragePage() {
                   <p className="text-sm font-bold text-gray-900">물품 목록</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     전체 {items.length}개
-                    {items.filter((it) => it.parcel_status === "READY").length > 0 && (
+                    {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable).length > 0 && (
                       <span className="ml-2 text-green-600 font-semibold">
-                        출고 가능 {items.filter((it) => it.parcel_status === "READY").length}개
+                        출고 가능 {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable).length}개
                       </span>
                     )}
                   </p>
