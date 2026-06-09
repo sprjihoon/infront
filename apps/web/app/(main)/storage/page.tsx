@@ -107,6 +107,7 @@ export default function StoragePage() {
   const [releaseSheet, setReleaseSheet] = useState<string[] | null>(null);
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
+  const [hoverPhoto, setHoverPhoto] = useState<{ url: string; x: number; y: number } | null>(null);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -332,14 +333,18 @@ export default function StoragePage() {
                       return (
                         <div key={item.id} className="px-4 py-3 flex items-center gap-3">
                           {/* 썸네일 */}
-                          <div className="relative group shrink-0">
+                          <div className="shrink-0">
                             {item.photo_url ? (
-                              <>
-                                <img src={item.photo_url} alt={item.name} className="w-10 h-10 rounded-xl object-cover" />
-                                <div className="absolute left-1/2 -translate-x-1/2 bottom-14 z-50 hidden group-hover:block pointer-events-none">
-                                  <img src={item.photo_url} alt={item.name} className="w-64 h-64 rounded-2xl object-cover shadow-2xl border-2 border-white" />
-                                </div>
-                              </>
+                              <img
+                                src={item.photo_url}
+                                alt={item.name}
+                                className="w-10 h-10 rounded-xl object-cover cursor-pointer"
+                                onMouseEnter={(e) => {
+                                  const rect = (e.target as HTMLElement).getBoundingClientRect();
+                                  setHoverPhoto({ url: item.photo_url!, x: rect.left, y: rect.top });
+                                }}
+                                onMouseLeave={() => setHoverPhoto(null)}
+                              />
                             ) : (
                               <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
                                 <Package size={16} className="text-gray-400" />
@@ -395,6 +400,23 @@ export default function StoragePage() {
         )}
       </div>
     </div>
+
+    {/* 사진 hover 확대 오버레이 */}
+    {hoverPhoto && (
+      <div
+        className="fixed z-[9999] pointer-events-none"
+        style={{
+          left: Math.min(hoverPhoto.x + 48, window.innerWidth - 224),
+          top: Math.max(hoverPhoto.y - 200, 12),
+        }}
+      >
+        <img
+          src={hoverPhoto.url}
+          alt=""
+          className="w-52 h-52 rounded-2xl object-cover shadow-2xl border-2 border-white"
+        />
+      </div>
+    )}
 
     {/* 출고 유형 선택 시트 */}
     {releaseSheet && (
