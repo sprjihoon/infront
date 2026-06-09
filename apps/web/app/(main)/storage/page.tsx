@@ -42,6 +42,7 @@ interface ProductItem {
   parcel_status: string;
   is_shippable: boolean;
   inbound_at: string | null;
+  photo_url: string | null;
 }
 
 interface LocationSummary {
@@ -276,9 +277,29 @@ export default function StoragePage() {
                       PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-green-100 text-green-700" };
                     return (
                       <div key={item.id} className="px-4 py-3 flex items-center gap-3">
-                        {/* 아이콘 */}
-                        <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
-                          <Package size={16} className="text-gray-400" />
+                        {/* 썸네일 (사진 있으면 표시, 없으면 아이콘) */}
+                        <div className="relative group shrink-0">
+                          {item.photo_url ? (
+                            <>
+                              <img
+                                src={item.photo_url}
+                                alt={item.name}
+                                className="w-10 h-10 rounded-xl object-cover"
+                              />
+                              {/* 호버 확대 */}
+                              <div className="absolute left-0 bottom-12 z-50 hidden group-hover:block pointer-events-none">
+                                <img
+                                  src={item.photo_url}
+                                  alt={item.name}
+                                  className="w-48 h-48 rounded-2xl object-cover shadow-2xl border-2 border-white"
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                              <Package size={16} className="text-gray-400" />
+                            </div>
+                          )}
                         </div>
                         {/* 텍스트 */}
                         <div className="flex-1 min-w-0">

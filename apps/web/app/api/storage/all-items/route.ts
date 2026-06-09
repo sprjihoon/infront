@@ -32,7 +32,8 @@ export async function GET() {
   const { data: parcels, error } = await supabase
     .from("parcels")
     .select(
-      "id, tracking_no, status, inbound_at, pre_invoice_items, customer_storage_id, is_shippable"
+      `id, tracking_no, status, inbound_at, pre_invoice_items, customer_storage_id, is_shippable,
+       parcel_media(storage_url, cf_thumbnail_url, stage, is_visible)`
     )
     .eq("customer_id", user.id)
     .not("status", "in", '("SHIPPED","RETURNED","PICKUP_CANCELLED","DISPOSED")')
@@ -49,14 +50,31 @@ export async function GET() {
     name_en?: string;
   };
 
+  type MediaRow = {
+    storage_url: string | null;
+    cf_thumbnail_url: string | null;
+    stage: string;
+    is_visible: boolean;
+  };
+
+  function pickPhoto(media: MediaRow[] | null): string | null {
+    if (!Array.isArray(media)) return null;
+    const visible = media.filter((m) => m.is_visible);
+    // 우선순위: INSPECTION_PHOTO > INBOUND_VIDEO thumbnail
+    const photo = visible.find((m) => m.stage === "INSPECTION_PHOTO" && m.storage_url);
+    if (photo) return photo.storage_url;
+    const video = visible.find((m) => m.cf_thumbnail_url);
+    return video?.cf_thumbnail_url ?? null;
+  }
+
   // pre_invoice_items 를 펼쳐서 개별 제품 행으로 변환
   const items = (parcels ?? []).flatMap((parcel) => {
     const declared: PreInvoiceItem[] = Array.isArray(parcel.pre_invoice_items)
       ? parcel.pre_invoice_items
       : [];
+    const photoUrl = pickPhoto((parcel as { parcel_media?: MediaRow[] }).parcel_media ?? null);
 
     if (declared.length === 0) {
-      // 신고 내역 없는 경우 parcel 자체를 한 행으로
       return [
         {
           id: parcel.id,
@@ -68,6 +86,7 @@ export async function GET() {
           parcel_status: parcel.status,
           is_shippable: parcel.is_shippable ?? false,
           inbound_at: parcel.inbound_at,
+          photo_url: photoUrl,
         },
       ];
     }
@@ -82,6 +101,7 @@ export async function GET() {
       parcel_status: parcel.status,
       is_shippable: parcel.is_shippable ?? false,
       inbound_at: parcel.inbound_at,
+      photo_url: photoUrl,
     }));
   });
 

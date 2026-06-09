@@ -47,6 +47,7 @@ interface StorageParcel {
   is_shippable: boolean;
   hold_reason: string | null;
   created_at: string;
+  parcel_media?: { storage_url: string | null; cf_thumbnail_url: string | null; stage: string; is_visible: boolean }[];
 }
 
 const PARCEL_STATUS_MAP: Record<string, { label: string; color: string }> = {
@@ -422,6 +423,16 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
     ? parcel.pre_invoice_items.filter((it) => it.name)
     : null;
 
+  // 사진: INSPECTION_PHOTO 우선, 없으면 영상 thumbnail
+  const photoUrl = (() => {
+    const media = parcel.parcel_media ?? [];
+    const visible = media.filter((m) => m.is_visible);
+    const photo = visible.find((m) => m.stage === "INSPECTION_PHOTO" && m.storage_url);
+    if (photo) return photo.storage_url;
+    const video = visible.find((m) => m.cf_thumbnail_url);
+    return video?.cf_thumbnail_url ?? null;
+  })();
+
   const metaLine = [
     parcel.inbound_at
       ? new Date(parcel.inbound_at).toLocaleDateString("ko-KR") + " 입고"
@@ -430,15 +441,37 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
     parcel.tracking_no ?? null,
   ].filter(Boolean).join(" · ");
 
+  const Thumbnail = () => (
+    <div className="relative group shrink-0">
+      {photoUrl ? (
+        <>
+          <img
+            src={photoUrl}
+            alt="입고 사진"
+            className="w-9 h-9 rounded-xl object-cover"
+          />
+          <div className="absolute left-0 bottom-11 z-50 hidden group-hover:block pointer-events-none">
+            <img
+              src={photoUrl}
+              alt="입고 사진 확대"
+              className="w-48 h-48 rounded-2xl object-cover shadow-2xl border-2 border-white"
+            />
+          </div>
+        </>
+      ) : (
+        <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
+          <Package size={16} className="text-blue-400" />
+        </div>
+      )}
+    </div>
+  );
+
   if (declaredItems && declaredItems.length > 0) {
-    // 신고 품목별로 개별 행 표시
     return (
       <>
         {declaredItems.map((item, idx) => (
           <div key={`${parcel.id}-${idx}`} className="px-4 py-3 flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-              <Package size={16} className="text-blue-400" />
-            </div>
+            <Thumbnail />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-800 truncate">
                 {item.name}
@@ -461,12 +494,9 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
     );
   }
 
-  // 신고 품목 없으면 운송장 번호로 단일 행
   return (
     <div className="px-4 py-3 flex items-center gap-3">
-      <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-        <Package size={16} className="text-blue-400" />
-      </div>
+      <Thumbnail />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-800 truncate">
           {parcel.tracking_no ?? "운송장 미확인"}

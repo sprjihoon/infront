@@ -62,7 +62,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
       .select(`
         id, tracking_no, status, inbound_at,
         weight_actual, sender_name, pre_invoice_items,
-        is_shippable, hold_reason, created_at
+        is_shippable, hold_reason, created_at,
+        parcel_media(storage_url, cf_thumbnail_url, stage, is_visible)
       `)
       .eq("customer_storage_id", id)
       .eq("customer_id", user.id)
