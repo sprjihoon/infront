@@ -49,13 +49,13 @@ const PLAN_SIZE_LABEL: Record<string, string> = {
 };
 
 const PARCEL_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
-  CREATED:          { label: "수거 대기",  color: "bg-yellow-100 text-yellow-700" },
-  PICKUP_REQUESTED: { label: "수거 신청",  color: "bg-blue-100 text-blue-700" },
+  CREATED:          { label: "수거 대기",  color: "bg-gray-100 text-gray-500" },
+  PICKUP_REQUESTED: { label: "수거 신청",  color: "bg-gray-100 text-gray-500" },
   IN_TRANSIT:       { label: "이동 중",   color: "bg-purple-100 text-purple-700" },
-  INBOUND:          { label: "보관 중",   color: "bg-green-100 text-green-700" },
+  INBOUND:          { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
   INSPECTING:       { label: "검수 중",   color: "bg-blue-100 text-blue-700" },
   HOLD:             { label: "보류",      color: "bg-orange-100 text-orange-700" },
-  READY:            { label: "출고 가능",  color: "bg-teal-100 text-teal-700" },
+  READY:            { label: "출고 가능",  color: "bg-green-100 text-green-700" },
 };
 
 /* ─── 유틸 ──────────────────────────────────────── */
@@ -123,14 +123,16 @@ export default function StoragePage() {
     .filter(Boolean)
     .sort()[0] ?? null;
 
-  const filterTabs = ["전체", ...active.map((s) => s.storage_name)];
+  const filterTabs = ["전체", "출고 가능", ...active.map((s) => s.storage_name)];
   const filteredItems =
     itemFilter === "전체"
       ? items
-      : items.filter((it) => {
-          const s = active.find((st) => st.id === it.storage_id);
-          return s?.storage_name === itemFilter;
-        });
+      : itemFilter === "출고 가능"
+        ? items.filter((it) => it.parcel_status === "READY")
+        : items.filter((it) => {
+            const s = active.find((st) => st.id === it.storage_id);
+            return s?.storage_name === itemFilter;
+          });
 
   if (loading) {
     return (
@@ -209,7 +211,17 @@ export default function StoragePage() {
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               {/* 헤더 */}
               <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
-                <p className="text-sm font-bold text-gray-900">물품 목록</p>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">물품 목록</p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    전체 {items.length}개
+                    {items.filter((it) => it.parcel_status === "READY").length > 0 && (
+                      <span className="ml-2 text-green-600 font-semibold">
+                        출고 가능 {items.filter((it) => it.parcel_status === "READY").length}개
+                      </span>
+                    )}
+                  </p>
+                </div>
                 <span className="text-xs text-gray-400">{filteredItems.length}개</span>
               </div>
 
