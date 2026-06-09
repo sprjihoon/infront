@@ -307,7 +307,7 @@ function SummaryCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* ─── 스토리지 카드 (다크 · 2열 컴팩트) ────────── */
+/* ─── 스토리지 카드 (주식 위젯 스타일) ─────────── */
 function StorageCard({
   storage: s,
   itemCount,
@@ -319,101 +319,129 @@ function StorageCard({
   locationSummary: LocationSummary | null;
   onDetail: () => void;
 }) {
-  const freeInfo  = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
+  const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
+  const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
+  const planName    = locationSummary?.dominant_type?.name ?? s.plan_type ?? "-";
+  const usagePct    = Math.round(s.usage_percent ?? 0);
 
-  // 요금: 로케이션 기반(관리자 배정) 우선, 없으면 plan_config fallback
-  const weeklyFee = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
-  const planName  = locationSummary?.dominant_type?.name ?? s.plan_type ?? "-";
+  // 중앙 큰 숫자: 요금
+  const mainFee = isShortTerm
+    ? (freeInfo?.inFreePeriod ? 0 : weeklyFee)
+    : s.monthly_amount ?? weeklyFee;
+  const mainFeeLabel = isShortTerm
+    ? (freeInfo?.inFreePeriod ? "FREE" : `${mainFee.toLocaleString()}`)
+    : mainFee > 0 ? mainFee.toLocaleString() : "-";
+  const mainUnit = isShortTerm
+    ? (freeInfo?.inFreePeriod ? "" : "/주")
+    : "/월";
 
-  const feeLabel = isShortTerm
-    ? (freeInfo?.inFreePeriod
-        ? `무료 ${freeInfo.freeDaysLeft}일`
-        : `${freeInfo!.billableWeeks}주 · ${(weeklyFee * freeInfo!.billableWeeks).toLocaleString()}원`)
-    : s.monthly_amount != null
-      ? `${s.monthly_amount.toLocaleString()}원/월`
-      : weeklyFee > 0 ? `${weeklyFee.toLocaleString()}원/주` : "-";
+  // 뱃지: 무료기간이면 GREEN, 사용률 기반
+  const badgeColor   = freeInfo?.inFreePeriod ? "#22c55e" : usagePct >= 80 ? "#ef4444" : "#a78bfa";
+  const badgeText    = freeInfo?.inFreePeriod
+    ? `+${freeInfo.freeDaysLeft}일 무료`
+    : `${usagePct}%`;
 
-  const usagePct = Math.round(s.usage_percent ?? 0);
-  const barColor = usagePct >= 90 ? "#ef4444" : usagePct >= 70 ? "#f97316" : "#a78bfa";
+  // 미니 그래프 (사용률 세그먼트)
+  const segments = 12;
+  const filled   = Math.round((usagePct / 100) * segments);
 
   return (
     <div
-      className="rounded-2xl overflow-hidden flex flex-col"
+      className="rounded-2xl overflow-hidden flex flex-col relative"
       style={{
-        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
-        boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+        background: "linear-gradient(160deg, #1c1c2e 0%, #12122a 100%)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        minHeight: 190,
       }}
     >
-      {/* 상단 텍스처 + 이름 */}
-      <button
-        onClick={onDetail}
-        className="w-full text-left px-3.5 pt-3.5 pb-2"
-        style={{
-          backgroundImage:
-            "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 8px)",
-        }}
-      >
-        <div className="flex items-center justify-between mb-1">
-          <div className="w-6 h-6 bg-white/10 rounded-md flex items-center justify-center">
-            <Package size={13} className="text-white/80" />
-          </div>
-          <span className="text-[10px] text-white/50 font-medium">{planName}</span>
+      {/* ── 상단: 아이콘 + 이름 + 점3개 ── */}
+      <button onClick={onDetail} className="w-full text-left px-3.5 pt-3.5 flex items-center gap-2">
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: "linear-gradient(135deg,#7c3aed,#4f46e5)" }}
+        >
+          <Package size={13} className="text-white" />
         </div>
-        <p className="text-xs font-bold text-white truncate mt-2 leading-tight">{s.storage_name}</p>
-        <p className="text-[10px] text-white/50 mt-0.5">
-          {isShortTerm ? "단기보관" : "장기보관"}
-        </p>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-bold text-white truncate leading-tight">{s.storage_name}</p>
+          <p className="text-[9px] text-white/40 mt-0.5">{isShortTerm ? "단기" : "장기"} · {planName}</p>
+        </div>
+        <span className="text-white/30 text-base leading-none tracking-widest shrink-0">···</span>
       </button>
 
-      {/* 사용량 바 */}
-      <div className="px-3.5 pb-2">
-        <div className="flex justify-between text-[10px] mb-1">
-          <span className="text-white/50">공간 사용량</span>
-          <span className="text-white/80 font-semibold">{usagePct}%</span>
-        </div>
-        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${usagePct}%`, backgroundColor: barColor }}
-          />
+      {/* ── 중앙: 큰 요금 숫자 + 뱃지 ── */}
+      <div className="px-3.5 mt-2.5 flex items-end gap-2">
+        <p className="text-[22px] font-black text-white leading-none tracking-tight">
+          {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+        </p>
+        <div className="mb-0.5 flex items-center gap-1">
+          {mainFeeLabel !== "FREE" && mainUnit && (
+            <span className="text-[10px] text-white/40 mb-0.5">{mainUnit}</span>
+          )}
+          <span
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
+            style={{ backgroundColor: `${badgeColor}22`, color: badgeColor }}
+          >
+            {badgeText}
+          </span>
         </div>
       </div>
 
-      {/* 요금 + 보관 수량 */}
-      <div className="px-3.5 pb-2.5 flex items-center justify-between">
-        <span className="text-[11px] font-bold text-white/90">{feeLabel}</span>
-        <span className="text-[10px] text-white/50">
-          {itemCount}개 보관
-        </span>
+      {/* ── 미니 바 그래프 (사용률) ── */}
+      <div className="px-3.5 mt-3 flex items-end gap-[2px]" style={{ height: 28 }}>
+        {Array.from({ length: segments }).map((_, i) => {
+          const isFilled = i < filled;
+          const heightPct = 40 + Math.sin((i / segments) * Math.PI) * 60;
+          return (
+            <div
+              key={i}
+              className="flex-1 rounded-sm transition-all"
+              style={{
+                height: `${heightPct}%`,
+                backgroundColor: isFilled
+                  ? usagePct >= 80 ? "#ef4444" : "#7c3aed"
+                  : "rgba(255,255,255,0.08)",
+              }}
+            />
+          );
+        })}
       </div>
 
-      {/* 무료기간 뱃지 (단기보관) */}
-      {freeInfo?.inFreePeriod && (
-        <div className="mx-3.5 mb-2.5 px-2 py-1 rounded-lg bg-green-500/20 border border-green-400/30">
-          <p className="text-[10px] text-green-300 font-semibold">
-            무료 기간 {freeInfo.freeDaysLeft}일 남음
-          </p>
-        </div>
-      )}
+      {/* ── 하단 스탯 행 ── */}
+      <div className="px-3.5 pt-2 pb-2.5 flex items-center justify-between border-t border-white/5 mt-2">
+        <StatChip label="보관" value={`${itemCount}개`} />
+        <StatChip label="용량" value={`${usagePct}%`} />
+        <StatChip label={isShortTerm ? "주요금" : "월요금"} value={weeklyFee > 0 ? `${(weeklyFee/1000).toFixed(1)}k` : "-"} />
+      </div>
 
-      {/* 버튼 2종 */}
-      <div className="px-3 pb-3 grid grid-cols-2 gap-1.5 mt-auto">
+      {/* ── 버튼 2종 ── */}
+      <div className="px-3 pb-3 grid grid-cols-2 gap-1.5">
         <button
           type="button"
           onClick={() => alert("출고 요청 – 준비 중입니다.")}
-          className="py-2 rounded-xl text-[11px] font-bold text-white bg-violet-500/80 hover:bg-violet-500 transition-colors"
+          className="py-1.5 rounded-xl text-[11px] font-bold text-white transition-colors"
+          style={{ background: "linear-gradient(90deg,#7c3aed,#6d28d9)" }}
         >
           출고 요청
         </button>
         <button
           type="button"
           onClick={() => alert("요금제 변경 – 준비 중입니다.")}
-          className="py-2 rounded-xl text-[11px] font-bold text-white/70 bg-white/10 hover:bg-white/20 transition-colors"
+          className="py-1.5 rounded-xl text-[11px] font-bold text-white/60 bg-white/8 hover:bg-white/15 transition-colors border border-white/10"
         >
           요금제 변경
         </button>
       </div>
+    </div>
+  );
+}
+
+function StatChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="text-center">
+      <p className="text-[9px] text-white/30 mb-0.5">{label}</p>
+      <p className="text-[11px] font-semibold text-white/70">{value}</p>
     </div>
   );
 }
