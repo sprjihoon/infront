@@ -211,7 +211,11 @@ export default function StoragePage() {
                   storage={s}
                   itemCount={items.filter((it) => it.storage_id === s.id).length}
                   locationSummary={locationSummary}
+                  storageItems={items}
                   onDetail={() => router.push(`/storage/${s.id}`)}
+                  onRelease={(parcelIds) =>
+                    router.push(`/shipping-request?parcels=${parcelIds.join(",")}`)
+                  }
                 />
               ))}
             </div>
@@ -312,12 +316,16 @@ function StorageCard({
   storage: s,
   itemCount,
   locationSummary,
+  storageItems,
   onDetail,
+  onRelease,
 }: {
   storage: Storage;
   itemCount: number;
   locationSummary: LocationSummary | null;
+  storageItems: ProductItem[];
   onDetail: () => void;
+  onRelease: (parcelIds: string[]) => void;
 }) {
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
@@ -419,7 +427,18 @@ function StorageCard({
       <div className="px-3 pb-3 grid grid-cols-2 gap-1.5">
         <button
           type="button"
-          onClick={() => alert("출고 요청 – 준비 중입니다.")}
+          onClick={() => {
+            const parcelIds = [...new Set(
+              storageItems
+                .filter((it) => it.storage_id === s.id && it.parcel_id)
+                .map((it) => it.parcel_id)
+            )];
+            if (parcelIds.length === 0) {
+              alert("출고 가능한 물품이 없습니다.");
+              return;
+            }
+            onRelease(parcelIds as string[]);
+          }}
           className="py-1.5 rounded-xl text-[11px] font-bold text-white transition-colors"
           style={{ background: "linear-gradient(90deg,#7c3aed,#6d28d9)" }}
         >
