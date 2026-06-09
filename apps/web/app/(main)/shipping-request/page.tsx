@@ -165,6 +165,70 @@ function ShippingRequestContent() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // URL parcels 직접 진입: 파셀 fetch → 기본 주소 + 인보이스 자동 채움
+  useEffect(() => {
+    if (urlParcelIds.length === 0) return;
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setCustomerId(user.id);
+      const [{ data: parcelData }, { data: addrData }] = await Promise.all([
+        supabase
+          .from("parcels")
+          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable")
+          .in("id", urlParcelIds)
+          .eq("customer_id", user.id),
+        supabase
+          .from("customer_addresses")
+          .select("id, label, name, phone, country_code, overseas_addr1, overseas_addr2, overseas_addr3, overseas_zip, email, is_default")
+          .eq("customer_id", user.id),
+      ]);
+
+      // 기본 주소 세팅
+      const defaultAddr = (addrData ?? []).find((a) => a.is_default) ?? addrData?.[0];
+      if (defaultAddr) {
+        const addr: OverseasAddressValue = {
+          savedId: defaultAddr.id, label: defaultAddr.label,
+          name: defaultAddr.name, phone: defaultAddr.phone ?? "",
+          countryCode: defaultAddr.country_code,
+          addr1: defaultAddr.overseas_addr1 ?? "", addr2: defaultAddr.overseas_addr2 ?? "",
+          addr3: defaultAddr.overseas_addr3 ?? "", zip: defaultAddr.overseas_zip ?? "",
+          email: defaultAddr.email ?? "",
+        };
+        setDefaultOverseasAddress(addr);
+        setBoxes([{ id: 1, address: addr, items: [] }]);
+      }
+
+      // pre_invoice_items → boxInvoices[0] 자동 채움
+      const autoInvoice: InvoiceItem[] = [];
+      for (const p of (parcelData ?? [])) {
+        const declared = Array.isArray(p.pre_invoice_items) ? p.pre_invoice_items : [];
+        if (declared.length > 0) {
+          declared.forEach((it: { name_en?: string; name?: string; quantity?: number; unit_price_usd?: number; hs_code?: string; origin_country?: string }, idx: number) => {
+            autoInvoice.push({
+              key: `${p.id}__${idx}`,
+              name_en: it.name_en ?? it.name ?? "",
+              quantity: it.quantity ?? 1,
+              unit_price_usd: it.unit_price_usd ?? 0,
+              hs_code: it.hs_code ?? "",
+              origin_country: it.origin_country ?? "KR",
+            });
+          });
+        } else {
+          autoInvoice.push({
+            key: `${p.id}__0`,
+            name_en: p.notes ?? p.tracking_no ?? "물품",
+            quantity: 1,
+            unit_price_usd: 0,
+            hs_code: "",
+            origin_country: "KR",
+          });
+        }
+      }
+      if (autoInvoice.length > 0) setBoxInvoices([autoInvoice]);
+    });
+  }, [urlParcelIds]);
+
   // pre-flow: 출고 가능 물품 + 기본 해외배송지 로드 (박스 구성 플로우)
   useEffect(() => {
     if (!hasBoxSetupStep) return;
