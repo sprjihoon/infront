@@ -148,6 +148,10 @@ export default function StorageDetailPage() {
   }
 
   const parcelInboundCount = parcels.filter((p) => p.status === "INBOUND").length;
+  // 상세 페이지에서는 출고 가능 물품만 표시
+  const shippableParcels = parcels.filter(
+    (p) => p.status === "SHIPPABLE" || p.status === "READY" || p.is_shippable === true
+  );
 
   if (loading) {
     return (
@@ -337,7 +341,7 @@ export default function StorageDetailPage() {
         {/* 단기보관 — 출고 요청 + 정산 버튼 */}
         {storage.storage_mode === "short_term" &&
           storage.status === "ACTIVE" &&
-          parcels.length > 0 && (
+          shippableParcels.length > 0 && (
             <button
               onClick={() => setShowReleaseSheet(true)}
               className="w-full bg-brand-600 text-white rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 text-sm font-bold shadow-sm"
@@ -357,26 +361,34 @@ export default function StorageDetailPage() {
           </div>
         )}
 
-        {/* 수거 완료 물품 (parcels) */}
-        {parcels.length > 0 && (
+        {/* 출고 가능 물품 목록 */}
+        {shippableParcels.length > 0 ? (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-50">
-              <p className="text-sm font-bold text-gray-900">수거 완료 물품</p>
+              <p className="text-sm font-bold text-gray-900">출고 가능 물품</p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {(() => {
-                  const totalItems = parcels.reduce((sum, p) =>
+                  const totalItems = shippableParcels.reduce((sum, p) =>
                     sum + (Array.isArray(p.pre_invoice_items) && p.pre_invoice_items.length > 0
                       ? p.pre_invoice_items.length
                       : 1), 0);
-                  return `${totalItems}개 물품 · ${parcels.length}개 운송장`;
+                  return `${totalItems}개 물품 · ${shippableParcels.length}개 운송장`;
                 })()}
               </p>
             </div>
             <div className="divide-y divide-gray-50">
-              {parcels.map((parcel) => (
+              {shippableParcels.map((parcel) => (
                 <ParcelRow key={parcel.id} parcel={parcel} />
               ))}
             </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 flex flex-col items-center gap-2">
+            <Package size={28} className="text-gray-200" />
+            <p className="text-sm font-medium text-gray-400">출고 가능한 물품이 없습니다</p>
+            <p className="text-xs text-gray-300 text-center">
+              검수 완료 후 출고 가능 상태로 전환됩니다
+            </p>
           </div>
         )}
 
