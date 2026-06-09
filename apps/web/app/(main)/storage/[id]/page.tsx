@@ -148,9 +148,13 @@ export default function StorageDetailPage() {
   }
 
   const parcelInboundCount = parcels.filter((p) => p.status === "INBOUND").length;
-  // 상세 페이지에서는 출고 가능 물품만 표시 (SHIPPABLE/READY 상태만)
+  // 출고 가능
   const shippableParcels = parcels.filter(
     (p) => p.status === "SHIPPABLE" || p.status === "READY"
+  );
+  // 보관 중 (출고 불가 상태)
+  const holdingParcels = parcels.filter(
+    (p) => p.status !== "SHIPPABLE" && p.status !== "READY"
   );
 
   if (loading) {
@@ -389,6 +393,21 @@ export default function StorageDetailPage() {
             <p className="text-xs text-gray-300 text-center">
               검수 완료 후 출고 가능 상태로 전환됩니다
             </p>
+          </div>
+        )}
+
+        {/* 보관 중 물품 (INBOUND / 검수 대기 등) */}
+        {holdingParcels.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-50">
+              <p className="text-sm font-bold text-gray-900">보관 중 물품</p>
+              <p className="text-xs text-gray-400 mt-0.5">검수 대기 · 보류 등 출고 전 상태</p>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {holdingParcels.map((parcel) => (
+                <ParcelRow key={parcel.id} parcel={parcel} />
+              ))}
+            </div>
           </div>
         )}
 
