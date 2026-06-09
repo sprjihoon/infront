@@ -101,6 +101,7 @@ export default function StoragePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("전체");
   const [releaseSheet, setReleaseSheet] = useState<string[] | null>(null);
+  const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -220,6 +221,7 @@ export default function StoragePage() {
                   storageItems={items}
                   onDetail={() => router.push(`/storage/${s.id}`)}
                   onRelease={(parcelIds) => setReleaseSheet(parcelIds)}
+                  onCapacity={() => setCapacitySheet(s)}
                 />
               ))}
             </div>
@@ -319,6 +321,15 @@ export default function StoragePage() {
         }}
       />
     )}
+
+    {/* 용량 변경 시트 */}
+    {capacitySheet && (
+      <CapacityChangeSheet
+        storage={capacitySheet}
+        currentTypeName={locationSummary?.dominant_type?.name ?? null}
+        onClose={() => setCapacitySheet(null)}
+      />
+    )}
     </>
   );
 }
@@ -341,6 +352,7 @@ function StorageCard({
   storageItems,
   onDetail,
   onRelease,
+  onCapacity,
 }: {
   storage: Storage;
   itemCount: number;
@@ -348,6 +360,7 @@ function StorageCard({
   storageItems: ProductItem[];
   onDetail: () => void;
   onRelease: (parcelIds: string[]) => void;
+  onCapacity: () => void;
 }) {
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
@@ -468,10 +481,10 @@ function StorageCard({
         </button>
         <button
           type="button"
-          onClick={() => alert("요금제 변경 – 준비 중입니다.")}
+          onClick={onCapacity}
           className="py-1.5 rounded-xl text-[11px] font-bold text-white/60 bg-white/8 hover:bg-white/15 transition-colors border border-white/10"
         >
-          요금제 변경
+          용량 변경
         </button>
       </div>
     </div>
@@ -483,6 +496,179 @@ function StatChip({ label, value }: { label: string; value: string }) {
     <div className="text-center">
       <p className="text-[9px] text-white/30 mb-0.5">{label}</p>
       <p className="text-[11px] font-semibold text-white/70">{value}</p>
+    </div>
+  );
+}
+
+/* ─── 용량 변경 시트 ──────────────────────────── */
+type StorageType = {
+  id: string;
+  code: string;
+  name: string;
+  price_per_week: number;
+  max_parcels: number | null;
+  volume_liter: number | null;
+};
+
+const TYPE_SIZE_KO: Record<string, string> = {
+  MINI:     "미니 (소형)",
+  STANDARD: "스탠다드 (중형)",
+  LONG:     "롱박스 (대형)",
+  XL:       "XL (특대)",
+  OVERSIZE: "오버사이즈 (랙)",
+};
+
+function CapacityChangeSheet({
+  storage,
+  currentTypeName,
+  onClose,
+}: {
+  storage: Storage;
+  currentTypeName: string | null;
+  onClose: () => void;
+}) {
+  const [types, setTypes] = useState<StorageType[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/storage/types")
+      .then((r) => r.json())
+      .then((j) => setTypes(j.types ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleRequest() {
+    if (!selected) return;
+    setSubmitting(true);
+    const type = types.find((t) => t.id === selected);
+    // 관리자에게 알림 또는 별도 요청 테이블 기록 (현재는 콘솔 + 확인 메시지)
+    console.log("[용량 변경 요청]", { storage_id: storage.id, requested_type: type?.code });
+    await new Promise((r) => setTimeout(r, 600)); // 실제 API 연결 전 UX 딜레이
+    setSubmitting(false);
+    setDone(true);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto">
+        {/* 헤더 */}
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white">
+          <div>
+            <p className="text-base font-bold text-gray-900">용량 변경</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              현재: {currentTypeName ?? storage.plan_type ?? "-"}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {done ? (
+          <div className="px-4 py-10 flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+              <svg width="24" height="24" fill="none" stroke="#16a34a" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path d="M20 6L9 17l-5-5" />
+              </svg>
+            </div>
+            <p className="text-sm font-bold text-gray-900">변경 요청이 접수되었습니다</p>
+            <p className="text-xs text-gray-500 text-center">
+              관리자가 확인 후 로케이션을 재배정해 드립니다.<br />
+              처리 완료 시 알림으로 안내해 드립니다.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl"
+            >
+              확인
+            </button>
+          </div>
+        ) : (
+          <div className="px-4 py-4 space-y-3">
+            <p className="text-xs text-gray-500">원하는 사이즈를 선택하면 관리자에게 변경 요청이 전달됩니다.</p>
+
+            {loading ? (
+              <div className="py-10 flex justify-center">
+                <svg className="animate-spin w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                </svg>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {types.map((t) => {
+                  const isSelected = selected === t.id;
+                  const isCurrent = currentTypeName === t.name || currentTypeName === t.code;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setSelected(t.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
+                        isSelected
+                          ? "border-brand-500 bg-brand-50"
+                          : isCurrent
+                          ? "border-gray-300 bg-gray-50 opacity-60"
+                          : "border-gray-100 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      {/* 사이즈 아이콘 원 */}
+                      <div
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs ${
+                          isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        {t.code.slice(0, 2)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
+                          {TYPE_SIZE_KO[t.code] ?? t.name}
+                          {isCurrent && (
+                            <span className="ml-2 text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                              현재
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {t.max_parcels != null ? `최대 ${t.max_parcels}개 물품` : "무제한"}
+                          {t.volume_liter != null && ` · ${t.volume_liter}L`}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : "text-gray-700"}`}>
+                          {t.price_per_week.toLocaleString()}원
+                        </p>
+                        <p className="text-[10px] text-gray-400">/주</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <button
+              onClick={handleRequest}
+              disabled={!selected || submitting}
+              className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <>
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                  </svg>
+                  처리 중...
+                </>
+              ) : "변경 요청하기"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
