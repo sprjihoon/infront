@@ -575,9 +575,9 @@ function CapacityChangeSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto">
+      <div className="relative w-full max-w-[600px] bg-white rounded-t-3xl max-h-[85vh] flex flex-col" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
         {/* 헤더 */}
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white">
           <div>
@@ -594,7 +594,7 @@ function CapacityChangeSheet({
         </div>
 
         {done ? (
-          <div className="px-4 py-10 flex flex-col items-center gap-3">
+          <div className="px-4 py-10 flex flex-col items-center gap-3 overflow-y-auto">
             <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
               <svg width="24" height="24" fill="none" stroke="#16a34a" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path d="M20 6L9 17l-5-5" />
@@ -613,19 +613,20 @@ function CapacityChangeSheet({
             </button>
           </div>
         ) : (
-          <div className="px-4 py-4 space-y-3">
-            <p className="text-xs text-gray-500">원하는 사이즈를 선택하면 관리자에게 변경 요청이 전달됩니다.</p>
+          <>
+            {/* 옵션 목록 — 스크롤 */}
+            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
+              <p className="text-xs text-gray-500 mb-3">원하는 사이즈를 선택하면 관리자에게 변경 요청이 전달됩니다.</p>
 
-            {loading ? (
-              <div className="py-10 flex justify-center">
-                <svg className="animate-spin w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
-                </svg>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {types.map((t) => {
+              {loading ? (
+                <div className="py-10 flex justify-center">
+                  <svg className="animate-spin w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                  </svg>
+                </div>
+              ) : (
+                types.map((t) => {
                   const isSelected = selected === t.id;
                   const isCurrent = currentTypeName === t.name || currentTypeName === t.code;
                   return (
@@ -640,7 +641,6 @@ function CapacityChangeSheet({
                           : "border-gray-100 bg-white hover:border-gray-300"
                       }`}
                     >
-                      {/* 사이즈 아이콘 원 */}
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs ${
                           isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
@@ -670,26 +670,29 @@ function CapacityChangeSheet({
                       </div>
                     </button>
                   );
-                })}
-              </div>
-            )}
+                })
+              )}
+            </div>
 
-            <button
-              onClick={handleRequest}
-              disabled={!selected || submitting}
-              className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
-                  </svg>
-                  처리 중...
-                </>
-              ) : "변경 요청하기"}
-            </button>
-          </div>
+            {/* 버튼 — 하단 고정 */}
+            <div className="px-4 pt-3 pb-4 border-t border-gray-100 bg-white shrink-0">
+              <button
+                onClick={handleRequest}
+                disabled={!selected || submitting}
+                className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                    </svg>
+                    처리 중...
+                  </>
+                ) : "변경 요청하기"}
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -707,9 +710,9 @@ function ReleaseTypeSheet({
   onSelect: (type: "overseas" | "domestic") => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl pb-safe">
+      <div className="relative w-full max-w-[600px] bg-white rounded-t-3xl" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
         <div className="px-4 pt-5 pb-2 flex items-center justify-between border-b border-gray-100">
           <div>
             <p className="text-base font-bold text-gray-900">출고 요청</p>
