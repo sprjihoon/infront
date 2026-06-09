@@ -50,6 +50,29 @@ interface StorageItem {
   created_at: string;
 }
 
+interface StorageParcel {
+  id: string;
+  tracking_no: string | null;
+  status: string;
+  inbound_at: string | null;
+  weight_actual: number | null;
+  sender_name: string | null;
+  pre_invoice_items: { name: string; qty?: number }[] | null;
+  is_shippable: boolean;
+  hold_reason: string | null;
+  created_at: string;
+}
+
+const PARCEL_STATUS_MAP: Record<string, { label: string; color: string }> = {
+  CREATED:          { label: "수거 대기",  color: "bg-yellow-100 text-yellow-700" },
+  PICKUP_REQUESTED: { label: "수거 신청",  color: "bg-blue-100 text-blue-700" },
+  IN_TRANSIT:       { label: "이동 중",   color: "bg-purple-100 text-purple-700" },
+  INBOUND:          { label: "입고 완료",  color: "bg-green-100 text-green-700" },
+  INSPECTING:       { label: "검수 중",   color: "bg-blue-100 text-blue-700" },
+  HOLD:             { label: "보류",      color: "bg-orange-100 text-orange-700" },
+  READY:            { label: "출고 가능",  color: "bg-teal-100 text-teal-700" },
+};
+
 const ITEM_STATUS_MAP: Record<string, { label: string; color: string }> = {
   PENDING_INBOUND: { label: "입고 대기",  color: "bg-yellow-100 text-yellow-700" },
   IN_STORAGE:      { label: "보관 중",    color: "bg-green-100 text-green-700" },
@@ -97,6 +120,7 @@ export default function StorageDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [storage, setStorage] = useState<Storage | null>(null);
   const [items, setItems] = useState<StorageItem[]>([]);
+  const [parcels, setParcels] = useState<StorageParcel[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [editName, setEditName] = useState(false);
@@ -116,6 +140,7 @@ export default function StorageDetailPage() {
       const json = await res.json();
       setStorage(json.storage);
       setItems(json.items ?? []);
+      setParcels(json.parcels ?? []);
       setNameInput(json.storage?.storage_name ?? "");
     } finally {
       setLoading(false);
@@ -146,7 +171,8 @@ export default function StorageDetailPage() {
     : items.filter((it) => it.status === itemFilter);
 
   const inStorageCount = items.filter((it) => it.status === "IN_STORAGE").length;
-  const pendingCount = items.filter((it) => it.status === "PENDING_INBOUND").length;
+  const pendingCount   = items.filter((it) => it.status === "PENDING_INBOUND").length;
+  const parcelInboundCount = parcels.filter((p) => p.status === "INBOUND").length;
 
   if (loading) {
     return (
@@ -222,7 +248,7 @@ export default function StorageDetailPage() {
               <div className="flex justify-between text-xs text-gray-600 mb-1.5">
                 <span>보관 용량</span>
                 <span className="font-semibold">
-                  {storage.used_score} / {storage.capacity_score} 점
+                  {storage.used_score} / {storage.capacity_score} 개
                   <span className="text-gray-400 ml-1">
                     ({Math.round(storage.usage_percent ?? 0)}%)
                   </span>
@@ -388,6 +414,23 @@ export default function StorageDetailPage() {
           )}
         </div>
 
+        {/* 수거 완료 물품 (parcels) */}
+        {parcels.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-50">
+              <p className="text-sm font-bold text-gray-900">수거 완료 물품</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                센터 입고 완료 {parcelInboundCount}개 · 전체 {parcels.length}개
+              </p>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {parcels.map((parcel) => (
+                <ParcelRow key={parcel.id} parcel={parcel} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 이용 안내 */}
         <div className="bg-gray-50 rounded-2xl p-4 space-y-2">
           <p className="text-xs font-bold text-gray-600">이용 안내</p>
@@ -469,6 +512,45 @@ function ItemRow({ item }: { item: StorageItem }) {
     </div>
   );
 }
+
+function ParcelRow({ parcel }: { parcel: StorageParcel }) {
+  const s = PARCEL_STATUS_MAP[parcel.status] ?? { label: parcel.status, color: "bg-gray-100 text-gray-500" };
+  const declaredNames = Array.isArray(parcel.pre_invoice_items)
+    ? parcel.pre_invoice_items.map((it) => it.name).filter(Boolean).slice(0, 2).join(", ")
+    : null;
+
+  return (
+    <div className="px-4 py-3 flex items-center gap-3">
+      <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+        <Package size={16} className="text-blue-400" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 truncate">
+          {parcel.tracking_no ?? "운송장 미확인"}
+        </p>
+        <div className="flex items-center gap-2 mt-0.5">
+          {parcel.inbound_at && (
+            <span className="text-[10px] text-gray-400">
+              {new Date(parcel.inbound_at).toLocaleDateString("ko-KR")} 입고
+            </span>
+          )}
+          {parcel.weight_actual != null && (
+            <span className="text-[10px] text-gray-400">{parcel.weight_actual}kg</span>
+          )}
+          {declaredNames && (
+            <span className="text-[10px] text-gray-400 truncate max-w-[120px]">
+              {declaredNames}
+            </span>
+          )}
+        </div>
+      </div>
+      <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${s.color}`}>
+        {s.label}
+      </span>
+    </div>
+  );
+}
+
 
 const CATEGORIES = [
   { value: "shirt",      label: "티셔츠/상의" },
