@@ -46,6 +46,22 @@ function calcWeeksUsed(startedAt: string | null): number {
   return Math.ceil(diff / (7 * 24 * 60 * 60 * 1000));
 }
 
+const FREE_DAYS = 3;
+
+function calcFreeInfo(startedAt: string | null): {
+  daysElapsed: number;
+  freeDaysLeft: number;
+  inFreePeriod: boolean;
+  billableWeeks: number;
+} {
+  if (!startedAt) return { daysElapsed: 0, freeDaysLeft: FREE_DAYS, inFreePeriod: true, billableWeeks: 0 };
+  const daysElapsed = Math.floor((Date.now() - new Date(startedAt).getTime()) / (24 * 60 * 60 * 1000));
+  const freeDaysLeft = Math.max(0, FREE_DAYS - daysElapsed);
+  const inFreePeriod = daysElapsed < FREE_DAYS;
+  const billableWeeks = inFreePeriod ? 0 : Math.ceil((daysElapsed - FREE_DAYS + 1) / 7);
+  return { daysElapsed, freeDaysLeft, inFreePeriod, billableWeeks };
+}
+
 function CapacityBar({ percent }: { percent: number }) {
   const p = Math.min(Math.max(percent, 0), 100);
   const color = p >= 90 ? "bg-red-500" : p >= 70 ? "bg-orange-400" : "bg-brand-500";
@@ -152,7 +168,7 @@ function StorageCard({ storage: s, onClick }: { storage: Storage; onClick: () =>
   const cfg = STATUS_CONFIG[s.status] ?? STATUS_CONFIG.ACTIVE;
   const StatusIcon = cfg.icon;
   const planLabel = s.storage_plan_config?.label_ko ?? s.plan_type ?? "-";
-  const weeksUsed = calcWeeksUsed(s.short_term_started_at);
+  const freeInfo = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
 
   return (
     <button
@@ -181,6 +197,32 @@ function StorageCard({ storage: s, onClick }: { storage: Storage; onClick: () =>
         </div>
       </div>
 
+      {/* 단기보관 무료기간 배지 */}
+      {freeInfo && (
+        <div className={`mb-3 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold ${
+          freeInfo.inFreePeriod
+            ? "bg-green-50 text-green-700"
+            : "bg-gray-50 text-gray-600"
+        }`}>
+          <Clock size={12} />
+          {freeInfo.inFreePeriod ? (
+            <>
+              무료 기간 <span className="text-green-800 font-black">{freeInfo.freeDaysLeft}일</span> 남음
+              <span className="ml-1 text-green-600 font-normal">(3일 무료 후 주 단위 과금)</span>
+            </>
+          ) : (
+            <>
+              무료 기간 종료 · {freeInfo.billableWeeks}주차 과금 중
+              {s.storage_plan_config?.weekly_rate != null && (
+                <span className="ml-1 text-gray-500 font-normal">
+                  ({(s.storage_plan_config.weekly_rate * freeInfo.billableWeeks).toLocaleString()}원)
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
       {/* 용량 바 */}
       {s.capacity_score != null && (
         <div className="mb-3">
@@ -195,45 +237,28 @@ function StorageCard({ storage: s, onClick }: { storage: Storage; onClick: () =>
         </div>
       )}
 
-      {/* 요금 정보 */}
-      <div className="flex gap-4 text-[11px]">
-        {s.storage_mode === "short_term" ? (
-          <>
-            <div>
-              <span className="text-gray-400">보관 기간</span>
-              <span className="ml-1 font-semibold text-gray-700">{weeksUsed}주</span>
+      {/* 장기보관 요금 정보 */}
+      {s.storage_mode === "long_term" && (
+        <div className="flex gap-4 text-[11px]">
+          {s.paid_until_date && (
+            <div className="flex items-center gap-1">
+              <Clock size={11} className="text-gray-400" />
+              <span className="text-gray-400">만료</span>
+              <span className="ml-0.5 font-semibold text-gray-700">
+                {new Date(s.paid_until_date).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
+              </span>
             </div>
-            {s.storage_plan_config?.weekly_rate != null && (
-              <div>
-                <span className="text-gray-400">주간 요금</span>
-                <span className="ml-1 font-semibold text-gray-700">
-                  {s.storage_plan_config.weekly_rate.toLocaleString()}원
-                </span>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            {s.paid_until_date && (
-              <div className="flex items-center gap-1">
-                <Clock size={11} className="text-gray-400" />
-                <span className="text-gray-400">만료</span>
-                <span className="ml-0.5 font-semibold text-gray-700">
-                  {new Date(s.paid_until_date).toLocaleDateString("ko-KR", { month: "long", day: "numeric" })}
-                </span>
-              </div>
-            )}
-            {s.monthly_amount != null && (
-              <div>
-                <span className="text-gray-400">월 요금</span>
-                <span className="ml-1 font-semibold text-gray-700">
-                  {s.monthly_amount.toLocaleString()}원
-                </span>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          )}
+          {s.monthly_amount != null && (
+            <div>
+              <span className="text-gray-400">월 요금</span>
+              <span className="ml-1 font-semibold text-gray-700">
+                {s.monthly_amount.toLocaleString()}원
+              </span>
+            </div>
+          )}
+        </div>
+      )}
 
       {s.status === "SUSPENDED" && (
         <div className="mt-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 text-xs text-orange-700 font-medium">

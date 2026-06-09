@@ -115,6 +115,20 @@ function calcWeeksUsed(startedAt: string | null): number {
   );
 }
 
+const FREE_DAYS = 3;
+
+function calcFreeInfo(startedAt: string | null) {
+  if (!startedAt) return { daysElapsed: 0, freeDaysLeft: FREE_DAYS, inFreePeriod: true, billableWeeks: 0, billingStartDate: null as string | null };
+  const started = new Date(startedAt);
+  const daysElapsed = Math.floor((Date.now() - started.getTime()) / (24 * 60 * 60 * 1000));
+  const freeDaysLeft = Math.max(0, FREE_DAYS - daysElapsed);
+  const inFreePeriod = daysElapsed < FREE_DAYS;
+  const billableWeeks = inFreePeriod ? 0 : Math.ceil((daysElapsed - FREE_DAYS + 1) / 7);
+  const billingStartDate = new Date(started.getTime() + FREE_DAYS * 24 * 60 * 60 * 1000)
+    .toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
+  return { daysElapsed, freeDaysLeft, inFreePeriod, billableWeeks, billingStartDate };
+}
+
 export default function StorageDetailPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
@@ -187,7 +201,8 @@ export default function StorageDetailPage() {
   const sCfg = STORAGE_STATUS_CONFIG[storage.status] ?? STORAGE_STATUS_CONFIG.ACTIVE;
   const SIcon = sCfg.icon;
   const planLabel = storage.storage_plan_config?.label_ko ?? storage.plan_type ?? "-";
-  const weeksUsed = calcWeeksUsed(storage.short_term_started_at);
+  const freeInfo = storage.storage_mode === "short_term" ? calcFreeInfo(storage.short_term_started_at) : null;
+  const weeksUsed = freeInfo?.billableWeeks ?? 0;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -242,6 +257,46 @@ export default function StorageDetailPage() {
             </span>
           </div>
 
+          {/* 단기보관 무료기간 표시 */}
+          {freeInfo && (
+            <div className={`mb-3 px-3 py-2.5 rounded-xl flex items-start gap-2 ${
+              freeInfo.inFreePeriod
+                ? "bg-green-50 border border-green-100"
+                : "bg-gray-50 border border-gray-100"
+            }`}>
+              <Clock size={14} className={freeInfo.inFreePeriod ? "text-green-500 mt-0.5 shrink-0" : "text-gray-400 mt-0.5 shrink-0"} />
+              <div>
+                {freeInfo.inFreePeriod ? (
+                  <>
+                    <p className="text-xs font-bold text-green-700">
+                      무료 기간 <span className="text-green-800">{freeInfo.freeDaysLeft}일</span> 남음
+                    </p>
+                    <p className="text-[11px] text-green-600 mt-0.5">
+                      {freeInfo.billingStartDate}부터 주 단위 보관료가 발생합니다 (3일 무료)
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs font-bold text-gray-700">
+                      {freeInfo.billableWeeks}주차 과금 중
+                      {storage.storage_plan_config?.weekly_rate != null && (
+                        <span className="ml-1.5 text-brand-600">
+                          {(storage.storage_plan_config.weekly_rate * freeInfo.billableWeeks).toLocaleString()}원 누적
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">
+                      무료 기간({FREE_DAYS}일) 종료 후 {freeInfo.daysElapsed - FREE_DAYS}일 경과
+                      {storage.storage_plan_config?.weekly_rate != null && (
+                        <> · 주당 {storage.storage_plan_config.weekly_rate.toLocaleString()}원</>
+                      )}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* 용량 */}
           {storage.capacity_score != null ? (
             <div>
@@ -271,11 +326,14 @@ export default function StorageDetailPage() {
           <div className="mt-3 pt-3 border-t border-gray-50 grid grid-cols-2 gap-3">
             {storage.storage_mode === "short_term" ? (
               <>
-                <InfoCell label="보관 기간" value={`${weeksUsed}주 경과`} />
+                <InfoCell
+                  label="총 보관 기간"
+                  value={`${freeInfo?.daysElapsed ?? 0}일 경과`}
+                />
                 {storage.storage_plan_config?.weekly_rate != null && (
                   <InfoCell
                     label="주간 요금"
-                    value={`${storage.storage_plan_config.weekly_rate.toLocaleString()}원`}
+                    value={`${storage.storage_plan_config.weekly_rate.toLocaleString()}원/주`}
                   />
                 )}
                 {storage.max_plan_type && (
@@ -716,7 +774,8 @@ function ReleasePaymentSheet({
   const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
   const [jsUrl, setJsUrl] = useState("");
 
-  const weeksUsed = calcWeeksUsed(storage.short_term_started_at);
+  const freeInfo = calcFreeInfo(storage.short_term_started_at);
+  const weeksUsed = freeInfo.billableWeeks;
   const weeklyRate = storage.storage_plan_config?.weekly_rate ?? 0;
   const maxPlan = storage.max_plan_type ?? storage.current_plan_type ?? storage.plan_type ?? "S";
   const storageFee = weeksUsed * weeklyRate;
