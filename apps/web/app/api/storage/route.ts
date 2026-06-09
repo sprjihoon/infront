@@ -85,11 +85,23 @@ export async function POST(request: NextRequest) {
     ? body.status
     : "ACTIVE";
 
+  // 기존 스토리지 수 조회 → 기본 이름 순번 결정
+  let defaultName = "내 스토리지";
+  if (!body.storage_name) {
+    const { count } = await supabase
+      .from("customer_storages")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .neq("status", "CANCELLED");
+    const n = (count ?? 0) + 1;
+    defaultName = n === 1 ? "내 스토리지" : `내 스토리지 ${n}`;
+  }
+
   const { data, error } = await supabase
     .from("customer_storages")
     .insert({
       user_id: user.id,
-      storage_name: body.storage_name ?? "내 스토리지",
+      storage_name: body.storage_name || defaultName,
       storage_mode: body.storage_mode,
       plan_type: body.plan_type ?? null,
       capacity_score: planConfig?.capacity_score ?? null,

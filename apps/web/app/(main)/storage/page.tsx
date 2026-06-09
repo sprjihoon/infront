@@ -103,6 +103,7 @@ export default function StoragePage() {
   const [itemFilter, setItemFilter] = useState<string>("전체");
   const [releaseSheet, setReleaseSheet] = useState<string[] | null>(null);
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
+  const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -225,6 +226,7 @@ export default function StoragePage() {
                   onDetail={() => router.push(`/storage/${s.id}`)}
                   onRelease={(parcelIds) => setReleaseSheet(parcelIds)}
                   onCapacity={() => setCapacitySheet(s)}
+                  onRename={() => setRenameSheet(s)}
                 />
               ))}
             </div>
@@ -353,6 +355,20 @@ export default function StoragePage() {
         onClose={() => setCapacitySheet(null)}
       />
     )}
+
+    {/* 이름 변경 시트 */}
+    {renameSheet && (
+      <RenameSheet
+        storage={renameSheet}
+        onClose={() => setRenameSheet(null)}
+        onSaved={(newName) => {
+          setStorages((prev) =>
+            prev.map((s) => s.id === renameSheet.id ? { ...s, storage_name: newName } : s)
+          );
+          setRenameSheet(null);
+        }}
+      />
+    )}
     </>
   );
 }
@@ -376,6 +392,7 @@ function StorageCard({
   onDetail,
   onRelease,
   onCapacity,
+  onRename,
 }: {
   storage: Storage;
   itemCount: number;
@@ -384,6 +401,7 @@ function StorageCard({
   onDetail: () => void;
   onRelease: (parcelIds: string[]) => void;
   onCapacity: () => void;
+  onRename: () => void;
 }) {
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
@@ -433,7 +451,16 @@ function StorageCard({
           <p className="text-[11px] font-bold text-white truncate leading-tight">{s.storage_name}</p>
           <p className="text-[9px] text-white/40 mt-0.5">{isShortTerm ? "단기" : "장기"} · {planName}</p>
         </div>
-        <span className="text-white/30 text-base leading-none tracking-widest shrink-0">···</span>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRename(); }}
+          className="p-1 text-white/30 hover:text-white/70 transition-colors shrink-0"
+        >
+          <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+        </button>
       </button>
 
       {/* ── 중앙: 큰 요금 숫자 + 뱃지 ── */}
@@ -769,6 +796,69 @@ function ReleaseTypeSheet({
         <p className="text-center text-[11px] text-gray-400 pb-6">
           선택한 스토리지의 전체 물품이 한 번에 출고 신청됩니다
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* ─── 이름 변경 시트 ──────────────────────────── */
+function RenameSheet({
+  storage,
+  onClose,
+  onSaved,
+}: {
+  storage: Storage;
+  onClose: () => void;
+  onSaved: (newName: string) => void;
+}) {
+  const [name, setName] = useState(storage.storage_name);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setSaving(true);
+    const res = await fetch(`/api/storage/${storage.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storage_name: trimmed }),
+    });
+    setSaving(false);
+    if (res.ok) onSaved(trimmed);
+    else alert("저장에 실패했습니다.");
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-[600px] bg-white rounded-t-3xl" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+          <p className="text-base font-bold text-gray-900">스토리지 이름 변경</p>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
+            <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-4 py-5 space-y-4">
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+            placeholder="스토리지 이름 입력"
+            maxLength={30}
+            autoFocus
+            className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-brand-400"
+          />
+          <p className="text-xs text-gray-400">최대 30자 · 예: 겨울옷 보관함, 유학 짐</p>
+          <button
+            onClick={handleSave}
+            disabled={saving || !name.trim() || name.trim() === storage.storage_name}
+            className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40"
+          >
+            {saving ? "저장 중..." : "저장"}
+          </button>
+        </div>
       </div>
     </div>
   );
