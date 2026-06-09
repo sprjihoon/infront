@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Package, Plus, RefreshCw, Archive, Truck, Send,
-  CreditCard, ChevronRight, Clock, AlertTriangle,
+  Package, Plus, RefreshCw, Archive,
+  Clock, ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -193,15 +193,17 @@ export default function StoragePage() {
               </div>
             </div>
 
-            {/* ── 스토리지 카드 목록 ───────────────── */}
-            {active.map((s) => (
-              <StorageCard
-                key={s.id}
-                storage={s}
-                itemCount={items.filter((it) => it.storage_id === s.id).length}
-                onDetail={() => router.push(`/storage/${s.id}`)}
-              />
-            ))}
+            {/* ── 스토리지 카드 목록 (2열) ─────────── */}
+            <div className="grid grid-cols-2 gap-3">
+              {active.map((s) => (
+                <StorageCard
+                  key={s.id}
+                  storage={s}
+                  itemCount={items.filter((it) => it.storage_id === s.id).length}
+                  onDetail={() => router.push(`/storage/${s.id}`)}
+                />
+              ))}
+            </div>
 
             {/* ── 물품 목록 ────────────────────────── */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -284,7 +286,7 @@ function SummaryCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* ─── 스토리지 카드 ────────────────────────────── */
+/* ─── 스토리지 카드 (다크 · 2열 컴팩트) ────────── */
 function StorageCard({
   storage: s,
   itemCount,
@@ -299,129 +301,95 @@ function StorageCard({
   const freeInfo  = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
 
-  const billingDate = s.next_billing_date ?? s.paid_until_date;
-
-  /* 요금 표시 */
   const feeLabel = isShortTerm
-    ? freeInfo?.inFreePeriod
-      ? `무료 ${freeInfo.freeDaysLeft}일 남음`
-      : `${freeInfo!.billableWeeks}주차 · ${((planCfg?.weekly_rate ?? 0) * freeInfo!.billableWeeks).toLocaleString()}원`
+    ? (freeInfo?.inFreePeriod
+        ? `무료 ${freeInfo.freeDaysLeft}일`
+        : `${freeInfo!.billableWeeks}주 · ${((planCfg?.weekly_rate ?? 0) * freeInfo!.billableWeeks).toLocaleString()}원`)
     : s.monthly_amount != null
       ? `${s.monthly_amount.toLocaleString()}원/월`
       : "-";
 
-  const isSuspended = s.status === "SUSPENDED";
+  const usagePct = Math.round(s.usage_percent ?? 0);
+  const barColor = usagePct >= 90 ? "#ef4444" : usagePct >= 70 ? "#f97316" : "#a78bfa";
 
   return (
-    <div className={`bg-white rounded-2xl border overflow-hidden ${isSuspended ? "border-orange-200" : "border-gray-100"}`}>
-      {/* 카드 상단 */}
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col"
+      style={{
+        background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.4)",
+      }}
+    >
+      {/* 상단 텍스처 + 이름 */}
       <button
         onClick={onDetail}
-        className="w-full px-4 pt-4 pb-3 text-left flex items-start justify-between"
+        className="w-full text-left px-3.5 pt-3.5 pb-2"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 8px)",
+        }}
       >
-        <div className="flex items-center gap-2.5">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-            isSuspended ? "bg-orange-50" : "bg-brand-50"
-          }`}>
-            <Package size={18} className={isSuspended ? "text-orange-400" : "text-brand-600"} />
+        <div className="flex items-center justify-between mb-1">
+          <div className="w-6 h-6 bg-white/10 rounded-md flex items-center justify-center">
+            <Package size={13} className="text-white/80" />
           </div>
-          <div>
-            <p className="text-sm font-bold text-gray-900">{s.storage_name}</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              {isShortTerm ? "단기보관" : "장기보관"} · {sizeLabel}
-            </p>
-          </div>
+          <span className="text-[10px] text-white/50 font-medium">{sizeLabel}</span>
         </div>
-        <ChevronRight size={16} className="text-gray-300 mt-1 shrink-0" />
+        <p className="text-xs font-bold text-white truncate mt-2 leading-tight">{s.storage_name}</p>
+        <p className="text-[10px] text-white/50 mt-0.5">
+          {isShortTerm ? "단기보관" : "장기보관"}
+        </p>
       </button>
 
-      {/* 정지 알림 */}
-      {isSuspended && (
-        <div className="mx-4 mb-3 flex items-center gap-1.5 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 text-xs text-orange-700 font-medium">
-          <AlertTriangle size={12} />
-          결제 실패로 서비스가 제한되었습니다.
+      {/* 사용량 바 */}
+      <div className="px-3.5 pb-2">
+        <div className="flex justify-between text-[10px] mb-1">
+          <span className="text-white/50">공간 사용량</span>
+          <span className="text-white/80 font-semibold">{usagePct}%</span>
         </div>
-      )}
-
-      {/* 용량 */}
-      <div className="px-4 pb-3">
-        <div className="flex justify-between text-[11px] text-gray-500 mb-1.5">
-          <span>공간 사용량</span>
-          <span className="font-semibold">
-            {s.used_score}개 / {s.capacity_score ?? "?"}개
-            <span className="text-gray-400 ml-1">({Math.round(s.usage_percent ?? 0)}%)</span>
-          </span>
+        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{ width: `${usagePct}%`, backgroundColor: barColor }}
+          />
         </div>
-        <ProgressBar percent={s.usage_percent ?? 0} />
       </div>
 
-      {/* 요금·결제일 */}
-      <div className="px-4 pb-3 flex items-center justify-between text-[11px]">
-        <div className="flex items-center gap-1 text-gray-500">
-          <CreditCard size={11} />
-          <span>{feeLabel}</span>
-        </div>
-        {billingDate && (
-          <div className="flex items-center gap-1 text-gray-400">
-            <Clock size={11} />
-            <span>
-              다음 결제 {new Date(billingDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* 보관 물품 수 */}
-      <div className="px-4 pb-3">
-        <span className="text-[11px] text-gray-400">
-          보관 중 <span className="font-bold text-gray-700">{itemCount}</span>개
+      {/* 요금 + 보관 수량 */}
+      <div className="px-3.5 pb-2.5 flex items-center justify-between">
+        <span className="text-[11px] font-bold text-white/90">{feeLabel}</span>
+        <span className="text-[10px] text-white/50">
+          {itemCount}개 보관
         </span>
       </div>
 
-      {/* 버튼 3종 */}
-      <div className="px-4 pb-4 grid grid-cols-3 gap-2">
-        <ActionButton
-          icon={<Truck size={13} />}
-          label="추가 수거"
-          onClick={() => alert("추가 수거 신청 – 준비 중입니다.")}
-        />
-        <ActionButton
-          icon={<Send size={13} />}
-          label="출고 요청"
+      {/* 무료기간 뱃지 (단기보관) */}
+      {freeInfo?.inFreePeriod && (
+        <div className="mx-3.5 mb-2.5 px-2 py-1 rounded-lg bg-green-500/20 border border-green-400/30">
+          <p className="text-[10px] text-green-300 font-semibold">
+            무료 기간 {freeInfo.freeDaysLeft}일 남음
+          </p>
+        </div>
+      )}
+
+      {/* 버튼 2종 */}
+      <div className="px-3 pb-3 grid grid-cols-2 gap-1.5 mt-auto">
+        <button
+          type="button"
           onClick={() => alert("출고 요청 – 준비 중입니다.")}
-          primary
-        />
-        <ActionButton
-          icon={<CreditCard size={13} />}
-          label="요금제 변경"
+          className="py-2 rounded-xl text-[11px] font-bold text-white bg-violet-500/80 hover:bg-violet-500 transition-colors"
+        >
+          출고 요청
+        </button>
+        <button
+          type="button"
           onClick={() => alert("요금제 변경 – 준비 중입니다.")}
-        />
+          className="py-2 rounded-xl text-[11px] font-bold text-white/70 bg-white/10 hover:bg-white/20 transition-colors"
+        >
+          요금제 변경
+        </button>
       </div>
     </div>
-  );
-}
-
-function ActionButton({
-  icon, label, onClick, primary = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  onClick: () => void;
-  primary?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-1 py-2.5 rounded-xl text-[11px] font-semibold transition-colors ${
-        primary
-          ? "bg-brand-600 text-white"
-          : "bg-gray-50 text-gray-600 hover:bg-gray-100"
-      }`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }
 
