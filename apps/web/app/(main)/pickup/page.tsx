@@ -322,8 +322,17 @@ export default function PickupPage() {
             box_size: boxSize,
             item_condition: itemCondition,
             pre_invoice_items: invoiceItems
-              .filter(i => i.name_en.trim())
-              .map(({ key: _k, _isCustom: _c, inspection: _i, specials: _s, ...rest }) => rest),
+              .filter(i => i.is_sealed ? (i.product_name ?? "").trim() : i.name_en.trim())
+              .map(({ key: _k, _isCustom: _c, inspection: _i, specials: _s, ...rest }) => ({
+                ...rest,
+                // 미개봉: name_en을 박스 이름으로, 수량·단가·hs_code 기본값
+                ...(rest.is_sealed ? {
+                  name_en: rest.product_name?.trim() || "Sealed Box",
+                  quantity: 1,
+                  unit_price_usd: 0,
+                  hs_code: "",
+                } : {}),
+              })),
           }),
           signal: abortCtrl.signal,
         });
@@ -443,6 +452,7 @@ export default function PickupPage() {
   const showItemFieldHints = showStep2FieldErrors || step === 2 || !isSimple;
 
   function itemPriceInvalid(item: InvoiceItem): boolean {
+    if (item.is_sealed) return false;
     return item.unit_price_usd <= 0 || !Number.isFinite(item.unit_price_usd);
   }
 
@@ -738,106 +748,121 @@ export default function PickupPage() {
                       </div>
                       <div className="mb-2 space-y-1.5">
                         <div>
-                          <label className="text-[10px] text-gray-400 font-semibold">제품명</label>
+                          <label className="text-[10px] text-gray-400 font-semibold">
+                            {item.is_sealed ? "박스 이름 *" : "제품명"}
+                          </label>
                           <input
                             value={item.product_name ?? ""}
                             onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, product_name: e.target.value } : it))}
-                            placeholder="예: 나이키 운동화, 화장품 세트 (선택)"
-                            className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                            placeholder={item.is_sealed ? "예: 나이키 신발 박스, 의류 박스 1" : "예: 나이키 운동화, 화장품 세트 (선택)"}
+                            className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                              item.is_sealed && showItemFieldHints && !(item.product_name ?? "").trim()
+                                ? "border-red-300 bg-red-50"
+                                : "border-gray-100"
+                            }`}
                           />
-                        </div>
-                        <div>
-                          <label className="text-[10px] text-gray-400 font-semibold">품목 선택 <span className="text-red-400">*</span></label>
-                          <ItemCategoryPicker
-                            value={item._isCustom ? "Other Goods" : item.name_en}
-                            onChange={(cat: ItemCategory) => setInvoiceItems(p => p.map((it, i) =>
-                              i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "", _isCustom: cat.id === "other" } : it
-                            ))}
-                            error={showItemFieldHints && !item.name_en.trim()}
-                          />
-                          {item._isCustom && (
-                            <input
-                              value={item.name_en}
-                              onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
-                              placeholder="품목명 직접 입력 (영문)"
-                              className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
-                              autoFocus
-                            />
+                          {item.is_sealed && showItemFieldHints && !(item.product_name ?? "").trim() && (
+                            <p className="text-[10px] text-red-500 mt-0.5">박스 이름을 입력해주세요</p>
                           )}
                         </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="flex flex-col">
-                          <label className="text-[10px] text-gray-400 font-semibold">
-                            수량 <span className="text-red-400">*</span>
-                          </label>
-                          <div className={`flex-1 flex items-center bg-gray-50 border rounded-xl overflow-hidden ${
-                            showItemFieldHints && item.quantity < 1 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
-                          }`}>
-                            <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
-                              className="px-3 py-2 text-gray-500 font-bold">−</button>
-                            <span className="flex-1 text-center text-sm font-semibold">{item.quantity}</span>
-                            <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}
-                              className="px-3 py-2 text-gray-500 font-bold">+</button>
-                          </div>
-                        </div>
-                        <div className="flex flex-col">
-                          <label
-                            htmlFor={`pickup-unit-price-${item.key}`}
-                            className="text-[10px] text-gray-500 font-semibold flex items-center gap-0.5"
-                          >
-                            단가 (USD)
-                            <span className="text-red-500" aria-hidden="true">*</span>
-                          </label>
-                          <div className={`flex-1 flex items-center bg-gray-50 border rounded-xl px-3 py-2 ${
-                            showItemFieldHints && itemPriceInvalid(item)
-                              ? "border-red-300 ring-1 ring-red-200"
-                              : "border-gray-100"
-                          }`}>
-                            <span className="text-gray-400 text-xs mr-1">$</span>
-                            <input
-                              id={`pickup-unit-price-${item.key}`}
-                              type="number"
-                              min={0.01}
-                              step={0.01}
-                              required
-                              aria-required="true"
-                              value={item.unit_price_usd > 0 ? item.unit_price_usd : ""}
-                              onChange={e => {
-                                const raw = e.target.value;
-                                const parsed = raw === "" ? 0 : parseFloat(raw);
-                                setInvoiceItems(p => p.map((it, i) =>
-                                  i === idx ? { ...it, unit_price_usd: Number.isFinite(parsed) ? parsed : 0 } : it
-                                ));
-                              }}
-                              onBlur={() => setShowStep2FieldErrors(true)}
-                              placeholder="0.00"
-                              className="flex-1 bg-transparent text-sm focus:outline-none min-w-0"
+                        {!item.is_sealed && (
+                          <div>
+                            <label className="text-[10px] text-gray-400 font-semibold">품목 선택 <span className="text-red-400">*</span></label>
+                            <ItemCategoryPicker
+                              value={item._isCustom ? "Other Goods" : item.name_en}
+                              onChange={(cat: ItemCategory) => setInvoiceItems(p => p.map((it, i) =>
+                                i === idx ? { ...it, name_en: cat.id === "other" ? "" : cat.name_en, hs_code: cat.hs_code ?? "", _isCustom: cat.id === "other" } : it
+                              ))}
+                              error={showItemFieldHints && !item.name_en.trim()}
                             />
+                            {item._isCustom && (
+                              <input
+                                value={item.name_en}
+                                onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
+                                placeholder="품목명 직접 입력 (영문)"
+                                className="mt-1.5 w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                                autoFocus
+                              />
+                            )}
                           </div>
-                          {showItemFieldHints && itemPriceInvalid(item) && (
-                            <p className="text-[10px] text-red-500 mt-0.5">금액을 입력해주세요 (필수)</p>
-                          )}
+                        )}
+                      </div>
+                      {!item.is_sealed && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex flex-col">
+                            <label className="text-[10px] text-gray-400 font-semibold">
+                              수량 <span className="text-red-400">*</span>
+                            </label>
+                            <div className={`flex-1 flex items-center bg-gray-50 border rounded-xl overflow-hidden ${
+                              showItemFieldHints && item.quantity < 1 ? "border-red-300 ring-1 ring-red-200" : "border-gray-100"
+                            }`}>
+                              <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: Math.max(1, it.quantity - 1) } : it))}
+                                className="px-3 py-2 text-gray-500 font-bold">−</button>
+                              <span className="flex-1 text-center text-sm font-semibold">{item.quantity}</span>
+                              <button type="button" onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, quantity: it.quantity + 1 } : it))}
+                                className="px-3 py-2 text-gray-500 font-bold">+</button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col">
+                            <label
+                              htmlFor={`pickup-unit-price-${item.key}`}
+                              className="text-[10px] text-gray-500 font-semibold flex items-center gap-0.5"
+                            >
+                              단가 (USD)
+                              <span className="text-red-500" aria-hidden="true">*</span>
+                            </label>
+                            <div className={`flex-1 flex items-center bg-gray-50 border rounded-xl px-3 py-2 ${
+                              showItemFieldHints && itemPriceInvalid(item)
+                                ? "border-red-300 ring-1 ring-red-200"
+                                : "border-gray-100"
+                            }`}>
+                              <span className="text-gray-400 text-xs mr-1">$</span>
+                              <input
+                                id={`pickup-unit-price-${item.key}`}
+                                type="number"
+                                min={0.01}
+                                step={0.01}
+                                required
+                                aria-required="true"
+                                value={item.unit_price_usd > 0 ? item.unit_price_usd : ""}
+                                onChange={e => {
+                                  const raw = e.target.value;
+                                  const parsed = raw === "" ? 0 : parseFloat(raw);
+                                  setInvoiceItems(p => p.map((it, i) =>
+                                    i === idx ? { ...it, unit_price_usd: Number.isFinite(parsed) ? parsed : 0 } : it
+                                  ));
+                                }}
+                                onBlur={() => setShowStep2FieldErrors(true)}
+                                placeholder="0.00"
+                                className="flex-1 bg-transparent text-sm focus:outline-none min-w-0"
+                              />
+                            </div>
+                            {showItemFieldHints && itemPriceInvalid(item) && (
+                              <p className="text-[10px] text-red-500 mt-0.5">금액을 입력해주세요 (필수)</p>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="mt-2">
-                        <label className="text-[10px] font-semibold flex items-center gap-1">
-                          <span className="text-gray-400">HS 코드</span>
-                          <span className="text-red-400">*</span>
-                          <span className="text-gray-300 font-normal">· 6자리 숫자</span>
-                        </label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={8}
-                          value={item.hs_code}
-                          onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, hs_code: e.target.value.replace(/\D/g, "") } : it))}
-                          placeholder="예: 630900"
-                          className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-200 ${
-                            item.name_en && !item.hs_code ? "border-red-300 bg-red-50" : "border-gray-100"
-                          }`}
-                        />
-                      </div>
+                      )}
+                      {!item.is_sealed && (
+                        <div className="mt-2">
+                          <label className="text-[10px] font-semibold flex items-center gap-1">
+                            <span className="text-gray-400">HS 코드</span>
+                            <span className="text-red-400">*</span>
+                            <span className="text-gray-300 font-normal">· 6자리 숫자</span>
+                          </label>
+                          <input
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={8}
+                            value={item.hs_code}
+                            onChange={e => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, hs_code: e.target.value.replace(/\D/g, "") } : it))}
+                            placeholder="예: 630900"
+                            className={`w-full bg-gray-50 border rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                              item.name_en && !item.hs_code ? "border-red-300 bg-red-50" : "border-gray-100"
+                            }`}
+                          />
+                        </div>
+                      )}
 
                       {/* 미개봉 체크박스 */}
                       <div className="mt-2">
@@ -874,7 +899,10 @@ export default function PickupPage() {
                       </div>
 
                       <div className="mt-2 pt-2 border-t border-gray-100 space-y-2">
-                        <div>
+                        {item.is_sealed ? (
+                          <p className="text-[11px] text-blue-500 font-medium">📦 미개봉 보관 — 검품·특수 처리 없이 원박스 보관됩니다</p>
+                        ) : (
+                          <>
                           <p className="text-[10px] text-gray-400 font-semibold mb-1.5 flex items-center gap-1">
                             <ScanSearch size={10} className="text-violet-400" /> 검품
                             {isSimple && <span className="text-gray-300 font-normal">· 선택</span>}
@@ -903,7 +931,6 @@ export default function PickupPage() {
                               );
                             })}
                           </div>
-                        </div>
 
                         <div>
                           <button
@@ -951,6 +978,8 @@ export default function PickupPage() {
                             </div>
                           )}
                         </div>
+                      </> /* end !item.is_sealed */
+                      )}
                       </div>
                     </div>
                   ))}
