@@ -643,24 +643,24 @@ function StorageCard({
       />
 
       {/* ── 상단: 아이콘 + 스토리지명 + 티어 뱃지 ── */}
-      <div className="relative px-4 pt-3 flex items-start justify-between">
-          <div className="flex items-center gap-2">
+      <div className="relative px-3 pt-2 flex items-start justify-between">
+          <div className="flex items-center gap-1.5">
           <div
-            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
+            className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
           >
-            <Package size={12} style={{ color: theme.accent }} />
+            <Package size={10} style={{ color: theme.accent }} />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <p className="text-[12px] font-bold text-white leading-tight truncate">{s.storage_name}</p>
+            <div className="flex items-center gap-1 mt-0.5">
+              <p className="font-bold text-white leading-tight truncate" style={{ fontSize: "clamp(8px,2.1vw,12px)" }}>{s.storage_name}</p>
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); onRename(); }}
                 className="shrink-0 p-0.5 rounded-md opacity-40 hover:opacity-80 transition-opacity"
                 style={{ color: theme.accent }}
               >
-                <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
@@ -673,7 +673,7 @@ function StorageCard({
                   className="p-0.5 rounded-md opacity-40 hover:opacity-80 transition-opacity"
                   style={{ color: theme.accent }}
                 >
-                  <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10"/><circle cx="8" cy="14" r="1.5" fill="currentColor" stroke="none"/>
                     <circle cx="12" cy="9" r="1.5" fill="currentColor" stroke="none"/>
                     <circle cx="16" cy="14" r="1.5" fill="currentColor" stroke="none"/>
@@ -706,34 +706,34 @@ function StorageCard({
           </div>
         </div>
         <div
-          className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide shrink-0"
-          style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35` }}
+          className="px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0"
+          style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35`, fontSize: "clamp(6px,1.3vw,8px)" }}
         >
           {isShortTerm ? "단기" : "장기"} · {planName}
         </div>
       </div>
 
       {/* ── 중단: 요금 + 물품 수 ── */}
-      <div className="relative px-4 mt-2 flex items-end justify-between">
+      <div className="relative px-3 mt-1.5 flex items-end justify-between">
         <div>
-          <p className="text-[9px] text-white/30 mb-0.5">{isShortTerm ? "주 요금" : "월 요금"}</p>
-          <p className="text-[22px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
+          <p className="text-white/30 mb-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>{isShortTerm ? "주 요금" : "월 요금"}</p>
+          <p className="font-black leading-none tracking-tight" style={{ color: theme.accent, fontSize: "clamp(13px,3.9vw,22px)" }}>
             {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
           </p>
           {mainUnit && mainFeeLabel !== "FREE" && (
-            <p className="text-[9px] text-white/30 mt-0.5">{mainUnit}</p>
+            <p className="text-white/30 mt-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>{mainUnit}</p>
           )}
         </div>
         <div className="text-right">
-          <p className="text-[9px] text-white/30 mb-0.5">보관 물품</p>
-          <p className="text-[22px] font-black leading-none text-white">{itemCount}</p>
-          <p className="text-[9px] text-white/30 mt-0.5">개</p>
+          <p className="text-white/30 mb-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>보관 물품</p>
+          <p className="font-black leading-none text-white" style={{ fontSize: "clamp(13px,3.9vw,22px)" }}>{itemCount}</p>
+          <p className="text-white/30 mt-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>개</p>
         </div>
       </div>
 
       {/* ── 바코드 장식 + 뱃지 ── */}
-      <div className="relative px-4 mt-2 flex items-center gap-2">
-        <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 14 }}>
+      <div className="relative px-3 mt-1.5 flex items-center gap-2">
+        <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 12 }}>
           {Array.from({ length: 44 }).map((_, i) => (
             <div
               key={i}
@@ -747,19 +747,19 @@ function StorageCard({
           ))}
         </div>
         <span
-          className="shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded-md"
-          style={{ background: `${theme.accent}22`, color: theme.accent }}
+          className="shrink-0 font-bold px-1.5 py-0.5 rounded-md"
+          style={{ background: `${theme.accent}22`, color: theme.accent, fontSize: "clamp(6px,1.3vw,8px)" }}
         >
           {badgeText}
         </span>
       </div>
 
       {/* ── 하단 버튼 ── */}
-      <div className="relative px-3 mt-2 grid grid-cols-3 gap-1.5">
+      <div className="relative px-2 mt-1.5 grid grid-cols-3 gap-1">
         <button
           type="button"
-          className="py-2 rounded-xl text-[11px] font-bold text-white transition-colors"
-          style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)` }}
+          className="py-1.5 rounded-xl font-bold text-white transition-colors"
+          style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)`, fontSize: "clamp(8px,1.9vw,11px)" }}
           onClick={e => {
             e.stopPropagation();
             const parcelIds = [...new Set(
@@ -773,16 +773,16 @@ function StorageCard({
         </button>
         <button
           type="button"
-          className="py-2 rounded-xl text-[11px] font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
+          className="py-1.5 rounded-xl font-bold transition-colors"
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "clamp(8px,1.9vw,11px)" }}
           onClick={e => { e.stopPropagation(); onCapacity(); }}
         >
           용량 변경
         </button>
         <button
           type="button"
-          className="py-2 rounded-xl text-[11px] font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
+          className="py-1.5 rounded-xl font-bold transition-colors"
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "clamp(8px,1.9vw,11px)" }}
           onClick={e => { e.stopPropagation(); onDetail(); }}
         >
           상세 보기
