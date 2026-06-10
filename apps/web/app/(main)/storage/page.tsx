@@ -336,14 +336,6 @@ export default function StoragePage() {
                               onRelease={parcelIds => setReleaseSheet(parcelIds)}
                               onCapacity={() => setCapacitySheet(card)}
                               onRename={() => setRenameSheet(card)}
-                              onColorChange={async (colorKey) => {
-                                await fetch(`/api/storage/${card.id}`, {
-                                  method: "PATCH",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ card_color: colorKey }),
-                                });
-                                load(true);
-                              }}
                             />
                           ) : (
                             <Link
@@ -559,9 +551,11 @@ export default function StoragePage() {
       <RenameSheet
         storage={renameSheet}
         onClose={() => setRenameSheet(null)}
-        onSaved={(newName) => {
+        onSaved={(newName, colorKey) => {
           setStorages((prev) =>
-            prev.map((s) => s.id === renameSheet.id ? { ...s, storage_name: newName } : s)
+            prev.map((s) => s.id === renameSheet.id
+              ? { ...s, storage_name: newName, ...(colorKey ? { card_color: colorKey } : {}) }
+              : s)
           );
           setRenameSheet(null);
         }}
@@ -595,7 +589,6 @@ function StorageCard({
   onRelease,
   onCapacity,
   onRename,
-  onColorChange,
 }: {
   storage: Storage;
   itemCount: number;
@@ -606,9 +599,7 @@ function StorageCard({
   onRelease: (ids: string[]) => void;
   onCapacity: () => void;
   onRename: () => void;
-  onColorChange: (colorKey: string) => void;
 }) {
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
   const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
@@ -665,43 +656,7 @@ function StorageCard({
                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               </button>
-              {/* 팔레트 버튼 */}
-              <div className="relative shrink-0">
-                <button
-                  type="button"
-                  onClick={e => { e.stopPropagation(); setShowColorPicker(v => !v); }}
-                  className="p-0.5 rounded-md opacity-40 hover:opacity-80 transition-opacity"
-                  style={{ color: theme.accent }}
-                >
-                  <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10"/><circle cx="8" cy="14" r="1.5" fill="currentColor" stroke="none"/>
-                    <circle cx="12" cy="9" r="1.5" fill="currentColor" stroke="none"/>
-                    <circle cx="16" cy="14" r="1.5" fill="currentColor" stroke="none"/>
-                  </svg>
-                </button>
-                {showColorPicker && (
-                  <div
-                    className="absolute z-50 top-6 left-0 flex gap-2 p-2 rounded-xl shadow-xl"
-                    style={{ background: "rgba(15,15,30,0.95)", border: "1px solid rgba(255,255,255,0.12)" }}
-                    onClick={e => e.stopPropagation()}
-                  >
-                    {CARD_THEME_KEYS.map(key => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => { onColorChange(key); setShowColorPicker(false); }}
-                        className="w-5 h-5 rounded-full transition-transform hover:scale-110"
-                        style={{
-                          background: CARD_THEME_MAP[key].accent,
-                          outline: s.card_color === key ? `2px solid white` : "none",
-                          outlineOffset: 2,
-                        }}
-                        title={key}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* 팔레트 버튼 제거 — 이름 변경 팝업에서 색상 선택 가능 */}
             </div>
           </div>
         </div>
@@ -1051,22 +1006,25 @@ function RenameSheet({
 }: {
   storage: Storage;
   onClose: () => void;
-  onSaved: (newName: string) => void;
+  onSaved: (newName: string, colorKey?: string) => void;
 }) {
   const [name, setName] = useState(storage.storage_name);
+  const [selectedColor, setSelectedColor] = useState<string>(storage.card_color ?? "");
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     const trimmed = name.trim();
     if (!trimmed) return;
     setSaving(true);
+    const body: Record<string, string> = { storage_name: trimmed };
+    if (selectedColor) body.card_color = selectedColor;
     const res = await fetch(`/api/storage/${storage.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ storage_name: trimmed }),
+      body: JSON.stringify(body),
     });
     setSaving(false);
-    if (res.ok) onSaved(trimmed);
+    if (res.ok) onSaved(trimmed, selectedColor || undefined);
     else alert("저장에 실패했습니다.");
   }
 
@@ -1075,7 +1033,7 @@ function RenameSheet({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-[480px] bg-white rounded-3xl shadow-2xl">
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
-          <p className="text-base font-bold text-gray-900">스토리지 이름 변경</p>
+          <p className="text-base font-bold text-gray-900">스토리지 설정</p>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M18 6L6 18M6 6l12 12" />
@@ -1083,19 +1041,50 @@ function RenameSheet({
           </button>
         </div>
         <div className="px-4 py-5 space-y-4">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
-            placeholder="스토리지 이름 입력"
-            maxLength={30}
-            autoFocus
-            className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-brand-400"
-          />
-          <p className="text-xs text-gray-400">최대 30자 · 예: 겨울옷 보관함, 유학 짐</p>
+          {/* 이름 */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-1.5">스토리지 이름</p>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSave(); }}
+              placeholder="스토리지 이름 입력"
+              maxLength={30}
+              autoFocus
+              className="w-full border border-gray-200 rounded-2xl px-4 py-3.5 text-sm outline-none focus:border-brand-400"
+            />
+            <p className="text-xs text-gray-400 mt-1">최대 30자 · 예: 겨울옷 보관함, 유학 짐</p>
+          </div>
+          {/* 카드 색상 */}
+          <div>
+            <p className="text-xs font-semibold text-gray-500 mb-2">카드 색상</p>
+            <div className="flex gap-3">
+              {CARD_THEME_KEYS.map(key => {
+                const t = CARD_THEME_MAP[key];
+                const active = selectedColor === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedColor(active ? "" : key)}
+                    className="flex-1 h-10 rounded-2xl transition-all"
+                    style={{
+                      background: t.bg,
+                      outline: active ? `3px solid ${t.accent}` : "2px solid transparent",
+                      outlineOffset: 2,
+                      boxShadow: active ? `0 0 0 1px ${t.accent}40` : "none",
+                    }}
+                    title={key}
+                  >
+                    <div className="w-2 h-2 rounded-full mx-auto" style={{ background: t.accent }} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <button
             onClick={handleSave}
-            disabled={saving || !name.trim() || name.trim() === storage.storage_name}
+            disabled={saving || !name.trim()}
             className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40"
           >
             {saving ? "저장 중..." : "저장"}
