@@ -628,7 +628,7 @@ function StorageCard({
   const mainUnit = isShortTerm
     ? (freeInfo?.inFreePeriod ? "" : "/주")
     : "/월";
-  const badgeText = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : `${usagePct}%`;
+  const freeBadge = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
 
   return (
     <div
@@ -702,26 +702,26 @@ function StorageCard({
         </div>
       </div>
 
-      {/* ── 바코드 장식 + 뱃지 ── */}
+      {/* ── 눈금 게이지 ── */}
       <div className="relative px-3 mt-1.5 flex items-center gap-2">
-        <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 12 }}>
-          {Array.from({ length: 44 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-[1px]"
-              style={{
-                width: i % 4 === 0 ? 2.5 : 1,
-                height: `${i % 5 === 0 ? 100 : i % 3 === 0 ? 70 : 45}%`,
-                backgroundColor: i % 7 === 0 ? `${theme.accent}60` : "rgba(255,255,255,0.15)",
-              }}
-            />
-          ))}
+        <div className="flex gap-[2px] flex-1">
+          {Array.from({ length: 20 }).map((_, i) => {
+            const filled = i < Math.round(usagePct / 5);
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-[2px]"
+                style={{
+                  height: 7,
+                  background: filled ? theme.accent : "rgba(255,255,255,0.12)",
+                  transition: "background 0.3s",
+                }}
+              />
+            );
+          })}
         </div>
-        <span
-          className="shrink-0 font-bold px-1.5 py-0.5 rounded-md"
-          style={{ background: `${theme.accent}22`, color: theme.accent, fontSize: "8px" }}
-        >
-          {badgeText}
+        <span className="shrink-0 font-bold" style={{ color: theme.accent, fontSize: "9px" }}>
+          {freeBadge ?? `${usagePct}%`}
         </span>
       </div>
 
