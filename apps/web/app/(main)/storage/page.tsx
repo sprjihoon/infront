@@ -112,6 +112,7 @@ export default function StoragePage() {
   const [dragOffset, setDragOffset] = useState(0);
   const isDraggingRef = useRef(false);
   const dragStartX = useRef(0);
+  const lastWheelTime = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -265,6 +266,14 @@ export default function StoragePage() {
                       setDragOffset(0);
                     }}
                     onPointerCancel={() => { isDraggingRef.current = false; setDragOffset(0); }}
+                    onWheel={e => {
+                      const now = Date.now();
+                      if (now - lastWheelTime.current < 350) return;
+                      lastWheelTime.current = now;
+                      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+                      if (delta > 20) goNext();
+                      else if (delta < -20) goPrev();
+                    }}
                   >
                     {allCards.map((card, i) => {
                       const offset = i - safeIdx;
