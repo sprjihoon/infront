@@ -13,6 +13,7 @@ import { validateShippingDimensions } from "@/lib/ems/dimension-limits";
 import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
 import SidebarPricingGuide from "@/components/ui/SidebarPricingGuide";
 import InsuranceQuoteFields from "@/components/ui/InsuranceQuoteFields";
+import { COUNTRIES } from "@/components/ui/OverseasAddressPicker";
 
 const SERVICES = [
   {
@@ -64,39 +65,6 @@ const SERVICES = [
     maxWeight: 2000,
   },
 ] as const;
-
-const COUNTRIES = [
-  { code: "JP", name: "일본", flag: "🇯🇵" },
-  { code: "US", name: "미국", flag: "🇺🇸" },
-  { code: "CN", name: "중국", flag: "🇨🇳" },
-  { code: "AU", name: "호주", flag: "🇦🇺" },
-  { code: "CA", name: "캐나다", flag: "🇨🇦" },
-  { code: "GB", name: "영국", flag: "🇬🇧" },
-  { code: "DE", name: "독일", flag: "🇩🇪" },
-  { code: "FR", name: "프랑스", flag: "🇫🇷" },
-  { code: "SG", name: "싱가포르", flag: "🇸🇬" },
-  { code: "HK", name: "홍콩", flag: "🇭🇰" },
-  { code: "TH", name: "태국", flag: "🇹🇭" },
-  { code: "VN", name: "베트남", flag: "🇻🇳" },
-  { code: "PH", name: "필리핀", flag: "🇵🇭" },
-  { code: "MY", name: "말레이시아", flag: "🇲🇾" },
-  { code: "ID", name: "인도네시아", flag: "🇮🇩" },
-  { code: "TW", name: "대만", flag: "🇹🇼" },
-  { code: "MO", name: "마카오", flag: "🇲🇴" },
-  { code: "MN", name: "몽골", flag: "🇲🇳" },
-  { code: "NZ", name: "뉴질랜드", flag: "🇳🇿" },
-  { code: "IT", name: "이탈리아", flag: "🇮🇹" },
-  { code: "ES", name: "스페인", flag: "🇪🇸" },
-  { code: "NL", name: "네덜란드", flag: "🇳🇱" },
-  { code: "SE", name: "스웨덴", flag: "🇸🇪" },
-  { code: "CH", name: "스위스", flag: "🇨🇭" },
-  { code: "RU", name: "러시아", flag: "🇷🇺" },
-  { code: "BR", name: "브라질", flag: "🇧🇷" },
-  { code: "MX", name: "멕시코", flag: "🇲🇽" },
-  { code: "AE", name: "아랍에미리트", flag: "🇦🇪" },
-  { code: "SA", name: "사우디아라비아", flag: "🇸🇦" },
-  { code: "IN", name: "인도", flag: "🇮🇳" },
-];
 
 type ServiceResult =
   | { status: "ok"; shippingFee: number; insuranceFee: number }

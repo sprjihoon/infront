@@ -1,13 +1,14 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText, ShieldAlert, Zap } from "lucide-react";
+import { Calculator, Loader2, RotateCcw, ChevronDown, ChevronUp, Package, FileText, ShieldAlert, Zap, Search } from "lucide-react";
 import { getCustomsInfo } from "@/lib/customs-data";
 import { snapDocWeightG } from "@/lib/ems/client";
 import { validateShippingDimensions } from "@/lib/ems/dimension-limits";
 import { appendInsuranceQuoteParams } from "@/lib/ems/insurance";
 import InsuranceQuoteFields from "@/components/ui/InsuranceQuoteFields";
 import { SHIPPING_CALC_SUBTITLE, SHIPPING_CALC_TITLE } from "@/lib/shipping-calc-copy";
+import { COUNTRIES } from "@/components/ui/OverseasAddressPicker";
 
 const PARCEL_SERVICES = [
   { id: "ems-parcel",  label: "EMS 비서류",  premiumcd: "31", em_ee: "em", color: "bg-brand-600",    maxW: 30000 },
@@ -19,20 +20,8 @@ const DOC_SERVICES = [
   { id: "ems-doc", label: "EMS 서류", premiumcd: "31", em_ee: "ee", color: "bg-brand-400", maxW: 2000 },
 ] as const;
 
-const POPULAR = [
-  { code: "JP", flag: "🇯🇵", name: "일본" },
-  { code: "US", flag: "🇺🇸", name: "미국" },
-  { code: "CN", flag: "🇨🇳", name: "중국" },
-  { code: "AU", flag: "🇦🇺", name: "호주" },
-  { code: "CA", flag: "🇨🇦", name: "캐나다" },
-  { code: "GB", flag: "🇬🇧", name: "영국" },
-  { code: "DE", flag: "🇩🇪", name: "독일" },
-  { code: "SG", flag: "🇸🇬", name: "싱가포르" },
-  { code: "TH", flag: "🇹🇭", name: "태국" },
-  { code: "VN", flag: "🇻🇳", name: "베트남" },
-  { code: "HK", flag: "🇭🇰", name: "홍콩" },
-  { code: "TW", flag: "🇹🇼", name: "대만" },
-];
+// 인기 12개국 — 그리드 빠른 선택용
+const POPULAR_CODES = ["JP","US","CN","AU","CA","GB","DE","SG","TH","VN","HK","TW"];
 
 type ServiceResult = {
   id: string;
@@ -44,6 +33,8 @@ type ServiceResult = {
   pending?: boolean;
 };
 
+const POPULAR = COUNTRIES.filter(c => POPULAR_CODES.includes(c.code));
+
 export default function SidebarCalculator() {
   const [docType, setDocType] = useState<"parcel" | "doc">("parcel");
   const [country, setCountry] = useState("JP");
@@ -52,6 +43,8 @@ export default function SidebarCalculator() {
   const [width,   setWidth]   = useState("");
   const [height,  setHeight]  = useState("");
   const [showMore, setShowMore] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [countrySearchOpen, setCountrySearchOpen] = useState(false);
   const [customsOpen, setCustomsOpen] = useState(false);
   const [insuranceEnabled, setInsuranceEnabled] = useState(false);
   const [insuranceUsd, setInsuranceUsd] = useState("");
@@ -163,10 +156,18 @@ export default function SidebarCalculator() {
     }
   }
 
-  const selectedCountry = POPULAR.find(c => c.code === country);
+  const selectedCountry = COUNTRIES.find(c => c.code === country);
   const validFees = results?.filter(r => r.shippingFee !== null).map(r => r.shippingFee! + (r.insuranceFee ?? 0)) ?? [];
   const minFee = validFees.length ? Math.min(...validFees) : null;
   const customsInfo = getCustomsInfo(country);
+  const isPopular = POPULAR_CODES.includes(country);
+
+  const filteredSearch = countrySearch.trim()
+    ? COUNTRIES.filter(c =>
+        c.name.includes(countrySearch) ||
+        c.code.toLowerCase().includes(countrySearch.toLowerCase())
+      )
+    : COUNTRIES;
 
   return (
     <div className="w-full bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden select-none">
@@ -212,11 +213,13 @@ export default function SidebarCalculator() {
         {/* 목적국 */}
         <div>
           <p className="text-[10px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wide">목적국</p>
+
+          {/* 인기 국가 그리드 */}
           <div className="grid grid-cols-4 gap-1">
             {POPULAR.slice(0, showMore ? 12 : 8).map(c => (
               <button
                 key={c.code}
-                onClick={() => { setCountry(c.code); reset(); }}
+                onClick={() => { setCountry(c.code); reset(); setCountrySearchOpen(false); }}
                 title={c.name}
                 className={`rounded-lg py-1.5 text-center text-base transition-all border ${
                   country === c.code
@@ -228,14 +231,58 @@ export default function SidebarCalculator() {
               </button>
             ))}
           </div>
-          <button
-            onClick={() => setShowMore(v => !v)}
-            className="mt-1 text-[10px] text-brand-500 flex items-center gap-0.5"
-          >
-            {showMore ? <><ChevronUp size={10} />간략히</> : <><ChevronDown size={10} />더보기</>}
-          </button>
+
+          <div className="flex items-center justify-between mt-1">
+            <button
+              onClick={() => setShowMore(v => !v)}
+              className="text-[10px] text-brand-500 flex items-center gap-0.5"
+            >
+              {showMore ? <><ChevronUp size={10} />간략히</> : <><ChevronDown size={10} />더보기</>}
+            </button>
+            <button
+              onClick={() => { setCountrySearchOpen(v => !v); setCountrySearch(""); }}
+              className="text-[10px] text-gray-400 flex items-center gap-0.5 hover:text-brand-500"
+            >
+              <Search size={10} />전체 {COUNTRIES.length}개국
+            </button>
+          </div>
+
+          {/* 전체 국가 검색 */}
+          {countrySearchOpen && (
+            <div className="mt-1.5 border border-gray-100 rounded-xl overflow-hidden">
+              <div className="p-1.5 border-b border-gray-50">
+                <input
+                  autoFocus
+                  placeholder="국가 검색..."
+                  value={countrySearch}
+                  onChange={e => setCountrySearch(e.target.value)}
+                  className="w-full text-xs px-2 py-1.5 bg-gray-50 rounded-lg outline-none"
+                />
+              </div>
+              <div className="max-h-36 overflow-y-auto">
+                {filteredSearch.map(c => (
+                  <button
+                    key={c.code}
+                    onClick={() => { setCountry(c.code); reset(); setCountrySearchOpen(false); setCountrySearch(""); }}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-brand-50 transition-colors ${
+                      c.code === country ? "bg-brand-50 text-brand-700 font-semibold" : "text-gray-700"
+                    }`}
+                  >
+                    <span>{c.flag}</span>
+                    <span className="truncate">{c.name}</span>
+                    <span className="ml-auto text-[10px] text-gray-400 shrink-0">{c.code}</span>
+                  </button>
+                ))}
+                {filteredSearch.length === 0 && (
+                  <p className="text-center text-xs text-gray-400 py-3">검색 결과 없음</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 선택된 국가 표시 (비인기 국가 선택 시 강조) */}
           {selectedCountry && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className={`text-xs mt-1 ${isPopular ? "text-gray-500" : "text-brand-600 font-semibold"}`}>
               선택: {selectedCountry.flag} {selectedCountry.name} ({selectedCountry.code})
             </p>
           )}
