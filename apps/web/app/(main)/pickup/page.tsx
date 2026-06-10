@@ -1089,79 +1089,136 @@ function PickupPageInner() {
               </div>
             )}
 
-            {/* 장기보관 연계 옵션 */}
-            <div className={`rounded-xl border-2 overflow-hidden transition-all ${storageOptIn ? "border-brand-400" : "border-gray-200"}`}>
-              <button
-                type="button"
-                onClick={() => setStorageOptIn(!storageOptIn)}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left bg-white"
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${storageOptIn ? "bg-brand-100" : "bg-gray-100"}`}>
-                  <Archive size={18} className={storageOptIn ? "text-brand-600" : "text-gray-400"} />
-                </div>
-                <div className="flex-1">
-                  <p className={`text-sm font-bold ${storageOptIn ? "text-brand-700" : "text-gray-800"}`}>
-                    장기보관 서비스 함께 신청
-                    <span className="ml-1.5 text-[10px] font-normal text-gray-400">(선택)</span>
-                  </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
-                    수거 완료 후 월정액 보관 서비스 바로 시작
-                  </p>
-                </div>
-                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                  storageOptIn ? "bg-brand-600 border-brand-600" : "border-gray-300"
-                }`}>
-                  {storageOptIn && <CheckCircle className="w-3.5 h-3.5 text-white" />}
-                </div>
-              </button>
+            {/* ── 보관 안내 ── */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-1.5">
+                <Archive size={15} className="text-gray-500 shrink-0" />
+                <p className="text-sm font-bold text-gray-700">보관 안내</p>
+              </div>
 
-              {storageOptIn && (
-                <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-2">
-                  <p className="text-[11px] font-bold text-gray-600">사이즈 선택</p>
-                  {storageTypes.length === 0 ? (
-                    <p className="text-xs text-gray-400">불러오는 중...</p>
-                  ) : (
-                    storageTypes.map((type) => (
-                      <button
-                        key={type.id}
-                        type="button"
-                        onClick={() => setSelectedStoragePlan(type.code)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
-                          selectedStoragePlan === type.code
-                            ? "border-brand-500 bg-brand-50"
-                            : "border-gray-200 bg-white"
-                        }`}
-                      >
-                        <div className={`h-7 min-w-[28px] px-1.5 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 ${
-                          selectedStoragePlan === type.code ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
-                        }`}>{type.code}</div>
-                        <div className="flex-1">
-                          <span className="text-sm font-semibold text-gray-800">{type.name}</span>
-                          {type.max_parcels != null && (
-                            <span className="text-[10px] text-gray-400 ml-1.5">최대 {type.max_parcels}개</span>
-                          )}
-                          {type.volume_liter != null && (
-                            <span className="text-[10px] text-gray-400 ml-1">{type.volume_liter}L</span>
-                          )}
-                          <span className="text-xs text-brand-700 font-bold ml-1.5">
-                            {type.price_per_week.toLocaleString()}원/주
-                          </span>
-                        </div>
-                        {selectedStoragePlan === type.code && (
-                          <CheckCircle size={16} className="text-brand-600 shrink-0" />
-                        )}
-                      </button>
-                    ))
-                  )}
+              {/* 기본 보관 방식: 단기보관 */}
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">기본 적용</span>
+                  <p className="text-sm font-bold text-blue-800">기본 보관 방식: 단기보관</p>
                 </div>
-              )}
+                <ul className="space-y-1.5">
+                  <li className="flex items-start gap-1.5 text-xs text-blue-700">
+                    <span className="mt-1 w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+                    입고 후 출고 전까지 단기보관으로 자동 처리됩니다.
+                  </li>
+                  <li className="flex items-start gap-1.5 text-xs text-blue-700">
+                    <span className="mt-1 w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+                    <span><span className="font-bold">입고일 기준 3일간 무료</span> — 3일 이내 출고 신청 시 보관료가 발생하지 않습니다.</span>
+                  </li>
+                  <li className="flex items-start gap-1.5 text-xs text-blue-700">
+                    <span className="mt-1 w-1 h-1 rounded-full bg-blue-400 shrink-0" />
+                    입고일 기준 4일째부터 주 단위 보관료가 발생하며, 출고 신청 시 배송비와 함께 결제됩니다.
+                  </li>
+                </ul>
+              </div>
+
+              {/* 장기보관 선택 옵션 */}
+              <div className={`rounded-xl border-2 overflow-hidden transition-all ${storageOptIn ? "border-brand-400 bg-white" : "border-gray-200 bg-white"}`}>
+                <button
+                  type="button"
+                  onClick={() => setStorageOptIn(!storageOptIn)}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
+                >
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${storageOptIn ? "bg-brand-100" : "bg-gray-100"}`}>
+                    <Archive size={18} className={storageOptIn ? "text-brand-600" : "text-gray-400"} />
+                  </div>
+                  <div className="flex-1">
+                    <p className={`text-sm font-bold ${storageOptIn ? "text-brand-700" : "text-gray-800"}`}>
+                      장기보관 정기결제 신청
+                      <span className="ml-1.5 text-[10px] font-normal text-gray-400">(선택)</span>
+                    </p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      장기간 보관 예정이라면 선택해주세요.
+                    </p>
+                  </div>
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    storageOptIn ? "bg-brand-600 border-brand-600" : "border-gray-300"
+                  }`}>
+                    {storageOptIn && <CheckCircle className="w-3.5 h-3.5 text-white" />}
+                  </div>
+                </button>
+
+                {storageOptIn && (
+                  <div className="border-t border-gray-100 bg-gray-50 px-4 py-3 space-y-2">
+                    <p className="text-[11px] text-gray-500 leading-relaxed mb-2">
+                      입고 확인 후 실제 보관 사이즈 기준으로 월 정기결제가 시작됩니다.
+                    </p>
+                    <p className="text-[11px] font-bold text-gray-600">사이즈 선택 (예상 기준)</p>
+                    {storageTypes.length === 0 ? (
+                      <p className="text-xs text-gray-400">불러오는 중...</p>
+                    ) : (
+                      storageTypes.map((type) => (
+                        <button
+                          key={type.id}
+                          type="button"
+                          onClick={() => setSelectedStoragePlan(type.code)}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
+                            selectedStoragePlan === type.code
+                              ? "border-brand-500 bg-brand-50"
+                              : "border-gray-200 bg-white"
+                          }`}
+                        >
+                          <div className={`h-7 min-w-[28px] px-1.5 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 ${
+                            selectedStoragePlan === type.code ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
+                          }`}>{type.code}</div>
+                          <div className="flex-1">
+                            <span className="text-sm font-semibold text-gray-800">{type.name}</span>
+                            {type.max_parcels != null && (
+                              <span className="text-[10px] text-gray-400 ml-1.5">최대 {type.max_parcels}개</span>
+                            )}
+                            {type.volume_liter != null && (
+                              <span className="text-[10px] text-gray-400 ml-1">{type.volume_liter}L</span>
+                            )}
+                            <span className="text-xs text-brand-700 font-bold ml-1.5">
+                              {type.price_per_week.toLocaleString()}원/월
+                            </span>
+                          </div>
+                          {selectedStoragePlan === type.code && (
+                            <CheckCircle size={16} className="text-brand-600 shrink-0" />
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* 요금 안내 */}
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Info className="w-4 h-4 text-gray-500 shrink-0" />
+                  <p className="text-xs font-bold text-gray-600">요금 안내</p>
+                </div>
+                <ul className="space-y-1.5">
+                  {[
+                    "신청한 박스/보관 사이즈는 예상 기준입니다.",
+                    "실제 입고 후 물품의 부피, 무게, 수량, 보관 상태를 확인하여 최종 보관 사이즈와 요금이 확정됩니다.",
+                    "신청 사이즈보다 실제 보관 공간을 더 많이 사용하는 경우, 실제 사용 기준으로 요금이 청구됩니다.",
+                    "단기보관료는 출고 신청 시 배송비와 함께 결제됩니다.",
+                    "장기보관은 입고 확인 후 실제 보관 사이즈 기준으로 월 정기결제가 진행됩니다.",
+                  ].map((txt, i) => (
+                    <li key={i} className="flex items-start gap-1.5 text-xs text-gray-500">
+                      <span className="mt-1 w-1 h-1 rounded-full bg-gray-400 shrink-0" />
+                      {txt}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
+            {/* 서비스 안내 */}
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
               <div className="flex items-center gap-1.5 mb-1">
                 <Info className="w-4 h-4 text-gray-500 shrink-0" />
                 <p className="text-xs font-bold text-gray-600">서비스 안내</p>
-              </div>              <ul className="space-y-1.5">
+              </div>
+              <ul className="space-y-1.5">
                 {[
                   "수거 후 물품이 인프론트 물류센터로 입고됩니다.",
                   "입고 후 검수(사진·영상)를 진행하고 결과를 알려드립니다.",
@@ -1190,8 +1247,8 @@ function PickupPageInner() {
                 {agreed && <CheckCircle className="w-3.5 h-3.5 text-white" />}
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">
-                위 서비스 안내 내용을 확인하였으며,{" "}
-                <span className="font-bold text-brand-600">입고 후 배송비 결제</span>에 동의합니다.
+                위 안내 내용을 확인했으며,{" "}
+                <span className="font-bold text-brand-600">입고 후 실제 보관 사이즈 기준으로 보관료가 산정될 수 있음</span>에 동의합니다.
                 <span className="text-red-400 ml-1">*필수</span>
               </p>
             </button>
@@ -1244,7 +1301,7 @@ function PickupPageInner() {
                 : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
           >
-            {loading ? "수거 신청 중..." : "수거 신청하기"}
+            {loading ? "수거 신청 중..." : "동의하고 수거 신청하기"}
           </button>
         )}
       </div>

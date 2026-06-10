@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Package, Plus, RefreshCw, Archive, Truck,
-  Clock, ChevronRight,
+  Package, Plus, RefreshCw, Archive,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -218,18 +218,11 @@ export default function StoragePage() {
             <RefreshCw size={16} className={`text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
           </button>
           <Link
-            href="/pickup"
-            className="flex items-center gap-1 text-xs font-semibold text-gray-500 border border-gray-200 px-3 py-2 rounded-xl hover:bg-gray-50"
-          >
-            <Truck size={14} />
-            수거 신청
-          </Link>
-          <Link
-            href="/register-parcel"
+            href="/inbound"
             className="flex items-center gap-1 bg-brand-600 text-white text-xs font-semibold px-3 py-2 rounded-xl"
           >
             <Plus size={14} />
-            물품 등록
+            입고신청
           </Link>
         </div>
       </div>

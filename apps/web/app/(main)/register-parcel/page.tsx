@@ -311,7 +311,7 @@ export default function RegisterParcelPage() {
                 <p className="text-sm font-bold text-gray-900 truncate">{STEP_LABELS[step - 1]}</p>
               </>
             ) : (
-              <h1 className="text-base font-bold text-gray-900">물품 등록</h1>
+              <h1 className="text-base font-bold text-gray-900">직접 보내기</h1>
             )}
           </div>
         </div>
@@ -336,7 +336,7 @@ export default function RegisterParcelPage() {
             <div className="bg-brand-50 border border-brand-200 rounded-xl p-4 flex gap-3">
               <Truck size={18} className="text-brand-600 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-brand-800">직접 발송 물품 등록</p>
+                <p className="text-sm font-bold text-brand-800">직접 보내기</p>
                 <p className="text-xs text-brand-600 mt-0.5 leading-relaxed">
                   쇼핑몰 등에서 인프론트 창고 주소로 직접 발송한 물품을 미리 등록하세요.<br />
                   운송장 번호로 도착한 물품을 빠르게 처리할 수 있어요.

@@ -6,7 +6,7 @@ import { Home, Package, Truck, Send, User } from "lucide-react";
 
 const TABS = [
   { href: "/home",      label: "홈",     icon: Home },
-  { href: "/pickup",    label: "수거신청", icon: Truck },
+  { href: "/inbound",   label: "입고신청", icon: Truck },
   { href: "/storage",   label: "스토리지", icon: Package },
   { href: "/shipping",  label: "출고신청", icon: Send },
   { href: "/mypage",    label: "MY",     icon: User },
@@ -23,7 +23,8 @@ export default function BottomTabBar() {
       <div className="max-w-[600px] mx-auto flex">
         {TABS.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href)
-            || (href === "/shipping" && (pathname.startsWith("/shipping-request") || pathname.startsWith("/domestic-shipping")));
+            || (href === "/shipping" && (pathname.startsWith("/shipping-request") || pathname.startsWith("/domestic-shipping")))
+            || (href === "/inbound" && (pathname.startsWith("/pickup") || pathname.startsWith("/register-parcel")));
           return (
             <Link
               key={href}
