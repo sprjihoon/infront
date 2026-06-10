@@ -684,7 +684,7 @@ function StorageCard({
       <div className="relative px-4 mt-2.5 grid grid-cols-3 gap-1.5">
         <button
           type="button"
-          className="py-2 rounded-xl text-[10px] font-bold text-white transition-colors"
+          className="py-2.5 rounded-xl text-[11px] font-bold text-white transition-colors"
           style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)` }}
           onClick={e => {
             e.stopPropagation();
@@ -699,16 +699,16 @@ function StorageCard({
         </button>
         <button
           type="button"
-          className="py-2 rounded-xl text-[10px] font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
+          className="py-2.5 rounded-xl text-[11px] font-bold transition-colors"
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
           onClick={e => { e.stopPropagation(); onCapacity(); }}
         >
           용량 변경
         </button>
         <button
           type="button"
-          className="py-2 rounded-xl text-[10px] font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
+          className="py-2.5 rounded-xl text-[11px] font-bold transition-colors"
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
           onClick={e => { e.stopPropagation(); onDetail(); }}
         >
           상세 보기
