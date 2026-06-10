@@ -15,7 +15,7 @@ import {
 } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
-import { loadGoogleMapsScript, parsePlaceResult, validateAddressWithGoogle } from "@/lib/google-places";
+import { loadGoogleMapsScript, parsePlaceResult, validateAddressWithGoogle, supportsAddressValidation } from "@/lib/google-places";
 import AddressSuggestionDialog from "@/components/ui/AddressSuggestionDialog";
 
 const GMAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -280,6 +280,7 @@ export default function AddressesPage() {
     if (!GMAPS_API_KEY) return;
     const addr3 = form.overseas_addr3 ?? "";
     if (!addr3.trim()) return;
+    if (!supportsAddressValidation(form.country_code ?? "")) return;
     const addr2 = form.overseas_addr2 ?? "";
     const addr1 = form.overseas_addr1 ?? "";
     const zip = form.overseas_zip ?? "";

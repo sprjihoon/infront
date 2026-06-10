@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Globe, Star, Plus, ChevronRight, ChevronDown, X, Check, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { loadGoogleMapsScript, parsePlaceResult, validateAddressWithGoogle } from "@/lib/google-places";
+import { loadGoogleMapsScript, parsePlaceResult, validateAddressWithGoogle, supportsAddressValidation } from "@/lib/google-places";
 import AddressSuggestionDialog from "@/components/ui/AddressSuggestionDialog";
 
 const GMAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
@@ -151,6 +151,7 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
     if (!GMAPS_API_KEY) return;
     const { addr3, addr2, addr1, zip, countryCode } = newVal;
     if (!addr3.trim()) return;
+    if (!supportsAddressValidation(countryCode)) return;
     setValidating(true);
     try {
       const result = await validateAddressWithGoogle(GMAPS_API_KEY, { addr3, addr2, addr1, zip, countryCode });

@@ -99,6 +99,18 @@ export interface AddressValidationResult {
   isSame: boolean;
 }
 
+// Countries that support Address Validation API
+// https://developers.google.com/maps/documentation/address-validation/coverage
+const ADDRESS_VALIDATION_SUPPORTED = new Set([
+  "AR","AT","AU","BE","BG","BR","CA","CH","CL","CO","CZ","DE","DK",
+  "EE","ES","FI","FR","GB","HR","HU","IE","IN","IT","JP","LT","LU",
+  "LV","MX","MY","NL","NO","NZ","PL","PR","PT","SE","SG","SI","SK","US",
+]);
+
+export function supportsAddressValidation(countryCode: string): boolean {
+  return ADDRESS_VALIDATION_SUPPORTED.has(countryCode.toUpperCase());
+}
+
 // Google Address Validation REST API (requires Address Validation API enabled on the key)
 export async function validateAddressWithGoogle(
   apiKey: string,
