@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Package, Plus, RefreshCw, Archive,
@@ -108,7 +108,8 @@ export default function StoragePage() {
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
   const [hoverPhoto, setHoverPhoto] = useState<{ url: string; x: number; y: number } | null>(null);
-  const [activeStorageId, setActiveStorageId] = useState<string | null>(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+  const touchStartX = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -223,72 +224,133 @@ export default function StoragePage() {
               </div>
             </div>
 
-            {/* ── 스토리지 카드 덱 (스택) ─────────── */}
+            {/* ── 3D 카드 캐러셀 ─────────── */}
             {(() => {
-              const CARD_H = 200;
-              const PEEK_H = 64;
-              const sortedActive = activeStorageId && active.find(s => s.id === activeStorageId)
-                ? [active.find(s => s.id === activeStorageId)!, ...active.filter(s => s.id !== activeStorageId)]
-                : active;
-              const containerH = sortedActive.length === 0
-                ? PEEK_H + 16
-                : CARD_H + sortedActive.length * PEEK_H;
+              const CARD_THEMES = [
+                { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#4ade80" },
+                { bg: "linear-gradient(160deg,#1c1240 0%,#2d1b69 60%,#110b30 100%)", accent: "#a78bfa" },
+                { bg: "linear-gradient(160deg,#3a0e0e 0%,#5c1a1a 60%,#280a0a 100%)", accent: "#f87171" },
+                { bg: "linear-gradient(160deg,#0c253d 0%,#1a3f60 60%,#071928 100%)", accent: "#38bdf8" },
+                { bg: "linear-gradient(160deg,#1c0a30 0%,#2e1065 60%,#110520 100%)", accent: "#e879f9" },
+              ];
+              const allCards: (Storage | null)[] = [...active, null];
+              const safeIdx = Math.min(activeIdx, allCards.length - 1);
+              const goNext = () => setActiveIdx(prev => Math.min(prev + 1, allCards.length - 1));
+              const goPrev = () => setActiveIdx(prev => Math.max(prev - 1, 0));
+              const activeStorage = safeIdx < active.length ? active[safeIdx] : null;
 
               return (
-                <div className="relative" style={{ height: containerH }}>
-                  {/* 카드들 */}
-                  {sortedActive.map((s, i) => {
-                    const isActive = i === 0;
-                    const inset = i * 8;
-                    return (
-                      <div
-                        key={s.id}
-                        className="absolute transition-all duration-300"
-                        style={{
-                          top: isActive ? 0 : CARD_H + (i - 1) * PEEK_H,
-                          left: inset,
-                          right: inset,
-                          zIndex: isActive ? sortedActive.length + 10 : i,
-                          cursor: isActive ? "default" : "pointer",
-                        }}
-                        onClick={!isActive ? () => setActiveStorageId(s.id) : undefined}
-                      >
-                        <StorageCard
-                          storage={s}
-                          itemCount={items.filter((it) => it.storage_id === s.id).length}
-                          locationSummary={locationSummary}
-                          storageItems={items}
-                          onDetail={() => router.push(`/storage/${s.id}`)}
-                          onRelease={(parcelIds) => setReleaseSheet(parcelIds)}
-                          onCapacity={() => setCapacitySheet(s)}
-                          onRename={() => setRenameSheet(s)}
-                        />
-                        {/* 펙 카드 클릭 오버레이 (버튼 클릭 방해 방지) */}
-                        {!isActive && (
-                          <div className="absolute inset-0 rounded-2xl" />
-                        )}
-                      </div>
-                    );
-                  })}
-
-                  {/* 스토리지 추가 버튼 스트립 */}
-                  <Link
-                    href="/storage/new"
-                    className="absolute rounded-2xl flex items-center justify-center gap-2 border-2 border-dashed border-white/20 hover:border-white/40 transition-colors"
-                    style={{
-                      top: CARD_H + (sortedActive.length - 1) * PEEK_H,
-                      left: sortedActive.length * 8,
-                      right: sortedActive.length * 8,
-                      height: PEEK_H + 8,
-                      background: "linear-gradient(160deg, #1c1c2e 0%, #12122a 100%)",
-                      zIndex: sortedActive.length,
+                <div className="space-y-3">
+                  {/* ── 캐러셀 윈도우 ── */}
+                  <div
+                    className="relative overflow-visible"
+                    style={{ height: 216 }}
+                    onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
+                    onTouchEnd={e => {
+                      const diff = touchStartX.current - e.changedTouches[0].clientX;
+                      if (diff > 40) goNext();
+                      if (diff < -40) goPrev();
                     }}
                   >
-                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
-                      <Plus size={13} className="text-white/50" />
+                    {allCards.map((card, i) => {
+                      const offset = i - safeIdx;
+                      if (Math.abs(offset) > 2) return null;
+                      const abs = Math.abs(offset);
+                      const sign = Math.sign(offset);
+                      const theme = CARD_THEMES[i % CARD_THEMES.length];
+                      return (
+                        <div
+                          key={i}
+                          className="absolute inset-0 transition-all duration-500 ease-out"
+                          style={{
+                            transform: `perspective(600px) translateX(${sign * 82}%) rotateY(${-sign * 30}deg) scale(${1 - abs * 0.08})`,
+                            zIndex: 10 - abs,
+                            opacity: abs === 0 ? 1 : abs === 1 ? 0.72 : 0.3,
+                            cursor: abs > 0 ? "pointer" : "default",
+                          }}
+                          onClick={abs > 0 ? () => setActiveIdx(i) : undefined}
+                        >
+                          {card ? (
+                            <StorageCard
+                              storage={card}
+                              itemCount={items.filter(it => it.storage_id === card.id).length}
+                              locationSummary={locationSummary}
+                              theme={theme}
+                            />
+                          ) : (
+                            <Link
+                              href="/storage/new"
+                              className="flex flex-col items-center justify-center gap-3 h-full rounded-3xl border-2 border-dashed border-white/20 hover:border-white/40 transition-colors"
+                              style={{ background: "linear-gradient(160deg,#1c1c2e 0%,#12122a 100%)" }}
+                            >
+                              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+                                <Plus size={18} className="text-white/50" />
+                              </div>
+                              <p className="text-[12px] font-semibold text-white/40">스토리지 추가</p>
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── 도트 인디케이터 ── */}
+                  <div className="flex items-center justify-center gap-1.5 pt-1">
+                    {allCards.map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setActiveIdx(i)}
+                        className="rounded-full transition-all duration-300"
+                        style={{
+                          width: i === safeIdx ? 20 : 6,
+                          height: 6,
+                          backgroundColor: i === safeIdx ? "#dc2626" : "rgba(0,0,0,0.15)",
+                        }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* ── 액션 버튼 (활성 스토리지에만) ── */}
+                  {activeStorage && (
+                    <div className="grid grid-cols-4 gap-2">
+                      <button
+                        type="button"
+                        className="py-2.5 rounded-2xl text-[11px] font-bold text-white transition-colors"
+                        style={{ background: "linear-gradient(90deg,#dc2626,#b91c1c)" }}
+                        onClick={() => {
+                          const parcelIds = [...new Set(
+                            items.filter(it => it.storage_id === activeStorage.id && it.parcel_id).map(it => it.parcel_id)
+                          )];
+                          if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
+                          setReleaseSheet(parcelIds as string[]);
+                        }}
+                      >
+                        출고 요청
+                      </button>
+                      <button
+                        type="button"
+                        className="py-2.5 rounded-2xl text-[11px] font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors border border-gray-200"
+                        onClick={() => setCapacitySheet(activeStorage)}
+                      >
+                        용량 변경
+                      </button>
+                      <button
+                        type="button"
+                        className="py-2.5 rounded-2xl text-[11px] font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors border border-gray-200"
+                        onClick={() => setRenameSheet(activeStorage)}
+                      >
+                        이름 변경
+                      </button>
+                      <button
+                        type="button"
+                        className="py-2.5 rounded-2xl text-[11px] font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors border border-gray-200"
+                        onClick={() => router.push(`/storage/${activeStorage.id}`)}
+                      >
+                        상세 보기
+                      </button>
                     </div>
-                    <span className="text-[11px] font-semibold text-white/40">스토리지 추가</span>
-                  </Link>
+                  )}
                 </div>
               );
             })()}
@@ -507,25 +569,20 @@ function SummaryCell({ label, value }: { label: string; value: string }) {
   );
 }
 
-/* ─── 스토리지 카드 (주식 위젯 스타일) ─────────── */
+/* ─── 카드 테마 타입 ────────────────────────── */
+type CardTheme = { bg: string; accent: string };
+
+/* ─── 스토리지 카드 (로열티 카드 스타일) ─────── */
 function StorageCard({
   storage: s,
   itemCount,
   locationSummary,
-  storageItems,
-  onDetail,
-  onRelease,
-  onCapacity,
-  onRename,
+  theme,
 }: {
   storage: Storage;
   itemCount: number;
   locationSummary: LocationSummary | null;
-  storageItems: ProductItem[];
-  onDetail: () => void;
-  onRelease: (parcelIds: string[]) => void;
-  onCapacity: () => void;
-  onRename: () => void;
+  theme: CardTheme;
 }) {
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
@@ -533,145 +590,99 @@ function StorageCard({
   const planName    = locationSummary?.dominant_type?.name ?? s.plan_type ?? "-";
   const usagePct    = Math.round(s.usage_percent ?? 0);
 
-  // 중앙 큰 숫자: 요금
   const mainFee = isShortTerm
     ? (freeInfo?.inFreePeriod ? 0 : weeklyFee)
     : s.monthly_amount ?? weeklyFee;
   const mainFeeLabel = isShortTerm
-    ? (freeInfo?.inFreePeriod ? "FREE" : `${mainFee.toLocaleString()}`)
+    ? (freeInfo?.inFreePeriod ? "FREE" : mainFee.toLocaleString())
     : mainFee > 0 ? mainFee.toLocaleString() : "-";
   const mainUnit = isShortTerm
     ? (freeInfo?.inFreePeriod ? "" : "/주")
     : "/월";
-
-  // 뱃지: 무료기간이면 GREEN, 사용률 기반
-  const badgeColor   = freeInfo?.inFreePeriod ? "#22c55e" : usagePct >= 80 ? "#ef4444" : "#f87171";
-  const badgeText    = freeInfo?.inFreePeriod
-    ? `+${freeInfo.freeDaysLeft}일 무료`
-    : `${usagePct}%`;
-
-  // 미니 그래프 (사용률 세그먼트)
-  const segments = 12;
-  const filled   = Math.round((usagePct / 100) * segments);
+  const badgeText = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : `${usagePct}%`;
 
   return (
     <div
-      className="rounded-2xl overflow-hidden flex flex-col relative"
+      className="rounded-3xl overflow-hidden relative select-none"
       style={{
-        background: "linear-gradient(160deg, #1c1c2e 0%, #12122a 100%)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        minHeight: 200,
+        background: theme.bg,
+        boxShadow: `0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)`,
+        height: 216,
       }}
     >
-      {/* ── 상단: 아이콘 + 이름 + 이름변경 + 뱃지 ── */}
-      <div className="px-4 pt-4 flex items-center gap-3">
+      {/* 배경 텍스처 */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "repeating-linear-gradient(60deg,transparent,transparent 44px,rgba(255,255,255,0.012) 44px,rgba(255,255,255,0.012) 88px)",
+        }}
+      />
+
+      {/* ── 상단: 아이콘 + 스토리지명 + 티어 뱃지 ── */}
+      <div className="relative px-5 pt-5 flex items-start justify-between">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
+            style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
+          >
+            <Package size={15} style={{ color: theme.accent }} />
+          </div>
+          <div>
+            <p className="text-[9px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
+            <p className="text-[13px] font-bold text-white leading-tight mt-0.5">{s.storage_name}</p>
+          </div>
+        </div>
         <div
-          className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg,#dc2626,#b91c1c)" }}
+          className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide"
+          style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35` }}
         >
-          <Package size={16} className="text-white" />
+          {isShortTerm ? "단기" : "장기"} · {planName}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-bold text-white truncate leading-tight">{s.storage_name}</p>
-          <p className="text-[10px] text-white/40 mt-0.5">{isShortTerm ? "단기" : "장기"} · {planName}</p>
-        </div>
-        <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0"
-          style={{ backgroundColor: `${badgeColor}22`, color: badgeColor }}
-        >
-          {badgeText}
-        </span>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onRename(); }}
-          className="p-1.5 text-white/30 hover:text-white/70 transition-colors shrink-0"
-        >
-          <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-          </svg>
-        </button>
       </div>
 
-      {/* ── 중단: 요금 + 미니 바 그래프 ── */}
-      <div className="px-4 mt-3 flex items-end justify-between gap-3">
+      {/* ── 중단: 요금 + 물품 수 ── */}
+      <div className="relative px-5 mt-4 flex items-end justify-between">
         <div>
-          <p className="text-[26px] font-black text-white leading-none tracking-tight">
+          <p className="text-[10px] text-white/30 mb-1">{isShortTerm ? "주 요금" : "월 요금"}</p>
+          <p className="text-[30px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
             {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
           </p>
-          {mainFeeLabel !== "FREE" && mainUnit && (
-            <span className="text-[10px] text-white/40">{mainUnit}</span>
+          {mainUnit && mainFeeLabel !== "FREE" && (
+            <p className="text-[10px] text-white/30 mt-0.5">{mainUnit}</p>
           )}
         </div>
-        <div className="flex items-end gap-[2px] flex-1 max-w-[120px]" style={{ height: 32 }}>
-          {Array.from({ length: segments }).map((_, i) => {
-            const isFilled = i < filled;
-            const heightPct = 40 + Math.sin((i / segments) * Math.PI) * 60;
-            return (
-              <div
-                key={i}
-                className="flex-1 rounded-sm transition-all"
-                style={{
-                  height: `${heightPct}%`,
-                  backgroundColor: isFilled
-                    ? usagePct >= 80 ? "#ef4444" : "#dc2626"
-                    : "rgba(255,255,255,0.08)",
-                }}
-              />
-            );
-          })}
+        <div className="text-right">
+          <p className="text-[10px] text-white/30 mb-1">보관 물품</p>
+          <p className="text-[30px] font-black leading-none text-white">{itemCount}</p>
+          <p className="text-[10px] text-white/30 mt-0.5">개</p>
         </div>
       </div>
 
-      {/* ── 하단 스탯 + 버튼 ── */}
-      <div className="px-4 mt-3 pb-4 flex items-center gap-2 border-t border-white/5 pt-3">
-        <div className="flex items-center gap-3 flex-1">
-          <StatChip label="보관" value={`${itemCount}개`} />
-          <StatChip label="용량" value={`${usagePct}%`} />
-          <StatChip label={isShortTerm ? "주요금" : "월요금"} value={weeklyFee > 0 ? `${(weeklyFee/1000).toFixed(1)}k` : "-"} />
+      {/* ── 하단: 바코드 패턴 + 무료기간 뱃지 + ID ── */}
+      <div className="absolute bottom-0 inset-x-0 px-5 pb-4">
+        <div className="flex items-end gap-[1.5px] mb-2" style={{ height: 22 }}>
+          {Array.from({ length: 48 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-[1px]"
+              style={{
+                width: i % 4 === 0 ? 2.5 : 1,
+                height: `${i % 5 === 0 ? 100 : i % 3 === 0 ? 75 : 50}%`,
+                backgroundColor: i % 7 === 0 ? `${theme.accent}70` : "rgba(255,255,255,0.18)",
+              }}
+            />
+          ))}
+          <div className="ml-auto shrink-0">
+            <span
+              className="text-[9px] font-bold px-2 py-0.5 rounded-md"
+              style={{ background: `${theme.accent}22`, color: theme.accent }}
+            >
+              {badgeText}
+            </span>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              const parcelIds = [...new Set(
-                storageItems
-                  .filter((it) => it.storage_id === s.id && it.parcel_id)
-                  .map((it) => it.parcel_id)
-              )];
-              if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
-              onRelease(parcelIds as string[]);
-            }}
-            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white transition-colors"
-            style={{ background: "linear-gradient(90deg,#dc2626,#b91c1c)" }}
-          >
-            출고
-          </button>
-          <button
-            type="button"
-            onClick={onCapacity}
-            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white/60 bg-white/8 hover:bg-white/15 transition-colors border border-white/10"
-          >
-            변경
-          </button>
-          <button
-            type="button"
-            onClick={onDetail}
-            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white/60 bg-white/10 hover:bg-white/20 transition-colors border border-white/10"
-          >
-            상세
-          </button>
-        </div>
+        <p className="text-[8px] text-white/20 tracking-[0.25em] font-mono">{s.id.slice(0, 8).toUpperCase()}</p>
       </div>
-    </div>
-  );
-}
-
-function StatChip({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="text-center">
-      <p className="text-[9px] text-white/30 mb-0.5">{label}</p>
-      <p className="text-[11px] font-semibold text-white/70">{value}</p>
     </div>
   );
 }
