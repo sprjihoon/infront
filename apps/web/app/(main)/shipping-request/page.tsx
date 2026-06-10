@@ -38,6 +38,7 @@ interface PreInvoiceItem {
   unit_price_usd: number;
   hs_code?: string;
   origin_country: string;
+  is_sealed?: boolean;
 }
 
 interface Parcel {
@@ -403,6 +404,9 @@ function ShippingRequestContent() {
   // ── 계산 ──────────────────────────────────────────────────
   const packagingFee = PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).reduce((s, o) => s + o.price, 0);
   const customsValue = boxInvoices.flatMap((inv) => inv).reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
+  const hasSealedItems = selectedParcels.some((p) =>
+    Array.isArray(p.pre_invoice_items) && p.pre_invoice_items.some((it) => it.is_sealed)
+  );
 
   const ddpBoxSummaries = useMemo(() => {
     return boxes.map((box, i) => {
@@ -976,6 +980,18 @@ function ShippingRequestContent() {
         {/* ── 배송 옵션 ─────────────────────────────── */}
         {showMainStep(1) && (
           <>
+            {hasSealedItems && (
+              <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3">
+                <span className="text-amber-500 text-base shrink-0 mt-0.5">⚠</span>
+                <div>
+                  <p className="text-sm font-bold text-amber-800">미개봉 물품 포함</p>
+                  <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                    미개봉 상태로 보관 중인 물품이 포함되어 있습니다.<br />
+                    <span className="font-semibold">해외 배송 출고 시에는 세관 신고 및 검수를 위해 개봉 후 처리</span>됩니다.
+                  </p>
+                </div>
+              </div>
+            )}
             <p className="text-sm font-bold text-gray-800">배송 방법 선택</p>
             {usRequiresEmsPremium && (
               <div className="bg-violet-50 border border-violet-200 rounded-xl px-4 py-3 text-xs text-violet-900 leading-relaxed">
