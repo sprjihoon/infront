@@ -1181,7 +1181,7 @@ export default function PickupPage() {
               </div>
               <p className="text-sm text-gray-700 leading-relaxed">
                 위 서비스 안내 내용을 확인하였으며,{" "}
-                <span className="font-bold text-brand-600">입고 후 국제 배송비 결제</span>에 동의합니다.
+                <span className="font-bold text-brand-600">입고 후 배송비 결제</span>에 동의합니다.
                 <span className="text-red-400 ml-1">*필수</span>
               </p>
             </button>

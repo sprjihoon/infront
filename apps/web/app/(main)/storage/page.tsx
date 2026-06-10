@@ -29,6 +29,7 @@ interface Storage {
   next_billing_date: string | null;
   paid_until_date: string | null;
   created_at: string;
+  card_color: string | null;
   storage_plan_config: PlanConfig | null;
 }
 
@@ -52,6 +53,15 @@ interface LocationSummary {
 }
 
 /* ─── 상수 ──────────────────────────────────────── */
+
+export const CARD_THEME_MAP: Record<string, { bg: string; accent: string }> = {
+  green:  { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#4ade80" },
+  purple: { bg: "linear-gradient(160deg,#1c1240 0%,#2d1b69 60%,#110b30 100%)", accent: "#a78bfa" },
+  red:    { bg: "linear-gradient(160deg,#3a0e0e 0%,#5c1a1a 60%,#280a0a 100%)", accent: "#f87171" },
+  blue:   { bg: "linear-gradient(160deg,#0c253d 0%,#1a3f60 60%,#071928 100%)", accent: "#38bdf8" },
+  pink:   { bg: "linear-gradient(160deg,#1c0a30 0%,#2e1065 60%,#110520 100%)", accent: "#e879f9" },
+};
+const CARD_THEME_KEYS = Object.keys(CARD_THEME_MAP) as (keyof typeof CARD_THEME_MAP)[];
 
 const PARCEL_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
   CREATED:          { label: "수거 대기",  color: "bg-gray-100 text-gray-500" },
@@ -248,13 +258,6 @@ export default function StoragePage() {
 
             {/* ── 3D 드래그 캐러셀 ─────────── */}
             {(() => {
-              const CARD_THEMES = [
-                { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#4ade80" },
-                { bg: "linear-gradient(160deg,#1c1240 0%,#2d1b69 60%,#110b30 100%)", accent: "#a78bfa" },
-                { bg: "linear-gradient(160deg,#3a0e0e 0%,#5c1a1a 60%,#280a0a 100%)", accent: "#f87171" },
-                { bg: "linear-gradient(160deg,#0c253d 0%,#1a3f60 60%,#071928 100%)", accent: "#38bdf8" },
-                { bg: "linear-gradient(160deg,#1c0a30 0%,#2e1065 60%,#110520 100%)", accent: "#e879f9" },
-              ];
               const allCards: (Storage | null)[] = [null, ...active, null];
               const safeIdx = Math.min(Math.max(activeIdx, 0), allCards.length - 1);
               const goNext = () => setActiveIdx(prev => Math.min(prev + 1, allCards.length - 1));
@@ -300,7 +303,10 @@ export default function StoragePage() {
                       const offset = i - safeIdx;
                       if (Math.abs(offset) > 2) return null;
                       const abs = Math.abs(offset);
-                      const theme = CARD_THEMES[i % CARD_THEMES.length];
+                      const themeKey = (card && card.card_color && CARD_THEME_MAP[card.card_color])
+                        ? card.card_color
+                        : CARD_THEME_KEYS[i % CARD_THEME_KEYS.length];
+                      const theme = CARD_THEME_MAP[themeKey];
                       return (
                         <div
                           key={i}
@@ -330,6 +336,10 @@ export default function StoragePage() {
                               onRelease={parcelIds => setReleaseSheet(parcelIds)}
                               onCapacity={() => setCapacitySheet(card)}
                               onRename={() => setRenameSheet(card)}
+                              onColorChange={async (colorKey) => {
+                                await supabase.from("customer_storages").update({ card_color: colorKey }).eq("id", card.id);
+                                load(true);
+                              }}
                             />
                           ) : (
                             <Link
@@ -581,6 +591,7 @@ function StorageCard({
   onRelease,
   onCapacity,
   onRename,
+  onColorChange,
 }: {
   storage: Storage;
   itemCount: number;
@@ -591,7 +602,9 @@ function StorageCard({
   onRelease: (ids: string[]) => void;
   onCapacity: () => void;
   onRename: () => void;
+  onColorChange: (colorKey: string) => void;
 }) {
+  const [showColorPicker, setShowColorPicker] = useState(false);
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
   const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
@@ -649,6 +662,43 @@ function StorageCard({
                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
               </button>
+              {/* 팔레트 버튼 */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); setShowColorPicker(v => !v); }}
+                  className="p-0.5 rounded-md opacity-40 hover:opacity-80 transition-opacity"
+                  style={{ color: theme.accent }}
+                >
+                  <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/><circle cx="8" cy="14" r="1.5" fill="currentColor" stroke="none"/>
+                    <circle cx="12" cy="9" r="1.5" fill="currentColor" stroke="none"/>
+                    <circle cx="16" cy="14" r="1.5" fill="currentColor" stroke="none"/>
+                  </svg>
+                </button>
+                {showColorPicker && (
+                  <div
+                    className="absolute z-50 top-6 left-0 flex gap-2 p-2 rounded-xl shadow-xl"
+                    style={{ background: "rgba(15,15,30,0.95)", border: "1px solid rgba(255,255,255,0.12)" }}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {CARD_THEME_KEYS.map(key => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => { onColorChange(key); setShowColorPicker(false); }}
+                        className="w-5 h-5 rounded-full transition-transform hover:scale-110"
+                        style={{
+                          background: CARD_THEME_MAP[key].accent,
+                          outline: s.card_color === key ? `2px solid white` : "none",
+                          outlineOffset: 2,
+                        }}
+                        title={key}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
