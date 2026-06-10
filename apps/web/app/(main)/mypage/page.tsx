@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, Hash, SlidersHorizontal, Globe, Truck } from "lucide-react";
+import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, Hash, SlidersHorizontal, Globe, Truck, Pencil, X, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
@@ -32,6 +32,12 @@ export default function MyPage() {
     pickup: 0,
     overseas: 0,
   });
+
+  // 프로필 수정 시트
+  const [editSheet, setEditSheet] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
@@ -67,7 +73,32 @@ export default function MyPage() {
     router.push("/login");
   }
 
+  function openEditSheet() {
+    setEditName(customer?.name ?? "");
+    setEditPhone(customer?.phone ?? "");
+    setEditSheet(true);
+  }
+
+  async function handleSaveProfile() {
+    if (!editName.trim()) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editName, phone: editPhone }),
+      });
+      if (res.ok) {
+        setCustomer(c => c ? { ...c, name: editName, phone: editPhone || null } : c);
+        setEditSheet(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
+    <>
     <div className="px-4 py-6 space-y-5">
       <h1 className="text-xl font-bold text-gray-900">마이페이지</h1>
 
@@ -83,6 +114,14 @@ export default function MyPage() {
               <p className="text-xs text-gray-400 mt-0.5">{customer.phone}</p>
             )}
           </div>
+          <button
+            type="button"
+            onClick={openEditSheet}
+            className="p-2 rounded-xl bg-gray-50 hover:bg-gray-100 active:scale-95 transition-all"
+            aria-label="프로필 수정"
+          >
+            <Pencil size={15} className="text-gray-500" />
+          </button>
         </div>
 
         {customer?.customer_code && (
@@ -232,5 +271,60 @@ export default function MyPage() {
 
       <p className="text-center text-xs text-gray-300 pb-2">인프론트 v1.0.0</p>
     </div>
+
+    {/* 프로필 수정 시트 */}
+    {editSheet && (
+      <div className="fixed inset-0 z-50 flex flex-col bg-black/40">
+        <div
+          className="flex-1 flex items-end justify-center"
+          onClick={e => { if (e.target === e.currentTarget) setEditSheet(false); }}
+        >
+          <div className="w-full max-w-[600px] bg-white rounded-t-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <p className="text-sm font-bold text-gray-900">프로필 수정</p>
+              <button onClick={() => setEditSheet(false)} className="p-1.5 rounded-full hover:bg-gray-100">
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  이름 <span className="text-red-400">*</span>
+                </label>
+                <input
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="이름을 입력해주세요"
+                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">연락처</label>
+                <input
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  placeholder="010-0000-0000"
+                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                />
+              </div>
+            </div>
+            <div className="px-5 pb-6 pt-2">
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                disabled={saving || !editName.trim()}
+                className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-4 rounded-2xl disabled:opacity-50 active:scale-[0.98] transition-transform"
+              >
+                {saving
+                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <Check size={16} />}
+                저장하기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

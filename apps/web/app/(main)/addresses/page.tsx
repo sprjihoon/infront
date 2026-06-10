@@ -150,6 +150,9 @@ export default function AddressesPage() {
     if (!customerId) return;
     if (!form.label?.trim()) { alert("표시명을 입력해주세요."); return; }
     if (!form.name?.trim())  { alert("이름을 입력해주세요."); return; }
+    if (tab === "overseas" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(form.name ?? "")) {
+      if (!confirm("수취인 이름에 한글이 포함되어 있습니다.\n해외 배송 시 영문 이름이 필요합니다.\n그래도 저장하시겠습니까?")) return;
+    }
     if (tab === "pickup" && normalizeEpostAddr1(form.address).length < 2) {
       alert("주소를 검색해주세요.");
       return;
@@ -538,14 +541,23 @@ export default function AddressesPage() {
                 {/* 이름 */}
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                    {tab === "pickup" ? "수취인 이름" : "수취인 이름"} <span className="text-red-400">*</span>
+                    {tab === "pickup" ? "수취인 이름" : "수취인 이름 (영문)"} <span className="text-red-400">*</span>
                   </label>
                   <input
                     value={form.name ?? ""}
                     onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="이름 입력"
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                    placeholder={tab === "overseas" ? "Recipient Name (English)" : "이름 입력"}
+                    className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200 ${
+                      tab === "overseas" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(form.name ?? "")
+                        ? "border-amber-300 ring-1 ring-amber-100"
+                        : "border-gray-100"
+                    }`}
                   />
+                  {tab === "overseas" && /[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(form.name ?? "") && (
+                    <p className="text-xs text-amber-600 mt-1.5 flex items-center gap-1">
+                      ⚠️ 해외 배송 수취인 이름은 <strong>영문</strong>으로 입력해주세요. (예: Hong Gil Dong)
+                    </p>
+                  )}
                 </div>
 
                 {/* 연락처 */}
