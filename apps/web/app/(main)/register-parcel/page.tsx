@@ -27,8 +27,14 @@ interface InvoiceItem {
 }
 
 const COURIERS = [
+  // 일반 택배사
   "CJ대한통운", "한진택배", "롯데택배", "우체국택배", "로젠택배",
-  "GS25편의점택배", "컬리", "쿠팡", "네이버도착보장", "기타",
+  "GS25편의점택배", "CU편의점택배",
+  // 이커머스 직배송
+  "쿠팡", "컬리", "SSG닷컴", "11번가", "홈플러스",
+  "네이버도착보장", "카카오선물하기",
+  // 기타
+  "기타",
 ];
 
 function newItem(): InvoiceItem {
@@ -118,7 +124,7 @@ export default function RegisterParcelPage() {
   }
 
   function canStep1() {
-    return trackingNo.trim().length > 0;
+    return trackingNo.trim().length > 0 && courier.trim().length > 0;
   }
 
   function canStep2() {
@@ -151,8 +157,12 @@ export default function RegisterParcelPage() {
 
   function handleNext() {
     setError("");
-    if (!canStep1()) {
+    if (!trackingNo.trim()) {
       setError("국내 운송장 번호를 입력해주세요.");
+      return;
+    }
+    if (!courier.trim()) {
+      setError("택배사를 선택해주세요.");
       return;
     }
     setStep(2);
@@ -162,8 +172,13 @@ export default function RegisterParcelPage() {
 
   async function handleSubmit() {
     setError("");
-    if (!canStep1()) {
+    if (!trackingNo.trim()) {
       setError("국내 운송장 번호를 입력해주세요.");
+      if (isSimple) setStep(1);
+      return;
+    }
+    if (!courier.trim()) {
+      setError("택배사를 선택해주세요.");
       if (isSimple) setStep(1);
       return;
     }
@@ -348,7 +363,7 @@ export default function RegisterParcelPage() {
             {/* 택배사 */}
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                택배사 <span className="text-gray-400 font-normal text-xs">(선택)</span>
+                택배사 <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <button
@@ -435,7 +450,7 @@ export default function RegisterParcelPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 font-mono">{trackingNo}</p>
-                <p className="text-xs text-gray-400">{courier || "택배사 미선택"}{senderName ? ` · ${senderName}` : ""}</p>
+                <p className="text-xs text-gray-400">{courier}{senderName ? ` · ${senderName}` : ""}</p>
               </div>
               <button type="button" onClick={() => setStep(1)} className="text-xs text-brand-600 font-medium shrink-0">수정</button>
             </div>
