@@ -247,7 +247,7 @@ export default function StoragePage() {
                   {/* ── 캐러셀 윈도우 ── */}
                   <div
                     className="relative overflow-hidden select-none"
-                    style={{ height: 252, touchAction: "none" }}
+                    style={{ height: 192, touchAction: "none" }}
                     onPointerDown={e => {
                       isDraggingRef.current = true;
                       dragStartX.current = e.clientX;
@@ -287,9 +287,9 @@ export default function StoragePage() {
                           style={{
                             top: 0,
                             bottom: 0,
-                            left: 28,
-                            right: 28,
-                            transform: `translateX(calc(${offset * 100}% + ${offset * 12 + dragOffset}px)) scale(${1 - abs * 0.04})`,
+                            left: 44,
+                            right: 44,
+                            transform: `translateX(calc(${offset * 100}% + ${offset * 8 + dragOffset}px)) scale(${1 - abs * 0.04})`,
                             zIndex: 10 - abs,
                             opacity: abs === 0 ? 1 : abs === 1 ? 0.78 : 0.3,
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
@@ -593,7 +593,7 @@ function StorageCard({
       style={{
         background: theme.bg,
         boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)`,
-        height: 252,
+        height: 192,
       }}
     >
       {/* 배경 텍스처 */}
@@ -605,25 +605,25 @@ function StorageCard({
       />
 
       {/* ── 상단: 아이콘 + 스토리지명 + 티어 뱃지 ── */}
-      <div className="relative px-5 pt-4 flex items-start justify-between">
-          <div className="flex items-center gap-2.5">
+      <div className="relative px-4 pt-3 flex items-start justify-between">
+          <div className="flex items-center gap-2">
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+            className="w-7 h-7 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
           >
-            <Package size={14} style={{ color: theme.accent }} />
+            <Package size={12} style={{ color: theme.accent }} />
           </div>
           <div className="min-w-0">
-            <p className="text-[9px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
+            <p className="text-[8px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
             <div className="flex items-center gap-1.5 mt-0.5">
-              <p className="text-[13px] font-bold text-white leading-tight truncate">{s.storage_name}</p>
+              <p className="text-[12px] font-bold text-white leading-tight truncate">{s.storage_name}</p>
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); onRename(); }}
                 className="shrink-0 p-0.5 rounded-md opacity-40 hover:opacity-80 transition-opacity"
                 style={{ color: theme.accent }}
               >
-                <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <svg width="10" height="10" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                   <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
@@ -632,7 +632,7 @@ function StorageCard({
           </div>
         </div>
         <div
-          className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide"
+          className="px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wide shrink-0"
           style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35` }}
         >
           {isShortTerm ? "단기" : "장기"} · {planName}
@@ -640,26 +640,26 @@ function StorageCard({
       </div>
 
       {/* ── 중단: 요금 + 물품 수 ── */}
-      <div className="relative px-5 mt-3 flex items-end justify-between">
+      <div className="relative px-4 mt-2 flex items-end justify-between">
         <div>
-          <p className="text-[10px] text-white/30 mb-1">{isShortTerm ? "주 요금" : "월 요금"}</p>
-          <p className="text-[28px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
+          <p className="text-[9px] text-white/30 mb-0.5">{isShortTerm ? "주 요금" : "월 요금"}</p>
+          <p className="text-[22px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
             {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
           </p>
           {mainUnit && mainFeeLabel !== "FREE" && (
-            <p className="text-[10px] text-white/30 mt-0.5">{mainUnit}</p>
+            <p className="text-[9px] text-white/30 mt-0.5">{mainUnit}</p>
           )}
         </div>
         <div className="text-right">
-          <p className="text-[10px] text-white/30 mb-1">보관 물품</p>
-          <p className="text-[28px] font-black leading-none text-white">{itemCount}</p>
-          <p className="text-[10px] text-white/30 mt-0.5">개</p>
+          <p className="text-[9px] text-white/30 mb-0.5">보관 물품</p>
+          <p className="text-[22px] font-black leading-none text-white">{itemCount}</p>
+          <p className="text-[9px] text-white/30 mt-0.5">개</p>
         </div>
       </div>
 
       {/* ── 바코드 장식 + 뱃지 ── */}
-      <div className="relative px-5 mt-3 flex items-center gap-2">
-        <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 18 }}>
+      <div className="relative px-4 mt-2 flex items-center gap-2">
+        <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 14 }}>
           {Array.from({ length: 44 }).map((_, i) => (
             <div
               key={i}
@@ -673,7 +673,7 @@ function StorageCard({
           ))}
         </div>
         <span
-          className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-md"
+          className="shrink-0 text-[8px] font-bold px-1.5 py-0.5 rounded-md"
           style={{ background: `${theme.accent}22`, color: theme.accent }}
         >
           {badgeText}
@@ -681,10 +681,10 @@ function StorageCard({
       </div>
 
       {/* ── 하단 버튼 ── */}
-      <div className="relative px-4 mt-2.5 grid grid-cols-3 gap-1.5">
+      <div className="relative px-3 mt-2 grid grid-cols-3 gap-1.5">
         <button
           type="button"
-          className="py-2.5 rounded-xl text-[11px] font-bold text-white transition-colors"
+          className="py-2 rounded-xl text-[11px] font-bold text-white transition-colors"
           style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)` }}
           onClick={e => {
             e.stopPropagation();
@@ -699,7 +699,7 @@ function StorageCard({
         </button>
         <button
           type="button"
-          className="py-2.5 rounded-xl text-[11px] font-bold transition-colors"
+          className="py-2 rounded-xl text-[11px] font-bold transition-colors"
           style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
           onClick={e => { e.stopPropagation(); onCapacity(); }}
         >
@@ -707,7 +707,7 @@ function StorageCard({
         </button>
         <button
           type="button"
-          className="py-2.5 rounded-xl text-[11px] font-bold transition-colors"
+          className="py-2 rounded-xl text-[11px] font-bold transition-colors"
           style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
           onClick={e => { e.stopPropagation(); onDetail(); }}
         >
