@@ -108,7 +108,7 @@ export default function StoragePage() {
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
   const [hoverPhoto, setHoverPhoto] = useState<{ url: string; x: number; y: number } | null>(null);
-  const [activeIdx, setActiveIdx] = useState(0);
+  const [activeIdx, setActiveIdx] = useState(1);
   const [dragOffset, setDragOffset] = useState(0);
   const isDraggingRef = useRef(false);
   const dragStartX = useRef(0);
@@ -236,11 +236,11 @@ export default function StoragePage() {
                 { bg: "linear-gradient(160deg,#0c253d 0%,#1a3f60 60%,#071928 100%)", accent: "#38bdf8" },
                 { bg: "linear-gradient(160deg,#1c0a30 0%,#2e1065 60%,#110520 100%)", accent: "#e879f9" },
               ];
-              const allCards: (Storage | null)[] = [...active, null];
-              const safeIdx = Math.min(activeIdx, allCards.length - 1);
+              const allCards: (Storage | null)[] = [null, ...active, null];
+              const safeIdx = Math.min(Math.max(activeIdx, 0), allCards.length - 1);
               const goNext = () => setActiveIdx(prev => Math.min(prev + 1, allCards.length - 1));
               const goPrev = () => setActiveIdx(prev => Math.max(prev - 1, 0));
-              const activeStorage = safeIdx < active.length ? active[safeIdx] : null;
+              const activeStorage = allCards[safeIdx] as Storage | null;
 
               return (
                 <div className="space-y-3">
@@ -288,9 +288,9 @@ export default function StoragePage() {
                           style={{
                             top: 0,
                             bottom: 0,
-                            left: "13%",
-                            right: "13%",
-                            transform: `translateX(calc(${offset * 100}% + ${offset * 8 + dragOffset}px)) scale(${1 - abs * 0.04})`,
+                            left: "20%",
+                            right: "20%",
+                            transform: `translateX(calc(${offset * 100}% + ${offset * -10 + dragOffset}px)) scale(${1 - abs * 0.04})`,
                             zIndex: 10 - abs,
                             opacity: abs === 0 ? 1 : abs === 1 ? 0.78 : 0.3,
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
