@@ -474,26 +474,24 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
     parcel.tracking_no ?? null,
   ].filter(Boolean).join(" · ");
 
-  const Thumbnail = () => (
-    <div className="shrink-0">
-      {photoUrl ? (
-        <img
-          src={photoUrl}
-          alt="입고 사진"
-          className="w-9 h-9 rounded-xl object-cover cursor-zoom-in"
-          onMouseEnter={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
-          onMouseLeave={() => setHoverPos(null)}
-          onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
-        />
-      ) : (
-        <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
-          <Package size={16} className="text-blue-400" />
-        </div>
-      )}
+  // 인라인 썸네일 (컴포넌트로 분리하면 state 변경 시 리마운트되어 onMouseLeave 미발화)
+  const thumbJsx = photoUrl ? (
+    <img
+      src={photoUrl}
+      alt="입고 사진"
+      className="w-9 h-9 rounded-xl object-cover cursor-zoom-in shrink-0"
+      onMouseEnter={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+      onMouseLeave={() => setHoverPos(null)}
+      onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+    />
+  ) : (
+    <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+      <Package size={16} className="text-blue-400" />
     </div>
   );
 
-  const overlay = hoverPos && photoUrl && (
+  // fixed overlay — 한 번만 렌더링 (declaredItems 루프 밖)
+  const overlay = hoverPos && photoUrl ? (
     <div
       className="pointer-events-none"
       style={{
@@ -509,15 +507,17 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
         className="w-64 h-64 rounded-2xl object-cover shadow-2xl border-2 border-white"
       />
     </div>
-  );
+  ) : null;
 
   if (declaredItems && declaredItems.length > 0) {
     return (
       <>
+        {overlay}
         {declaredItems.map((item, idx) => (
           <div key={`${parcel.id}-${idx}`} className="px-4 py-3 flex items-center gap-3">
-            <Thumbnail />
-            {overlay}
+            {idx === 0 ? thumbJsx : (
+              <div className="w-9 h-9 shrink-0" />
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-800 truncate">
                 {item.name}
@@ -542,7 +542,7 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
 
   return (
     <div className="px-4 py-3 flex items-center gap-3">
-      <Thumbnail />
+      {thumbJsx}
       {overlay}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-800 truncate">
