@@ -270,7 +270,7 @@ export default function StoragePage() {
                   <div
                     ref={carouselRef}
                     className="relative overflow-hidden select-none"
-                    style={{ height: 0, paddingBottom: "37.1%", touchAction: "none" }}
+                    style={{ height: 0, paddingBottom: "30.6%", touchAction: "none" }}
                     onPointerDown={e => {
                       if ((e.target as HTMLElement).closest("button, a")) return;
                       isDraggingRef.current = true;
