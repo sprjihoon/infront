@@ -290,9 +290,9 @@ export default function StoragePage() {
                             bottom: 0,
                             left: "20%",
                             right: "20%",
-                            transform: `translateX(calc(${offset * 100}% + ${offset * -10 + dragOffset}px)) scale(${1 - abs * 0.04})`,
+                            transform: `translateX(calc(${offset * 120}% + ${dragOffset}px)) scale(${1 - abs * 0.1})`,
                             zIndex: 10 - abs,
-                            opacity: abs === 0 ? 1 : abs === 1 ? 0.78 : 0.3,
+                            opacity: abs === 0 ? 1 : abs === 1 ? 0.55 : 0,
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
                             cursor: abs > 0 ? "pointer" : "default",
                           }}
@@ -906,9 +906,9 @@ function ReleaseTypeSheet({
   onSelect: (type: "overseas" | "domestic") => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-[600px] bg-white rounded-t-3xl" style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}>
+      <div className="relative w-full max-w-[400px] bg-white rounded-3xl shadow-2xl">
         <div className="px-4 pt-5 pb-2 flex items-center justify-between border-b border-gray-100">
           <div>
             <p className="text-base font-bold text-gray-900">출고 요청</p>
@@ -957,7 +957,7 @@ function ReleaseTypeSheet({
             </div>
             <div className="text-center">
               <p className="text-sm font-bold text-gray-900">국내 배송</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">CJ대한통운 · 우편 택배</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">우체국택배</p>
             </div>
           </button>
         </div>
