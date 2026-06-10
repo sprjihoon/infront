@@ -404,7 +404,7 @@ function ShippingRequestContent() {
   // ── 계산 ──────────────────────────────────────────────────
   const packagingFee = PACKAGING_OPTS.filter((o) => packOpts[o.code as keyof typeof packOpts]).reduce((s, o) => s + o.price, 0);
   const customsValue = boxInvoices.flatMap((inv) => inv).reduce((s, i) => s + i.unit_price_usd * i.quantity, 0);
-  const hasSealedItems = selectedParcels.some((p) =>
+  const hasSealedItems = shippableParcels.some((p) =>
     Array.isArray(p.pre_invoice_items) && p.pre_invoice_items.some((it) => it.is_sealed)
   );
 
