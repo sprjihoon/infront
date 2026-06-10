@@ -113,6 +113,7 @@ export default function StoragePage() {
   const isDraggingRef = useRef(false);
   const dragStartX = useRef(0);
   const lastWheelTime = useRef(0);
+  const pointerDownIdx = useRef(-1);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -252,6 +253,9 @@ export default function StoragePage() {
                       if ((e.target as HTMLElement).closest("button, a")) return;
                       isDraggingRef.current = true;
                       dragStartX.current = e.clientX;
+                      // 눌린 카드 인덱스 기록 (클릭 판별용)
+                      const cardEl = (e.target as HTMLElement).closest("[data-card-idx]");
+                      pointerDownIdx.current = cardEl ? Number((cardEl as HTMLElement).dataset.cardIdx) : -1;
                       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                     }}
                     onPointerMove={e => {
@@ -262,7 +266,12 @@ export default function StoragePage() {
                       if (!isDraggingRef.current) return;
                       isDraggingRef.current = false;
                       const delta = e.clientX - dragStartX.current;
-                      if (delta < -40) goNext();
+                      if (Math.abs(delta) < 8) {
+                        // 클릭: 해당 카드가 비활성이면 활성 위치로 이동
+                        if (pointerDownIdx.current >= 0 && pointerDownIdx.current !== safeIdx) {
+                          setActiveIdx(pointerDownIdx.current);
+                        }
+                      } else if (delta < -40) goNext();
                       else if (delta > 40) goPrev();
                       setDragOffset(0);
                     }}
@@ -284,6 +293,7 @@ export default function StoragePage() {
                       return (
                         <div
                           key={i}
+                          data-card-idx={i}
                           className="absolute"
                           style={{
                             top: 0,
@@ -296,7 +306,10 @@ export default function StoragePage() {
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
                             cursor: abs > 0 ? "pointer" : "default",
                           }}
-                          onClick={abs > 0 ? () => setActiveIdx(i) : undefined}
+                          onClick={abs > 0 && (e) => {
+                            // setPointerCapture 환경에서도 동작하도록 delta 체크
+                            if (!isDraggingRef.current) setActiveIdx(i);
+                          }}
                         >
                           {card ? (
                             <StorageCard
