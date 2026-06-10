@@ -1,8 +1,12 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Globe, Star, Plus, ChevronRight, ChevronDown, X, Check, Pencil } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { loadGoogleMapsScript, parsePlaceResult, validateAddressWithGoogle } from "@/lib/google-places";
+import AddressSuggestionDialog from "@/components/ui/AddressSuggestionDialog";
+
+const GMAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 export const COUNTRIES = [
   { code: "JP", name: "일본",         flag: "🇯🇵" },
@@ -85,10 +89,87 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
   const [saving, setSaving] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
 
+  // Google Places Autocomplete
+  const addr3Ref = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [validating, setValidating] = useState(false);
+  const [suggestionData, setSuggestionData] = useState<{
+    original: { addr3: string; addr2: string; addr1: string; zip: string };
+    suggested: { addr3: string; addr2: string; addr1: string; zip: string; formattedAddress?: string };
+  } | null>(null);
+
   useEffect(() => {
     if (!customerId) return;
     loadSaved();
   }, [customerId]);
+
+  // Initialize Google Places Autocomplete when entering new address mode
+  const initAutocomplete = useCallback(() => {
+    if (!GMAPS_API_KEY || !addr3Ref.current) return;
+    loadGoogleMapsScript(GMAPS_API_KEY).then(() => {
+      if (!addr3Ref.current || autocompleteRef.current) return;
+      const ac = new window.google.maps.places.Autocomplete(addr3Ref.current, {
+        types: ["address"],
+        componentRestrictions: newVal.countryCode ? { country: newVal.countryCode.toLowerCase() } : undefined,
+        fields: ["address_components", "formatted_address"],
+      });
+      autocompleteRef.current = ac;
+      ac.addListener("place_changed", () => {
+        const place = ac.getPlace();
+        if (!place.address_components) return;
+        const parsed = parsePlaceResult(place, newVal.countryCode);
+        setNewVal((v) => ({
+          ...v,
+          addr3: parsed.addr3 || v.addr3,
+          addr2: parsed.addr2 || v.addr2,
+          addr1: parsed.addr1 || v.addr1,
+          zip: parsed.zip || v.zip,
+        }));
+      });
+    }).catch(() => {/* ignore if API key is missing */});
+  }, [newVal.countryCode]);
+
+  // Re-init autocomplete when mode changes to "new" or country changes
+  useEffect(() => {
+    if (mode !== "new") {
+      autocompleteRef.current = null;
+      return;
+    }
+    // small delay to let the input mount
+    const t = setTimeout(() => initAutocomplete(), 100);
+    return () => clearTimeout(t);
+  }, [mode, initAutocomplete]);
+
+  // Update autocomplete country restriction when country changes
+  useEffect(() => {
+    if (autocompleteRef.current && newVal.countryCode) {
+      autocompleteRef.current.setComponentRestrictions({ country: newVal.countryCode.toLowerCase() });
+    }
+  }, [newVal.countryCode]);
+
+  const triggerAddressValidation = useCallback(async () => {
+    if (!GMAPS_API_KEY) return;
+    const { addr3, addr2, addr1, zip, countryCode } = newVal;
+    if (!addr3.trim()) return;
+    setValidating(true);
+    try {
+      const result = await validateAddressWithGoogle(GMAPS_API_KEY, { addr3, addr2, addr1, zip, countryCode });
+      if (result && !result.isSame) {
+        setSuggestionData({
+          original: { addr3, addr2, addr1, zip },
+          suggested: {
+            addr3: result.suggestedAddr3,
+            addr2: result.suggestedAddr2,
+            addr1: result.suggestedAddr1,
+            zip: result.suggestedZip,
+            formattedAddress: result.formattedAddress,
+          },
+        });
+      }
+    } finally {
+      setValidating(false);
+    }
+  }, [newVal]);
 
   async function loadSaved() {
     if (!customerId) return;
@@ -238,6 +319,24 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
           </div>
         )}
       </button>
+
+      {suggestionData && (
+        <AddressSuggestionDialog
+          original={suggestionData.original}
+          suggested={suggestionData.suggested}
+          onKeepOriginal={() => setSuggestionData(null)}
+          onUseSuggested={() => {
+            setNewVal((v) => ({
+              ...v,
+              addr3: suggestionData.suggested.addr3 || v.addr3,
+              addr2: suggestionData.suggested.addr2 || v.addr2,
+              addr1: suggestionData.suggested.addr1 || v.addr1,
+              zip: suggestionData.suggested.zip || v.zip,
+            }));
+            setSuggestionData(null);
+          }}
+        />
+      )}
 
       {sheet && (
         <div
@@ -396,21 +495,29 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                       상세주소 (Street) <span className="text-red-400">*</span>
                     </label>
                     <input
+                      ref={addr3Ref}
                       value={newVal.addr3}
                       onChange={(e) => setNewVal((v) => ({ ...v, addr3: e.target.value }))}
+                      onBlur={() => { if (newVal.addr3.trim()) triggerAddressValidation(); }}
                       placeholder="1-1-1 Shibuya, Apt 101"
                       className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200"
+                      autoComplete="off"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">시 (City)</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                        시 (City)
+                        {validating && <span className="ml-1 text-violet-400 font-normal">확인 중...</span>}
+                      </label>
                       <input
                         value={newVal.addr2}
                         onChange={(e) => setNewVal((v) => ({ ...v, addr2: e.target.value }))}
                         placeholder="Shibuya-ku"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200"
+                        className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200 transition-colors ${
+                          validating ? "border-violet-200 bg-violet-50/30" : "border-gray-100"
+                        }`}
                       />
                     </div>
                     <div>
@@ -419,7 +526,9 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                         value={newVal.addr1}
                         onChange={(e) => setNewVal((v) => ({ ...v, addr1: e.target.value }))}
                         placeholder="Tokyo"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200"
+                        className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200 transition-colors ${
+                          validating ? "border-violet-200 bg-violet-50/30" : "border-gray-100"
+                        }`}
                       />
                     </div>
                   </div>
@@ -430,8 +539,11 @@ export default function OverseasAddressPicker({ value, onChange, customerId }: P
                       <input
                         value={newVal.zip}
                         onChange={(e) => setNewVal((v) => ({ ...v, zip: e.target.value }))}
+                        onBlur={() => { if (newVal.addr3.trim()) triggerAddressValidation(); }}
                         placeholder="150-0002"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200"
+                        className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-200 transition-colors ${
+                          validating ? "border-violet-200 bg-violet-50/30" : "border-gray-100"
+                        }`}
                       />
                     </div>
                     <div>

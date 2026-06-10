@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Plus, MapPin, Globe, Star, Pencil, Trash2,
@@ -15,6 +15,10 @@ import {
 } from "@/lib/epost/client";
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
+import { loadGoogleMapsScript, parsePlaceResult, validateAddressWithGoogle } from "@/lib/google-places";
+import AddressSuggestionDialog from "@/components/ui/AddressSuggestionDialog";
+
+const GMAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
 // ── 타입 ────────────────────────────────────────────────────
 type AddrType = "pickup" | "overseas";
@@ -99,6 +103,15 @@ export default function AddressesPage() {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [countryOpen, setCountryOpen] = useState(false);
+
+  // Google Places Autocomplete (overseas address)
+  const addr3InputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [addrValidating, setAddrValidating] = useState(false);
+  const [addrSuggestion, setAddrSuggestion] = useState<{
+    original: { addr3: string; addr2: string; addr1: string; zip: string };
+    suggested: { addr3: string; addr2: string; addr1: string; zip: string; formattedAddress?: string };
+  } | null>(null);
 
   // ── 데이터 로드 ──────────────────────────────────────────
   const load = useCallback(async () => {
@@ -218,6 +231,78 @@ export default function AddressesPage() {
     setEditTarget(addr);
     setModal("edit");
   }
+
+  // Initialize autocomplete for overseas addr3 input
+  const initOverseasAutocomplete = useCallback(() => {
+    if (!GMAPS_API_KEY || !addr3InputRef.current) return;
+    loadGoogleMapsScript(GMAPS_API_KEY).then(() => {
+      if (!addr3InputRef.current || autocompleteRef.current) return;
+      const countryCode = form.country_code ?? "JP";
+      const ac = new window.google.maps.places.Autocomplete(addr3InputRef.current, {
+        types: ["address"],
+        componentRestrictions: { country: countryCode.toLowerCase() },
+        fields: ["address_components", "formatted_address"],
+      });
+      autocompleteRef.current = ac;
+      ac.addListener("place_changed", () => {
+        const place = ac.getPlace();
+        if (!place.address_components) return;
+        const parsed = parsePlaceResult(place, countryCode);
+        setForm((f) => ({
+          ...f,
+          overseas_addr3: parsed.addr3 || f.overseas_addr3,
+          overseas_addr2: parsed.addr2 || f.overseas_addr2,
+          overseas_addr1: parsed.addr1 || f.overseas_addr1,
+          overseas_zip: parsed.zip || f.overseas_zip,
+        }));
+      });
+    }).catch(() => {});
+  }, [form.country_code]);
+
+  // Re-init autocomplete when modal opens in overseas mode or country changes
+  useEffect(() => {
+    if (modal && tab === "overseas") {
+      autocompleteRef.current = null;
+      const t = setTimeout(() => initOverseasAutocomplete(), 150);
+      return () => clearTimeout(t);
+    } else {
+      autocompleteRef.current = null;
+    }
+  }, [modal, tab, initOverseasAutocomplete]);
+
+  useEffect(() => {
+    if (autocompleteRef.current && form.country_code) {
+      autocompleteRef.current.setComponentRestrictions({ country: form.country_code.toLowerCase() });
+    }
+  }, [form.country_code]);
+
+  const triggerOverseasValidation = useCallback(async () => {
+    if (!GMAPS_API_KEY) return;
+    const addr3 = form.overseas_addr3 ?? "";
+    if (!addr3.trim()) return;
+    const addr2 = form.overseas_addr2 ?? "";
+    const addr1 = form.overseas_addr1 ?? "";
+    const zip = form.overseas_zip ?? "";
+    const countryCode = form.country_code ?? "JP";
+    setAddrValidating(true);
+    try {
+      const result = await validateAddressWithGoogle(GMAPS_API_KEY, { addr3, addr2, addr1, zip, countryCode });
+      if (result && !result.isSame) {
+        setAddrSuggestion({
+          original: { addr3, addr2, addr1, zip },
+          suggested: {
+            addr3: result.suggestedAddr3,
+            addr2: result.suggestedAddr2,
+            addr1: result.suggestedAddr1,
+            zip: result.suggestedZip,
+            formattedAddress: result.formattedAddress,
+          },
+        });
+      }
+    } finally {
+      setAddrValidating(false);
+    }
+  }, [form.overseas_addr3, form.overseas_addr2, form.overseas_addr1, form.overseas_zip, form.country_code]);
 
   const selCountry = COUNTRIES.find(c => c.code === form.country_code) ?? COUNTRIES[0];
 
@@ -397,6 +482,25 @@ export default function AddressesPage() {
         </div>
       )}
 
+      {/* 구글 추천 주소 다이얼로그 */}
+      {addrSuggestion && (
+        <AddressSuggestionDialog
+          original={addrSuggestion.original}
+          suggested={addrSuggestion.suggested}
+          onKeepOriginal={() => setAddrSuggestion(null)}
+          onUseSuggested={() => {
+            setForm((f) => ({
+              ...f,
+              overseas_addr3: addrSuggestion.suggested.addr3 || f.overseas_addr3,
+              overseas_addr2: addrSuggestion.suggested.addr2 || f.overseas_addr2,
+              overseas_addr1: addrSuggestion.suggested.addr1 || f.overseas_addr1,
+              overseas_zip: addrSuggestion.suggested.zip || f.overseas_zip,
+            }));
+            setAddrSuggestion(null);
+          }}
+        />
+      )}
+
       {/* 추가/수정 모달 */}
       {modal && (
         <div className="fixed inset-0 z-50 flex flex-col bg-black/40">
@@ -543,24 +647,35 @@ export default function AddressesPage() {
                         상세주소 <span className="text-red-400">*</span>
                       </label>
                       <input
+                        ref={addr3InputRef}
                         value={form.overseas_addr3 ?? ""}
                         onChange={e => setForm(f => ({ ...f, overseas_addr3: e.target.value }))}
+                        onBlur={() => { if ((form.overseas_addr3 ?? "").trim()) triggerOverseasValidation(); }}
                         placeholder="Street / 상세주소"
+                        autoComplete="off"
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200 mb-2"
                       />
                       <div className="grid grid-cols-2 gap-2">
-                        <input
-                          value={form.overseas_addr2 ?? ""}
-                          onChange={e => setForm(f => ({ ...f, overseas_addr2: e.target.value }))}
-                          placeholder="시 / City"
-                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                        />
-                        <input
-                          value={form.overseas_addr1 ?? ""}
-                          onChange={e => setForm(f => ({ ...f, overseas_addr1: e.target.value }))}
-                          placeholder="주·도 / State"
-                          className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                        />
+                        <div>
+                          <input
+                            value={form.overseas_addr2 ?? ""}
+                            onChange={e => setForm(f => ({ ...f, overseas_addr2: e.target.value }))}
+                            placeholder={addrValidating ? "자동 입력 중..." : "시 / City"}
+                            className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200 transition-colors ${
+                              addrValidating ? "border-violet-200 bg-violet-50/30 placeholder:text-violet-400" : "border-gray-100"
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <input
+                            value={form.overseas_addr1 ?? ""}
+                            onChange={e => setForm(f => ({ ...f, overseas_addr1: e.target.value }))}
+                            placeholder={addrValidating ? "자동 입력 중..." : "주·도 / State"}
+                            className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200 transition-colors ${
+                              addrValidating ? "border-violet-200 bg-violet-50/30 placeholder:text-violet-400" : "border-gray-100"
+                            }`}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div>
@@ -568,8 +683,11 @@ export default function AddressesPage() {
                       <input
                         value={form.overseas_zip ?? ""}
                         onChange={e => setForm(f => ({ ...f, overseas_zip: e.target.value }))}
+                        onBlur={() => { if ((form.overseas_addr3 ?? "").trim()) triggerOverseasValidation(); }}
                         placeholder="Postal code"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                        className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200 transition-colors ${
+                          addrValidating ? "border-violet-200 bg-violet-50/30" : "border-gray-100"
+                        }`}
                       />
                     </div>
                     <div>
