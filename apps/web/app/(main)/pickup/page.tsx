@@ -871,7 +871,6 @@ export default function PickupPage() {
                             className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
                               item.is_sealed ? "bg-blue-500 border-blue-500" : "border-gray-300 group-hover:border-blue-300"
                             }`}
-                            onClick={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, is_sealed: !it.is_sealed } : it))}
                           >
                             {item.is_sealed && (
                               <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
