@@ -600,6 +600,19 @@ function StorageCard({
   onCapacity: () => void;
   onRename: () => void;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(entries => {
+      const w = entries[0].contentRect.width;
+      setZoom(Math.min(1, w / 295));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
   const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
@@ -619,12 +632,15 @@ function StorageCard({
 
   return (
     <div
-      className="rounded-3xl overflow-hidden relative select-none h-full"
+      ref={cardRef}
+      className="rounded-xl overflow-hidden relative select-none h-full"
       style={{
         background: theme.bg,
         boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)`,
       }}
     >
+      {/* zoom 래퍼 — 카드 너비 기준으로 전체 콘텐츠 비율 유지 */}
+      <div style={{ zoom, transformOrigin: "top left" }}>
       {/* 배경 텍스처 */}
       <div
         className="absolute inset-0 pointer-events-none"
@@ -644,7 +660,7 @@ function StorageCard({
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-1 mt-0.5">
-              <p className="font-bold text-white leading-tight truncate" style={{ fontSize: "clamp(8px,2.1vw,12px)" }}>{s.storage_name}</p>
+              <p className="text-[12px] font-bold text-white leading-tight truncate">{s.storage_name}</p>
               <button
                 type="button"
                 onClick={e => { e.stopPropagation(); onRename(); }}
@@ -662,7 +678,7 @@ function StorageCard({
         </div>
         <div
           className="px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0"
-          style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35`, fontSize: "clamp(6px,1.3vw,8px)" }}
+          style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35`, fontSize: "8px" }}
         >
           {isShortTerm ? "단기" : "장기"} · {planName}
         </div>
@@ -671,18 +687,18 @@ function StorageCard({
       {/* ── 중단: 요금 + 물품 수 ── */}
       <div className="relative px-3 mt-1.5 flex items-end justify-between">
         <div>
-          <p className="text-white/30 mb-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>{isShortTerm ? "주 요금" : "월 요금"}</p>
-          <p className="font-black leading-none tracking-tight" style={{ color: theme.accent, fontSize: "clamp(13px,3.9vw,22px)" }}>
+          <p className="text-[9px] text-white/30 mb-0.5">{isShortTerm ? "주 요금" : "월 요금"}</p>
+          <p className="text-[22px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
             {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
           </p>
           {mainUnit && mainFeeLabel !== "FREE" && (
-            <p className="text-white/30 mt-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>{mainUnit}</p>
+            <p className="text-[9px] text-white/30 mt-0.5">{mainUnit}</p>
           )}
         </div>
         <div className="text-right">
-          <p className="text-white/30 mb-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>보관 물품</p>
-          <p className="font-black leading-none text-white" style={{ fontSize: "clamp(13px,3.9vw,22px)" }}>{itemCount}</p>
-          <p className="text-white/30 mt-0.5" style={{ fontSize: "clamp(6px,1.5vw,9px)" }}>개</p>
+          <p className="text-[9px] text-white/30 mb-0.5">보관 물품</p>
+          <p className="text-[22px] font-black leading-none text-white">{itemCount}</p>
+          <p className="text-[9px] text-white/30 mt-0.5">개</p>
         </div>
       </div>
 
@@ -703,7 +719,7 @@ function StorageCard({
         </div>
         <span
           className="shrink-0 font-bold px-1.5 py-0.5 rounded-md"
-          style={{ background: `${theme.accent}22`, color: theme.accent, fontSize: "clamp(6px,1.3vw,8px)" }}
+          style={{ background: `${theme.accent}22`, color: theme.accent, fontSize: "8px" }}
         >
           {badgeText}
         </span>
@@ -714,7 +730,7 @@ function StorageCard({
         <button
           type="button"
           className="py-1.5 rounded-xl font-bold text-white transition-colors"
-          style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)`, fontSize: "clamp(8px,1.9vw,11px)" }}
+          style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)`, fontSize: "11px" }}
           onClick={e => {
             e.stopPropagation();
             const parcelIds = [...new Set(
@@ -729,7 +745,7 @@ function StorageCard({
         <button
           type="button"
           className="py-1.5 rounded-xl font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "clamp(8px,1.9vw,11px)" }}
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "11px" }}
           onClick={e => { e.stopPropagation(); onCapacity(); }}
         >
           용량 변경
@@ -737,12 +753,13 @@ function StorageCard({
         <button
           type="button"
           className="py-1.5 rounded-xl font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "clamp(8px,1.9vw,11px)" }}
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "11px" }}
           onClick={e => { e.stopPropagation(); onDetail(); }}
         >
           상세 보기
         </button>
       </div>
+      </div>{/* /zoom wrapper */}
     </div>
   );
 }
