@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Bell, Truck, Calculator, Send, BookOpen, List, Receipt } from "lucide-react";
+import { ChevronRight, Bell, Truck, Calculator, Send, BookOpen, List, Receipt, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ActionDashboard from "@/components/ActionDashboard";
 import {
@@ -108,6 +108,15 @@ const QUICK_ACTIONS = [
     icon: <BookOpen size={24} className="text-teal-600" />,
     label: "쉬운 가이드",
     sub: "이용 방법 안내",
+    className: "bg-white",
+    labelClass: "text-gray-900",
+    subClass: "text-gray-500",
+  },
+  {
+    href: "/orders",
+    icon: <Globe size={24} className="text-sky-500" />,
+    label: "배송 현황",
+    sub: "국제배송 추적",
     className: "bg-white",
     labelClass: "text-gray-900",
     subClass: "text-gray-500",
