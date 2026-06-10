@@ -206,7 +206,8 @@ infront/
 | 경로 | 페이지 | 설명 |
 |------|--------|------|
 | `/home` | 홈 | 액션 대시보드, 최근 배송 현황, 창고 요약, 빠른 링크 |
-| `/pickup` | 수거 신청 | 우체국 ePost 방문수거 신청, 주소 선택 |
+| `/pickup` | 수거 신청 | 우체국 ePost 방문수거 신청, 주소 선택, 물품 등록 |
+| `/pickup/history` | 수거 현황 | 수거 전 · 이동 중 · 입고 중 탭, 수거 취소 |
 | `/warehouse` | 스토리지 | 입고 물품 목록, 상태 필터, 다중 선택 |
 | `/warehouse/[id]` | 물품 상세 | 인라인 수정, 추적, 부가 서비스 |
 | `/shipping-request` | 출고 신청 | 다단계 플로우 (물품→옵션→주소→인보이스) |
@@ -216,7 +217,7 @@ infront/
 | `/storage/[id]` | 보관 상세 | 출고 가능 물품 목록, 사진, 결제 현황 |
 | `/storage/payment/success` | 보관 결제 성공 | KG Inicis 단건결제 결과 처리 |
 | `/storage/payment/fail` | 보관 결제 실패 | 결제 실패·취소 처리 |
-| `/mypage` | MY | 프로필, 고객번호, 입고주소 확인 |
+| `/mypage` | MY | 프로필, 고객번호, 입고주소, 배송현황·수거현황 바로가기 |
 | `/addresses` | 주소록 | 수거지·해외 배송지 관리 |
 | `/register-parcel` | 물품 등록 | 수동 물품 등록 |
 | `/return-request` | 반품 신청 | 반품 요청 UI |
@@ -231,7 +232,8 @@ infront/
 | `/payment/fail` | 결제 실패 | Toss 결제 실패 처리 |
 | `/login`, `/signup` | 인증 | Supabase 이메일 인증 |
 
-**하단 탭바 (6탭):** 홈 / 수거신청 / 스토리지 / 출고신청 / 배송현황 / MY
+**하단 탭바 (5탭):** 홈 / 수거신청 / 스토리지 / 출고신청 / MY  
+*(배송현황은 홈 빠른 서비스 그리드 및 마이페이지에서 접근)*
 
 **사이드바 위젯 (xl+ 데스크탑):**
 - 해외배송 경로 (`/shipping-request` 등): EMS · K-Packet 요금 계산기 + 통관 정보
@@ -258,7 +260,7 @@ infront/
 
 | 엔드포인트 | 메서드 | 역할 |
 |-----------|--------|------|
-| `/api/pickup` | POST | 우체국 수거 신청 |
+| `/api/pickup` | POST | 우체국 수거 신청 (customer_storage_id 연결 지원) |
 | `/api/pickup/[id]` | DELETE | 수거 취소 (ePost + DB) |
 | `/api/pickup/[id]/status` | GET | 수거 상태 조회 (GetResInfo) |
 | `/api/parcels` | POST | 물품 등록 |
@@ -437,6 +439,8 @@ infront/
 | `045_capacity_item_count.sql` | customer_storages 용량 시스템 개편 — 점수 기반 → 아이템 수 기반 (capacity_score = 최대 아이템 수, capacity_override, used_score 트리거 수정) |
 | `046_parcel_storage_link.sql` | parcels.customer_storage_id FK 추가 — 소포를 보관함에 직접 연결, auto_link 트리거, used_score 트리거 확장 |
 | `047_mock_parcel_items.sql` + `047b` | MOCK 소포 pre_invoice_items 샘플 데이터 채우기 (제품명 표시용) |
+| `048_parcel_storage_link_shippable.sql` | SHIPPABLE 상태 소포 customer_storage_id 소급 연결, auto_link 트리거에 SHIPPABLE·INSPECTION 추가, used_score 재계산 |
+| `049_storage_card_color.sql` | customer_storages.card_color 컬럼 추가 — 카드 테마 색상 고객 선택 (green\|purple\|red\|blue\|pink\|null=랜덤) |
 
 > 상세 개발 현황: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -656,15 +660,18 @@ Next.js 웹앱
 
 > PDF 기반 스토리지 결제·보관 서비스. KG Inicis 단건결제 연동 완료, 에스컬레이션·장기보관 예정.
 
-- [x] DB 스키마 (040~047): customer_storages, storage_payments, storage_recurring_profiles, pickup_box_fees, 용량 아이템 수 전환, parcels FK 연결
+- [x] DB 스키마 (040~049): customer_storages, storage_payments, storage_recurring_profiles, pickup_box_fees, 용량 아이템 수 전환, parcels FK 연결, SHIPPABLE 소급 연결, 카드 색상 컬럼
 - [x] 웹 고객 스토리지 대시보드 (`/storage`, `/storage/new`, `/storage/[id]`)
   - 전체 요약카드 (이용 중 · 주간요금 · 다음 결제일)
-  - 스톡위젯형 2-컬럼 카드 그리드 (이름 편집, 슬롯 추가 카드 포함)
+  - **3D 회전 캐러셀** 카드 그리드 (드래그·스와이프·마우스휠 내비게이션, 클릭으로 활성 카드 이동)
+  - **카드 색상 고객 선택** (5가지 테마: green/purple/red/blue/pink, 기본 랜덤) — 이름 변경 시트에 통합
+  - **눈금 게이지** 용량 표시 (20칸 세그먼트, 5%씩)
   - 물품 목록 아코디언 (접기/펼치기) + 필터 탭 + 페이징 (10/30/50/전체)
   - 검수 사진 썸네일 (hover 확대 미리보기)
   - 출고 요청 → 국내/해외 유형 선택 바텀시트 → shipping-request / domestic-shipping 연결
   - 용량 변경 바텀시트 (storage_types 기반 선택)
   - 보관함 이름 고객 직접 편집 (RenameSheet)
+- [x] 스토리지 상세(`/storage/[id]`): 상단 동일 카드 표시 (저장된 card_color 반영)
 - [x] Admin 고객 보관 관리 (`/customer-storages`, `/customer-storages/[id]`)
 - [x] 수거비 동적 산정: 박스 크기별 요금 DB 관리 + Admin 설정 화면
 - [x] 단기보관 결제 API: KG Inicis 단건결제 (`/api/inicis/storage-return`)
@@ -673,6 +680,8 @@ Next.js 웹앱
 - [x] 단기보관 무료기간(3일) + 잔여일/과금 주차 표시
 - [x] 소포 → 보관함 자동 연결 (auto_link 트리거, used_score 통합)
 - [x] 해외/국내 출고 신청 시 ?parcels= URL로 사전신고 인보이스 자동 채움
+- [x] **물품 등록 플로우**: 스토리지 상단 "신청" → "물품 등록" 버튼, storage_id 쿼리파라미터로 pickup 연결
+- [x] **수거 현황 페이지** (`/pickup/history`): 수거 전/이동 중/입고 중 탭, 수거 취소 기능
 - [ ] **결제 실패 에스컬레이션 cron** (→ Phase 6, 4순위)
 - [ ] **해외배송 오픈 확인비** (→ Phase 7, 5순위)
 
@@ -796,6 +805,38 @@ Next.js 웹앱
 ---
 
 ## 📝 변경 이력
+
+### 2026-06-10
+
+#### 스토리지 UX 고도화 + 내비게이션 개편
+
+**스토리지 카드 3D 캐러셀 (Phase 3 연속)**
+- `/storage`: 2-컬럼 그리드 → **3D 회전 캐러셀** 전면 교체
+  - 드래그·스와이프·마우스휠 내비게이션, 클릭으로 활성 카드 이동
+  - 카드 1.7:1 고정 비율, CSS `zoom` + `ResizeObserver`로 모바일 반응형 자동 조절
+  - 양쪽 카드 25% 오버랩 노출, 작은 라운드(rounded-xl)
+  - 눈금 게이지 용량 표시 (20칸 세그먼트, 5%씩)
+  - `INFRONT STORAGE` 텍스트 제거
+- **카드 색상 고객 선택** (`049_storage_card_color.sql`)
+  - 5가지 테마 (green/purple/red/blue/pink) + 기본 랜덤
+  - 이름 변경 시트(RenameSheet)에 색상 선택 통합
+  - `/api/storage/[id]` PATCH — card_color 저장·조회
+  - `/storage/[id]` 상세 상단 카드에도 동일 색상 반영
+- **물품 등록 플로우 개편**
+  - 스토리지 상단 "신청" 버튼 → "물품 등록"(`/pickup?storage_id=...`) 변경
+  - "수거 현황" 버튼 추가 (`/pickup/history`)
+  - `/pickup`: `useSearchParams`로 storage_id 수신 → `customer_storage_id` API 전달
+  - `048_parcel_storage_link_shippable.sql`: SHIPPABLE 상태 소포 소급 연결, 트리거 확장
+- **수거 현황 페이지** (`/pickup/history` 신규)
+  - 수거 전 · 이동 중 · 입고 중 3탭 + 건수 배지
+  - 수거 전 상태 "수거 취소" 버튼 (`DELETE /api/pickup/[id]`)
+
+**내비게이션 개편**
+- 하단 탭바: "배송현황" 탭 제거 → 5탭 (홈/수거신청/스토리지/출고신청/MY)
+- 홈 빠른 서비스 그리드: "배송 현황" 버튼 추가 (Globe 아이콘, `/orders`)
+- 마이페이지: "배송 현황"(Globe, `/orders`) · "수거 현황"(Truck, `/pickup/history`) 메뉴 추가
+
+---
 
 ### 2026-06-09
 
