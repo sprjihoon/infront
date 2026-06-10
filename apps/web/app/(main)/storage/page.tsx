@@ -306,10 +306,7 @@ export default function StoragePage() {
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
                             cursor: abs > 0 ? "pointer" : "default",
                           }}
-                          onClick={abs > 0 && (e) => {
-                            // setPointerCapture 환경에서도 동작하도록 delta 체크
-                            if (!isDraggingRef.current) setActiveIdx(i);
-                          }}
+                          onClick={abs > 0 ? () => { if (!isDraggingRef.current) setActiveIdx(i); } : undefined}
                         >
                           {card ? (
                             <StorageCard
