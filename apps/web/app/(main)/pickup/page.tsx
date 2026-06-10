@@ -1122,7 +1122,7 @@ export default function PickupPage() {
                             : "border-gray-200 bg-white"
                         }`}
                       >
-                        <div className={`w-7 h-7 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 ${
+                        <div className={`h-7 min-w-[28px] px-1.5 rounded-lg text-[10px] font-black flex items-center justify-center shrink-0 ${
                           selectedStoragePlan === type.code ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
                         }`}>{type.code}</div>
                         <div className="flex-1">
