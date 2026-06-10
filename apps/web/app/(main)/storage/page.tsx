@@ -583,7 +583,7 @@ function StorageCard({
       className="rounded-3xl overflow-hidden relative select-none"
       style={{
         background: theme.bg,
-        boxShadow: `0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)`,
+        boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)`,
         height: 252,
       }}
     >
