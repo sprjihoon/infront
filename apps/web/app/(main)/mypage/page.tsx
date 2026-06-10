@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, Hash, SlidersHorizontal } from "lucide-react";
+import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, Hash, SlidersHorizontal, Globe, Truck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
@@ -112,7 +112,7 @@ export default function MyPage() {
         <button
           type="button"
           onClick={() => router.push("/addresses")}
-          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition-colors"
+          className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-50 active:bg-gray-50 transition-colors"
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-brand-100 rounded-lg flex items-center justify-center">
@@ -123,6 +123,38 @@ export default function MyPage() {
               <p className="text-xs text-gray-400 mt-0.5">
                 국내배송지 {addrCount.pickup}개 · 해외배송지 {addrCount.overseas}개
               </p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-gray-300" />
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/orders")}
+          className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-50 active:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-sky-100 rounded-lg flex items-center justify-center">
+              <Globe size={15} className="text-sky-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-800">배송 현황</p>
+              <p className="text-xs text-gray-400 mt-0.5">국제배송 진행 상태 확인</p>
+            </div>
+          </div>
+          <ChevronRight size={16} className="text-gray-300" />
+        </button>
+        <button
+          type="button"
+          onClick={() => router.push("/pickup/history")}
+          className="w-full flex items-center justify-between px-5 py-4 active:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+              <Truck size={15} className="text-orange-600" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-gray-800">수거 현황</p>
+              <p className="text-xs text-gray-400 mt-0.5">수거 전 · 이동 중 · 입고 중</p>
             </div>
           </div>
           <ChevronRight size={16} className="text-gray-300" />
