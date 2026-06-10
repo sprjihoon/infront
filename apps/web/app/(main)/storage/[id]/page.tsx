@@ -214,7 +214,104 @@ export default function StorageDetailPage() {
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        {/* 상태 카드 */}
+        {/* ── 스토리지 카드 (리스트와 동일 스타일) ── */}
+        {(() => {
+          const CARD_THEMES = [
+            { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#4ade80" },
+            { bg: "linear-gradient(160deg,#1c1240 0%,#2d1b69 60%,#110b30 100%)", accent: "#a78bfa" },
+            { bg: "linear-gradient(160deg,#3a0e0e 0%,#5c1a1a 60%,#280a0a 100%)", accent: "#f87171" },
+            { bg: "linear-gradient(160deg,#0c253d 0%,#1a3f60 60%,#071928 100%)", accent: "#38bdf8" },
+            { bg: "linear-gradient(160deg,#1c0a30 0%,#2e1065 60%,#110520 100%)", accent: "#e879f9" },
+          ];
+          const themeIdx = parseInt(storage.id.replace(/-/g, "").slice(0, 8), 16) % CARD_THEMES.length;
+          const theme = CARD_THEMES[themeIdx];
+          const isShortTerm = storage.storage_mode === "short_term";
+          const weeklyFee = storage.storage_plan_config?.weekly_rate ?? 0;
+          const mainFee = isShortTerm
+            ? (freeInfo?.inFreePeriod ? 0 : weeklyFee)
+            : storage.monthly_amount ?? weeklyFee;
+          const mainFeeLabel = isShortTerm
+            ? (freeInfo?.inFreePeriod ? "FREE" : mainFee.toLocaleString())
+            : mainFee > 0 ? mainFee.toLocaleString() : "-";
+          const mainUnit = isShortTerm ? (freeInfo?.inFreePeriod ? "" : "/주") : "/월";
+          const usagePct = Math.round(storage.usage_percent ?? 0);
+          const badgeText = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : `${usagePct}%`;
+          const itemCount = parcels.length;
+
+          return (
+            <div
+              className="rounded-3xl overflow-hidden relative"
+              style={{
+                background: theme.bg,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)",
+              }}
+            >
+              {/* 텍스처 */}
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{ background: "repeating-linear-gradient(60deg,transparent,transparent 44px,rgba(255,255,255,0.012) 44px,rgba(255,255,255,0.012) 88px)" }}
+              />
+              {/* 상단 */}
+              <div className="relative px-5 pt-4 flex items-start justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div
+                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
+                  >
+                    <Package size={14} style={{ color: theme.accent }} />
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
+                    <p className="text-[13px] font-bold text-white leading-tight mt-0.5">{storage.storage_name}</p>
+                  </div>
+                </div>
+                <div
+                  className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide"
+                  style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35` }}
+                >
+                  {isShortTerm ? "단기" : "장기"} · {planLabel}
+                </div>
+              </div>
+              {/* 중단 */}
+              <div className="relative px-5 mt-3 flex items-end justify-between">
+                <div>
+                  <p className="text-[10px] text-white/30 mb-1">{isShortTerm ? "주 요금" : "월 요금"}</p>
+                  <p className="text-[28px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
+                    {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+                  </p>
+                  {mainUnit && mainFeeLabel !== "FREE" && <p className="text-[10px] text-white/30 mt-0.5">{mainUnit}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] text-white/30 mb-1">보관 물품</p>
+                  <p className="text-[28px] font-black leading-none text-white">{itemCount}</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">개</p>
+                </div>
+              </div>
+              {/* 바코드 + 뱃지 */}
+              <div className="relative px-5 mt-3 pb-4 flex items-center gap-2">
+                <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 18 }}>
+                  {Array.from({ length: 44 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="rounded-[1px]"
+                      style={{
+                        width: i % 4 === 0 ? 2.5 : 1,
+                        height: `${i % 5 === 0 ? 100 : i % 3 === 0 ? 70 : 45}%`,
+                        backgroundColor: i % 7 === 0 ? `${theme.accent}60` : "rgba(255,255,255,0.15)",
+                      }}
+                    />
+                  ))}
+                </div>
+                <span
+                  className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-md"
+                  style={{ background: `${theme.accent}22`, color: theme.accent }}
+                >
+                  {badgeText}
+                </span>
+              </div>
+            </div>
+          );
+        })()}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-3">
             <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${sCfg.color}`}>
