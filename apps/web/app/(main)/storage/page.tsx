@@ -270,7 +270,7 @@ export default function StoragePage() {
                   <div
                     ref={carouselRef}
                     className="relative overflow-hidden select-none"
-                    style={{ height: 0, paddingBottom: "34.3%", touchAction: "none" }}
+                    style={{ height: 0, paddingBottom: "37.1%", touchAction: "none" }}
                     onPointerDown={e => {
                       if ((e.target as HTMLElement).closest("button, a")) return;
                       isDraggingRef.current = true;
@@ -315,8 +315,8 @@ export default function StoragePage() {
                           style={{
                             top: 0,
                             bottom: 0,
-                            left: "26%",
-                            right: "26%",
+                            left: "24%",
+                            right: "24%",
                             transform: `translateX(calc(${offset * 75}% + ${dragOffset}px)) scale(${1 - abs * 0.06})`,
                             zIndex: 10 - abs,
                             opacity: abs === 0 ? 1 : abs === 1 ? 0.82 : 0,
