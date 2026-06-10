@@ -108,6 +108,7 @@ export default function StoragePage() {
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
   const [hoverPhoto, setHoverPhoto] = useState<{ url: string; x: number; y: number } | null>(null);
+  const [activeStorageId, setActiveStorageId] = useState<string | null>(null);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -222,40 +223,75 @@ export default function StoragePage() {
               </div>
             </div>
 
-            {/* ── 스토리지 카드 목록 (2열) ─────────── */}
-            <div className="grid grid-cols-2 gap-3">
-              {active.map((s) => (
-                <StorageCard
-                  key={s.id}
-                  storage={s}
-                  itemCount={items.filter((it) => it.storage_id === s.id).length}
-                  locationSummary={locationSummary}
-                  storageItems={items}
-                  onDetail={() => router.push(`/storage/${s.id}`)}
-                  onRelease={(parcelIds) => setReleaseSheet(parcelIds)}
-                  onCapacity={() => setCapacitySheet(s)}
-                  onRename={() => setRenameSheet(s)}
-                />
-              ))}
+            {/* ── 스토리지 카드 덱 (스택) ─────────── */}
+            {(() => {
+              const CARD_H = 200;
+              const PEEK_H = 64;
+              const sortedActive = activeStorageId && active.find(s => s.id === activeStorageId)
+                ? [active.find(s => s.id === activeStorageId)!, ...active.filter(s => s.id !== activeStorageId)]
+                : active;
+              const containerH = sortedActive.length === 0
+                ? PEEK_H + 16
+                : CARD_H + sortedActive.length * PEEK_H;
 
-              {/* ── 슬롯 추가 카드 ── */}
-              <Link
-                href="/storage/new"
-                className="rounded-2xl overflow-hidden flex flex-col items-center justify-center gap-2 py-6 border-2 border-dashed border-white/20 hover:border-white/40 transition-colors"
-                style={{
-                  background: "linear-gradient(160deg, #1c1c2e 0%, #12122a 100%)",
-                  minHeight: 190,
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
-                }}
-              >
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                  <Plus size={18} className="text-white/60" />
+              return (
+                <div className="relative" style={{ height: containerH }}>
+                  {/* 카드들 */}
+                  {sortedActive.map((s, i) => {
+                    const isActive = i === 0;
+                    const inset = i * 8;
+                    return (
+                      <div
+                        key={s.id}
+                        className="absolute transition-all duration-300"
+                        style={{
+                          top: isActive ? 0 : CARD_H + (i - 1) * PEEK_H,
+                          left: inset,
+                          right: inset,
+                          zIndex: isActive ? sortedActive.length + 10 : i,
+                          cursor: isActive ? "default" : "pointer",
+                        }}
+                        onClick={!isActive ? () => setActiveStorageId(s.id) : undefined}
+                      >
+                        <StorageCard
+                          storage={s}
+                          itemCount={items.filter((it) => it.storage_id === s.id).length}
+                          locationSummary={locationSummary}
+                          storageItems={items}
+                          onDetail={() => router.push(`/storage/${s.id}`)}
+                          onRelease={(parcelIds) => setReleaseSheet(parcelIds)}
+                          onCapacity={() => setCapacitySheet(s)}
+                          onRename={() => setRenameSheet(s)}
+                        />
+                        {/* 펙 카드 클릭 오버레이 (버튼 클릭 방해 방지) */}
+                        {!isActive && (
+                          <div className="absolute inset-0 rounded-2xl" />
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* 스토리지 추가 버튼 스트립 */}
+                  <Link
+                    href="/storage/new"
+                    className="absolute rounded-2xl flex items-center justify-center gap-2 border-2 border-dashed border-white/20 hover:border-white/40 transition-colors"
+                    style={{
+                      top: CARD_H + (sortedActive.length - 1) * PEEK_H,
+                      left: sortedActive.length * 8,
+                      right: sortedActive.length * 8,
+                      height: PEEK_H + 8,
+                      background: "linear-gradient(160deg, #1c1c2e 0%, #12122a 100%)",
+                      zIndex: sortedActive.length,
+                    }}
+                  >
+                    <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center">
+                      <Plus size={13} className="text-white/50" />
+                    </div>
+                    <span className="text-[11px] font-semibold text-white/40">스토리지 추가</span>
+                  </Link>
                 </div>
-                <p className="text-[11px] font-semibold text-white/50 text-center leading-tight px-3">
-                  스토리지<br />슬롯 추가
-                </p>
-              </Link>
-            </div>
+              );
+            })()}
 
             {/* ── 물품 목록 ────────────────────────── */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -524,113 +560,108 @@ function StorageCard({
       style={{
         background: "linear-gradient(160deg, #1c1c2e 0%, #12122a 100%)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-        minHeight: 190,
+        minHeight: 200,
       }}
     >
-      {/* ── 상단: 아이콘 + 이름 + 점3개 ── */}
-      <button onClick={onDetail} className="w-full text-left px-3.5 pt-3.5 flex items-center gap-2">
+      {/* ── 상단: 아이콘 + 이름 + 이름변경 + 뱃지 ── */}
+      <div className="px-4 pt-4 flex items-center gap-3">
         <div
-          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+          className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
           style={{ background: "linear-gradient(135deg,#dc2626,#b91c1c)" }}
         >
-          <Package size={13} className="text-white" />
+          <Package size={16} className="text-white" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-bold text-white truncate leading-tight">{s.storage_name}</p>
-          <p className="text-[9px] text-white/40 mt-0.5">{isShortTerm ? "단기" : "장기"} · {planName}</p>
+          <p className="text-[13px] font-bold text-white truncate leading-tight">{s.storage_name}</p>
+          <p className="text-[10px] text-white/40 mt-0.5">{isShortTerm ? "단기" : "장기"} · {planName}</p>
         </div>
+        <span
+          className="text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0"
+          style={{ backgroundColor: `${badgeColor}22`, color: badgeColor }}
+        >
+          {badgeText}
+        </span>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onRename(); }}
-          className="p-1 text-white/30 hover:text-white/70 transition-colors shrink-0"
+          className="p-1.5 text-white/30 hover:text-white/70 transition-colors shrink-0"
         >
-          <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <svg width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
             <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
           </svg>
         </button>
-      </button>
+      </div>
 
-      {/* ── 중앙: 큰 요금 숫자 + 뱃지 ── */}
-      <div className="px-3.5 mt-2.5 flex items-end gap-2">
-        <p className="text-[22px] font-black text-white leading-none tracking-tight">
-          {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
-        </p>
-        <div className="mb-0.5 flex items-center gap-1">
+      {/* ── 중단: 요금 + 미니 바 그래프 ── */}
+      <div className="px-4 mt-3 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-[26px] font-black text-white leading-none tracking-tight">
+            {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+          </p>
           {mainFeeLabel !== "FREE" && mainUnit && (
-            <span className="text-[10px] text-white/40 mb-0.5">{mainUnit}</span>
+            <span className="text-[10px] text-white/40">{mainUnit}</span>
           )}
-          <span
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md"
-            style={{ backgroundColor: `${badgeColor}22`, color: badgeColor }}
-          >
-            {badgeText}
-          </span>
+        </div>
+        <div className="flex items-end gap-[2px] flex-1 max-w-[120px]" style={{ height: 32 }}>
+          {Array.from({ length: segments }).map((_, i) => {
+            const isFilled = i < filled;
+            const heightPct = 40 + Math.sin((i / segments) * Math.PI) * 60;
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-sm transition-all"
+                style={{
+                  height: `${heightPct}%`,
+                  backgroundColor: isFilled
+                    ? usagePct >= 80 ? "#ef4444" : "#dc2626"
+                    : "rgba(255,255,255,0.08)",
+                }}
+              />
+            );
+          })}
         </div>
       </div>
 
-      {/* ── 미니 바 그래프 (사용률) ── */}
-      <div className="px-3.5 mt-3 flex items-end gap-[2px]" style={{ height: 28 }}>
-        {Array.from({ length: segments }).map((_, i) => {
-          const isFilled = i < filled;
-          const heightPct = 40 + Math.sin((i / segments) * Math.PI) * 60;
-          return (
-            <div
-              key={i}
-              className="flex-1 rounded-sm transition-all"
-              style={{
-                height: `${heightPct}%`,
-                backgroundColor: isFilled
-                  ? usagePct >= 80 ? "#ef4444" : "#dc2626"
-                  : "rgba(255,255,255,0.08)",
-              }}
-            />
-          );
-        })}
-      </div>
-
-      {/* ── 하단 스탯 행 ── */}
-      <div className="px-3.5 pt-2 pb-2.5 flex items-center justify-between border-t border-white/5 mt-2">
-        <StatChip label="보관" value={`${itemCount}개`} />
-        <StatChip label="용량" value={`${usagePct}%`} />
-        <StatChip label={isShortTerm ? "주요금" : "월요금"} value={weeklyFee > 0 ? `${(weeklyFee/1000).toFixed(1)}k` : "-"} />
-      </div>
-
-      {/* ── 버튼 3종 ── */}
-      <div className="px-3 pb-3 grid grid-cols-3 gap-1.5">
-        <button
-          type="button"
-          onClick={onDetail}
-          className="py-1.5 rounded-xl text-[11px] font-bold text-white/70 bg-white/10 hover:bg-white/20 transition-colors border border-white/10"
-        >
-          상세 보기
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const parcelIds = [...new Set(
-              storageItems
-                .filter((it) => it.storage_id === s.id && it.parcel_id)
-                .map((it) => it.parcel_id)
-            )];
-            if (parcelIds.length === 0) {
-              alert("출고 가능한 물품이 없습니다.");
-              return;
-            }
-            onRelease(parcelIds as string[]);
-          }}
-          className="py-1.5 rounded-xl text-[11px] font-bold text-white transition-colors"
-          style={{ background: "linear-gradient(90deg,#dc2626,#b91c1c)" }}
-        >
-          출고 요청
-        </button>
-        <button
-          type="button"
-          onClick={onCapacity}
-          className="py-1.5 rounded-xl text-[11px] font-bold text-white/60 bg-white/8 hover:bg-white/15 transition-colors border border-white/10"
-        >
-          용량 변경
-        </button>
+      {/* ── 하단 스탯 + 버튼 ── */}
+      <div className="px-4 mt-3 pb-4 flex items-center gap-2 border-t border-white/5 pt-3">
+        <div className="flex items-center gap-3 flex-1">
+          <StatChip label="보관" value={`${itemCount}개`} />
+          <StatChip label="용량" value={`${usagePct}%`} />
+          <StatChip label={isShortTerm ? "주요금" : "월요금"} value={weeklyFee > 0 ? `${(weeklyFee/1000).toFixed(1)}k` : "-"} />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={onDetail}
+            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white/60 bg-white/10 hover:bg-white/20 transition-colors border border-white/10"
+          >
+            상세
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const parcelIds = [...new Set(
+                storageItems
+                  .filter((it) => it.storage_id === s.id && it.parcel_id)
+                  .map((it) => it.parcel_id)
+              )];
+              if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
+              onRelease(parcelIds as string[]);
+            }}
+            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white transition-colors"
+            style={{ background: "linear-gradient(90deg,#dc2626,#b91c1c)" }}
+          >
+            출고
+          </button>
+          <button
+            type="button"
+            onClick={onCapacity}
+            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white/60 bg-white/8 hover:bg-white/15 transition-colors border border-white/10"
+          >
+            변경
+          </button>
+        </div>
       </div>
     </div>
   );
