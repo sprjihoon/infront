@@ -53,38 +53,63 @@ const EMPTY_OVERSEAS = (): Partial<Address> => ({
   overseas_addr3: "", overseas_zip: "", email: "",
 });
 
-const COUNTRIES = [
-  { code: "JP", name: "일본", flag: "🇯🇵" },
-  { code: "CN", name: "중국", flag: "🇨🇳" },
-  { code: "US", name: "미국", flag: "🇺🇸" },
-  { code: "AU", name: "호주", flag: "🇦🇺" },
-  { code: "CA", name: "캐나다", flag: "🇨🇦" },
-  { code: "GB", name: "영국", flag: "🇬🇧" },
-  { code: "DE", name: "독일", flag: "🇩🇪" },
-  { code: "FR", name: "프랑스", flag: "🇫🇷" },
-  { code: "SG", name: "싱가포르", flag: "🇸🇬" },
-  { code: "HK", name: "홍콩", flag: "🇭🇰" },
-  { code: "TW", name: "대만", flag: "🇹🇼" },
-  { code: "TH", name: "태국", flag: "🇹🇭" },
-  { code: "VN", name: "베트남", flag: "🇻🇳" },
-  { code: "PH", name: "필리핀", flag: "🇵🇭" },
-  { code: "MY", name: "말레이시아", flag: "🇲🇾" },
-  { code: "ID", name: "인도네시아", flag: "🇮🇩" },
-  { code: "MO", name: "마카오", flag: "🇲🇴" },
-  { code: "MN", name: "몽골", flag: "🇲🇳" },
-  { code: "NZ", name: "뉴질랜드", flag: "🇳🇿" },
-  { code: "IT", name: "이탈리아", flag: "🇮🇹" },
-  { code: "ES", name: "스페인", flag: "🇪🇸" },
-  { code: "NL", name: "네덜란드", flag: "🇳🇱" },
-  { code: "SE", name: "스웨덴", flag: "🇸🇪" },
-  { code: "CH", name: "스위스", flag: "🇨🇭" },
-  { code: "RU", name: "러시아", flag: "🇷🇺" },
-  { code: "BR", name: "브라질", flag: "🇧🇷" },
-  { code: "MX", name: "멕시코", flag: "🇲🇽" },
-  { code: "AE", name: "아랍에미리트", flag: "🇦🇪" },
-  { code: "SA", name: "사우디아라비아", flag: "🇸🇦" },
-  { code: "IN", name: "인도", flag: "🇮🇳" },
+// 주요 수요 국가 순위 (상단 고정)
+const PRIORITY_CODES = [
+  "JP","CN","US","HK","TW","SG","AU","CA","GB","DE",
+  "FR","VN","TH","PH","MY","ID","MO","MN","NZ","IT",
+  "ES","NL","SE","CH","RU","BR","MX","AE","SA","IN",
 ];
+
+// EMS 국가코드 → 한글명·이모지 매핑 (없으면 영문명 fallback)
+const KO_NAME: Record<string, string> = {
+  JP:"일본",CN:"중국",US:"미국",AU:"호주",CA:"캐나다",GB:"영국",DE:"독일",
+  FR:"프랑스",SG:"싱가포르",HK:"홍콩",TW:"대만",TH:"태국",VN:"베트남",
+  PH:"필리핀",MY:"말레이시아",ID:"인도네시아",MO:"마카오",MN:"몽골",
+  NZ:"뉴질랜드",IT:"이탈리아",ES:"스페인",NL:"네덜란드",SE:"스웨덴",
+  CH:"스위스",RU:"러시아",BR:"브라질",MX:"멕시코",AE:"아랍에미리트",
+  SA:"사우디아라비아",IN:"인도",AT:"오스트리아",BE:"벨기에",DK:"덴마크",
+  FI:"핀란드",GR:"그리스",HU:"헝가리",IE:"아일랜드",NO:"노르웨이",
+  PL:"폴란드",PT:"포르투갈",RO:"루마니아",CZ:"체코",TR:"튀르키예",
+  UA:"우크라이나",IL:"이스라엘",EG:"이집트",ZA:"남아프리카공화국",
+  NG:"나이지리아",KE:"케냐",MA:"모로코",AR:"아르헨티나",CL:"칠레",
+  CO:"콜롬비아",PE:"페루",VE:"베네수엘라",KZ:"카자흐스탄",UZ:"우즈베키스탄",
+  KH:"캄보디아",MM:"미얀마",LA:"라오스",BD:"방글라데시",LK:"스리랑카",
+  NP:"네팔",PK:"파키스탄",KW:"쿠웨이트",QA:"카타르",BH:"바레인",
+  JO:"요르단",OM:"오만",NR:"나우루",PW:"팔라우",FJ:"피지",
+  WS:"사모아",TO:"통가",VU:"바누아투",PG:"파푸아뉴기니",
+};
+
+const FLAG: Record<string, string> = {
+  JP:"🇯🇵",CN:"🇨🇳",US:"🇺🇸",AU:"🇦🇺",CA:"🇨🇦",GB:"🇬🇧",DE:"🇩🇪",
+  FR:"🇫🇷",SG:"🇸🇬",HK:"🇭🇰",TW:"🇹🇼",TH:"🇹🇭",VN:"🇻🇳",PH:"🇵🇭",
+  MY:"🇲🇾",ID:"🇮🇩",MO:"🇲🇴",MN:"🇲🇳",NZ:"🇳🇿",IT:"🇮🇹",ES:"🇪🇸",
+  NL:"🇳🇱",SE:"🇸🇪",CH:"🇨🇭",RU:"🇷🇺",BR:"🇧🇷",MX:"🇲🇽",AE:"🇦🇪",
+  SA:"🇸🇦",IN:"🇮🇳",AT:"🇦🇹",BE:"🇧🇪",DK:"🇩🇰",FI:"🇫🇮",GR:"🇬🇷",
+  HU:"🇭🇺",IE:"🇮🇪",NO:"🇳🇴",PL:"🇵🇱",PT:"🇵🇹",RO:"🇷🇴",CZ:"🇨🇿",
+  TR:"🇹🇷",UA:"🇺🇦",IL:"🇮🇱",EG:"🇪🇬",ZA:"🇿🇦",NG:"🇳🇬",KE:"🇰🇪",
+  MA:"🇲🇦",AR:"🇦🇷",CL:"🇨🇱",CO:"🇨🇴",PE:"🇵🇪",VE:"🇻🇪",KZ:"🇰🇿",
+  UZ:"🇺🇿",KH:"🇰🇭",MM:"🇲🇲",LA:"🇱🇦",BD:"🇧🇩",LK:"🇱🇰",NP:"🇳🇵",
+  PK:"🇵🇰",KW:"🇰🇼",QA:"🇶🇦",BH:"🇧🇭",JO:"🇯🇴",OM:"🇴🇲",
+};
+
+interface Country { code: string; name: string; flag: string; isPriority: boolean; }
+
+function buildCountryList(emsCodes: string[]): Country[] {
+  const set = new Set(emsCodes.length > 0 ? emsCodes : PRIORITY_CODES);
+  const all = Array.from(set).map(code => ({
+    code,
+    name: KO_NAME[code] ?? code,
+    flag: FLAG[code] ?? "🌐",
+    isPriority: PRIORITY_CODES.includes(code),
+  }));
+  const priority = PRIORITY_CODES.filter(c => set.has(c)).map(code => ({
+    code, name: KO_NAME[code] ?? code, flag: FLAG[code] ?? "🌐", isPriority: true,
+  }));
+  const rest = all
+    .filter(c => !PRIORITY_CODES.includes(c.code))
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  return [...priority, ...rest];
+}
 
 // ── 메인 페이지 ─────────────────────────────────────────────
 export default function AddressesPage() {
@@ -103,6 +128,8 @@ export default function AddressesPage() {
   const [saving, setSaving] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [countryOpen, setCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [countries, setCountries] = useState<Country[]>(() => buildCountryList([]));
 
   // Google Places Autocomplete (overseas address)
   const addr3InputRef = useRef<HTMLInputElement>(null);
@@ -142,6 +169,25 @@ export default function AddressesPage() {
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
+
+  // EMS 지원 국가 목록 로드
+  useEffect(() => {
+    fetch("/api/ems/nations?premiumcd=31")
+      .then(r => r.json())
+      .then((data: { nationcd: string }[]) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCountries(buildCountryList(data.map(d => d.nationcd)));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const filteredCountries = countrySearch.trim()
+    ? countries.filter(c =>
+        c.name.includes(countrySearch) ||
+        c.code.toUpperCase().includes(countrySearch.toUpperCase())
+      )
+    : countries;
 
   const filtered = addresses.filter(a => a.type === tab);
 
@@ -308,7 +354,7 @@ export default function AddressesPage() {
     }
   }, [form.overseas_addr3, form.overseas_addr2, form.overseas_addr1, form.overseas_zip, form.country_code]);
 
-  const selCountry = COUNTRIES.find(c => c.code === form.country_code) ?? COUNTRIES[0];
+  const selCountry = countries.find(c => c.code === form.country_code) ?? countries[0];
 
   // ── UI ──────────────────────────────────────────────────
   return (
@@ -431,7 +477,7 @@ export default function AddressesPage() {
                   </p>
                 ) : (
                   <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                    {COUNTRIES.find(c => c.code === addr.country_code)?.flag}{" "}
+                    {FLAG[addr.country_code ?? ""] ?? "🌐"}{" "}
                     {addr.overseas_addr3}, {addr.overseas_addr2}, {addr.overseas_addr1}
                     {addr.overseas_zip ? ` (${addr.overseas_zip})` : ""}
                   </p>
@@ -629,27 +675,55 @@ export default function AddressesPage() {
                       <div className="relative">
                         <button
                           type="button"
-                          onClick={() => setCountryOpen(v => !v)}
+                          onClick={() => { setCountryOpen(v => !v); setCountrySearch(""); }}
                           className="w-full flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
                         >
                           <span>{selCountry.flag} {selCountry.name} ({selCountry.code})</span>
                           <ChevronDown size={15} className="text-gray-400" />
                         </button>
                         {countryOpen && (
-                          <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg max-h-44 overflow-y-auto">
-                            {COUNTRIES.map(c => (
-                              <button
-                                key={c.code}
-                                type="button"
-                                onClick={() => { setForm(f => ({ ...f, country_code: c.code })); setCountryOpen(false); }}
-                                className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-brand-50 text-left ${
-                                  form.country_code === c.code ? "text-brand-600 font-semibold" : "text-gray-700"
-                                }`}
-                              >
-                                {c.flag} {c.name}
-                                <span className="ml-auto text-xs text-gray-400">{c.code}</span>
-                              </button>
-                            ))}
+                          <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg flex flex-col max-h-64">
+                            <div className="px-3 py-2 border-b border-gray-100 shrink-0">
+                              <input
+                                autoFocus
+                                value={countrySearch}
+                                onChange={e => setCountrySearch(e.target.value)}
+                                placeholder="국가 검색..."
+                                className="w-full bg-gray-50 rounded-lg px-3 py-1.5 text-sm outline-none"
+                              />
+                            </div>
+                            <div className="overflow-y-auto flex-1">
+                              {filteredCountries.map((c, idx) => {
+                                const prevIsPriority = idx > 0 ? filteredCountries[idx - 1].isPriority : true;
+                                const showDivider = !countrySearch && !c.isPriority && prevIsPriority;
+                                return (
+                                  <div key={c.code}>
+                                    {showDivider && (
+                                      <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50">
+                                        <span className="text-[10px] text-gray-400 font-semibold tracking-wide">기타 국가</span>
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setForm(f => ({ ...f, country_code: c.code }));
+                                        setCountryOpen(false);
+                                        setCountrySearch("");
+                                      }}
+                                      className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-brand-50 text-left ${
+                                        form.country_code === c.code ? "text-brand-600 font-semibold" : "text-gray-700"
+                                      }`}
+                                    >
+                                      {c.flag} {c.name}
+                                      <span className="ml-auto text-xs text-gray-400">{c.code}</span>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                              {filteredCountries.length === 0 && (
+                                <p className="text-center text-xs text-gray-400 py-4">검색 결과 없음</p>
+                              )}
+                            </div>
                           </div>
                         )}
                       </div>
