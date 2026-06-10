@@ -272,10 +272,10 @@ export default function StoragePage() {
                     className="relative overflow-hidden select-none"
                     style={{ height: 0, paddingBottom: "30.6%", touchAction: "none" }}
                     onPointerDown={e => {
-                      if ((e.target as HTMLElement).closest("button, a")) return;
+                      // 버튼만 캡처 제외 (버튼 클릭은 정상 동작), <a>는 드래그 시 preventDefault로 이동 차단
+                      if ((e.target as HTMLElement).closest("button")) return;
                       isDraggingRef.current = true;
                       dragStartX.current = e.clientX;
-                      // 눌린 카드 인덱스 기록 (클릭 판별용)
                       const cardEl = (e.target as HTMLElement).closest("[data-card-idx]");
                       pointerDownIdx.current = cardEl ? Number((cardEl as HTMLElement).dataset.cardIdx) : -1;
                       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -289,12 +289,16 @@ export default function StoragePage() {
                       isDraggingRef.current = false;
                       const delta = e.clientX - dragStartX.current;
                       if (Math.abs(delta) < 8) {
-                        // 클릭: 해당 카드가 비활성이면 활성 위치로 이동
+                        // 클릭: 비활성 카드면 활성 위치로 이동
                         if (pointerDownIdx.current >= 0 && pointerDownIdx.current !== safeIdx) {
                           setActiveIdx(pointerDownIdx.current);
                         }
-                      } else if (delta < -40) goNext();
-                      else if (delta > 40) goPrev();
+                        // delta가 작으면 Link 클릭 허용 (preventDefault 없음)
+                      } else {
+                        // 드래그: Link 이동 방지는 setPointerCapture가 처리
+                        if (delta < -40) goNext();
+                        else if (delta > 40) goPrev();
+                      }
                       setDragOffset(0);
                     }}
                     onPointerCancel={() => { isDraggingRef.current = false; setDragOffset(0); }}
