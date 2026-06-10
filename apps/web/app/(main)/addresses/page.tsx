@@ -678,52 +678,110 @@ export default function AddressesPage() {
                           onClick={() => { setCountryOpen(v => !v); setCountrySearch(""); }}
                           className="w-full flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
                         >
-                          <span>{selCountry.flag} {selCountry.name} ({selCountry.code})</span>
+                          <span>{selCountry?.flag} {selCountry?.name} ({selCountry?.code})</span>
                           <ChevronDown size={15} className="text-gray-400" />
                         </button>
                         {countryOpen && (
-                          <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg flex flex-col max-h-64">
+                          <div className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-100 rounded-xl shadow-lg flex flex-col max-h-80">
+                            {/* 검색창 */}
                             <div className="px-3 py-2 border-b border-gray-100 shrink-0">
                               <input
                                 autoFocus
                                 value={countrySearch}
                                 onChange={e => setCountrySearch(e.target.value)}
-                                placeholder="국가 검색..."
+                                placeholder="국가 이름 또는 코드 검색 (예: 일본, JP)"
                                 className="w-full bg-gray-50 rounded-lg px-3 py-1.5 text-sm outline-none"
                               />
                             </div>
-                            <div className="overflow-y-auto flex-1">
-                              {filteredCountries.map((c, idx) => {
-                                const prevIsPriority = idx > 0 ? filteredCountries[idx - 1].isPriority : true;
-                                const showDivider = !countrySearch && !c.isPriority && prevIsPriority;
-                                return (
-                                  <div key={c.code}>
-                                    {showDivider && (
-                                      <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50">
-                                        <span className="text-[10px] text-gray-400 font-semibold tracking-wide">기타 국가</span>
-                                      </div>
-                                    )}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setForm(f => ({ ...f, country_code: c.code }));
-                                        setCountryOpen(false);
-                                        setCountrySearch("");
-                                      }}
-                                      className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-brand-50 text-left ${
-                                        form.country_code === c.code ? "text-brand-600 font-semibold" : "text-gray-700"
-                                      }`}
-                                    >
-                                      {c.flag} {c.name}
-                                      <span className="ml-auto text-xs text-gray-400">{c.code}</span>
-                                    </button>
+
+                            {!countrySearch ? (
+                              <>
+                                {/* 국기 그리드 — 주요 30개국 */}
+                                <div className="px-3 pt-2 pb-1 shrink-0">
+                                  <p className="text-[10px] text-gray-400 font-semibold mb-1.5">주요 국가</p>
+                                  <div className="grid grid-cols-6 gap-1">
+                                    {countries.filter(c => c.isPriority).map(c => (
+                                      <button
+                                        key={c.code}
+                                        type="button"
+                                        title={`${c.name} (${c.code})`}
+                                        onClick={() => {
+                                          setForm(f => ({ ...f, country_code: c.code }));
+                                          setCountryOpen(false);
+                                          setCountrySearch("");
+                                        }}
+                                        className={`flex flex-col items-center gap-0.5 py-1.5 rounded-lg text-[10px] transition-colors ${
+                                          form.country_code === c.code
+                                            ? "bg-brand-100 text-brand-700 font-bold"
+                                            : "hover:bg-gray-100 text-gray-500"
+                                        }`}
+                                      >
+                                        <span className="text-xl leading-none">{c.flag}</span>
+                                        <span className="truncate w-full text-center">{c.code}</span>
+                                      </button>
+                                    ))}
                                   </div>
-                                );
-                              })}
-                              {filteredCountries.length === 0 && (
-                                <p className="text-center text-xs text-gray-400 py-4">검색 결과 없음</p>
-                              )}
-                            </div>
+                                </div>
+                                <div className="border-t border-gray-100 mx-3 mb-1" />
+                                {/* 전체 목록 스크롤 */}
+                                <div className="px-2 pb-1 shrink-0">
+                                  <p className="text-[10px] text-gray-400 font-semibold px-2 mb-1">전체 국가</p>
+                                </div>
+                                <div className="overflow-y-auto flex-1 pb-1">
+                                  {countries.map((c, idx) => {
+                                    const prevIsPriority = idx > 0 ? countries[idx - 1].isPriority : true;
+                                    const showDivider = !c.isPriority && prevIsPriority;
+                                    return (
+                                      <div key={c.code}>
+                                        {showDivider && (
+                                          <div className="px-4 py-1 bg-gray-50">
+                                            <span className="text-[10px] text-gray-400 font-semibold">기타 국가</span>
+                                          </div>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setForm(f => ({ ...f, country_code: c.code }));
+                                            setCountryOpen(false);
+                                            setCountrySearch("");
+                                          }}
+                                          className={`w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-brand-50 text-left ${
+                                            form.country_code === c.code ? "text-brand-600 font-semibold bg-brand-50" : "text-gray-700"
+                                          }`}
+                                        >
+                                          <span className="text-base">{c.flag}</span> {c.name}
+                                          <span className="ml-auto text-xs text-gray-400">{c.code}</span>
+                                        </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            ) : (
+                              /* 검색 결과 목록 */
+                              <div className="overflow-y-auto flex-1">
+                                {filteredCountries.map(c => (
+                                  <button
+                                    key={c.code}
+                                    type="button"
+                                    onClick={() => {
+                                      setForm(f => ({ ...f, country_code: c.code }));
+                                      setCountryOpen(false);
+                                      setCountrySearch("");
+                                    }}
+                                    className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-brand-50 text-left ${
+                                      form.country_code === c.code ? "text-brand-600 font-semibold bg-brand-50" : "text-gray-700"
+                                    }`}
+                                  >
+                                    <span className="text-base">{c.flag}</span> {c.name}
+                                    <span className="ml-auto text-xs text-gray-400">{c.code}</span>
+                                  </button>
+                                ))}
+                                {filteredCountries.length === 0 && (
+                                  <p className="text-center text-xs text-gray-400 py-4">검색 결과 없음</p>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
