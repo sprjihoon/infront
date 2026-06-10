@@ -633,13 +633,6 @@ function StorageCard({
         <div className="flex items-center gap-1.5">
           <button
             type="button"
-            onClick={onDetail}
-            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white/60 bg-white/10 hover:bg-white/20 transition-colors border border-white/10"
-          >
-            상세
-          </button>
-          <button
-            type="button"
             onClick={() => {
               const parcelIds = [...new Set(
                 storageItems
@@ -660,6 +653,13 @@ function StorageCard({
             className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white/60 bg-white/8 hover:bg-white/15 transition-colors border border-white/10"
           >
             변경
+          </button>
+          <button
+            type="button"
+            onClick={onDetail}
+            className="px-2.5 py-1.5 rounded-xl text-[10px] font-bold text-white/60 bg-white/10 hover:bg-white/20 transition-colors border border-white/10"
+          >
+            상세
           </button>
         </div>
       </div>
