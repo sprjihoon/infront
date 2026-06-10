@@ -288,8 +288,8 @@ export default function StoragePage() {
                           style={{
                             top: 0,
                             bottom: 0,
-                            left: 44,
-                            right: 44,
+                            left: "13%",
+                            right: "13%",
                             transform: `translateX(calc(${offset * 100}% + ${offset * 8 + dragOffset}px)) scale(${1 - abs * 0.04})`,
                             zIndex: 10 - abs,
                             opacity: abs === 0 ? 1 : abs === 1 ? 0.78 : 0.3,
