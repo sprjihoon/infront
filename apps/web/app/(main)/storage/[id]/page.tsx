@@ -112,6 +112,7 @@ export default function StorageDetailPage() {
   const [nameInput, setNameInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [showReleaseSheet, setShowReleaseSheet] = useState(false);
+  const [showCapacitySheet, setShowCapacitySheet] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -291,7 +292,7 @@ export default function StorageDetailPage() {
                 </div>
               </div>
               {/* 바코드 + 뱃지 */}
-              <div className="relative px-5 mt-3 pb-4 flex items-center gap-2">
+              <div className="relative px-5 mt-3 flex items-center gap-2">
                 <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 18 }}>
                   {Array.from({ length: 44 }).map((_, i) => (
                     <div
@@ -311,6 +312,31 @@ export default function StorageDetailPage() {
                 >
                   {badgeText}
                 </span>
+              </div>
+              {/* 카드 하단 버튼 */}
+              <div className="relative px-3 pb-3 mt-2 grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  className="py-2 rounded-xl font-bold text-white transition-colors text-[12px]"
+                  style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)` }}
+                  onClick={() => {
+                    if (shippableParcels.length === 0) {
+                      alert("출고 가능한 물품이 없습니다.");
+                      return;
+                    }
+                    setShowReleaseSheet(true);
+                  }}
+                >
+                  출고 요청
+                </button>
+                <button
+                  type="button"
+                  className="py-2 rounded-xl font-bold text-[12px] transition-colors"
+                  style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
+                  onClick={() => setShowCapacitySheet(true)}
+                >
+                  용량 변경
+                </button>
               </div>
             </div>
           );
@@ -533,6 +559,15 @@ export default function StorageDetailPage() {
         <ReleasePaymentSheet
           storage={storage}
           onClose={() => setShowReleaseSheet(false)}
+        />
+      )}
+
+      {/* 용량 변경 시트 */}
+      {showCapacitySheet && storage && (
+        <CapacityChangeSheet
+          storage={storage}
+          currentTypeName={planLabel}
+          onClose={() => setShowCapacitySheet(false)}
         />
       )}
     </div>
@@ -819,6 +854,159 @@ function ReleasePaymentSheet({
           <input type="hidden" name="acceptmethod" value="centerCd(Y):HPP(2)" />
         </form>
       )}
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   용량 변경 시트
+───────────────────────────────────────────── */
+type StorageType = {
+  id: string;
+  code: string;
+  name: string;
+  price_per_week: number;
+  max_parcels: number | null;
+  volume_liter: number | null;
+};
+
+const TYPE_SIZE_KO: Record<string, string> = {
+  MINI:     "미니 (소형)",
+  STANDARD: "스탠다드 (중형)",
+  LONG:     "롱박스 (대형)",
+  XL:       "XL (특대)",
+  OVERSIZE: "오버사이즈 (랙)",
+};
+
+function CapacityChangeSheet({
+  storage,
+  currentTypeName,
+  onClose,
+}: {
+  storage: Storage;
+  currentTypeName: string | null;
+  onClose: () => void;
+}) {
+  const [types, setTypes] = useState<StorageType[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/storage/types")
+      .then((r) => r.json())
+      .then((j) => setTypes(j.types ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleRequest() {
+    if (!selected) return;
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 600));
+    setSubmitting(false);
+    setDone(true);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-[520px] bg-white rounded-3xl max-h-[80vh] flex flex-col shadow-2xl">
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
+          <div>
+            <p className="text-base font-bold text-gray-900">용량 변경</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              현재: {currentTypeName ?? storage.plan_type ?? "-"}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
+            <X size={18} />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="px-4 py-10 flex flex-col items-center gap-3 overflow-y-auto">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+              <Check size={24} className="text-green-600" strokeWidth={2.5} />
+            </div>
+            <p className="text-sm font-bold text-gray-900">변경 요청이 접수되었습니다</p>
+            <p className="text-xs text-gray-500 text-center">
+              관리자가 확인 후 로케이션을 재배정해 드립니다.<br />
+              처리 완료 시 알림으로 안내해 드립니다.
+            </p>
+            <button
+              onClick={onClose}
+              className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl"
+            >
+              확인
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
+              <p className="text-xs text-gray-500 mb-3">원하는 사이즈를 선택하면 관리자에게 변경 요청이 전달됩니다.</p>
+              {loading ? (
+                <div className="py-10 flex justify-center">
+                  <RefreshCw size={24} className="animate-spin text-gray-300" />
+                </div>
+              ) : (
+                types.map((t) => {
+                  const isSelected = selected === t.id;
+                  const isCurrent = currentTypeName === t.name || currentTypeName === t.code;
+                  return (
+                    <button
+                      key={t.id}
+                      onClick={() => setSelected(t.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
+                        isSelected
+                          ? "border-brand-500 bg-brand-50"
+                          : isCurrent
+                          ? "border-gray-300 bg-gray-50 opacity-60"
+                          : "border-gray-100 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs ${
+                        isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {t.code.slice(0, 2)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
+                          {TYPE_SIZE_KO[t.code] ?? t.name}
+                          {isCurrent && (
+                            <span className="ml-2 text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">현재</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {t.max_parcels != null ? `최대 ${t.max_parcels}개 물품` : "무제한"}
+                          {t.volume_liter != null && ` · ${t.volume_liter}L`}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : "text-gray-700"}`}>
+                          {t.price_per_week.toLocaleString()}원
+                        </p>
+                        <p className="text-[10px] text-gray-400">/주</p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+            <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
+              <button
+                onClick={handleRequest}
+                disabled={!selected || submitting}
+                className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <><RefreshCw size={16} className="animate-spin" /> 처리 중...</>
+                ) : "변경 요청하기"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
