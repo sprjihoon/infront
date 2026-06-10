@@ -246,7 +246,7 @@ export default function StoragePage() {
                   {/* ── 캐러셀 윈도우 ── */}
                   <div
                     className="relative overflow-hidden select-none"
-                    style={{ height: 216, touchAction: "none" }}
+                    style={{ height: 252, touchAction: "none" }}
                     onPointerDown={e => {
                       isDraggingRef.current = true;
                       dragStartX.current = e.clientX;
@@ -293,7 +293,12 @@ export default function StoragePage() {
                               storage={card}
                               itemCount={items.filter(it => it.storage_id === card.id).length}
                               locationSummary={locationSummary}
+                              storageItems={items}
                               theme={theme}
+                              onDetail={() => router.push(`/storage/${card.id}`)}
+                              onRelease={parcelIds => setReleaseSheet(parcelIds)}
+                              onCapacity={() => setCapacitySheet(card)}
+                              onRename={() => setRenameSheet(card)}
                             />
                           ) : (
                             <Link
@@ -313,62 +318,6 @@ export default function StoragePage() {
                   </div>
 
                   {/* ── 도트 인디케이터 ── */}
-                  <div className="flex items-center justify-center gap-1.5 pt-1">
-                    {allCards.map((_, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setActiveIdx(i)}
-                        className="rounded-full transition-all duration-300"
-                        style={{
-                          width: i === safeIdx ? 20 : 6,
-                          height: 6,
-                          backgroundColor: i === safeIdx ? "#dc2626" : "rgba(0,0,0,0.15)",
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* ── 액션 버튼 (활성 스토리지 전용) ── */}
-                  {activeStorage && (
-                    <div className="grid grid-cols-4 gap-2">
-                      <button
-                        type="button"
-                        className="py-2.5 rounded-2xl text-[11px] font-bold text-white transition-colors"
-                        style={{ background: "linear-gradient(90deg,#dc2626,#b91c1c)" }}
-                        onClick={() => {
-                          const parcelIds = [...new Set(
-                            items.filter(it => it.storage_id === activeStorage.id && it.parcel_id).map(it => it.parcel_id)
-                          )];
-                          if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
-                          setReleaseSheet(parcelIds as string[]);
-                        }}
-                      >
-                        출고 요청
-                      </button>
-                      <button
-                        type="button"
-                        className="py-2.5 rounded-2xl text-[11px] font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors border border-gray-200"
-                        onClick={() => setCapacitySheet(activeStorage)}
-                      >
-                        용량 변경
-                      </button>
-                      <button
-                        type="button"
-                        className="py-2.5 rounded-2xl text-[11px] font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors border border-gray-200"
-                        onClick={() => setRenameSheet(activeStorage)}
-                      >
-                        이름 변경
-                      </button>
-                      <button
-                        type="button"
-                        className="py-2.5 rounded-2xl text-[11px] font-bold text-gray-700 bg-white hover:bg-gray-50 transition-colors border border-gray-200"
-                        onClick={() => router.push(`/storage/${activeStorage.id}`)}
-                      >
-                        상세 보기
-                      </button>
-                    </div>
-                  )}
                 </div>
               );
             })()}
@@ -595,12 +544,22 @@ function StorageCard({
   storage: s,
   itemCount,
   locationSummary,
+  storageItems,
   theme,
+  onDetail,
+  onRelease,
+  onCapacity,
+  onRename,
 }: {
   storage: Storage;
   itemCount: number;
   locationSummary: LocationSummary | null;
+  storageItems: ProductItem[];
   theme: CardTheme;
+  onDetail: () => void;
+  onRelease: (ids: string[]) => void;
+  onCapacity: () => void;
+  onRename: () => void;
 }) {
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
@@ -625,7 +584,7 @@ function StorageCard({
       style={{
         background: theme.bg,
         boxShadow: `0 24px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06)`,
-        height: 216,
+        height: 252,
       }}
     >
       {/* 배경 텍스처 */}
@@ -637,13 +596,13 @@ function StorageCard({
       />
 
       {/* ── 상단: 아이콘 + 스토리지명 + 티어 뱃지 ── */}
-      <div className="relative px-5 pt-5 flex items-start justify-between">
+      <div className="relative px-5 pt-4 flex items-start justify-between">
         <div className="flex items-center gap-2.5">
           <div
-            className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
           >
-            <Package size={15} style={{ color: theme.accent }} />
+            <Package size={14} style={{ color: theme.accent }} />
           </div>
           <div>
             <p className="text-[9px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
@@ -659,10 +618,10 @@ function StorageCard({
       </div>
 
       {/* ── 중단: 요금 + 물품 수 ── */}
-      <div className="relative px-5 mt-4 flex items-end justify-between">
+      <div className="relative px-5 mt-3 flex items-end justify-between">
         <div>
           <p className="text-[10px] text-white/30 mb-1">{isShortTerm ? "주 요금" : "월 요금"}</p>
-          <p className="text-[30px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
+          <p className="text-[28px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
             {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
           </p>
           {mainUnit && mainFeeLabel !== "FREE" && (
@@ -671,35 +630,75 @@ function StorageCard({
         </div>
         <div className="text-right">
           <p className="text-[10px] text-white/30 mb-1">보관 물품</p>
-          <p className="text-[30px] font-black leading-none text-white">{itemCount}</p>
+          <p className="text-[28px] font-black leading-none text-white">{itemCount}</p>
           <p className="text-[10px] text-white/30 mt-0.5">개</p>
         </div>
       </div>
 
-      {/* ── 하단: 바코드 패턴 + 무료기간 뱃지 + ID ── */}
-      <div className="absolute bottom-0 inset-x-0 px-5 pb-4">
-        <div className="flex items-end gap-[1.5px] mb-2" style={{ height: 22 }}>
-          {Array.from({ length: 48 }).map((_, i) => (
+      {/* ── 바코드 장식 + 뱃지 ── */}
+      <div className="relative px-5 mt-3 flex items-center gap-2">
+        <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 18 }}>
+          {Array.from({ length: 44 }).map((_, i) => (
             <div
               key={i}
               className="rounded-[1px]"
               style={{
                 width: i % 4 === 0 ? 2.5 : 1,
-                height: `${i % 5 === 0 ? 100 : i % 3 === 0 ? 75 : 50}%`,
-                backgroundColor: i % 7 === 0 ? `${theme.accent}70` : "rgba(255,255,255,0.18)",
+                height: `${i % 5 === 0 ? 100 : i % 3 === 0 ? 70 : 45}%`,
+                backgroundColor: i % 7 === 0 ? `${theme.accent}60` : "rgba(255,255,255,0.15)",
               }}
             />
           ))}
-          <div className="ml-auto shrink-0">
-            <span
-              className="text-[9px] font-bold px-2 py-0.5 rounded-md"
-              style={{ background: `${theme.accent}22`, color: theme.accent }}
-            >
-              {badgeText}
-            </span>
-          </div>
         </div>
-        <p className="text-[8px] text-white/20 tracking-[0.25em] font-mono">{s.id.slice(0, 8).toUpperCase()}</p>
+        <span
+          className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-md"
+          style={{ background: `${theme.accent}22`, color: theme.accent }}
+        >
+          {badgeText}
+        </span>
+      </div>
+
+      {/* ── 하단 버튼 ── */}
+      <div className="relative px-4 mt-2.5 grid grid-cols-4 gap-1.5">
+        <button
+          type="button"
+          className="py-2 rounded-xl text-[10px] font-bold text-white transition-colors"
+          style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)` }}
+          onClick={e => {
+            e.stopPropagation();
+            const parcelIds = [...new Set(
+              storageItems.filter(it => it.storage_id === s.id && it.parcel_id).map(it => it.parcel_id)
+            )];
+            if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
+            onRelease(parcelIds as string[]);
+          }}
+        >
+          출고
+        </button>
+        <button
+          type="button"
+          className="py-2 rounded-xl text-[10px] font-bold transition-colors"
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
+          onClick={e => { e.stopPropagation(); onCapacity(); }}
+        >
+          용량
+        </button>
+        <button
+          type="button"
+          className="py-2 rounded-xl text-[10px] font-bold transition-colors"
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
+          onClick={e => { e.stopPropagation(); onRename(); }}
+        >
+          이름
+        </button>
+        <button
+          type="button"
+          className="py-2 rounded-xl text-[10px] font-bold transition-colors"
+          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
+          onClick={e => { e.stopPropagation(); onDetail(); }}
+        >
+          상세
+        </button>
       </div>
     </div>
   );
