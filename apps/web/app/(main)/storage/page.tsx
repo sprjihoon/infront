@@ -625,7 +625,6 @@ function StorageCard({
             <Package size={12} style={{ color: theme.accent }} />
           </div>
           <div className="min-w-0">
-            <p className="text-[8px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <p className="text-[12px] font-bold text-white leading-tight truncate">{s.storage_name}</p>
               <button

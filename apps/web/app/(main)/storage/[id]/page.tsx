@@ -261,7 +261,6 @@ export default function StorageDetailPage() {
                     <Package size={14} style={{ color: theme.accent }} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
                     <p className="text-[13px] font-bold text-white leading-tight mt-0.5">{storage.storage_name}</p>
                   </div>
                 </div>
