@@ -109,7 +109,9 @@ export default function StoragePage() {
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
   const [hoverPhoto, setHoverPhoto] = useState<{ url: string; x: number; y: number } | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
-  const touchStartX = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const isDraggingRef = useRef(false);
+  const dragStartX = useRef(0);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -224,7 +226,7 @@ export default function StoragePage() {
               </div>
             </div>
 
-            {/* ── 3D 카드 캐러셀 ─────────── */}
+            {/* ── 3D 드래그 캐러셀 ─────────── */}
             {(() => {
               const CARD_THEMES = [
                 { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#4ade80" },
@@ -243,29 +245,45 @@ export default function StoragePage() {
                 <div className="space-y-3">
                   {/* ── 캐러셀 윈도우 ── */}
                   <div
-                    className="relative overflow-visible"
-                    style={{ height: 216 }}
-                    onTouchStart={e => { touchStartX.current = e.touches[0].clientX; }}
-                    onTouchEnd={e => {
-                      const diff = touchStartX.current - e.changedTouches[0].clientX;
-                      if (diff > 40) goNext();
-                      if (diff < -40) goPrev();
+                    className="relative overflow-hidden select-none"
+                    style={{ height: 216, touchAction: "none" }}
+                    onPointerDown={e => {
+                      isDraggingRef.current = true;
+                      dragStartX.current = e.clientX;
+                      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                     }}
+                    onPointerMove={e => {
+                      if (!isDraggingRef.current) return;
+                      setDragOffset(e.clientX - dragStartX.current);
+                    }}
+                    onPointerUp={e => {
+                      if (!isDraggingRef.current) return;
+                      isDraggingRef.current = false;
+                      const delta = e.clientX - dragStartX.current;
+                      if (delta < -40) goNext();
+                      else if (delta > 40) goPrev();
+                      setDragOffset(0);
+                    }}
+                    onPointerCancel={() => { isDraggingRef.current = false; setDragOffset(0); }}
                   >
                     {allCards.map((card, i) => {
                       const offset = i - safeIdx;
                       if (Math.abs(offset) > 2) return null;
                       const abs = Math.abs(offset);
-                      const sign = Math.sign(offset);
                       const theme = CARD_THEMES[i % CARD_THEMES.length];
                       return (
                         <div
                           key={i}
-                          className="absolute inset-0 transition-all duration-500 ease-out"
+                          className="absolute"
                           style={{
-                            transform: `perspective(600px) translateX(${sign * 82}%) rotateY(${-sign * 30}deg) scale(${1 - abs * 0.08})`,
+                            top: 0,
+                            bottom: 0,
+                            left: 28,
+                            right: 28,
+                            transform: `perspective(700px) translateX(calc(${offset * 100}% + ${offset * 12 + dragOffset}px)) rotateY(${-offset * 18}deg) scale(${1 - abs * 0.05})`,
                             zIndex: 10 - abs,
-                            opacity: abs === 0 ? 1 : abs === 1 ? 0.72 : 0.3,
+                            opacity: abs === 0 ? 1 : abs === 1 ? 0.78 : 0.3,
+                            transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
                             cursor: abs > 0 ? "pointer" : "default",
                           }}
                           onClick={abs > 0 ? () => setActiveIdx(i) : undefined}
@@ -311,7 +329,7 @@ export default function StoragePage() {
                     ))}
                   </div>
 
-                  {/* ── 액션 버튼 (활성 스토리지에만) ── */}
+                  {/* ── 액션 버튼 (활성 스토리지 전용) ── */}
                   {activeStorage && (
                     <div className="grid grid-cols-4 gap-2">
                       <button
