@@ -337,7 +337,11 @@ export default function StoragePage() {
                               onCapacity={() => setCapacitySheet(card)}
                               onRename={() => setRenameSheet(card)}
                               onColorChange={async (colorKey) => {
-                                await supabase.from("customer_storages").update({ card_color: colorKey }).eq("id", card.id);
+                                await fetch(`/api/storage/${card.id}`, {
+                                  method: "PATCH",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ card_color: colorKey }),
+                                });
                                 load(true);
                               }}
                             />

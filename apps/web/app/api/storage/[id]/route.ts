@@ -41,7 +41,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
         id, storage_name, storage_mode, plan_type, current_plan_type, max_plan_type,
         monthly_amount, capacity_score, used_score, usage_percent,
         status, short_term_started_at, paid_until_date, next_billing_date,
-        created_at, updated_at,
+        created_at, updated_at, card_color,
         storage_plan_config!customer_storages_plan_type_fkey (label_ko, label_en, weekly_rate, monthly_amount)
       `)
       .eq("id", id)
@@ -97,12 +97,14 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   const body = await request.json() as {
     storage_name?: string;
     status?: string;
+    card_color?: string;
   };
 
+  const VALID_COLORS = ["green", "purple", "red", "blue", "pink"];
   const allowed: Record<string, unknown> = {};
   if (body.storage_name) allowed.storage_name = body.storage_name;
-  // 해지는 EMPTY 상태일 때만 허용
   if (body.status === "CANCELLED") allowed.status = "CANCELLED";
+  if (body.card_color && VALID_COLORS.includes(body.card_color)) allowed.card_color = body.card_color;
 
   if (Object.keys(allowed).length === 0) {
     return NextResponse.json({ error: "변경할 항목이 없습니다." }, { status: 400 });
