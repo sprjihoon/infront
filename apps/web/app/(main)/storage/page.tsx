@@ -249,6 +249,7 @@ export default function StoragePage() {
                     className="relative overflow-hidden select-none"
                     style={{ height: 192, touchAction: "none" }}
                     onPointerDown={e => {
+                      if ((e.target as HTMLElement).closest("button, a")) return;
                       isDraggingRef.current = true;
                       dragStartX.current = e.clientX;
                       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
