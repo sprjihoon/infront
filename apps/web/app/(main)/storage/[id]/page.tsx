@@ -454,6 +454,8 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
     ? parcel.pre_invoice_items.filter((it) => it.name)
     : null;
 
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+
   // 사진: INSPECTION_PHOTO 우선, 없으면 영상 thumbnail
   const photoUrl = (() => {
     const media = parcel.parcel_media ?? [];
@@ -473,27 +475,39 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
   ].filter(Boolean).join(" · ");
 
   const Thumbnail = () => (
-    <div className="relative group shrink-0">
+    <div className="shrink-0">
       {photoUrl ? (
-        <>
-          <img
-            src={photoUrl}
-            alt="입고 사진"
-            className="w-9 h-9 rounded-xl object-cover"
-          />
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-12 z-50 hidden group-hover:block pointer-events-none">
-            <img
-              src={photoUrl}
-              alt="입고 사진 확대"
-              className="w-64 h-64 rounded-2xl object-cover shadow-2xl border-2 border-white"
-            />
-          </div>
-        </>
+        <img
+          src={photoUrl}
+          alt="입고 사진"
+          className="w-9 h-9 rounded-xl object-cover cursor-zoom-in"
+          onMouseEnter={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+          onMouseLeave={() => setHoverPos(null)}
+          onMouseMove={(e) => setHoverPos({ x: e.clientX, y: e.clientY })}
+        />
       ) : (
         <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
           <Package size={16} className="text-blue-400" />
         </div>
       )}
+    </div>
+  );
+
+  const overlay = hoverPos && photoUrl && (
+    <div
+      className="pointer-events-none"
+      style={{
+        position: "fixed",
+        zIndex: 9999,
+        left: hoverPos.x + 16,
+        top: Math.max(8, hoverPos.y - 132),
+      }}
+    >
+      <img
+        src={photoUrl}
+        alt="입고 사진 확대"
+        className="w-64 h-64 rounded-2xl object-cover shadow-2xl border-2 border-white"
+      />
     </div>
   );
 
@@ -503,6 +517,7 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
         {declaredItems.map((item, idx) => (
           <div key={`${parcel.id}-${idx}`} className="px-4 py-3 flex items-center gap-3">
             <Thumbnail />
+            {overlay}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-800 truncate">
                 {item.name}
@@ -528,6 +543,7 @@ function ParcelRow({ parcel }: { parcel: StorageParcel }) {
   return (
     <div className="px-4 py-3 flex items-center gap-3">
       <Thumbnail />
+      {overlay}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-800 truncate">
           {parcel.tracking_no ?? "운송장 미확인"}
