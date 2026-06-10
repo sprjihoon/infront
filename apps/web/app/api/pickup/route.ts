@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
       boxes,
       box_count,
       box_size,
+      customer_storage_id,
     } = body as {
       pickup_address?: string;
       pickup_address_detail?: string;
@@ -150,6 +151,7 @@ export async function POST(req: NextRequest) {
       boxes?: PickupBoxInput[];
       box_size?: PickupBoxSizeCode;
       box_count?: number;
+      customer_storage_id?: string;
     };
 
     if (!pickup_phone?.trim() || !pickup_date) {
@@ -629,6 +631,7 @@ export async function POST(req: NextRequest) {
         parcel_size_code: weightKgToSizeCode(spec.weight),
         ...(item_condition && { item_condition }),
         ...(pre_invoice_items?.length && { pre_invoice_items }),
+        ...(customer_storage_id && { customer_storage_id }),
         registered_by: 'CUSTOMER',
       })
       .select('id')

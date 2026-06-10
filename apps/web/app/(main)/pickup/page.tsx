@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package, Archive,
 } from "lucide-react";
@@ -88,6 +88,8 @@ function formatDateLabel(iso: string): string {
 
 export default function PickupPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preStorageId = searchParams.get("storage_id") ?? undefined;
   const minDate = getNextWeekday();
   const maxDate = getMaxDate();
 
@@ -333,6 +335,7 @@ export default function PickupPage() {
                   hs_code: "",
                 } : {}),
               })),
+            ...(preStorageId ? { customer_storage_id: preStorageId } : {}),
           }),
           signal: abortCtrl.signal,
         });
