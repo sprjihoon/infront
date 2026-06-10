@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package, Archive,
@@ -87,6 +87,14 @@ function formatDateLabel(iso: string): string {
 }
 
 export default function PickupPage() {
+  return (
+    <Suspense>
+      <PickupPageInner />
+    </Suspense>
+  );
+}
+
+function PickupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preStorageId = searchParams.get("storage_id") ?? undefined;
