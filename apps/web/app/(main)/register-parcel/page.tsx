@@ -258,7 +258,7 @@ export default function RegisterParcelPage() {
           센터에 도착하면 입고 처리 후 알려드릴게요.
         </p>
         <button
-          onClick={() => router.push("/warehouse")}
+          onClick={() => router.push("/storage")}
           className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl"
         >
           스토리지에서 확인
