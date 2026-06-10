@@ -288,11 +288,11 @@ export default function StoragePage() {
                           style={{
                             top: 0,
                             bottom: 0,
-                            left: "20%",
-                            right: "20%",
-                            transform: `translateX(calc(${offset * 120}% + ${dragOffset}px)) scale(${1 - abs * 0.1})`,
+                            left: "30%",
+                            right: "30%",
+                            transform: `translateX(calc(${offset * 75}% + ${dragOffset}px)) scale(${1 - abs * 0.06})`,
                             zIndex: 10 - abs,
-                            opacity: abs === 0 ? 1 : abs === 1 ? 0.55 : 0,
+                            opacity: abs === 0 ? 1 : abs === 1 ? 0.82 : 0,
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
                             cursor: abs > 0 ? "pointer" : "default",
                           }}
