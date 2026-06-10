@@ -270,7 +270,7 @@ export default function StoragePage() {
                   <div
                     ref={carouselRef}
                     className="relative overflow-hidden select-none"
-                    style={{ height: 192, touchAction: "none" }}
+                    style={{ height: 0, paddingBottom: "34.3%", touchAction: "none" }}
                     onPointerDown={e => {
                       if ((e.target as HTMLElement).closest("button, a")) return;
                       isDraggingRef.current = true;
@@ -628,11 +628,10 @@ function StorageCard({
 
   return (
     <div
-      className="rounded-3xl overflow-hidden relative select-none"
+      className="rounded-3xl overflow-hidden relative select-none h-full"
       style={{
         background: theme.bg,
         boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)`,
-        height: 192,
       }}
     >
       {/* 배경 텍스처 */}
