@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, Hash, SlidersHorizontal, Globe, Truck, Pencil, X, Check } from "lucide-react";
+import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, SlidersHorizontal, Globe, Truck, Pencil, X, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
@@ -20,14 +20,13 @@ const MENU_ITEMS = [
 interface Customer {
   name: string;
   email: string;
-  customer_code: string;
   phone: string | null;
 }
 
 export default function MyPage() {
   const router = useRouter();
   const [customer, setCustomer] = useState<Customer | null>(null);
-  const [copied, setCopied] = useState<"address" | "code" | null>(null);
+  const [copied, setCopied] = useState<"address" | null>(null);
   const [addrCount, setAddrCount] = useState<{ pickup: number; overseas: number }>({
     pickup: 0,
     overseas: 0,
@@ -44,7 +43,7 @@ export default function MyPage() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       const [{ data: cust }, { data: addrs }] = await Promise.all([
-        supabase.from("customers").select("name, email, customer_code, phone").eq("id", user.id).single(),
+        supabase.from("customers").select("name, email, phone").eq("id", user.id).single(),
         supabase.from("customer_addresses").select("type").eq("customer_id", user.id),
       ]);
       setCustomer(cust);
@@ -57,14 +56,14 @@ export default function MyPage() {
     });
   }, []);
 
-  function copyText(text: string, kind: "address" | "code") {
+  function copyText(text: string) {
     navigator.clipboard.writeText(text);
-    setCopied(kind);
+    setCopied("address");
     setTimeout(() => setCopied(null), 2000);
   }
 
   function copyAddress() {
-    copyText(`[${INFRONT_ZIPCODE}] ${INFRONT_ADDRESS}\n수취인: ${customer?.name ?? ""}`, "address");
+    copyText(`[${INFRONT_ZIPCODE}] ${INFRONT_ADDRESS}\n수취인: ${customer?.name ?? ""}`);
   }
 
   async function handleLogout() {
@@ -124,27 +123,6 @@ export default function MyPage() {
           </button>
         </div>
 
-        {customer?.customer_code && (
-          <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 min-w-0">
-              <Hash size={14} className="text-gray-400 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[11px] text-gray-400 font-medium">고객번호</p>
-                <p className="text-sm font-bold text-gray-800 tracking-wide truncate">
-                  {customer.customer_code}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => copyText(customer.customer_code, "code")}
-              className="flex items-center gap-1 text-xs text-brand-600 font-medium bg-brand-50 px-2.5 py-1.5 rounded-lg shrink-0"
-            >
-              <Copy size={12} />
-              {copied === "code" ? "복사됨" : "복사"}
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
