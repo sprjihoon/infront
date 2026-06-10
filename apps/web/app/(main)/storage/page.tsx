@@ -280,7 +280,7 @@ export default function StoragePage() {
                             bottom: 0,
                             left: 28,
                             right: 28,
-                            transform: `perspective(700px) translateX(calc(${offset * 100}% + ${offset * 12 + dragOffset}px)) rotateY(${-offset * 18}deg) scale(${1 - abs * 0.05})`,
+                            transform: `translateX(calc(${offset * 100}% + ${offset * 12 + dragOffset}px)) scale(${1 - abs * 0.04})`,
                             zIndex: 10 - abs,
                             opacity: abs === 0 ? 1 : abs === 1 ? 0.78 : 0.3,
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
