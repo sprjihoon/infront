@@ -596,8 +596,15 @@ function StorageCard({
         <StatChip label={isShortTerm ? "주요금" : "월요금"} value={weeklyFee > 0 ? `${(weeklyFee/1000).toFixed(1)}k` : "-"} />
       </div>
 
-      {/* ── 버튼 2종 ── */}
-      <div className="px-3 pb-3 grid grid-cols-2 gap-1.5">
+      {/* ── 버튼 3종 ── */}
+      <div className="px-3 pb-3 grid grid-cols-3 gap-1.5">
+        <button
+          type="button"
+          onClick={onDetail}
+          className="py-1.5 rounded-xl text-[11px] font-bold text-white/70 bg-white/10 hover:bg-white/20 transition-colors border border-white/10"
+        >
+          상세 보기
+        </button>
         <button
           type="button"
           onClick={() => {
