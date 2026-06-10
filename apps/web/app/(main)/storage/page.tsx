@@ -114,6 +114,24 @@ export default function StoragePage() {
   const dragStartX = useRef(0);
   const lastWheelTime = useRef(0);
   const pointerDownIdx = useRef(-1);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  // non-passive wheel: 캐러셀 영역 휠 시 페이지 스크롤 차단
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const now = Date.now();
+      if (now - lastWheelTime.current < 350) return;
+      lastWheelTime.current = now;
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (delta > 20) setActiveIdx(prev => Math.min(prev + 1, 999));
+      else if (delta < -20) setActiveIdx(prev => Math.max(prev - 1, 0));
+    };
+    el.addEventListener("wheel", handleWheel, { passive: false });
+    return () => el.removeEventListener("wheel", handleWheel);
+  }, []);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -247,6 +265,7 @@ export default function StoragePage() {
                 <div className="space-y-3">
                   {/* ── 캐러셀 윈도우 ── */}
                   <div
+                    ref={carouselRef}
                     className="relative overflow-hidden select-none"
                     style={{ height: 192, touchAction: "none" }}
                     onPointerDown={e => {
@@ -276,14 +295,6 @@ export default function StoragePage() {
                       setDragOffset(0);
                     }}
                     onPointerCancel={() => { isDraggingRef.current = false; setDragOffset(0); }}
-                    onWheel={e => {
-                      const now = Date.now();
-                      if (now - lastWheelTime.current < 350) return;
-                      lastWheelTime.current = now;
-                      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-                      if (delta > 20) goNext();
-                      else if (delta < -20) goPrev();
-                    }}
                   >
                     {allCards.map((card, i) => {
                       const offset = i - safeIdx;
