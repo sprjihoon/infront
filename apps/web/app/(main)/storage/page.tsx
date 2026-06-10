@@ -606,16 +606,29 @@ function StorageCard({
 
       {/* ── 상단: 아이콘 + 스토리지명 + 티어 뱃지 ── */}
       <div className="relative px-5 pt-4 flex items-start justify-between">
-        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
           >
             <Package size={14} style={{ color: theme.accent }} />
           </div>
-          <div>
+          <div className="min-w-0">
             <p className="text-[9px] font-semibold text-white/40 uppercase tracking-[0.18em]">Infront Storage</p>
-            <p className="text-[13px] font-bold text-white leading-tight mt-0.5">{s.storage_name}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <p className="text-[13px] font-bold text-white leading-tight truncate">{s.storage_name}</p>
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onRename(); }}
+                className="shrink-0 p-0.5 rounded-md opacity-40 hover:opacity-80 transition-opacity"
+                style={{ color: theme.accent }}
+              >
+                <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
         <div
@@ -668,7 +681,7 @@ function StorageCard({
       </div>
 
       {/* ── 하단 버튼 ── */}
-      <div className="relative px-4 mt-2.5 grid grid-cols-4 gap-1.5">
+      <div className="relative px-4 mt-2.5 grid grid-cols-3 gap-1.5">
         <button
           type="button"
           className="py-2 rounded-xl text-[10px] font-bold text-white transition-colors"
@@ -682,7 +695,7 @@ function StorageCard({
             onRelease(parcelIds as string[]);
           }}
         >
-          출고
+          출고 요청
         </button>
         <button
           type="button"
@@ -690,15 +703,7 @@ function StorageCard({
           style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
           onClick={e => { e.stopPropagation(); onCapacity(); }}
         >
-          용량
-        </button>
-        <button
-          type="button"
-          className="py-2 rounded-xl text-[10px] font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
-          onClick={e => { e.stopPropagation(); onRename(); }}
-        >
-          이름
+          용량 변경
         </button>
         <button
           type="button"
@@ -706,7 +711,7 @@ function StorageCard({
           style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.12)" }}
           onClick={e => { e.stopPropagation(); onDetail(); }}
         >
-          상세
+          상세 보기
         </button>
       </div>
     </div>
