@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Plus, Trash2,
   CheckCircle, AlertCircle, ChevronDown, Truck, Tag, ScanSearch,
-} from "lucide-react";
-import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
+} from "lucide-react";import ItemCategoryPicker from "@/components/ui/ItemCategoryPicker";
 import type { ItemCategory } from "@/lib/item-categories";
 import { useFlowMode } from "@/lib/flow-mode";
 
 const STEP_LABELS = ["발송 정보", "물품 내역"] as const;
+
+type ShipmentType = "parcel" | "freight";
 
 interface InvoiceItem {
   key: string;
@@ -25,17 +26,6 @@ interface InvoiceItem {
   inspection?: string;
   specials?: string[];
 }
-
-const COURIERS = [
-  // 일반 택배사
-  "CJ대한통운", "한진택배", "롯데택배", "우체국택배", "로젠택배",
-  "GS25편의점택배", "CU편의점택배",
-  // 이커머스 직배송
-  "쿠팡", "컬리", "SSG닷컴", "11번가", "홈플러스",
-  "네이버도착보장", "카카오선물하기",
-  // 기타
-  "기타",
-];
 
 function newItem(): InvoiceItem {
   return {
@@ -78,11 +68,10 @@ export default function RegisterParcelPage() {
   const prevFlowMode = useRef(flowMode);
 
   // Step 1: 발송 정보
+  const [shipmentType, setShipmentType] = useState<ShipmentType>("parcel"); // 택배 or 화물
   const [trackingNo, setTrackingNo] = useState("");
-  const [courier, setCourier] = useState("");
-  const [courierOpen, setCourierOpen] = useState(false);
+  const [senderPhone, setSenderPhone] = useState("");  // 화물 시 주 식별자
   const [senderName, setSenderName] = useState("");
-  const [senderPhone, setSenderPhone] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -124,7 +113,8 @@ export default function RegisterParcelPage() {
   }
 
   function canStep1() {
-    return trackingNo.trim().length > 0 && courier.trim().length > 0;
+    if (shipmentType === "parcel") return trackingNo.trim().length > 0;
+    return senderPhone.trim().length > 0;
   }
 
   function canStep2() {
@@ -157,12 +147,12 @@ export default function RegisterParcelPage() {
 
   function handleNext() {
     setError("");
-    if (!trackingNo.trim()) {
+    if (shipmentType === "parcel" && !trackingNo.trim()) {
       setError("국내 운송장 번호를 입력해주세요.");
       return;
     }
-    if (!courier.trim()) {
-      setError("택배사를 선택해주세요.");
+    if (shipmentType === "freight" && !senderPhone.trim()) {
+      setError("발송인 전화번호를 입력해주세요.");
       return;
     }
     setStep(2);
@@ -172,13 +162,13 @@ export default function RegisterParcelPage() {
 
   async function handleSubmit() {
     setError("");
-    if (!trackingNo.trim()) {
+    if (shipmentType === "parcel" && !trackingNo.trim()) {
       setError("국내 운송장 번호를 입력해주세요.");
       if (isSimple) setStep(1);
       return;
     }
-    if (!courier.trim()) {
-      setError("택배사를 선택해주세요.");
+    if (shipmentType === "freight" && !senderPhone.trim()) {
+      setError("발송인 전화번호를 입력해주세요.");
       if (isSimple) setStep(1);
       return;
     }
@@ -188,14 +178,19 @@ export default function RegisterParcelPage() {
       return;
     }
 
+    // 화물의 경우 전화번호를 운송장 번호 식별자로 사용
+    const resolvedTrackingNo = shipmentType === "freight"
+      ? `화물-${senderPhone.trim()}`
+      : trackingNo.trim();
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/parcels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tracking_no: trackingNo.trim(),
-          courier: courier || undefined,
+          tracking_no: resolvedTrackingNo,
+          courier: shipmentType === "freight" ? "화물" : undefined,
           sender_name: senderName || undefined,
           sender_phone: senderPhone || undefined,
           sender_address: senderAddress || undefined,
@@ -267,7 +262,7 @@ export default function RegisterParcelPage() {
           {wasMerged ? "물품 추가 완료!" : "물품 등록 완료!"}
         </h2>
         <p className="text-gray-500 text-sm leading-relaxed mb-1">
-          운송장 <span className="font-semibold text-gray-800">{trackingNo}</span>{wasMerged ? "에\n물품이 추가되었습니다." : "이\n스토리지에 등록되었습니다."}
+          운송장 <span className="font-semibold text-gray-800">{shipmentType === "freight" ? senderPhone : trackingNo}</span>{wasMerged ? "에\n물품이 추가되었습니다." : "이\n스토리지에 등록되었습니다."}
         </p>
         <p className="text-xs text-gray-400 mb-8">
           센터에 도착하면 입고 처리 후 알려드릴게요.
@@ -281,7 +276,8 @@ export default function RegisterParcelPage() {
         <button
           onClick={() => {
             setDone(false); setStep(1);
-            setTrackingNo(""); setCourier(""); setSenderName("");
+            setShipmentType("parcel");
+            setTrackingNo(""); setSenderName("");
             setSenderPhone(""); setSenderAddress(""); setNotes("");
             setCondition("NEW"); setItems([newItem()]);
           }}
@@ -344,56 +340,67 @@ export default function RegisterParcelPage() {
               </div>
             </div>
 
-            {/* 국내 운송장 번호 */}
+            {/* 배송 유형 선택 */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                국내 운송장 번호 <span className="text-red-500">*</span>
-              </label>
-              <input
-                value={trackingNo}
-                onChange={(e) => setTrackingNo(e.target.value)}
-                placeholder="123456789012"
-                className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white font-mono"
-              />
-              <p className="text-xs text-gray-400 mt-1.5">
-                쇼핑몰 주문내역 또는 택배사 앱에서 확인할 수 있어요
-              </p>
-            </div>
-
-            {/* 택배사 */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">
-                택배사 <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setCourierOpen((v) => !v)}
-                  className="w-full flex items-center justify-between px-4 py-3.5 border border-gray-200 rounded-xl text-sm bg-white text-left"
-                >
-                  <span className={courier ? "text-gray-900" : "text-gray-400"}>
-                    {courier || "택배사 선택"}
-                  </span>
-                  <ChevronDown size={15} className="text-gray-400" />
-                </button>
-                {courierOpen && (
-                  <div className="absolute z-20 top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                    {COURIERS.map((c) => (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => { setCourier(c); setCourierOpen(false); }}
-                        className={`w-full text-left px-4 py-3 text-sm hover:bg-brand-50 transition-colors ${
-                          courier === c ? "text-brand-600 font-semibold bg-brand-50" : "text-gray-700"
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <label className="block text-sm font-bold text-gray-700 mb-2">배송 유형</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { value: "parcel" as const,  label: "일반택배", sub: "운송장 번호 있음" },
+                  { value: "freight" as const, label: "화물",     sub: "운송장 번호 없음" },
+                ]).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setShipmentType(opt.value); setTrackingNo(""); setSenderPhone(""); }}
+                    className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                      shipmentType === opt.value
+                        ? "border-brand-500 bg-brand-50"
+                        : "border-gray-200 bg-white hover:border-brand-200"
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                      shipmentType === opt.value ? "border-brand-500 bg-brand-500" : "border-gray-300"
+                    }`}>
+                      {shipmentType === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <div>
+                      <p className={`text-sm font-semibold ${shipmentType === opt.value ? "text-brand-700" : "text-gray-800"}`}>{opt.label}</p>
+                      <p className="text-xs text-gray-400">{opt.sub}</p>
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
+
+            {/* 운송장 번호 (택배) 또는 발송인 전화번호 (화물) */}
+            {shipmentType === "parcel" ? (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  국내 운송장 번호 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={trackingNo}
+                  onChange={(e) => setTrackingNo(e.target.value)}
+                  placeholder="123456789012"
+                  className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white font-mono"
+                />
+                <p className="text-xs text-gray-400 mt-1.5">쇼핑몰 주문내역 또는 택배사 앱에서 확인할 수 있어요</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">
+                  발송인 전화번호 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={senderPhone}
+                  onChange={(e) => setSenderPhone(e.target.value)}
+                  placeholder="010-0000-0000"
+                  type="tel"
+                  className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
+                />
+                <p className="text-xs text-gray-400 mt-1.5">화물 도착 시 전화번호로 물품을 식별합니다</p>
+              </div>
+            )}
 
             {/* 발송인 / 쇼핑몰 */}
             <div>
@@ -408,7 +415,8 @@ export default function RegisterParcelPage() {
               />
             </div>
 
-            {/* 발송인 연락처 */}
+            {/* 발송인 연락처 — 화물 타입에서는 위에서 이미 입력함 */}
+            {shipmentType === "parcel" && (
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
                 발송인 연락처 <span className="text-gray-400 font-normal text-xs">(선택)</span>
@@ -421,6 +429,7 @@ export default function RegisterParcelPage() {
                 className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white"
               />
             </div>
+            )}
 
             {/* 메모 */}
             <div>
@@ -450,7 +459,7 @@ export default function RegisterParcelPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 font-mono">{trackingNo}</p>
-                <p className="text-xs text-gray-400">{courier}{senderName ? ` · ${senderName}` : ""}</p>
+                <p className="text-xs text-gray-400">{shipmentType === "freight" ? `화물 · ${senderPhone}` : trackingNo}{senderName ? ` · ${senderName}` : ""}</p>
               </div>
               <button type="button" onClick={() => setStep(1)} className="text-xs text-brand-600 font-medium shrink-0">수정</button>
             </div>
