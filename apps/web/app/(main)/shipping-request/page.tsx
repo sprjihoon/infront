@@ -244,10 +244,6 @@ function ShippingRequestContent() {
           .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable")
           .eq("customer_id", user.id)
           .eq("is_shippable", true)
-          .neq("status", "SHIPPED")
-          .neq("status", "RETURNED")
-          .neq("status", "PICKUP_CANCELLED")
-          .neq("status", "DISPOSED")
           .order("inbound_at", { ascending: false }),
         supabase
           .from("customer_addresses")
@@ -440,6 +436,12 @@ function ShippingRequestContent() {
       setShippingMethod("EMS_PREMIUM");
     }
   }, [usRequiresEmsPremium]);
+
+  useEffect(() => {
+    if (showDdpOption) {
+      setDutyPrepaid(true);
+    }
+  }, [showDdpOption]);
 
   // ── 유효성 검사 ───────────────────────────────────────────
   function canProceedForMainStep(ms: number): boolean {
@@ -1363,22 +1365,15 @@ function ShippingRequestContent() {
 
             {showDdpOption && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setDutyPrepaid((v) => !v)}
-                  className={`w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                    dutyPrepaid ? "border-emerald-500 bg-emerald-50" : "border-gray-100 bg-white"
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                    dutyPrepaid ? "bg-emerald-600 border-emerald-600" : "border-gray-300"
-                  }`}>
-                    {dutyPrepaid && <span className="text-white text-xs font-bold">✓</span>}
+                <div className="w-full text-left flex items-center gap-3 p-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50">
+                  <div className="w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 bg-emerald-600 border-emerald-600">
+                    <span className="text-white text-xs font-bold">✓</span>
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-800 flex items-center gap-1.5">
                       <ShieldCheck size={14} className="text-emerald-600" />
                       관세 선납 (DDP)
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full">필수</span>
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       미국·영국 — 관세를 미리 납부해 받는 분 추가 부담 없음.
@@ -1386,7 +1381,7 @@ function ShippingRequestContent() {
                       {" "}견적 확정 시 배송비와 함께 결제됩니다.
                     </p>
                   </div>
-                </button>
+                </div>
 
                 {dutyPrepaid && ddpBoxSummaries.filter((s) => isDdpEligibleForShipment(s.country, s.value, shippingMethod)).map((s) => (
                   <div
