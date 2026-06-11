@@ -386,7 +386,7 @@ infront/
 
 ---
 
-## ?? DB ��Ű�� (���̱׷��̼� 001~053)
+## ?? DB ��Ű�� (���̱׷��̼� 001~054)
 
 | ���� | ���� |
 |------|------|
@@ -1086,13 +1086,19 @@ Next.js ����
 - 장기보관 슬롯이 여러 개인 경우 "다른 보관함으로 이동 신청" 버튼 노출
 - `TransferToSlotSheet`: 대상 슬롯 선택 → TRANSFER_ITEMS 변경요청 접수
 
+**슬롯 합치기** (`storage/page.tsx`)
+- 활성 슬롯 2개 이상일 때 "슬롯 합치기" 버튼 노출
+- `MergeSlotSheet`: 대표 슬롯 + 합칠 소스 슬롯 선택 → MERGE_SLOTS 변경요청 접수
+- 합산 용량 점수 미리보기, 관리자가 실제 통합 처리
+
 **API 확장** (`change-request/route.ts`)
 - `TRANSFER_ITEMS` 타입 + `target_storage_id` 지원
-- 대상 슬롯이 본인 소유인지 검증
+- `MERGE_SLOTS` 타입 + `source_storage_ids UUID[]` 지원
+- 슬롯 소유권 검증 로직 추가
 
-**DB 마이그레이션** (`053_storage_transfer_items.sql`)
-- `storage_change_requests.target_storage_id` 컬럼 추가
-- `request_type` CHECK 제약에 `TRANSFER_ITEMS` 추가
+**DB 마이그레이션**
+- `053_storage_transfer_items.sql`: `target_storage_id` 컬럼 + `TRANSFER_ITEMS` 타입 추가
+- `054_storage_merge_slots.sql`: `source_storage_ids UUID[]` 컬럼 + `MERGE_SLOTS` 타입 추가
 
 ---
 
