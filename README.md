@@ -1088,18 +1088,27 @@ Next.js ����
 
 **슬롯 합치기** (`storage/page.tsx`)
 - 활성 슬롯 2개 이상일 때 "슬롯 합치기" 버튼 노출
-- `MergeSlotSheet`: 대표 슬롯 + 합칠 소스 슬롯 선택 → MERGE_SLOTS 변경요청 접수
-- 합산 용량 점수 미리보기, 관리자가 실제 통합 처리
+- `MergeSlotSheet`: **리터 기반 실시간 용량 검증** (`target_free >= source_used`)
+  - 합산 용량 초과 시 버튼 비활성화 + 부족량 표시
+  - 요청 즉시 소스 슬롯 CANCELLED, DB 자동 반영
+
+**즉시 적용 타입 vs 승인 필요 타입**
+- 즉시 적용 (`CAPACITY_CHANGE`, `MERGE_SLOTS`): DB 자동 반영 → 관리자 작업지시서 수신
+- 승인 필요 (`CONVERT_TO_LONG_TERM`, `TRANSFER_ITEMS`): 관리자가 승인/반려
 
 **API 확장** (`change-request/route.ts`)
-- `TRANSFER_ITEMS` 타입 + `target_storage_id` 지원
-- `MERGE_SLOTS` 타입 + `source_storage_ids UUID[]` 지원
-- 슬롯 소유권 검증 로직 추가
+- `CAPACITY_CHANGE`: `plan_type`·`capacity_score` 즉시 업데이트 후 work order 생성
+- `MERGE_SLOTS`: 리터 용량 검증 → 소스 슬롯 즉시 CANCELLED → work order 생성
+- `TRANSFER_ITEMS` + `target_storage_id`, `MERGE_SLOTS` + `source_storage_ids` 지원
+
+**어드민 UI** (`admin/storage/manage`)
+- 즉시적용 타입에 "📋 작업지시 / DB 자동적용" 배지 표시
+- "작업완료" 버튼 (amber 색상)으로 물리적 작업 완료 표시
+- 승인 필요 타입은 기존 "승인/반려" 유지
 
 **DB 마이그레이션**
-- `053_storage_transfer_items.sql`: `target_storage_id` 컬럼 + `TRANSFER_ITEMS` 타입 추가
-- `054_storage_merge_slots.sql`: `source_storage_ids UUID[]` 컬럼 + `MERGE_SLOTS` 타입 추가
-
+- `053_storage_transfer_items.sql`: `target_storage_id` 컬럼 + `TRANSFER_ITEMS` 타입
+- `054_storage_merge_slots.sql`: `source_storage_ids UUID[]` 컬럼 + `MERGE_SLOTS` 타입
 ---
 
 ## ?? 라이선스
