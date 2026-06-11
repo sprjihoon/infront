@@ -11,6 +11,7 @@ interface StorageType {
   name: string;
   price_per_week: number;
   price_max: number | null;
+  price_per_month: number | null;
   max_parcels: number | null;
   volume_liter: number | null;
 }
@@ -134,7 +135,9 @@ function StorageNewInner() {
                       <span className={`text-xs font-bold mt-1 block ${isSelected ? "text-brand-700" : "text-gray-500"}`}>
                         {type.price_per_week.toLocaleString()}원/주
                         <span className="font-normal text-gray-400 ml-1">
-                          (월 약 {(type.price_per_week * 4).toLocaleString()}원)
+                          (월 {type.price_per_month != null
+                            ? type.price_per_month.toLocaleString()
+                            : (type.price_per_week * 4).toLocaleString()}원)
                         </span>
                       </span>
                     </div>
@@ -166,15 +169,23 @@ function StorageNewInner() {
 
         {/* 합계 */}
         {selectedType && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">주간 요금</span>
               <span className="text-lg font-black text-brand-600">
                 {selectedType.price_per_week.toLocaleString()}원/주
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              월 약 {(selectedType.price_per_week * 4).toLocaleString()}원 · 로케이션 배정 후 자동 정산
+            {selectedType.price_per_month != null && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">월 요금</span>
+                <span className="text-base font-bold text-blue-600">
+                  {selectedType.price_per_month.toLocaleString()}원/월
+                </span>
+              </div>
+            )}
+            <p className="text-xs text-gray-400">
+              {selectedType.price_per_month == null && `월 약 ${(selectedType.price_per_week * 4).toLocaleString()}원 · `}로케이션 배정 후 자동 정산
             </p>
           </div>
         )}

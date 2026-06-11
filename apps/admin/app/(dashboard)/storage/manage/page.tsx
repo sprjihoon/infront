@@ -15,6 +15,7 @@ type StorageTypeOption = {
   max_parcels: number | null;
   price_per_week: number;
   price_max: number | null;
+  price_per_month: number | null;
 };
 
 type LocationRow = {
@@ -25,7 +26,7 @@ type LocationRow = {
   status: string;
   customer_id: string | null;
   customers: { name: string | null; customer_code: string } | null;
-  storage_types: { id: string; code: string; name: string; volume_liter: number; price_per_week: number } | null;
+  storage_types: { id: string; code: string; name: string; volume_liter: number; price_per_week: number; price_per_month: number | null } | null;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -82,10 +83,11 @@ export default function StorageManagePage() {
 
   // 타입별 용량·가격 편집
   const [editingTypeId,      setEditingTypeId]      = useState<string | null>(null);
-  const [editingField,       setEditingField]       = useState<"capacity" | "price" | null>(null);
+  const [editingField,       setEditingField]       = useState<"capacity" | "price" | "monthly" | null>(null);
   const [typeCapacityInput,  setTypeCapacityInput]  = useState<string>("");
   const [typePriceInput,     setTypePriceInput]     = useState<string>("");
   const [typePriceMaxInput,  setTypePriceMaxInput]  = useState<string>("");
+  const [typePriceMonthInput, setTypePriceMonthInput] = useState<string>("");
 
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -131,15 +133,20 @@ export default function StorageManagePage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [locRes, typeRes] = await Promise.all([
-      fetch("/api/admin/storage/list"),
-      fetch("/api/admin/storage"),
-    ]);
-    const locJson  = await locRes.json();
-    const typeJson = await typeRes.json();
-    setLocations(locJson.locations ?? []);
-    setTypes(typeJson.types ?? []);
-    setLoading(false);
+    try {
+      const [locRes, typeRes] = await Promise.all([
+        fetch("/api/admin/storage/list"),
+        fetch("/api/admin/storage"),
+      ]);
+      const locJson  = locRes.ok  ? await locRes.json()  : { locations: [] };
+      const typeJson = typeRes.ok ? await typeRes.json() : { types: [] };
+      setLocations(locJson.locations ?? []);
+      setTypes(typeJson.types ?? []);
+    } catch (e) {
+      console.error("[manage] load error:", e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -199,30 +206,48 @@ export default function StorageManagePage() {
 
   const handleSaveTypePrice = async (typeId: string) => {
     const priceVal = typePriceInput.trim();
-    const priceMaxVal = typePriceMaxInput.trim();
     const price_per_week = priceVal === "" ? null : parseInt(priceVal, 10);
-    const price_max = priceMaxVal === "" ? null : parseInt(priceMaxVal, 10);
 
     if (!price_per_week || isNaN(price_per_week) || price_per_week < 0) {
       alert("기본 주간 요금을 0 이상 정수로 입력하세요.");
       return;
     }
-    if (priceMaxVal !== "" && (isNaN(price_max!) || price_max! < price_per_week)) {
-      alert("상한 요금은 기본 요금 이상이어야 합니다.");
-      return;
-    }
     const res = await fetch("/api/admin/storage", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type_id: typeId, price_per_week, price_max: price_max ?? null }),
+      body: JSON.stringify({ type_id: typeId, price_per_week, price_max: null }),
     });
     if (res.ok) {
       setTypes((prev) =>
         prev.map((t) =>
           t.id === typeId
-            ? { ...t, price_per_week: price_per_week!, price_max: price_max ?? null }
+            ? { ...t, price_per_week: price_per_week!, price_max: null }
             : t
         )
+      );
+    } else {
+      const json = await res.json();
+      alert(json.error ?? "저장 실패");
+    }
+    setEditingTypeId(null);
+    setEditingField(null);
+  };
+
+  const handleSaveTypeMonthly = async (typeId: string) => {
+    const val = typePriceMonthInput.trim();
+    const price_per_month = val === "" ? null : parseInt(val, 10);
+    if (val !== "" && (isNaN(price_per_month!) || price_per_month! < 0)) {
+      alert("월 요금은 0 이상 정수로 입력하세요.");
+      return;
+    }
+    const res = await fetch("/api/admin/storage", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type_id: typeId, price_per_month: price_per_month ?? null }),
+    });
+    if (res.ok) {
+      setTypes((prev) =>
+        prev.map((t) => t.id === typeId ? { ...t, price_per_month: price_per_month ?? null } : t)
       );
     } else {
       const json = await res.json();
@@ -374,11 +399,11 @@ export default function StorageManagePage() {
                   </button>
                 )}
 
-                {/* ── 가격 ── */}
+                {/* ── 가격 (주간) ── */}
                 {editingTypeId === t.id && editingField === "price" ? (
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-gray-500 w-8 shrink-0">기본</span>
+                      <span className="text-[10px] text-gray-500 w-8 shrink-0">주</span>
                       <input
                         type="number" min={0}
                         value={typePriceInput}
@@ -386,17 +411,6 @@ export default function StorageManagePage() {
                         placeholder="0"
                         className="flex-1 border border-gray-300 rounded text-[11px] px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                         autoFocus
-                      />
-                      <span className="text-[10px] text-gray-400">원</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="text-[10px] text-gray-500 w-8 shrink-0">상한</span>
-                      <input
-                        type="number" min={0}
-                        value={typePriceMaxInput}
-                        onChange={(e) => setTypePriceMaxInput(e.target.value)}
-                        placeholder="없음"
-                        className="flex-1 border border-gray-300 rounded text-[11px] px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-300"
                       />
                       <span className="text-[10px] text-gray-400">원</span>
                     </div>
@@ -411,17 +425,52 @@ export default function StorageManagePage() {
                       setEditingTypeId(t.id);
                       setEditingField("price");
                       setTypePriceInput(String(t.price_per_week));
-                      setTypePriceMaxInput(t.price_max != null ? String(t.price_max) : "");
                     }}
                     className="text-[11px] font-semibold text-left hover:underline flex items-center gap-1"
-                    title="요금 편집"
+                    title="주간 요금 편집"
                   >
                     <span className="text-gray-400">💰</span>
                     <span className="text-emerald-700">
-                      {t.price_per_week.toLocaleString()}원
-                      {t.price_max ? `~${t.price_max.toLocaleString()}원` : ""}
-                      /주
+                      {t.price_per_week.toLocaleString()}원/주
                     </span>
+                    <span className="text-gray-300 text-[10px]">편집</span>
+                  </button>
+                )}
+
+                {/* ── 가격 (월간) ── */}
+                {editingTypeId === t.id && editingField === "monthly" ? (
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[10px] text-blue-500 w-8 shrink-0">월</span>
+                      <input
+                        type="number" min={0}
+                        value={typePriceMonthInput}
+                        onChange={(e) => setTypePriceMonthInput(e.target.value)}
+                        placeholder="없음"
+                        className="flex-1 border border-blue-200 rounded text-[11px] px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300"
+                        autoFocus
+                      />
+                      <span className="text-[10px] text-gray-400">원</span>
+                    </div>
+                    <div className="flex gap-1 justify-end">
+                      <button onClick={() => handleSaveTypeMonthly(t.id)} className="text-[10px] text-blue-600 font-bold hover:underline">저장</button>
+                      <button onClick={() => { setEditingTypeId(null); setEditingField(null); }} className="text-[10px] text-gray-400 hover:underline">취소</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setEditingTypeId(t.id);
+                      setEditingField("monthly");
+                      setTypePriceMonthInput(t.price_per_month != null ? String(t.price_per_month) : "");
+                    }}
+                    className="text-[11px] font-semibold text-left hover:underline flex items-center gap-1"
+                    title="월 요금 편집"
+                  >
+                    <span className="text-blue-400">📅</span>
+                    {t.price_per_month != null
+                      ? <span className="text-blue-600">{t.price_per_month.toLocaleString()}원/월</span>
+                      : <span className="text-gray-400">월 요금 없음</span>}
                     <span className="text-gray-300 text-[10px]">편집</span>
                   </button>
                 )}
@@ -505,10 +554,13 @@ export default function StorageManagePage() {
                     <p className="font-bold">{t.name.replace(" Storage", "").replace(" Rack", "")}</p>
                     <p className="text-gray-500 mt-0.5">{t.volume_liter}L</p>
                     <p className="text-gray-500">
-                      {t.price_per_week.toLocaleString()}원
-                      {t.price_max ? `~${t.price_max.toLocaleString()}원` : ""}
-                      /주
+                      {t.price_per_week.toLocaleString()}원/주
                     </p>
+                    {t.price_per_month != null && (
+                      <p className="text-blue-500 font-semibold">
+                        {t.price_per_month.toLocaleString()}원/월
+                      </p>
+                    )}
                   </button>
                 ))}
               </div>
@@ -523,6 +575,9 @@ export default function StorageManagePage() {
                 <span>{selectedType.dim_l_mm} × {selectedType.dim_w_mm} × {selectedType.dim_h_mm} mm</span>
                 <span>{selectedType.volume_liter}L</span>
                 <span className="font-semibold">{selectedType.price_per_week.toLocaleString()}원/주</span>
+                {selectedType.price_per_month != null && (
+                  <span className="font-semibold text-blue-600">{selectedType.price_per_month.toLocaleString()}원/월</span>
+                )}
               </div>
             )}
           </div>

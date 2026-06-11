@@ -21,7 +21,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("storage_types")
-    .select("id, code, name, price_per_week, price_max, max_parcels, volume_liter, dim_l_mm, dim_w_mm, dim_h_mm")
+    .select("id, code, name, price_per_week, price_max, price_per_month, max_parcels, volume_liter, dim_l_mm, dim_w_mm, dim_h_mm")
     .eq("is_active", true)
     .order("sort_order");
 

@@ -33,7 +33,7 @@ export async function GET() {
       id, code, zone, slot, status,
       storage_types (
         id, code, name,
-        price_per_week, price_max,
+        price_per_week, price_max, price_per_month,
         max_parcels,
         dim_l_mm, dim_w_mm, dim_h_mm, volume_liter
       )
