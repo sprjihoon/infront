@@ -113,6 +113,7 @@ function PickupPageInner() {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState("");
 
+  const [isAllSealed, setIsAllSealed]   = useState(false);
   const [itemsOpen, setItemsOpen]       = useState(true);
   const [itemCondition, setItemCondition] = useState<"NEW" | "USED">("NEW");
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([newItem()]);
@@ -189,15 +190,16 @@ function PickupPageInner() {
   }, [pickupAddress, pickupDate, disabledDates]);
 
   const validateStep2 = useCallback((): string | null => {
+    if (isAllSealed) return null;
     return validatePreInvoiceItems(invoiceItems);
-  }, [invoiceItems]);
+  }, [invoiceItems, isAllSealed]);
 
   const step1Ready = useMemo(() => validateStep1() === null, [validateStep1]);
   const step2Ready = useMemo(() => validateStep2() === null, [validateStep2]);
 
   function inferStep(): 1 | 2 | 3 {
     if (validateStep1()) return 1;
-    if (validateStep2()) return 2;
+    if (!isAllSealed && validateStep2()) return 2;
     return 3;
   }
 
@@ -239,7 +241,9 @@ function PickupPageInner() {
 
   function handleBack() {
     if (isSimple && step > 1) {
-      setStep(s => s - 1);
+      // 미개봉 모드: step 3 → step 1 (step 2 건너뜀)
+      const prevStep = (step === 3 && isAllSealed) ? 1 : step - 1;
+      setStep(prevStep as 1 | 2 | 3);
       setError("");
     } else {
       router.back();
@@ -251,8 +255,13 @@ function PickupPageInner() {
     if (step === 1) {
       const err = validateStep1();
       if (err) { setError(err); return; }
-      setStep(2);
-      setItemsOpen(true);
+      // 미개봉 모드: step 2 건너뛰고 바로 step 3으로
+      if (isAllSealed) {
+        setStep(3);
+      } else {
+        setStep(2);
+        setItemsOpen(true);
+      }
     } else if (step === 2) {
       setShowStep2FieldErrors(true);
       const err = validateStep2();
@@ -331,18 +340,20 @@ function PickupPageInner() {
             box_count: 1,
             box_size: boxSize,
             item_condition: itemCondition,
-            pre_invoice_items: invoiceItems
-              .filter(i => i.is_sealed ? (i.product_name ?? "").trim() : i.name_en.trim())
-              .map(({ key: _k, _isCustom: _c, inspection: _i, specials: _s, ...rest }) => ({
-                ...rest,
-                // 미개봉: name_en을 박스 이름으로, 수량·단가·hs_code 기본값
-                ...(rest.is_sealed ? {
-                  name_en: rest.product_name?.trim() || "Sealed Box",
-                  quantity: 1,
-                  unit_price_usd: 0,
-                  hs_code: "",
-                } : {}),
-              })),
+            pre_invoice_items: isAllSealed
+              ? [{ name_en: "Sealed Box", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "", is_sealed: true }]
+              : invoiceItems
+                .filter(i => i.is_sealed ? (i.product_name ?? "").trim() : i.name_en.trim())
+                .map(({ key: _k, _isCustom: _c, inspection: _i, specials: _s, ...rest }) => ({
+                  ...rest,
+                  // 미개봉: name_en을 박스 이름으로, 수량·단가·hs_code 기본값
+                  ...(rest.is_sealed ? {
+                    name_en: rest.product_name?.trim() || "Sealed Box",
+                    quantity: 1,
+                    unit_price_usd: 0,
+                    hs_code: "",
+                  } : {}),
+                })),
             ...(preStorageId ? { customer_storage_id: preStorageId } : {}),
           }),
           signal: abortCtrl.signal,
@@ -689,6 +700,46 @@ function PickupPageInner() {
                 className="w-full px-4 py-3.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-brand-500 transition-colors resize-none"
               />
             </div>
+
+            {/* 미개봉 박스 수거 토글 */}
+            <button
+              type="button"
+              onClick={() => setIsAllSealed(v => !v)}
+              className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border-2 text-left transition-all ${
+                isAllSealed ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
+              }`}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isAllSealed ? "bg-blue-100" : "bg-gray-100"}`}>
+                <Package size={18} className={isAllSealed ? "text-blue-600" : "text-gray-400"} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold ${isAllSealed ? "text-blue-700" : "text-gray-800"}`}>
+                  미개봉 박스 수거
+                  <span className="ml-1.5 text-[10px] font-normal text-gray-400">(선택)</span>
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  박스를 개봉하지 않고 원박스 그대로 보관 — 물품 내역 입력을 건너뜁니다
+                </p>
+              </div>
+              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                isAllSealed ? "bg-blue-600 border-blue-600" : "border-gray-300"
+              }`}>
+                {isAllSealed && (
+                  <svg className="w-3 h-3 text-white" viewBox="0 0 10 8" fill="none">
+                    <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+            </button>
+            {isAllSealed && (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <span className="text-amber-500 text-sm mt-0.5">⚠</span>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  미개봉 상태로 보관됩니다. 단,{" "}
+                  <span className="font-bold">해외 배송 출고 시에는 세관 신고 및 검수를 위해 개봉 후 처리</span>됩니다.
+                </p>
+              </div>
+            )}
           </>
         )}
 
@@ -1048,8 +1099,13 @@ function PickupPageInner() {
                   <div>
                     <p className="text-[10px] text-gray-400 font-semibold">물품</p>
                     <p className="text-gray-800">
-                      {itemCondition === "NEW" ? "새 제품" : "중고품"} · {filledItemCount}종
+                      {isAllSealed
+                        ? "미개봉 박스 수거"
+                        : `${itemCondition === "NEW" ? "새 제품" : "중고품"} · ${filledItemCount}종`}
                     </p>
+                    {isAllSealed ? (
+                      <p className="text-[11px] text-blue-500 mt-1">📦 박스 미개봉 그대로 보관 — 물품 내역 입력 생략</p>
+                    ) : (
                     <ul className="mt-1 space-y-1">
                       {invoiceItems.filter(i => i.name_en.trim()).map(item => (
                         <li key={item.key} className="text-xs text-gray-600 flex justify-between gap-2">
@@ -1062,6 +1118,7 @@ function PickupPageInner() {
                         </li>
                       ))}
                     </ul>
+                    )}
                   </div>
                   {notes.trim() && (
                     <div>
@@ -1078,6 +1135,7 @@ function PickupPageInner() {
                   >
                     수거 정보 수정
                   </button>
+                  {!isAllSealed && (
                   <button
                     type="button"
                     onClick={goEditItems}
@@ -1085,6 +1143,7 @@ function PickupPageInner() {
                   >
                     물품 내역 수정
                   </button>
+                  )}
                 </div>
               </div>
             )}

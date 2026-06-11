@@ -74,7 +74,7 @@ export default function InboundPage() {
                   <ChevronRight size={18} className="text-gray-400 shrink-0" />
                 </div>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  택배, 퀵, 직접 방문으로 물품을 보내기 전 미리 등록합니다.
+                  택배, 퀵, 화물, 화물택배로 물품을 보내기 전 미리 등록합니다.
                 </p>
                 <p className="text-xs text-gray-400 mt-1.5 leading-relaxed">
                   센터에 도착한 물품과 등록 정보를 확인해 스토리지에 반영합니다.

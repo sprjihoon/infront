@@ -21,6 +21,7 @@ interface InvoiceItem {
   unit_price_usd: number;
   origin_country: string;
   hs_code: string;
+  is_sealed?: boolean;
   _isCustom?: boolean;
   _categoryLabel?: string;
   inspection?: string;
@@ -31,7 +32,7 @@ function newItem(): InvoiceItem {
   return {
     key: Math.random().toString(36).slice(2),
     name_en: "", quantity: 1, unit_price_usd: 0,
-    origin_country: "KR", hs_code: "",
+    origin_country: "KR", hs_code: "", is_sealed: false,
   };
 }
 
@@ -76,7 +77,7 @@ export default function RegisterParcelPage() {
   const [notes, setNotes] = useState("");
 
   // Step 2: 물품 내역
-  const [condition, setCondition] = useState<"NEW" | "USED" | "SEALED">("NEW");
+  const [condition, setCondition] = useState<"NEW" | "USED">("NEW");
   const [items, setItems] = useState<InvoiceItem[]>([newItem()]);
 
   const [specialsOpenKeys, setSpecialsOpenKeys] = useState<Set<string>>(new Set());
@@ -119,7 +120,9 @@ export default function RegisterParcelPage() {
 
   function canStep2() {
     return items.length > 0 && items.every(
-      (it) => it.name_en.trim() && it.quantity >= 1 && it.unit_price_usd >= 0
+      (it) => it.is_sealed
+        ? (it.product_name ?? "").trim().length > 0  // 미개봉: 박스 이름만 필요
+        : it.name_en.trim() && it.quantity >= 1 && it.unit_price_usd >= 0
     );
   }
 
@@ -197,8 +200,16 @@ export default function RegisterParcelPage() {
           notes: notes || undefined,
           item_condition: condition,
           pre_invoice_items: items
-            .filter((it) => it.name_en.trim() || it.product_name?.trim())
-            .map(({ key: _k, _isCustom: _c, _categoryLabel: _l, inspection: _i, specials: _s, ...rest }) => rest),
+            .filter((it) => it.is_sealed ? (it.product_name ?? "").trim() : it.name_en.trim() || it.product_name?.trim())
+            .map(({ key: _k, _isCustom: _c, _categoryLabel: _l, inspection: _i, specials: _s, ...rest }) => ({
+              ...rest,
+              ...(rest.is_sealed ? {
+                name_en: rest.product_name?.trim() || "Sealed Box",
+                quantity: 1,
+                unit_price_usd: 0,
+                hs_code: "",
+              } : {}),
+            })),
         }),
       });
       const json = await res.json();
@@ -471,16 +482,15 @@ export default function RegisterParcelPage() {
                 <Tag size={14} className="inline mr-1.5 text-gray-500" />
                 물품 상태
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { value: "NEW",    label: "새 제품",  sub: "신품 · 미사용" },
-                  { value: "SEALED", label: "미개봉",   sub: "박스 봉인 상태" },
-                  { value: "USED",   label: "중고품",   sub: "사용품 · 유학생 짐" },
+                  { value: "NEW",  label: "새 제품", sub: "신품 · 미사용" },
+                  { value: "USED", label: "중고품",  sub: "사용품 · 유학생 짐" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => setCondition(opt.value as "NEW" | "USED" | "SEALED")}
+                    onClick={() => setCondition(opt.value as "NEW" | "USED")}
                     className={`flex flex-col gap-1 px-3 py-3 rounded-xl border-2 transition-all text-left ${
                       condition === opt.value
                         ? "border-brand-500 bg-brand-50"
@@ -530,20 +540,33 @@ export default function RegisterParcelPage() {
 
                     {/* 제품명 (메모) */}
                     <div className="mb-2.5">
-                      <label className="block text-xs font-semibold text-gray-500 mb-1">제품명</label>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">
+                        {item.is_sealed ? "박스 이름 *" : "제품명"}
+                      </label>
                       <input
                         value={item.product_name ?? ""}
                         onChange={(e) => updateItem(idx, { product_name: e.target.value })}
-                        placeholder="예: 나이키 운동화, 화장품 세트 (선택)"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200"
+                        placeholder={item.is_sealed ? "예: 나이키 신발 박스, 의류 박스 1" : "예: 나이키 운동화, 화장품 세트 (선택)"}
+                        className={`w-full bg-gray-50 border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200 ${
+                          item.is_sealed && !(item.product_name ?? "").trim()
+                            ? "border-red-300 bg-red-50"
+                            : "border-gray-100"
+                        }`}
                       />
+                      {item.is_sealed && !(item.product_name ?? "").trim() && (
+                        <p className="text-[10px] text-red-500 mt-0.5">박스 이름을 입력해주세요</p>
+                      )}
                     </div>
 
+                    {/* 미개봉이 아닐 때만 상세 필드 표시 */}
+                    {!item.is_sealed && (
+                      <>
                     {/* 품목 선택 */}
                     <div className="mb-2.5">
                       <label className="block text-xs font-semibold text-gray-500 mb-1">
                         품목 선택 <span className="text-red-400">*</span>
-                      </label>                      <ItemCategoryPicker
+                      </label>
+                      <ItemCategoryPicker
                         value={item._isCustom ? "Other Goods" : item.name_en}
                         onChange={(cat) => selectCategory(idx, cat)}
                       />
@@ -638,9 +661,48 @@ export default function RegisterParcelPage() {
                         <span className="font-semibold text-gray-700">${(item.quantity * item.unit_price_usd).toFixed(2)}</span>
                       </div>
                     )}
+                      </>
+                    )}
+
+                    {/* 미개봉 체크박스 */}
+                    <div className="mt-2.5">
+                      <label className="flex items-center gap-2 cursor-pointer select-none group">
+                        <div
+                          className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
+                            item.is_sealed ? "bg-blue-500 border-blue-500" : "border-gray-300 group-hover:border-blue-300"
+                          }`}
+                        >
+                          {item.is_sealed && (
+                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
+                              <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </div>
+                        <input
+                          type="checkbox"
+                          className="sr-only"
+                          checked={!!item.is_sealed}
+                          onChange={() => updateItem(idx, { is_sealed: !item.is_sealed })}
+                        />
+                        <span className="text-xs font-semibold text-gray-600">박스 미개봉 보관</span>
+                        <span className="text-[10px] text-gray-400">개봉 없이 원박스 보관</span>
+                      </label>
+                      {item.is_sealed && (
+                        <div className="mt-1.5 flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                          <span className="text-amber-500 text-xs mt-0.5">⚠</span>
+                          <p className="text-[11px] text-amber-700 leading-relaxed">
+                            미개봉 상태로 보관됩니다. 단, <span className="font-bold">해외 배송 출고 시에는 세관 신고 및 검수를 위해 개봉 후 처리</span>됩니다.
+                          </p>
+                        </div>
+                      )}
+                    </div>
 
                     {/* 검품 + 특수 처리 */}
                     <div className="mt-2.5 pt-2.5 border-t border-gray-100 space-y-2">
+                      {item.is_sealed ? (
+                        <p className="text-[11px] text-blue-500 font-medium">📦 미개봉 보관 — 검품·특수 처리 없이 원박스 보관됩니다</p>
+                      ) : (
+                      <>
                       {/* 검품 선택 */}
                       <div>
                         <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
@@ -717,6 +779,8 @@ export default function RegisterParcelPage() {
                           </div>
                         )}
                       </div>
+                      </>
+                      )}
                     </div>
                   </div>
                 ))}

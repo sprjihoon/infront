@@ -132,21 +132,23 @@ export default function StoragePage() {
   const carouselRef = useRef<HTMLDivElement>(null);
 
   // non-passive wheel: 캐러셀 영역 휠 시 페이지 스크롤 차단
+  // loading이 끝난 뒤 carouselRef가 실제 DOM에 붙으므로 loading을 deps에 포함
   useEffect(() => {
     const el = carouselRef.current;
     if (!el) return;
     const handleWheel = (e: WheelEvent) => {
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (Math.abs(delta) <= 20) return;
       e.preventDefault();
       const now = Date.now();
       if (now - lastWheelTime.current < 350) return;
       lastWheelTime.current = now;
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (delta > 20) setActiveIdx(prev => Math.min(prev + 1, 999));
-      else if (delta < -20) setActiveIdx(prev => Math.max(prev - 1, 0));
+      if (delta > 0) setActiveIdx(prev => Math.min(prev + 1, 999));
+      else setActiveIdx(prev => Math.max(prev - 1, 0));
     };
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
-  }, []);
+  }, [loading]);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -176,10 +178,20 @@ export default function StoragePage() {
 
   /* 요약 */
   const totalMonthly = active.reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
+  const totalMonthlyFee = active
+    .filter((s) => s.storage_mode === "long_term")
+    .reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
   const nextBilling = active
     .map((s) => s.next_billing_date ?? s.paid_until_date)
     .filter(Boolean)
     .sort()[0] ?? null;
+
+  const shippableCount = items.filter(
+    (it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable === true
+  ).length;
+  const avgUsage = active.length > 0
+    ? Math.round(active.reduce((sum, s) => sum + (s.usage_percent ?? 0), 0) / active.length)
+    : 0;
 
   const filterTabs = ["전체", "출고 가능", ...active.map((s) => s.storage_name)];
   const filteredItems =
@@ -241,16 +253,29 @@ export default function StoragePage() {
             {/* ── 전체 요약 카드 ───────────────────── */}
             <div className="bg-brand-600 rounded-2xl p-4 text-white">
               <p className="text-xs font-semibold text-brand-200 mb-3">전체 요약</p>
-              <div className="grid grid-cols-3 gap-2">
+              {/* 1행: 물품·상태 */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                <SummaryCell label="이용 중" value={`${active.length}개`} />
+                <SummaryCell label="총 물품" value={`${items.length}개`} />
                 <SummaryCell
-                  label="이용 중"
-                  value={`${active.length}개`}
+                  label="출고 가능"
+                  value={shippableCount > 0 ? `${shippableCount}개` : "-"}
+                  accent={shippableCount > 0 ? "text-green-300" : undefined}
                 />
+              </div>
+              {/* 구분선 */}
+              <div className="border-t border-brand-500/50 mb-3" />
+              {/* 2행: 요금·결제 */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 <SummaryCell
                   label="주간 요금"
                   value={locationSummary?.total_weekly_fee
                     ? `${locationSummary.total_weekly_fee.toLocaleString()}원`
                     : totalMonthly > 0 ? `${totalMonthly.toLocaleString()}원` : "-"}
+                />
+                <SummaryCell
+                  label="월 요금"
+                  value={totalMonthlyFee > 0 ? `${totalMonthlyFee.toLocaleString()}원` : "-"}
                 />
                 <SummaryCell
                   label="다음 결제일"
@@ -259,6 +284,38 @@ export default function StoragePage() {
                     : "-"}
                 />
               </div>
+              {/* 3행: 용량 바 */}
+              {active.length > 0 && (
+                <>
+                  <div className="border-t border-brand-500/50 mb-3" />
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] text-brand-200">평균 용량 사용률</span>
+                      <span className={`text-[11px] font-bold ${avgUsage >= 90 ? "text-red-300" : avgUsage >= 70 ? "text-orange-300" : "text-brand-200"}`}>
+                        {avgUsage}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-brand-700/60 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full transition-all ${avgUsage >= 90 ? "bg-red-400" : avgUsage >= 70 ? "bg-orange-400" : "bg-brand-300"}`}
+                        style={{ width: `${Math.min(avgUsage, 100)}%` }}
+                      />
+                    </div>
+                    {active.length > 1 && (
+                      <div className="flex gap-1.5 flex-wrap mt-1">
+                        {active.map((s) => (
+                          <span key={s.id} className="text-[9px] text-brand-300 flex items-center gap-0.5">
+                            <span>{s.storage_name}</span>
+                            <span className={`font-bold ${(s.usage_percent ?? 0) >= 90 ? "text-red-300" : "text-brand-200"}`}>
+                              {Math.round(s.usage_percent ?? 0)}%
+                            </span>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* ── 3D 드래그 캐러셀 ─────────── */}
@@ -577,11 +634,11 @@ export default function StoragePage() {
 }
 
 /* ─── 요약 셀 ──────────────────────────────────── */
-function SummaryCell({ label, value }: { label: string; value: string }) {
+function SummaryCell({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
     <div className="text-center">
       <p className="text-[10px] text-brand-200 mb-1">{label}</p>
-      <p className="text-sm font-bold">{value}</p>
+      <p className={`text-sm font-bold ${accent ?? ""}`}>{value}</p>
     </div>
   );
 }
