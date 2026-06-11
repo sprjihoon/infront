@@ -134,7 +134,7 @@ function PickupPageInner() {
 
   // 장기보관 연계 옵션
   const [storageOptIn, setStorageOptIn] = useState(false);
-  const [storageTypes, setStorageTypes] = useState<{ id: string; code: string; name: string; price_per_week: number; max_parcels: number | null; volume_liter: number | null }[]>([]);
+  const [storageTypes, setStorageTypes] = useState<{ id: string; code: string; name: string; price_per_week: number; price_per_month: number | null; max_parcels: number | null; volume_liter: number | null }[]>([]);
   const [selectedStoragePlan, setSelectedStoragePlan] = useState<string | null>(null);
 
   const disabledDates = Array.from({ length: 21 }, (_, i) => {
@@ -1235,7 +1235,9 @@ function PickupPageInner() {
                               <span className="text-[10px] text-gray-400 ml-1">{type.volume_liter}L</span>
                             )}
                             <span className="text-xs text-brand-700 font-bold ml-1.5">
-                              {type.price_per_week.toLocaleString()}원/월
+                              {type.price_per_month != null
+                                ? `${type.price_per_month.toLocaleString()}원/월`
+                                : `${type.price_per_week.toLocaleString()}원/월`}
                             </span>
                           </div>
                           {selectedStoragePlan === type.code && (

@@ -838,6 +838,7 @@ type StorageType = {
   code: string;
   name: string;
   price_per_week: number;
+  price_per_month: number | null;
   max_parcels: number | null;
   volume_liter: number | null;
 };
@@ -973,9 +974,13 @@ function CapacityChangeSheet({
                       </div>
                       <div className="text-right shrink-0">
                         <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : "text-gray-700"}`}>
-                          {t.price_per_week.toLocaleString()}원
+                          {t.price_per_month != null
+                            ? `${t.price_per_month.toLocaleString()}원`
+                            : `${t.price_per_week.toLocaleString()}원`}
                         </p>
-                        <p className="text-[10px] text-gray-400">/주</p>
+                        <p className="text-[10px] text-gray-400">
+                          {t.price_per_month != null ? "/월" : "/주"}
+                        </p>
                       </div>
                     </button>
                   );
