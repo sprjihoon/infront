@@ -22,7 +22,13 @@ type Params = { params: Promise<{ id: string }> };
 
 /**
  * POST /api/storage/[id]/change-request
- * 용량 변경 / 단기→장기 전환 / 슬롯 추가 요청 접수
+ *
+ * 즉시 적용 타입 (DB 자동 변경 → 관리자 작업지시서 생성):
+ *   CAPACITY_CHANGE  — plan_type·capacity_score 즉시 변경
+ *   MERGE_SLOTS      — 리터 기반 용량 검증 → 소스 슬롯 즉시 CANCELLED
+ *
+ * 관리자 승인 필요 타입:
+ *   CONVERT_TO_LONG_TERM, TRANSFER_ITEMS, ADD_SLOT
  */
 export async function POST(req: NextRequest, { params }: Params) {
   const { id: storage_id } = await params;
@@ -34,10 +40,10 @@ export async function POST(req: NextRequest, { params }: Params) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // 본인 스토리지인지 확인
+  // 본인 스토리지 조회 (capacity 정보 포함)
   const { data: storage, error: sErr } = await supabase
     .from("customer_storages")
-    .select("id, storage_mode, plan_type")
+    .select("id, storage_mode, plan_type, capacity_score, used_score")
     .eq("id", storage_id)
     .eq("user_id", user.id)
     .single();
@@ -61,7 +67,145 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "유효하지 않은 요청 타입입니다." }, { status: 400 });
   }
 
-  // TRANSFER_ITEMS: 대상 스토리지 검증
+  // ────────────────────────────────────────────────────────
+  // CAPACITY_CHANGE: 즉시 적용
+  // ────────────────────────────────────────────────────────
+  if (body.request_type === "CAPACITY_CHANGE") {
+    if (!body.requested_type_id) {
+      return NextResponse.json({ error: "requested_type_id 가 필요합니다." }, { status: 400 });
+    }
+
+    // 새 타입 용량 조회
+    const { data: newType } = await supabase
+      .from("storage_types")
+      .select("id, code, volume_liter, max_parcels")
+      .eq("id", body.requested_type_id)
+      .single();
+
+    if (!newType) {
+      return NextResponse.json({ error: "해당 보관 타입을 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    // customer_storages 즉시 업데이트
+    const { error: upErr } = await supabase
+      .from("customer_storages")
+      .update({
+        plan_type:      newType.code,
+        capacity_score: newType.volume_liter,
+        updated_at:     new Date().toISOString(),
+      })
+      .eq("id", storage_id);
+
+    if (upErr) {
+      return NextResponse.json({ error: upErr.message }, { status: 500 });
+    }
+
+    // 작업지시서 생성 (관리자가 물리적으로 슬롯 재배치해야 함)
+    const { data: workOrder, error: woErr } = await supabase
+      .from("storage_change_requests")
+      .insert({
+        user_id:              user.id,
+        storage_id,
+        request_type:         "CAPACITY_CHANGE",
+        requested_type_id:    body.requested_type_id,
+        requested_type_code:  newType.code,
+        customer_note:        body.customer_note ?? null,
+      })
+      .select()
+      .single();
+
+    if (woErr) {
+      console.error("[change-request CAPACITY_CHANGE]", woErr);
+    }
+
+    return NextResponse.json({
+      request: workOrder,
+      applied: true,
+      message: `보관함 용량이 ${newType.code}(${newType.volume_liter}L)로 변경되었습니다.`,
+    }, { status: 201 });
+  }
+
+  // ────────────────────────────────────────────────────────
+  // MERGE_SLOTS: 리터 기반 검증 후 즉시 적용
+  // ────────────────────────────────────────────────────────
+  if (body.request_type === "MERGE_SLOTS") {
+    const sourceIds = body.source_storage_ids ?? [];
+    if (sourceIds.length < 1) {
+      return NextResponse.json({ error: "합칠 슬롯(source_storage_ids)이 1개 이상 필요합니다." }, { status: 400 });
+    }
+    if (sourceIds.includes(storage_id)) {
+      return NextResponse.json({ error: "현재 보관함은 소스 목록에 포함할 수 없습니다." }, { status: 400 });
+    }
+
+    // 소스 슬롯 소유권 + 사용량 조회
+    const { data: sourceSlots } = await supabase
+      .from("customer_storages")
+      .select("id, used_score, capacity_score, plan_type")
+      .eq("user_id", user.id)
+      .in("id", sourceIds)
+      .neq("status", "CANCELLED");
+
+    if (!sourceSlots || sourceSlots.length !== sourceIds.length) {
+      return NextResponse.json({ error: "소스 슬롯 중 소유하지 않거나 유효하지 않은 항목이 있습니다." }, { status: 403 });
+    }
+
+    // 리터 기반 용량 검증
+    // target: capacity_score = volume_liter (plan type의 총 용량)
+    const targetCapacity = storage.capacity_score ?? 0;
+    const targetUsed = storage.used_score ?? 0;
+    const totalSourceUsed = sourceSlots.reduce((acc, s) => acc + (s.used_score ?? 0), 0);
+
+    if (targetCapacity > 0 && (targetUsed + totalSourceUsed) > targetCapacity) {
+      return NextResponse.json({
+        error: `대표 보관함의 남은 용량(${targetCapacity - targetUsed}L)이 합칠 물품의 사용량(${totalSourceUsed}L)보다 작습니다.`,
+        target_capacity:  targetCapacity,
+        target_used:      targetUsed,
+        source_used:      totalSourceUsed,
+        short_by:         (targetUsed + totalSourceUsed) - targetCapacity,
+      }, { status: 422 });
+    }
+
+    // 소스 슬롯 즉시 CANCELLED
+    const { error: cancelErr } = await supabase
+      .from("customer_storages")
+      .update({
+        status:     "CANCELLED",
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", sourceIds);
+
+    if (cancelErr) {
+      return NextResponse.json({ error: cancelErr.message }, { status: 500 });
+    }
+
+    // 작업지시서 생성 (관리자가 물리적으로 물품 이전해야 함)
+    const { data: workOrder, error: woErr } = await supabase
+      .from("storage_change_requests")
+      .insert({
+        user_id:            user.id,
+        storage_id,
+        request_type:       "MERGE_SLOTS",
+        source_storage_ids: sourceIds,
+        customer_note:      body.customer_note ?? null,
+      })
+      .select()
+      .single();
+
+    if (woErr) {
+      console.error("[change-request MERGE_SLOTS]", woErr);
+    }
+
+    return NextResponse.json({
+      request:          workOrder,
+      applied:          true,
+      cancelled_slots:  sourceIds.length,
+      message:          `${sourceIds.length}개 슬롯이 합쳐졌습니다. 관리자가 물품을 이전합니다.`,
+    }, { status: 201 });
+  }
+
+  // ────────────────────────────────────────────────────────
+  // TRANSFER_ITEMS: 대상 스토리지 검증 (관리자 승인 필요)
+  // ────────────────────────────────────────────────────────
   if (body.request_type === "TRANSFER_ITEMS") {
     if (!body.target_storage_id) {
       return NextResponse.json({ error: "이동 대상 보관함(target_storage_id)이 필요합니다." }, { status: 400 });
@@ -69,7 +213,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     if (body.target_storage_id === storage_id) {
       return NextResponse.json({ error: "현재 보관함과 동일한 곳으로는 이동할 수 없습니다." }, { status: 400 });
     }
-    // 대상이 본인 스토리지인지 확인
     const { data: targetStorage } = await supabase
       .from("customer_storages")
       .select("id")
@@ -82,7 +225,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
   }
 
-  // 중복 PENDING 요청 방지 (동일 타입의 대기중 요청이 있으면 거부)
+  // 중복 PENDING 요청 방지 (승인 필요 타입만)
   const { data: existing } = await supabase
     .from("storage_change_requests")
     .select("id")
@@ -98,27 +241,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
   }
 
-  // MERGE_SLOTS: 소스 슬롯 검증
-  if (body.request_type === "MERGE_SLOTS") {
-    const ids = body.source_storage_ids ?? [];
-    if (ids.length < 1) {
-      return NextResponse.json({ error: "합칠 슬롯(source_storage_ids)이 1개 이상 필요합니다." }, { status: 400 });
-    }
-    if (ids.includes(storage_id)) {
-      return NextResponse.json({ error: "현재 보관함은 소스 목록에 포함할 수 없습니다." }, { status: 400 });
-    }
-    // 본인 소유 슬롯인지 확인
-    const { data: ownedSlots } = await supabase
-      .from("customer_storages")
-      .select("id")
-      .eq("user_id", user.id)
-      .in("id", ids)
-      .neq("status", "CANCELLED");
-    if (!ownedSlots || ownedSlots.length !== ids.length) {
-      return NextResponse.json({ error: "소스 슬롯 중 소유하지 않거나 유효하지 않은 항목이 있습니다." }, { status: 403 });
-    }
-  }
-
+  // 그 외 (CONVERT_TO_LONG_TERM, TRANSFER_ITEMS, ADD_SLOT) → 관리자 승인 대기
   const { data, error } = await supabase
     .from("storage_change_requests")
     .insert({
@@ -147,7 +270,8 @@ export async function POST(req: NextRequest, { params }: Params) {
  * GET /api/storage/[id]/change-request
  * 해당 스토리지의 변경 요청 목록 조회
  */
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
+  void req;
   const { id: storage_id } = await params;
   const cookieStore = await cookies();
   const supabase = createSupabase(cookieStore);
@@ -159,15 +283,10 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const { data, error } = await supabase
     .from("storage_change_requests")
-    .select(`
-      id, request_type, status, customer_note, admin_note,
-      requested_type_code, requested_plan_type,
-      created_at, processed_at
-    `)
+    .select("id, request_type, status, customer_note, admin_note, created_at, processed_at, requested_type_code, source_storage_ids")
     .eq("storage_id", storage_id)
     .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(20);
+    .order("created_at", { ascending: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

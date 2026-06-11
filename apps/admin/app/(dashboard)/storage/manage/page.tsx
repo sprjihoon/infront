@@ -26,6 +26,7 @@ type ChangeRequest = {
   admin_note: string | null;
   requested_type_code: string | null;
   requested_plan_type: string | null;
+  source_storage_ids: string[] | null;
   created_at: string;
   processed_at: string | null;
   customers: { id: string; name: string | null; customer_code: string; email: string | null } | null;
@@ -553,7 +554,13 @@ export default function StorageManagePage() {
                 CAPACITY_CHANGE:      "용량 변경",
                 CONVERT_TO_LONG_TERM: "장기 전환",
                 ADD_SLOT:             "슬롯 추가",
+                TRANSFER_ITEMS:       "물품 이동",
+                MERGE_SLOTS:          "슬롯 합치기",
               };
+              // 즉시 적용 타입 (DB 자동 반영 → 관리자 물리 작업만 남음)
+              const AUTO_APPLY_TYPES = ["CAPACITY_CHANGE", "MERGE_SLOTS"];
+              const isAutoApply = AUTO_APPLY_TYPES.includes(req.request_type);
+
               const STATUS_STYLE: Record<string, string> = {
                 PENDING:  "bg-orange-100 text-orange-700",
                 APPROVED: "bg-green-100 text-green-700",
@@ -562,14 +569,23 @@ export default function StorageManagePage() {
               };
               const isPending = req.status === "PENDING";
               return (
-                <div key={req.id} className="p-4 space-y-2">
+                <div key={req.id} className={`p-4 space-y-2 ${isAutoApply && isPending ? "bg-amber-50/60" : ""}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[req.status] ?? "bg-gray-100 text-gray-500"}`}>
-                          {req.status === "PENDING" ? "대기" : req.status === "APPROVED" ? "승인" : req.status === "REJECTED" ? "반려" : "취소"}
-                        </span>
+                        {isAutoApply && isPending ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                            📋 작업지시
+                          </span>
+                        ) : (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[req.status] ?? "bg-gray-100 text-gray-500"}`}>
+                            {req.status === "PENDING" ? "대기" : req.status === "APPROVED" ? "완료" : req.status === "REJECTED" ? "반려" : "취소"}
+                          </span>
+                        )}
                         <span className="text-xs font-semibold text-gray-700">{REQ_TYPE_LABEL[req.request_type] ?? req.request_type}</span>
+                        {isAutoApply && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded-full font-semibold">DB 자동적용</span>
+                        )}
                         <span className="text-xs text-gray-400">
                           {new Date(req.created_at).toLocaleDateString("ko-KR")}
                         </span>
@@ -586,13 +602,19 @@ export default function StorageManagePage() {
                       </p>
                       {req.request_type === "CAPACITY_CHANGE" && req.requested_type_code && (
                         <p className="text-xs text-indigo-600 mt-0.5">
-                          요청 타입: <span className="font-bold">{req.requested_type_code}</span>
+                          변경 완료 타입: <span className="font-bold">{req.requested_type_code}</span>
                           {req.storage_types && (
                             <span className="text-gray-400 ml-1">
                               {req.storage_types.volume_liter}L · {req.storage_types.price_per_week.toLocaleString()}원/주
                               {req.storage_types.price_per_month != null && ` · ${req.storage_types.price_per_month.toLocaleString()}원/월`}
                             </span>
                           )}
+                        </p>
+                      )}
+                      {req.request_type === "MERGE_SLOTS" && (
+                        <p className="text-xs text-orange-600 mt-0.5 font-semibold">
+                          {req.source_storage_ids?.length ?? 0}개 슬롯 합치기 —
+                          물품을 대표 슬롯으로 물리적 이전 필요
                         </p>
                       )}
                       {req.request_type === "CONVERT_TO_LONG_TERM" && req.requested_plan_type && (
@@ -609,17 +631,21 @@ export default function StorageManagePage() {
                         <button
                           onClick={() => handleProcessRequest(req.id, "APPROVED")}
                           disabled={processingReqId === req.id}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50"
+                          className={`flex items-center gap-1 px-2.5 py-1.5 text-white text-xs font-semibold rounded-lg disabled:opacity-50 ${
+                            isAutoApply ? "bg-amber-500 hover:bg-amber-600" : "bg-green-600 hover:bg-green-700"
+                          }`}
                         >
-                          <Check size={12} /> 승인
+                          <Check size={12} /> {isAutoApply ? "작업완료" : "승인"}
                         </button>
-                        <button
-                          onClick={() => handleProcessRequest(req.id, "REJECTED")}
-                          disabled={processingReqId === req.id}
-                          className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50"
-                        >
-                          <X size={12} /> 반려
-                        </button>
+                        {!isAutoApply && (
+                          <button
+                            onClick={() => handleProcessRequest(req.id, "REJECTED")}
+                            disabled={processingReqId === req.id}
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                          >
+                            <X size={12} /> 반려
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

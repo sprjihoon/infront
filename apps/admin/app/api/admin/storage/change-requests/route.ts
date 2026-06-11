@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     .from("storage_change_requests")
     .select(`
       id, request_type, status, customer_note, admin_note,
-      requested_type_code, requested_plan_type,
+      requested_type_code, requested_plan_type, source_storage_ids,
       created_at, processed_at,
       customers!storage_change_requests_user_id_fkey (
         id, name, customer_code, email

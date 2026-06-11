@@ -1256,7 +1256,6 @@ function MergeSlotSheet({
   storages: Storage[];
   onClose: () => void;
 }) {
-  // 합칠 소스 슬롯 (대표 슬롯 제외)
   const [targetId, setTargetId] = useState<string | null>(
     storages.length > 0 ? storages[0].id : null
   );
@@ -1264,11 +1263,9 @@ function MergeSlotSheet({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [serverError, setServerError] = useState("");
 
-  // 대상(target) 바뀌면 소스 선택 초기화
-  useEffect(() => {
-    setSourceIds(new Set());
-  }, [targetId]);
+  useEffect(() => { setSourceIds(new Set()); }, [targetId]);
 
   function toggleSource(id: string) {
     setSourceIds(prev => {
@@ -1279,37 +1276,78 @@ function MergeSlotSheet({
     });
   }
 
+  const targetStorage = storages.find(s => s.id === targetId);
   const sourceStorages = storages.filter(s => s.id !== targetId);
   const selectedSources = storages.filter(s => sourceIds.has(s.id));
 
-  // 용량 합산 (capacity_score 기준, liter 정보가 없으면 score로 표시)
-  const totalScore = selectedSources.reduce((acc, s) => acc + (s.capacity_score ?? 0), 0) +
-    (storages.find(s => s.id === targetId)?.capacity_score ?? 0);
+  // 리터 기반 용량 검증
+  // capacity_score = volume_liter (스토리지 타입의 총 리터)
+  // used_score = 현재 사용 리터
+  const targetCapacity  = targetStorage?.capacity_score ?? 0;
+  const targetUsed      = targetStorage?.used_score ?? 0;
+  const targetFree      = targetCapacity - targetUsed;
+  const totalSourceUsed = selectedSources.reduce((acc, s) => acc + (s.used_score ?? 0), 0);
+  const canMerge        = sourceIds.size > 0 && (targetCapacity === 0 || totalSourceUsed <= targetFree);
+  const overBy          = totalSourceUsed - targetFree;
 
   async function handleSubmit() {
-    if (!targetId || sourceIds.size === 0) return;
+    if (!targetId || !canMerge) return;
     setSubmitting(true);
+    setServerError("");
     try {
       const res = await fetch(`/api/storage/${targetId}/change-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          request_type: "MERGE_SLOTS",
+          request_type:       "MERGE_SLOTS",
           source_storage_ids: Array.from(sourceIds),
-          customer_note: note.trim() || null,
+          customer_note:      note.trim() || null,
         }),
       });
       const json = await res.json();
       if (!res.ok) {
-        alert(json.error ?? "요청 접수에 실패했습니다.");
+        setServerError(json.error ?? "요청 접수에 실패했습니다.");
         return;
       }
       setDone(true);
     } catch {
-      alert("오류가 발생했습니다. 다시 시도해 주세요.");
+      setServerError("오류가 발생했습니다. 다시 시도해 주세요.");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function SlotRow({ s, isTarget }: { s: Storage; isTarget?: boolean }) {
+    const cap  = s.capacity_score ?? 0;
+    const used = s.used_score ?? 0;
+    const pct  = cap > 0 ? Math.round((used / cap) * 100) : 0;
+    return (
+      <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-bold ${isTarget ? "text-brand-700" : "text-gray-800"}`}>
+            {s.storage_name}
+          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            {s.plan_type && (
+              <span className="text-[10px] text-gray-400">{s.plan_type}</span>
+            )}
+            {cap > 0 && (
+              <span className="text-[10px] text-gray-500">
+                {used}L / {cap}L ({pct}%)
+              </span>
+            )}
+          </div>
+          {cap > 0 && (
+            <div className="mt-1 h-1 rounded-full bg-gray-100 w-24 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : pct >= 70 ? "bg-orange-400" : "bg-brand-400"}`}
+                style={{ width: `${Math.min(pct, 100)}%` }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -1319,7 +1357,7 @@ function MergeSlotSheet({
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
           <div>
             <p className="text-base font-bold text-gray-900">슬롯 합치기</p>
-            <p className="text-xs text-gray-400 mt-0.5">여러 슬롯을 하나의 큰 보관함으로 통합합니다</p>
+            <p className="text-xs text-gray-400 mt-0.5">여러 슬롯을 하나의 보관함으로 즉시 통합합니다</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
             <X size={18} />
@@ -1331,12 +1369,11 @@ function MergeSlotSheet({
             <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
               <Check size={24} className="text-green-600" strokeWidth={2.5} />
             </div>
-            <p className="text-sm font-bold text-gray-900">합치기 요청이 접수되었습니다</p>
+            <p className="text-sm font-bold text-gray-900">슬롯이 합쳐졌습니다</p>
             <p className="text-xs text-gray-500 text-center">
-              관리자가 용량을 검토 후 통합 처리해 드립니다.<br />
-              처리 완료 시 알림으로 안내해 드립니다.
+              DB가 즉시 반영되었으며 관리자가 물품을 이전합니다.
             </p>
-            <button onClick={onClose} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
+            <button onClick={() => { onClose(); window.location.reload(); }} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
               확인
             </button>
           </div>
@@ -1345,23 +1382,21 @@ function MergeSlotSheet({
             <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
               {/* 안내 */}
               <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-xs text-blue-700 space-y-1">
-                <p className="font-bold text-blue-800">슬롯 합치기 안내</p>
+                <p className="font-bold text-blue-800">합치기 즉시 적용됩니다</p>
                 <ul className="space-y-0.5">
                   {[
-                    "합칠 슬롯들의 총 용량 이하인 사이즈로 통합됩니다",
-                    "관리자가 실제 물품을 대표 슬롯으로 이전 후 나머지 슬롯을 종료합니다",
-                    "용량 기준 적합 여부는 관리자가 최종 확인합니다",
+                    "요청 즉시 DB에 반영되고 소스 슬롯이 종료됩니다",
+                    "관리자가 물품을 대표 슬롯으로 물리적 이전합니다",
+                    "대표 슬롯의 남은 용량(리터) 기준으로 합치기 가능 여부가 검증됩니다",
                   ].map(t => (
                     <li key={t} className="flex items-start gap-1"><span>•</span><span>{t}</span></li>
                   ))}
                 </ul>
               </div>
 
-              {/* STEP 1: 대표 슬롯 선택 */}
+              {/* STEP 1 */}
               <div>
-                <p className="text-xs font-bold text-gray-700 mb-2">
-                  STEP 1. 통합 후 남길 대표 보관함 선택
-                </p>
+                <p className="text-xs font-bold text-gray-700 mb-2">STEP 1. 남길 대표 보관함 선택</p>
                 <div className="space-y-2">
                   {storages.map(s => {
                     const isTarget = targetId === s.id;
@@ -1378,16 +1413,7 @@ function MergeSlotSheet({
                         }`}>
                           <Archive size={15} />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-bold ${isTarget ? "text-brand-700" : "text-gray-800"}`}>
-                            {s.storage_name}
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            {s.storage_mode === "long_term" ? "장기" : "단기"}
-                            {s.plan_type && ` · ${s.plan_type}`}
-                            {s.capacity_score ? ` · 용량 ${s.capacity_score}점` : ""}
-                          </p>
-                        </div>
+                        <SlotRow s={s} isTarget={isTarget} />
                         {isTarget && <Check size={15} className="text-brand-600 shrink-0" />}
                       </button>
                     );
@@ -1395,10 +1421,11 @@ function MergeSlotSheet({
                 </div>
               </div>
 
-              {/* STEP 2: 합칠 슬롯 선택 */}
+              {/* STEP 2 */}
               <div>
                 <p className="text-xs font-bold text-gray-700 mb-2">
-                  STEP 2. 합칠 슬롯 선택 (대표 슬롯으로 통합됨)
+                  STEP 2. 합칠 슬롯 선택
+                  <span className="font-normal text-gray-400 ml-1">(선택 시 즉시 종료됨)</span>
                 </p>
                 {sourceStorages.length === 0 ? (
                   <p className="text-xs text-gray-400 py-2">대표 슬롯을 먼저 선택해주세요.</p>
@@ -1419,16 +1446,7 @@ function MergeSlotSheet({
                           }`}>
                             {isSel && <Check size={13} className="text-white" strokeWidth={3} />}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-bold ${isSel ? "text-orange-700" : "text-gray-800"}`}>
-                              {s.storage_name}
-                            </p>
-                            <p className="text-[10px] text-gray-400">
-                              {s.storage_mode === "long_term" ? "장기" : "단기"}
-                              {s.plan_type && ` · ${s.plan_type}`}
-                              {s.capacity_score ? ` · 용량 ${s.capacity_score}점` : ""}
-                            </p>
-                          </div>
+                          <SlotRow s={s} />
                         </button>
                       );
                     })}
@@ -1436,12 +1454,44 @@ function MergeSlotSheet({
                 )}
               </div>
 
-              {/* 합산 용량 미리보기 */}
-              {sourceIds.size > 0 && totalScore > 0 && (
-                <div className="bg-gray-50 rounded-2xl px-4 py-3 flex items-center justify-between">
-                  <p className="text-xs text-gray-500">합산 용량 점수</p>
-                  <p className="text-sm font-bold text-brand-700">{totalScore}점</p>
+              {/* 용량 검증 요약 */}
+              {sourceIds.size > 0 && targetCapacity > 0 && (
+                <div className={`rounded-2xl px-4 py-3 space-y-1.5 ${canMerge ? "bg-green-50 border border-green-100" : "bg-red-50 border border-red-100"}`}>
+                  <p className={`text-xs font-bold ${canMerge ? "text-green-700" : "text-red-700"}`}>
+                    {canMerge ? "✓ 합치기 가능" : "✗ 용량 부족"}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-[10px] text-gray-500">대표 용량</p>
+                      <p className="text-xs font-bold text-gray-800">{targetCapacity}L</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500">현재 사용</p>
+                      <p className="text-xs font-bold text-gray-800">{targetUsed}L</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-gray-500">이전 물품</p>
+                      <p className={`text-xs font-bold ${canMerge ? "text-green-700" : "text-red-600"}`}>
+                        {totalSourceUsed}L
+                      </p>
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full bg-gray-200 overflow-hidden mt-1">
+                    <div
+                      className={`h-full rounded-full transition-all ${canMerge ? "bg-green-500" : "bg-red-500"}`}
+                      style={{ width: `${Math.min(((targetUsed + totalSourceUsed) / targetCapacity) * 100, 100)}%` }}
+                    />
+                  </div>
+                  {!canMerge && (
+                    <p className="text-[10px] text-red-600 font-semibold">
+                      {overBy}L 초과 — 더 큰 대표 슬롯을 선택하거나 일부 슬롯만 선택하세요
+                    </p>
+                  )}
                 </div>
+              )}
+
+              {serverError && (
+                <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">{serverError}</p>
               )}
 
               <div>
@@ -1451,7 +1501,7 @@ function MergeSlotSheet({
                 <textarea
                   value={note}
                   onChange={e => setNote(e.target.value)}
-                  placeholder="특이사항이 있으면 입력해 주세요. (예: MINI 2개 → STANDARD 1개로 통합 희망)"
+                  placeholder="특이사항을 입력해 주세요. (예: MINI 2개 → STANDARD 1개로 통합)"
                   rows={2}
                   maxLength={200}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-400 resize-none"
@@ -1462,10 +1512,12 @@ function MergeSlotSheet({
             <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
               <button
                 onClick={handleSubmit}
-                disabled={!targetId || sourceIds.size === 0 || submitting}
+                disabled={!targetId || !canMerge || submitting}
                 className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                {submitting ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</> : `합치기 신청 (${1 + sourceIds.size}개 → 1개)`}
+                {submitting
+                  ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
+                  : `지금 합치기 (${1 + sourceIds.size}개 → 1개)`}
               </button>
             </div>
           </>
