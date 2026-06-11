@@ -181,7 +181,7 @@ export default function StoragePage() {
     itemFilter === "전체"
       ? items
       : itemFilter === "출고 가능"
-        ? items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY")
+        ? items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable === true)
         : items.filter((it) => {
             const s = active.find((st) => st.id === it.storage_id);
             return s?.storage_name === itemFilter;
@@ -375,9 +375,9 @@ export default function StoragePage() {
                   <p className="text-sm font-bold text-gray-900">물품 목록</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     전체 {items.length}개
-                    {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY").length > 0 && (
+                    {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable === true).length > 0 && (
                       <span className="ml-2 text-green-600 font-semibold">
-                        출고 가능 {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY").length}개
+                        출고 가능 {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable === true).length}개
                       </span>
                     )}
                   </p>
@@ -435,7 +435,9 @@ export default function StoragePage() {
                       const storageName =
                         active.find((s) => s.id === item.storage_id)?.storage_name ?? "-";
                       const statusCfg =
-                        PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-green-100 text-green-700" };
+                        item.is_shippable
+                          ? { label: "출고 가능", color: "bg-green-100 text-green-700" }
+                          : (PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-gray-100 text-gray-500" });
                       return (
                         <div key={item.id} className="px-4 py-3 flex items-center gap-3">
                           {/* 썸네일 */}

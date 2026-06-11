@@ -152,11 +152,10 @@ export default function StorageDetailPage() {
   const parcelInboundCount = parcels.filter((p) => p.status === "INBOUND").length;
   // 출고 가능
   const shippableParcels = parcels.filter(
-    (p) => p.status === "SHIPPABLE" || p.status === "READY"
+    (p) => p.status === "SHIPPABLE" || p.status === "READY" || p.is_shippable === true
   );
-  // 보관 중 (출고 불가 상태)
   const holdingParcels = parcels.filter(
-    (p) => p.status !== "SHIPPABLE" && p.status !== "READY"
+    (p) => p.status !== "SHIPPABLE" && p.status !== "READY" && p.is_shippable !== true
   );
 
   if (loading) {
@@ -584,7 +583,9 @@ function InfoCell({ label, value }: { label: string; value: string }) {
 }
 
 function ParcelRow({ parcel }: { parcel: StorageParcel }) {
-  const s = PARCEL_STATUS_MAP[parcel.status] ?? { label: parcel.status, color: "bg-gray-100 text-gray-500" };
+  const s = parcel.is_shippable
+    ? { label: "출고 가능", color: "bg-green-100 text-green-700" }
+    : (PARCEL_STATUS_MAP[parcel.status] ?? { label: parcel.status, color: "bg-gray-100 text-gray-500" });
   const declaredItems = Array.isArray(parcel.pre_invoice_items) && parcel.pre_invoice_items.length > 0
     ? parcel.pre_invoice_items.filter((it) => it.name)
     : null;
