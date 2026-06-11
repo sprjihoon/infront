@@ -687,8 +687,14 @@ function ShippingRequestContent() {
                     </p>
                   </div>
                   <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                    p.status === "INSPECTION" ? "text-purple-700 bg-purple-50 border-purple-200" : "text-green-700 bg-green-50 border-green-200"
-                  }`}>{p.status === "INSPECTION" ? "\uac80\ud488\uc911" : "\uc785\uace0\uc644\ub8cc"}</span>
+                    p.is_shippable ? "text-green-700 bg-green-50 border-green-200"
+                    : p.status === "HOLD" ? "text-orange-700 bg-orange-50 border-orange-200"
+                    : "text-indigo-700 bg-indigo-50 border-indigo-200"
+                  }`}>{
+                    p.is_shippable ? "출고 가능"
+                    : p.status === "HOLD" ? "보류"
+                    : "입고중"
+                  }</span>
                 </div>
 
                 {/* 내품 목록 — 수량 스테퍼 */}

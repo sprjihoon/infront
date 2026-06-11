@@ -64,16 +64,21 @@ export const CARD_THEME_MAP: Record<string, { bg: string; accent: string }> = {
 const CARD_THEME_KEYS = Object.keys(CARD_THEME_MAP) as (keyof typeof CARD_THEME_MAP)[];
 
 const PARCEL_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
-  CREATED:          { label: "수거 대기",  color: "bg-gray-100 text-gray-500" },
-  PICKUP_REQUESTED: { label: "수거 신청",  color: "bg-gray-100 text-gray-500" },
-  IN_TRANSIT:       { label: "이동 중",   color: "bg-purple-100 text-purple-700" },
-  INBOUND:          { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
-  INSPECTING:       { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
-  INSPECTION:       { label: "검수 대기",  color: "bg-yellow-100 text-yellow-700" },
-  HOLD:             { label: "보류",      color: "bg-orange-100 text-orange-700" },
-  SHIPPABLE:        { label: "출고 가능",  color: "bg-green-100 text-green-700" },
-  READY:            { label: "출고 가능",  color: "bg-green-100 text-green-700" },
-  SHIPPED:          { label: "출고 완료",  color: "bg-gray-100 text-gray-500" },
+  // 입고중 그룹
+  CREATED:          { label: "입고중", color: "bg-indigo-50 text-indigo-700" },
+  PICKUP_REQUESTED: { label: "입고중", color: "bg-indigo-50 text-indigo-700" },
+  IN_TRANSIT:       { label: "입고중", color: "bg-indigo-50 text-indigo-700" },
+  INBOUND:          { label: "입고중", color: "bg-indigo-50 text-indigo-700" },
+  INSPECTING:       { label: "입고중", color: "bg-indigo-50 text-indigo-700" },
+  INSPECTION:       { label: "입고중", color: "bg-indigo-50 text-indigo-700" },
+  // 출고가능
+  SHIPPABLE:        { label: "출고 가능", color: "bg-green-100 text-green-700" },
+  READY:            { label: "출고 가능", color: "bg-green-100 text-green-700" },
+  // 보류
+  HOLD:             { label: "보류", color: "bg-orange-100 text-orange-700" },
+  PICKUP_CANCELLED: { label: "보류", color: "bg-orange-100 text-orange-700" },
+  // 완료 (표시되지 않음)
+  SHIPPED:          { label: "출고 완료", color: "bg-gray-100 text-gray-500" },
 };
 
 /* ─── 유틸 ──────────────────────────────────────── */

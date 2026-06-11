@@ -99,10 +99,9 @@ export default function WarehousePage() {
   const filterCounts = useMemo(() => {
     const counts: Record<WarehouseFilterKey, number> = {
       ALL: parcels.length,
-      IN_TRANSIT: 0,
-      AT_WAREHOUSE: 0,
-      READY_TO_SHIP: 0,
-      ATTENTION: 0,
+      INCOMING: 0,
+      SHIPPABLE: 0,
+      HOLD: 0,
     };
     for (const parcel of parcels) {
       for (const tab of WAREHOUSE_FILTER_TABS) {
@@ -178,7 +177,7 @@ export default function WarehousePage() {
 
   function enterSelectMode() {
     setSelectMode(true);
-    setFilter("READY_TO_SHIP");
+    setFilter("SHIPPABLE");
     setSelectedIds(new Set());
   }
 

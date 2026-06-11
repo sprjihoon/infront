@@ -1,20 +1,14 @@
 import { isParcelShippable } from "./parcel-shippable";
 
-export type ParcelJourneyPhase = "IN_TRANSIT" | "AT_WAREHOUSE" | "READY_TO_SHIP" | "ATTENTION";
+export type ParcelJourneyPhase = "INCOMING" | "SHIPPABLE" | "HOLD";
 
-export type WarehouseFilterKey =
-  | "ALL"
-  | "IN_TRANSIT"
-  | "AT_WAREHOUSE"
-  | "READY_TO_SHIP"
-  | "ATTENTION";
+export type WarehouseFilterKey = "ALL" | "INCOMING" | "SHIPPABLE" | "HOLD";
 
 export const WAREHOUSE_FILTER_TABS: { key: WarehouseFilterKey; label: string }[] = [
-  { key: "ALL", label: "전체" },
-  { key: "IN_TRANSIT", label: "오는 중" },
-  { key: "AT_WAREHOUSE", label: "검수 중" },
-  { key: "READY_TO_SHIP", label: "출고 가능" },
-  { key: "ATTENTION", label: "확인 필요" },
+  { key: "ALL",      label: "전체" },
+  { key: "INCOMING", label: "입고중" },
+  { key: "SHIPPABLE", label: "출고가능" },
+  { key: "HOLD",     label: "보류" },
 ];
 
 export type TrackingLastEvent = {
@@ -44,21 +38,17 @@ export type ParcelDisplaySummary = {
 };
 
 const BADGE = {
-  inTransit: {
+  incoming: {
     badgeClass: "text-indigo-700 bg-indigo-50 border-indigo-200",
     dotClass: "bg-indigo-400",
   },
-  warehouse: {
-    badgeClass: "text-purple-700 bg-purple-50 border-purple-200",
-    dotClass: "bg-purple-400",
-  },
-  ready: {
+  shippable: {
     badgeClass: "text-green-700 bg-green-50 border-green-200",
     dotClass: "bg-green-500",
   },
-  attention: {
-    badgeClass: "text-red-700 bg-red-50 border-red-200",
-    dotClass: "bg-red-400",
+  hold: {
+    badgeClass: "text-orange-700 bg-orange-50 border-orange-200",
+    dotClass: "bg-orange-400",
   },
   reserved: {
     badgeClass: "text-brand-700 bg-brand-50 border-brand-200",
@@ -91,11 +81,9 @@ function trackingSubtitle(event: TrackingLastEvent | null | undefined, fallback:
 export function getParcelJourneyPhase(
   parcel: Pick<ParcelDisplayInput, "status" | "is_shippable">,
 ): ParcelJourneyPhase {
-  if (parcel.status === "PICKUP_CANCELLED" || parcel.status === "HOLD") return "ATTENTION";
-  if (isParcelShippable(parcel)) return "READY_TO_SHIP";
-  if (parcel.status === "INBOUND" || parcel.status === "INSPECTION") return "AT_WAREHOUSE";
-  if (["PRE_REGISTERED", "PENDING_PICKUP", "PICKED_UP"].includes(parcel.status)) return "IN_TRANSIT";
-  return "AT_WAREHOUSE";
+  if (parcel.status === "HOLD" || parcel.status === "PICKUP_CANCELLED") return "HOLD";
+  if (isParcelShippable(parcel)) return "SHIPPABLE";
+  return "INCOMING";
 }
 
 export function matchesWarehouseFilter(
@@ -115,107 +103,72 @@ export function getParcelDisplaySummary(
 
   if (isReserved) {
     return {
-      phase: "READY_TO_SHIP",
+      phase: "SHIPPABLE",
       badgeLabel: "출고 신청 중",
       ...BADGE.reserved,
       subtitle: "배송현황에서 진행 상황을 확인하세요",
     };
   }
 
+  // 보류
+  if (phase === "HOLD") {
+    return {
+      phase,
+      badgeLabel: "보류",
+      ...BADGE.hold,
+      subtitle: parcel.hold_reason ?? "보류 중 · 고객 확인 필요",
+      alert: parcel.hold_reason ?? undefined,
+    };
+  }
+
+  // 출고가능
+  if (phase === "SHIPPABLE") {
+    return {
+      phase,
+      badgeLabel: "출고 가능",
+      ...BADGE.shippable,
+      subtitle: "검수 완료 · 출고신청 가능",
+      meta: joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]),
+    };
+  }
+
+  // 입고중 — status에 따라 서브타이틀만 세분화
+  const inboundMeta = joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]);
+  const incomingBase = { phase: phase as ParcelJourneyPhase, badgeLabel: "입고중", ...BADGE.incoming };
+
   switch (parcel.status) {
     case "PRE_REGISTERED":
-      return {
-        phase,
-        badgeLabel: "오는 중",
-        ...BADGE.inTransit,
-        subtitle: trackingSubtitle(parcel.tracking_last_event, "센터 도착 전 · 택배 배송 대기"),
-      };
+      return { ...incomingBase, subtitle: trackingSubtitle(parcel.tracking_last_event, "센터 도착 전 · 택배 배송 대기") };
     case "PENDING_PICKUP":
-      return {
-        phase,
-        badgeLabel: "오는 중",
-        ...BADGE.inTransit,
-        subtitle: "우체국 수거 예약 · 집배원 방문 예정",
-      };
+      return { ...incomingBase, subtitle: "우체국 수거 예약 · 집배원 방문 예정" };
     case "PICKED_UP":
-      return {
-        phase,
-        badgeLabel: "오는 중",
-        ...BADGE.inTransit,
-        subtitle: trackingSubtitle(parcel.tracking_last_event, "수거 완료 · 센터로 이동 중"),
-      };
-    case "PICKUP_CANCELLED":
-      return {
-        phase,
-        badgeLabel: "확인 필요",
-        ...BADGE.attention,
-        subtitle: "수거 신청이 취소됨 · 다시 수거 신청하세요",
-      };
+      return { ...incomingBase, subtitle: trackingSubtitle(parcel.tracking_last_event, "수거 완료 · 센터로 이동 중") };
     case "INBOUND":
-      if (isParcelShippable(parcel)) {
-        return {
-          phase,
-          badgeLabel: "출고 가능",
-          ...BADGE.ready,
-          subtitle: "검수 완료 · 출고신청 가능",
-          meta: joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]),
-        };
-      }
-      return {
-        phase,
-        badgeLabel: "검수 중",
-        ...BADGE.warehouse,
-        subtitle: "센터 입고 완료 · 검수 후 출고신청 가능",
-        meta: joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]),
-      };
+      return { ...incomingBase, subtitle: "센터 입고 완료 · 검수 중", meta: inboundMeta ?? undefined };
     case "INSPECTION":
-      return {
-        phase,
-        badgeLabel: "검수 중",
-        ...BADGE.warehouse,
-        subtitle: "검수 진행 중 · 완료 후 출고신청 가능",
-        meta: joinMeta([formatInboundDate(parcel.inbound_at), formatWeight(parcel.weight_actual)]),
-      };
-    case "HOLD":
-      return {
-        phase,
-        badgeLabel: "확인 필요",
-        ...BADGE.attention,
-        subtitle: parcel.hold_reason ?? "보류 중 · 고객 확인 필요",
-        alert: parcel.hold_reason ?? undefined,
-      };
+    case "INSPECTING":
+      return { ...incomingBase, subtitle: "검수 진행 중", meta: inboundMeta ?? undefined };
     default:
-      return {
-        phase,
-        badgeLabel: "검수 중",
-        ...BADGE.warehouse,
-        subtitle: formatInboundDate(parcel.inbound_at) ?? "처리 중",
-        meta: formatWeight(parcel.weight_actual) ?? undefined,
-      };
+      return { ...incomingBase, subtitle: formatInboundDate(parcel.inbound_at) ?? "처리 중", meta: formatWeight(parcel.weight_actual) ?? undefined };
   }
 }
 
 export function getWarehouseEmptyMessage(filter: WarehouseFilterKey): { title: string; desc: string } {
   switch (filter) {
-    case "IN_TRANSIT":
+    case "INCOMING":
       return {
-        title: "오는 중인 물품이 없어요",
-        desc: "수거 신청 또는 물품 등록 후\n센터 도착 전 상태가 여기에 표시됩니다",
+        title: "입고중인 물품이 없어요",
+        desc: "수거 신청 또는 직접 보내기 후\n센터에 도착하면 여기에 표시됩니다",
       };
-    case "AT_WAREHOUSE":
-      return {
-        title: "검수 중인 물품이 없어요",
-        desc: "센터 입고 후 검수가 시작되면\n여기에서 확인할 수 있어요",
-      };
-    case "READY_TO_SHIP":
+    case "SHIPPABLE":
       return {
         title: "출고 가능한 물품이 없어요",
         desc: "검수가 완료되면\n해외배송을 신청할 수 있어요",
       };
-    case "ATTENTION":
+    case "HOLD":
       return {
-        title: "확인이 필요한 물품이 없어요",
-        desc: "보류 등\n조치가 필요한 물품이 여기에 표시됩니다",
+        title: "보류된 물품이 없어요",
+        desc: "조치가 필요한 물품이 여기에 표시됩니다",
       };
     default:
       return {
