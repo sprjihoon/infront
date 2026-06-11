@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown, Check, X, Layers, Bell, ArrowRight } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown, Check, X, Layers, Bell, ArrowRight, Loader2 } from "lucide-react";
 
 type StorageTypeOption = {
   id: string;
@@ -79,6 +79,12 @@ export default function StorageManagePage() {
   const [reqStatusFilter, setReqStatusFilter]     = useState<"PENDING" | "ALL">("PENDING");
   const [processingReqId, setProcessingReqId]     = useState<string | null>(null);
   const [adminNoteInput, setAdminNoteInput]        = useState<Record<string, string>>({});
+
+  // 강제 용량 변경
+  const [forceTarget, setForceTarget]             = useState<{ storageId: string; storageName: string } | null>(null);
+  const [forceTypeId, setForceTypeId]             = useState("");
+  const [forceNote, setForceNote]                 = useState("");
+  const [forceApplying, setForceApplying]         = useState(false);
 
   // 추가 폼
   const [newZone,   setNewZone]   = useState("");
@@ -162,6 +168,26 @@ export default function StorageManagePage() {
     if (!res.ok) { alert(json.error ?? "처리 실패"); }
     else { await load(); }
     setProcessingReqId(null);
+  };
+
+  const handleForcePlan = async () => {
+    if (!forceTarget || !forceTypeId) return;
+    setForceApplying(true);
+    const res = await fetch(`/api/admin/storage/${forceTarget.storageId}/force-plan`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_type_id: forceTypeId, admin_note: forceNote || undefined }),
+    });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error ?? "강제 변경 실패"); }
+    else {
+      alert(json.message ?? "강제 변경 완료");
+      setForceTarget(null);
+      setForceTypeId("");
+      setForceNote("");
+      await load();
+    }
+    setForceApplying(false);
   };
 
   const getActiveZone = (idx: number, chunk: string[]) =>
@@ -674,6 +700,15 @@ export default function StorageManagePage() {
                       스토리지 바로가기 <ArrowRight size={11} />
                     </a>
                   )}
+                  {/* 관리자 강제 용량 변경 버튼 */}
+                  {req.customer_storages && (
+                    <button
+                      onClick={() => setForceTarget({ storageId: req.customer_storages!.id, storageName: req.customer_storages!.storage_name })}
+                      className="ml-auto text-[10px] text-red-600 border border-red-200 rounded-lg px-2 py-0.5 hover:bg-red-50 font-semibold"
+                    >
+                      강제 용량 변경
+                    </button>
+                  )}
                 </div>
               );
             })}
@@ -1131,6 +1166,65 @@ export default function StorageManagePage() {
           >
             <X size={16} />
           </button>
+        </div>
+      )}
+
+      {/* 강제 용량 변경 모달 */}
+      {forceTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setForceTarget(null)} />
+          <div className="relative w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl space-y-4">
+            <div>
+              <p className="text-base font-bold text-red-700">관리자 강제 용량 변경</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {forceTarget.storageName} — 다운그레이드 포함 즉시 적용됩니다
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700">변경할 타입 선택</label>
+              <select
+                value={forceTypeId}
+                onChange={e => setForceTypeId(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-red-400"
+              >
+                <option value="">— 선택 —</option>
+                {types.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.code} · {t.volume_liter}L
+                    {t.price_per_month != null ? ` · ${t.price_per_month.toLocaleString()}원/월` : ` · ${t.price_per_week.toLocaleString()}원/주`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-gray-700">사유 메모</label>
+              <input
+                type="text"
+                value={forceNote}
+                onChange={e => setForceNote(e.target.value)}
+                placeholder="예: 용량 초과로 강제 업그레이드"
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:border-red-400"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setForceTarget(null)}
+                className="flex-1 py-2.5 rounded-2xl border border-gray-200 text-sm text-gray-600 font-semibold"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleForcePlan}
+                disabled={!forceTypeId || forceApplying}
+                className="flex-1 py-2.5 rounded-2xl bg-red-600 text-white text-sm font-bold disabled:opacity-40 flex items-center justify-center gap-1.5"
+              >
+                {forceApplying ? <><Loader2 size={14} className="animate-spin" /> 처리 중...</> : "강제 변경"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

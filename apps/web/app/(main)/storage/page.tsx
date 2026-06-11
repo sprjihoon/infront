@@ -886,6 +886,9 @@ function CapacityChangeSheet({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [reqError, setReqError] = useState("");
+
+  const currentVolume = storage.capacity_score ?? 0;
 
   useEffect(() => {
     fetch("/api/storage/types")
@@ -894,9 +897,14 @@ function CapacityChangeSheet({
       .finally(() => setLoading(false));
   }, []);
 
+  // 현재보다 큰 타입만 (업그레이드 전용)
+  const upgradeTypes = types.filter(t => (t.volume_liter ?? 0) > currentVolume);
+  const isAlreadyMax = !loading && types.length > 0 && upgradeTypes.length === 0;
+
   async function handleRequest() {
     if (!selected) return;
     setSubmitting(true);
+    setReqError("");
     const type = types.find((t) => t.id === selected);
     try {
       const res = await fetch(`/api/storage/${storage.id}/change-request`, {
@@ -910,12 +918,34 @@ function CapacityChangeSheet({
       });
       const json = await res.json();
       if (!res.ok) {
-        alert(json.error ?? "요청 접수에 실패했습니다.");
+        setReqError(json.error ?? "요청 접수에 실패했습니다.");
         return;
       }
       setDone(true);
     } catch {
-      alert("오류가 발생했습니다. 다시 시도해 주세요.");
+      setReqError("오류가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleAddSlot() {
+    setSubmitting(true);
+    setReqError("");
+    try {
+      const res = await fetch(`/api/storage/${storage.id}/change-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_type: "ADD_SLOT" }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setReqError(json.error ?? "요청 접수에 실패했습니다.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      setReqError("오류가 발생했습니다. 다시 시도해 주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -947,102 +977,126 @@ function CapacityChangeSheet({
                 <path d="M20 6L9 17l-5-5" />
               </svg>
             </div>
-            <p className="text-sm font-bold text-gray-900">변경 요청이 접수되었습니다</p>
+            <p className="text-sm font-bold text-gray-900">변경이 적용되었습니다</p>
             <p className="text-xs text-gray-500 text-center">
-              관리자가 확인 후 로케이션을 재배정해 드립니다.<br />
-              처리 완료 시 알림으로 안내해 드립니다.
+              관리자가 물리적 로케이션을 재배정합니다.
             </p>
-            <button
-              onClick={onClose}
-              className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl"
-            >
+            <button onClick={onClose} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
               확인
             </button>
           </div>
         ) : (
           <>
-            {/* 옵션 목록 — 스크롤 */}
             <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
-              <p className="text-xs text-gray-500 mb-3">원하는 사이즈를 선택하면 관리자에게 변경 요청이 전달됩니다.</p>
 
-              {loading ? (
-                <div className="py-10 flex justify-center">
-                  <svg className="animate-spin w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
-                  </svg>
+              {/* 최대 사이즈 안내 */}
+              {isAlreadyMax ? (
+                <div className="space-y-3">
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
+                    <p className="font-bold mb-1">현재 최대 용량 사이즈입니다</p>
+                    <p className="text-xs text-amber-700">
+                      {currentTypeName ?? storage.plan_type ?? "-"} 은 가장 큰 보관함 사이즈입니다.<br />
+                      용량이 더 필요하다면 새 슬롯을 추가해 주세요.
+                    </p>
+                  </div>
+                  {reqError && (
+                    <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">{reqError}</p>
+                  )}
+                  <button
+                    onClick={handleAddSlot}
+                    disabled={submitting}
+                    className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
+                  >
+                    {submitting
+                      ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
+                      : "슬롯 추가 신청"}
+                  </button>
                 </div>
               ) : (
-                types.map((t) => {
-                  const isSelected = selected === t.id;
-                  const isCurrent = currentTypeName === t.name || currentTypeName === t.code;
-                  return (
-                    <button
-                      key={t.id}
-                      onClick={() => setSelected(t.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
-                        isSelected
-                          ? "border-brand-500 bg-brand-50"
-                          : isCurrent
-                          ? "border-gray-300 bg-gray-50 opacity-60"
-                          : "border-gray-100 bg-white hover:border-gray-300"
-                      }`}
-                    >
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs ${
-                          isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
-                        }`}
-                      >
-                        {t.code.slice(0, 2)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
-                          {TYPE_SIZE_KO[t.code] ?? t.name}
-                          {isCurrent && (
-                            <span className="ml-2 text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                              현재
-                            </span>
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {t.max_parcels != null ? `최대 ${t.max_parcels}개 물품` : "무제한"}
-                          {t.volume_liter != null && ` · ${t.volume_liter}L`}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : "text-gray-700"}`}>
-                          {t.price_per_month != null
-                            ? `${t.price_per_month.toLocaleString()}원`
-                            : `${t.price_per_week.toLocaleString()}원`}
-                        </p>
-                        <p className="text-[10px] text-gray-400">
-                          {t.price_per_month != null ? "/월" : "/주"}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })
+                <>
+                  <p className="text-xs text-gray-500 mb-3">
+                    현재({currentTypeName ?? storage.plan_type ?? "-"}, {currentVolume}L)보다 큰 사이즈로 즉시 변경됩니다.
+                  </p>
+
+                  {loading ? (
+                    <div className="py-10 flex justify-center">
+                      <svg className="animate-spin w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                      </svg>
+                    </div>
+                  ) : (
+                    upgradeTypes.map((t) => {
+                      const isSelected = selected === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          onClick={() => setSelected(t.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
+                            isSelected ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white hover:border-gray-300"
+                          }`}
+                        >
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs ${
+                            isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
+                          }`}>
+                            {t.code.slice(0, 2)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
+                              {TYPE_SIZE_KO[t.code] ?? t.name}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {t.max_parcels != null ? `최대 ${t.max_parcels}개 물품` : "무제한"}
+                              {t.volume_liter != null && ` · ${t.volume_liter}L`}
+                              {t.volume_liter != null && currentVolume > 0 && (
+                                <span className="text-brand-600 font-semibold ml-1">
+                                  (+{t.volume_liter - currentVolume}L)
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : "text-gray-700"}`}>
+                              {t.price_per_month != null
+                                ? `${t.price_per_month.toLocaleString()}원`
+                                : `${t.price_per_week.toLocaleString()}원`}
+                            </p>
+                            <p className="text-[10px] text-gray-400">
+                              {t.price_per_month != null ? "/월" : "/주"}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })
+                  )}
+
+                  {reqError && (
+                    <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">{reqError}</p>
+                  )}
+                </>
               )}
             </div>
 
-            {/* 버튼 — 하단 */}
-            <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
-              <button
-                onClick={handleRequest}
-                disabled={!selected || submitting}
-                className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
-                    </svg>
-                    처리 중...
-                  </>
-                ) : "변경 요청하기"}
-              </button>
-            </div>
+            {/* 버튼 — 하단 (최대 사이즈면 숨김, 슬롯 추가 버튼은 위에서 처리) */}
+            {!isAlreadyMax && (
+              <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
+                <button
+                  onClick={handleRequest}
+                  disabled={!selected || submitting}
+                  className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
+                >
+                  {submitting ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                      </svg>
+                      처리 중...
+                    </>
+                  ) : "용량 변경하기"}
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
