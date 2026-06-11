@@ -386,7 +386,7 @@ infront/
 
 ---
 
-## ?? DB ��Ű�� (���̱׷��̼� 001~052)
+## ?? DB ��Ű�� (���̱׷��̼� 001~053)
 
 | ���� | ���� |
 |------|------|
@@ -1064,6 +1064,38 @@ Next.js ����
 
 ---
 
-## ?? ���̼���
+## ?? 변경 이력
+
+### 2026-06-11 스토리지 비즈니스 로직 구현
+
+**장기보관 고객 단기보관함 생성 차단**
+- `POST /api/storage`: 이미 장기보관 슬롯이 있으면 short_term 생성 시 409 반환
+- 장기보관 고객은 기존 장기보관함으로만 입고 가능
+
+**수거신청 시 스토리지 자동 연결** (`POST /api/pickup/route.ts`)
+- 클라이언트 지정 `customer_storage_id` 우선 사용
+- 없으면 장기보관함 자동 매핑 (가장 오래된 슬롯)
+- 장기보관도 없으면 단기보관함 조회 후 없으면 자동 생성
+- → 최초 수거신청 시 장기보관 미선택 = 단기보관 자동 배정
+
+**수거신청 슬롯 피커 UI** (`pickup/page.tsx`)
+- 장기보관 슬롯이 있으면 "어느 보관함으로 입고할까요?" 피커 표시
+- 없으면 기존 장기보관 신청 opt-in UI 유지
+
+**슬롯 간 이동 신청** (`storage/[id]/page.tsx`)
+- 장기보관 슬롯이 여러 개인 경우 "다른 보관함으로 이동 신청" 버튼 노출
+- `TransferToSlotSheet`: 대상 슬롯 선택 → TRANSFER_ITEMS 변경요청 접수
+
+**API 확장** (`change-request/route.ts`)
+- `TRANSFER_ITEMS` 타입 + `target_storage_id` 지원
+- 대상 슬롯이 본인 소유인지 검증
+
+**DB 마이그레이션** (`053_storage_transfer_items.sql`)
+- `storage_change_requests.target_storage_id` 컬럼 추가
+- `request_type` CHECK 제약에 `TRANSFER_ITEMS` 추가
+
+---
+
+## ?? 라이선스
 
 Private ? ���� ���� �� ���� ����
