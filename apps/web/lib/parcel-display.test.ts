@@ -6,29 +6,33 @@ import {
 } from "./parcel-display";
 
 describe("getParcelJourneyPhase", () => {
-  it("groups pre-inbound statuses as IN_TRANSIT", () => {
-    expect(getParcelJourneyPhase({ status: "PRE_REGISTERED" })).toBe("IN_TRANSIT");
-    expect(getParcelJourneyPhase({ status: "PENDING_PICKUP" })).toBe("IN_TRANSIT");
-    expect(getParcelJourneyPhase({ status: "PICKED_UP" })).toBe("IN_TRANSIT");
+  it("groups pre-inbound statuses as INCOMING", () => {
+    expect(getParcelJourneyPhase({ status: "PRE_REGISTERED" })).toBe("INCOMING");
+    expect(getParcelJourneyPhase({ status: "PENDING_PICKUP" })).toBe("INCOMING");
+    expect(getParcelJourneyPhase({ status: "PICKED_UP" })).toBe("INCOMING");
   });
 
-  it("marks shippable inbound as READY_TO_SHIP", () => {
+  it("marks shippable parcel as SHIPPABLE", () => {
     expect(
       getParcelJourneyPhase({ status: "INBOUND", is_shippable: true }),
-    ).toBe("READY_TO_SHIP");
+    ).toBe("SHIPPABLE");
   });
 
-  it("marks non-shippable inbound as AT_WAREHOUSE", () => {
+  it("marks non-shippable inbound as INCOMING", () => {
     expect(
       getParcelJourneyPhase({ status: "INBOUND", is_shippable: false }),
-    ).toBe("AT_WAREHOUSE");
+    ).toBe("INCOMING");
+  });
+
+  it("marks HOLD as HOLD", () => {
+    expect(getParcelJourneyPhase({ status: "HOLD" })).toBe("HOLD");
   });
 });
 
 describe("getParcelDisplaySummary", () => {
-  it("hides inbound date wording for pre-inbound parcels", () => {
+  it("shows 입고중 badge for pre-inbound parcels", () => {
     const summary = getParcelDisplaySummary({ status: "PRE_REGISTERED" });
-    expect(summary.badgeLabel).toBe("오는 중");
+    expect(summary.badgeLabel).toBe("입고중");
     expect(summary.subtitle).toContain("센터 도착");
     expect(summary.meta).toBeUndefined();
   });
@@ -68,12 +72,12 @@ describe("getParcelDisplaySummary", () => {
 describe("matchesWarehouseFilter", () => {
   it("filters by journey phase", () => {
     expect(
-      matchesWarehouseFilter({ status: "PICKED_UP" }, "IN_TRANSIT"),
+      matchesWarehouseFilter({ status: "PICKED_UP" }, "INCOMING"),
     ).toBe(true);
     expect(
       matchesWarehouseFilter(
         { status: "INBOUND", is_shippable: true },
-        "READY_TO_SHIP",
+        "SHIPPABLE",
       ),
     ).toBe(true);
   });

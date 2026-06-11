@@ -27,7 +27,7 @@ export function normalizeParcelItems(raw: unknown): ParcelInvoiceItem[] {
 }
 
 /** 홈·창고 카드용 한 줄 제목 (예: 나이스운동화 외1, 나이스운동화 외2, 나이스운동화 ×3) */
-export function formatParcelItemTitle(items: ParcelInvoiceItem[] | null | undefined): string {
+export function formatParcelItemTitle(items: ParcelInvoiceItem[] | string | null | undefined): string {
   const list = normalizeParcelItems(items).filter((i) => parcelItemDisplayName(i));
   if (list.length === 0) return "";
 
