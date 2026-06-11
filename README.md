@@ -1098,6 +1098,7 @@ Next.js ����
 
 **API 확장** (`change-request/route.ts`)
 - `CAPACITY_CHANGE`: `plan_type`·`capacity_score` 즉시 업데이트 후 work order 생성
+- `CAPACITY_CHANGE`: 다운그레이드 차단 (422), 최대 사이즈 차단 (`suggest_add_slot: true`)
 - `MERGE_SLOTS`: 리터 용량 검증 → 소스 슬롯 즉시 CANCELLED → work order 생성
 - `TRANSFER_ITEMS` + `target_storage_id`, `MERGE_SLOTS` + `source_storage_ids` 지원
 
@@ -1105,6 +1106,8 @@ Next.js ����
 - 즉시적용 타입에 "📋 작업지시 / DB 자동적용" 배지 표시
 - "작업완료" 버튼 (amber 색상)으로 물리적 작업 완료 표시
 - 승인 필요 타입은 기존 "승인/반려" 유지
+- **강제 용량 변경 모달**: 고객 요청 없이 관리자가 직접 변경 (다운그레이드 포함)
+- `PATCH /api/admin/storage/[id]/force-plan` 신규 엔드포인트
 
 **DB 마이그레이션**
 - `053_storage_transfer_items.sql`: `target_storage_id` 컬럼 + `TRANSFER_ITEMS` 타입
