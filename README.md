@@ -386,7 +386,7 @@ infront/
 
 ---
 
-## 🗄 DB 스키마 (마이그레이션 001~044)
+## 🗄 DB 스키마 (마이그레이션 001~051)
 
 | 파일 | 내용 |
 |------|------|
@@ -441,6 +441,8 @@ infront/
 | `047_mock_parcel_items.sql` + `047b` | MOCK 소포 pre_invoice_items 샘플 데이터 채우기 (제품명 표시용) |
 | `048_parcel_storage_link_shippable.sql` | SHIPPABLE 상태 소포 customer_storage_id 소급 연결, auto_link 트리거에 SHIPPABLE·INSPECTION 추가, used_score 재계산 |
 | `049_storage_card_color.sql` | customer_storages.card_color 컬럼 추가 — 카드 테마 색상 고객 선택 (green\|purple\|red\|blue\|pink\|null=랜덤) |
+| `050_storage_type_price_per_month.sql` | storage_types에 `price_per_month` 컬럼 추가 — 월정액 장기보관 요금 (NULL이면 주간 요금 표시, 설정 시 월 단위 표시) |
+| `051_oversize_price_fix.sql` | OVERSIZE 타입 요금 단일화 — 29,900원/주 확정, price_max NULL 처리 |
 
 > 상세 개발 현황: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -805,6 +807,39 @@ Next.js 웹앱
 ---
 
 ## 📝 변경 이력
+
+### 2026-06-11
+
+#### 수거·물품등록 미개봉 박스 UX 개선 + 스토리지 요금 월단위 반영
+
+**수거 신청 (`/pickup`) 미개봉 박스 토글**
+- Step 1(수거 정보) 하단에 **미개봉 박스 수거** 토글 추가
+  - 체크 시 Step 2(물품 내역) 완전 건너뜀 → Step 3(확인 및 신청)으로 직행
+  - 뒤로가기도 Step 1로 바이패스 (Step 2 없음)
+  - submit payload: `{ name_en: "Sealed Box", is_sealed: true, quantity: 1, ... }` 단일 항목 자동 전송
+  - Step 3 확인 화면: "미개봉 박스 수거" + 물품 내역 입력 생략 메시지 표시, "물품 내역 수정" 버튼 숨김
+  - "해외 배송 출고 시 개봉 후 처리" 주의 안내 표시
+
+**물품 등록 (`/register-parcel`) 미개봉 per-item 체크박스**
+- **물품 상태** 선택지에서 SEALED(미개봉) 옵션 제거 → grid-cols-3 → grid-cols-2 (새 제품 / 중고품만)
+- 각 품목 카드에 **박스 미개봉 보관** 체크박스 추가 (pickup 페이지와 동일한 UX)
+  - 체크 시: 박스 이름(필수) 외 인보이스 필드(품목선택/수량/단가/HS코드/원산지) 숨김
+  - 미개봉 아이템은 검품·특수처리 섹션 대신 "📦 미개봉 보관" 안내 메시지 표시
+  - `canStep2()` 검증: 미개봉 아이템은 박스 이름만 있으면 통과
+  - submit payload: `name_en: "Sealed Box"`, `is_sealed: true` 자동 처리
+
+**스토리지 용량변경·장기보관 요금 월 단위 표시**
+- DB: `050_storage_type_price_per_month.sql` — storage_types에 `price_per_month` 컬럼 추가
+- DB: `051_oversize_price_fix.sql` — OVERSIZE 29,900원/주 단일화, price_max NULL 처리
+- `/storage` CapacityChangeSheet: `price_per_month` 설정 시 `/월` 표시, 미설정 시 `price_per_week` `/주` 폴백
+- `/pickup` 장기보관 사이즈 선택: 동일 로직 반영
+
+**스토리지 캐러셀 휠 스크롤 버그 수정**
+- 캐러셀 영역에서 마우스 휠 사용 시 페이지 스크롤이 완전히 차단되던 버그 수정
+  - 기존: `e.preventDefault()` 무조건 호출 → 휠 이벤트 전부 캐러셀이 독점
+  - 수정: 델타 ≤ 20이면 `return` (페이지 스크롤 허용), 20 초과 시에만 `preventDefault()` + 카드 이동
+
+---
 
 ### 2026-06-10
 
