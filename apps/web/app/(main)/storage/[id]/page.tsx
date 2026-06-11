@@ -115,6 +115,7 @@ export default function StorageDetailPage() {
   const [showReleaseSheet, setShowReleaseSheet] = useState(false);
   const [showCapacitySheet, setShowCapacitySheet] = useState(false);
   const [showConvertSheet, setShowConvertSheet] = useState(false);
+  const [showTransferSheet, setShowTransferSheet] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -493,6 +494,17 @@ export default function StorageDetailPage() {
           </button>
         )}
 
+        {/* 장기보관 — 다른 슬롯으로 이동 신청 */}
+        {storage.storage_mode === "long_term" && storage.status === "ACTIVE" && parcels.length > 0 && (
+          <button
+            onClick={() => setShowTransferSheet(true)}
+            className="w-full bg-white border-2 border-gray-200 text-gray-700 rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 text-sm font-bold hover:bg-gray-50 transition-colors"
+          >
+            <TruckIcon size={16} />
+            다른 보관함으로 이동 신청
+          </button>
+        )}
+
         {/* 단기보관 — 결제 대기 안내 */}
         {storage.status === "PENDING_PAYMENT" && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-center">
@@ -588,6 +600,14 @@ export default function StorageDetailPage() {
         <ConvertToLongTermSheet
           storage={storage}
           onClose={() => setShowConvertSheet(false)}
+        />
+      )}
+
+      {/* 다른 슬롯으로 이동 시트 */}
+      {showTransferSheet && storage && (
+        <TransferToSlotSheet
+          storage={storage}
+          onClose={() => setShowTransferSheet(false)}
         />
       )}
     </div>
@@ -1241,6 +1261,179 @@ function ConvertToLongTermSheet({
                 {submitting ? (
                   <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
                 ) : "전환 요청하기"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────────────────────────────────────
+   다른 슬롯으로 이동 신청 시트
+───────────────────────────────────────────── */
+function TransferToSlotSheet({
+  storage,
+  onClose,
+}: {
+  storage: Storage;
+  onClose: () => void;
+}) {
+  type SlotOption = { id: string; storage_name: string; plan_type: string | null; storage_mode: string };
+  const [slots, setSlots] = useState<SlotOption[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/storage")
+      .then(r => r.json())
+      .then(d => {
+        const others: SlotOption[] = (d.storages ?? []).filter(
+          (s: SlotOption & { status: string }) => s.id !== storage.id && s.status !== "CANCELLED"
+        );
+        setSlots(others);
+      })
+      .finally(() => setLoading(false));
+  }, [storage.id]);
+
+  async function handleSubmit() {
+    if (!selected) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/storage/${storage.id}/change-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request_type: "TRANSFER_ITEMS",
+          target_storage_id: selected,
+          customer_note: note.trim() || null,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "요청 접수에 실패했습니다.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      alert("오류가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:px-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full sm:max-w-[520px] bg-white rounded-t-3xl sm:rounded-3xl max-h-[85vh] flex flex-col shadow-2xl">
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+          <div>
+            <p className="text-base font-bold text-gray-900">다른 보관함으로 이동</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              현재: {storage.storage_name} · 유료 서비스
+            </p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
+            <X size={18} />
+          </button>
+        </div>
+
+        {done ? (
+          <div className="px-4 py-10 flex flex-col items-center gap-3">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+              <Check size={24} className="text-green-600" strokeWidth={2.5} />
+            </div>
+            <p className="text-sm font-bold text-gray-900">이동 요청이 접수되었습니다</p>
+            <p className="text-xs text-gray-500 text-center">
+              관리자가 확인 후 물품을 이동해 드립니다.<br />
+              처리 완료 시 알림으로 안내해 드립니다.
+            </p>
+            <button onClick={onClose} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
+              확인
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-3">
+              <div className="bg-orange-50 border border-orange-100 rounded-2xl p-3 text-xs text-orange-700 space-y-1">
+                <p className="font-bold text-orange-800">이동 서비스 안내</p>
+                <ul className="space-y-0.5">
+                  {[
+                    "물품 이동은 유료 서비스입니다 (관리자 확인 후 요금 안내)",
+                    "이동 요청 후 관리자가 직접 물품을 재배치합니다",
+                    "처리 후 알림으로 완료를 안내해 드립니다",
+                  ].map(t => (
+                    <li key={t} className="flex items-start gap-1"><span>•</span><span>{t}</span></li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-xs font-bold text-gray-700">이동할 보관함 선택</p>
+              {loading ? (
+                <div className="py-8 flex justify-center">
+                  <Loader2 size={24} className="animate-spin text-gray-300" />
+                </div>
+              ) : slots.length === 0 ? (
+                <div className="py-6 text-center text-sm text-gray-400">
+                  이동할 수 있는 다른 보관함이 없습니다.
+                </div>
+              ) : (
+                slots.map(slot => {
+                  const isSelected = selected === slot.id;
+                  return (
+                    <button
+                      key={slot.id}
+                      onClick={() => setSelected(slot.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
+                        isSelected ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white hover:border-gray-300"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                        isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
+                      }`}>
+                        <Archive size={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
+                          {slot.storage_name}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {slot.storage_mode === "long_term" ? "장기보관" : "단기보관"}
+                          {slot.plan_type && ` · ${slot.plan_type}`}
+                        </p>
+                      </div>
+                      {isSelected && <Check size={16} className="text-brand-600 shrink-0" />}
+                    </button>
+                  );
+                })
+              )}
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 mb-1 block">
+                  요청 메모 <span className="font-normal text-gray-400">(선택)</span>
+                </label>
+                <textarea
+                  value={note}
+                  onChange={e => setNote(e.target.value)}
+                  placeholder="이동 관련 특이사항을 입력해 주세요."
+                  rows={2}
+                  maxLength={200}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-400 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
+              <button
+                onClick={handleSubmit}
+                disabled={!selected || submitting || slots.length === 0}
+                className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                {submitting ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</> : "이동 요청하기"}
               </button>
             </div>
           </>

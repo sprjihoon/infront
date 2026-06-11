@@ -52,11 +52,33 @@ export async function POST(req: NextRequest, { params }: Params) {
     requested_type_code?: string;
     requested_plan_type?: string;
     customer_note?: string;
+    target_storage_id?: string;
   };
 
-  const VALID_TYPES = ["CAPACITY_CHANGE", "CONVERT_TO_LONG_TERM", "ADD_SLOT"];
+  const VALID_TYPES = ["CAPACITY_CHANGE", "CONVERT_TO_LONG_TERM", "ADD_SLOT", "TRANSFER_ITEMS"];
   if (!VALID_TYPES.includes(body.request_type)) {
     return NextResponse.json({ error: "유효하지 않은 요청 타입입니다." }, { status: 400 });
+  }
+
+  // TRANSFER_ITEMS: 대상 스토리지 검증
+  if (body.request_type === "TRANSFER_ITEMS") {
+    if (!body.target_storage_id) {
+      return NextResponse.json({ error: "이동 대상 보관함(target_storage_id)이 필요합니다." }, { status: 400 });
+    }
+    if (body.target_storage_id === storage_id) {
+      return NextResponse.json({ error: "현재 보관함과 동일한 곳으로는 이동할 수 없습니다." }, { status: 400 });
+    }
+    // 대상이 본인 스토리지인지 확인
+    const { data: targetStorage } = await supabase
+      .from("customer_storages")
+      .select("id")
+      .eq("id", body.target_storage_id)
+      .eq("user_id", user.id)
+      .neq("status", "CANCELLED")
+      .maybeSingle();
+    if (!targetStorage) {
+      return NextResponse.json({ error: "이동 대상 보관함을 찾을 수 없습니다." }, { status: 404 });
+    }
   }
 
   // 중복 PENDING 요청 방지 (동일 타입의 대기중 요청이 있으면 거부)
@@ -85,6 +107,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       requested_type_code:  body.requested_type_code ?? null,
       requested_plan_type:  body.requested_plan_type ?? null,
       customer_note:        body.customer_note ?? null,
+      target_storage_id:    body.target_storage_id ?? null,
     })
     .select()
     .single();

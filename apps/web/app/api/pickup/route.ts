@@ -584,6 +584,67 @@ export async function POST(req: NextRequest) {
         .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err, { orderNo: orderNoUsed, reqYmd }));
     }
 
+    // ── 스토리지 자동 연결 ──────────────────────────────────
+    // 1) 클라이언트가 명시한 storage_id 우선
+    // 2) 없으면 장기보관함 자동 매핑 (단 하나라도 있으면)
+    // 3) 장기보관함도 없으면 단기보관함 조회 or 자동 생성
+    let resolvedStorageId: string | null = customer_storage_id ?? null;
+
+    if (!resolvedStorageId) {
+      // 활성 장기보관함 조회 (oldest first → 첫 번째 슬롯)
+      const { data: longTermStorages } = await supabase
+        .from('customer_storages')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('storage_mode', 'long_term')
+        .neq('status', 'CANCELLED')
+        .order('created_at', { ascending: true });
+
+      if (longTermStorages && longTermStorages.length > 0) {
+        // 장기보관 고객 → 첫 번째(가장 오래된) 슬롯으로 자동 매핑
+        resolvedStorageId = longTermStorages[0].id;
+      } else {
+        // 단기보관: 기존 단기보관함 조회
+        const { data: shortTermStorage } = await supabase
+          .from('customer_storages')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('storage_mode', 'short_term')
+          .neq('status', 'CANCELLED')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (shortTermStorage) {
+          resolvedStorageId = shortTermStorage.id;
+        } else {
+          // 단기보관함 없으면 자동 생성
+          const { count } = await supabase
+            .from('customer_storages')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .neq('status', 'CANCELLED');
+          const n = (count ?? 0) + 1;
+          const defaultName = n === 1 ? '내 스토리지' : `내 스토리지 ${n}`;
+
+          const { data: newStorage } = await supabase
+            .from('customer_storages')
+            .insert({
+              user_id: user.id,
+              storage_name: defaultName,
+              storage_mode: 'short_term',
+              status: 'ACTIVE',
+              short_term_started_at: new Date().toISOString(),
+            })
+            .select('id')
+            .single();
+
+          if (newStorage) resolvedStorageId = newStorage.id;
+        }
+      }
+    }
+    // ────────────────────────────────────────────────────────
+
     const { testYn: _omitTestYn, ...epostInsertSnapshot } = epostParams;
     const trackingEvents = [{
       timestamp: new Date().toISOString(),
@@ -631,7 +692,7 @@ export async function POST(req: NextRequest) {
         parcel_size_code: weightKgToSizeCode(spec.weight),
         ...(item_condition && { item_condition }),
         ...(pre_invoice_items?.length && { pre_invoice_items }),
-        ...(customer_storage_id && { customer_storage_id }),
+        ...(resolvedStorageId && { customer_storage_id: resolvedStorageId }),
         registered_by: 'CUSTOMER',
       })
       .select('id')

@@ -68,6 +68,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "storage_mode 는 필수입니다." }, { status: 400 });
   }
 
+  // 장기보관 고객은 단기보관함 별도 생성 불가
+  if (body.storage_mode === "short_term") {
+    const { data: hasLongTerm } = await supabase
+      .from("customer_storages")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("storage_mode", "long_term")
+      .neq("status", "CANCELLED")
+      .maybeSingle();
+    if (hasLongTerm) {
+      return NextResponse.json(
+        { error: "장기보관 이용 중에는 단기보관함을 별도로 생성할 수 없습니다. 기존 장기보관함을 이용해주세요." },
+        { status: 409 }
+      );
+    }
+  }
+
   // 플랜 정보 조회
   let planConfig = null;
   if (body.plan_type) {
