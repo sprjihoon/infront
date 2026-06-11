@@ -53,9 +53,10 @@ export async function POST(req: NextRequest, { params }: Params) {
     requested_plan_type?: string;
     customer_note?: string;
     target_storage_id?: string;
+    source_storage_ids?: string[];
   };
 
-  const VALID_TYPES = ["CAPACITY_CHANGE", "CONVERT_TO_LONG_TERM", "ADD_SLOT", "TRANSFER_ITEMS"];
+  const VALID_TYPES = ["CAPACITY_CHANGE", "CONVERT_TO_LONG_TERM", "ADD_SLOT", "TRANSFER_ITEMS", "MERGE_SLOTS"];
   if (!VALID_TYPES.includes(body.request_type)) {
     return NextResponse.json({ error: "유효하지 않은 요청 타입입니다." }, { status: 400 });
   }
@@ -97,6 +98,27 @@ export async function POST(req: NextRequest, { params }: Params) {
     );
   }
 
+  // MERGE_SLOTS: 소스 슬롯 검증
+  if (body.request_type === "MERGE_SLOTS") {
+    const ids = body.source_storage_ids ?? [];
+    if (ids.length < 1) {
+      return NextResponse.json({ error: "합칠 슬롯(source_storage_ids)이 1개 이상 필요합니다." }, { status: 400 });
+    }
+    if (ids.includes(storage_id)) {
+      return NextResponse.json({ error: "현재 보관함은 소스 목록에 포함할 수 없습니다." }, { status: 400 });
+    }
+    // 본인 소유 슬롯인지 확인
+    const { data: ownedSlots } = await supabase
+      .from("customer_storages")
+      .select("id")
+      .eq("user_id", user.id)
+      .in("id", ids)
+      .neq("status", "CANCELLED");
+    if (!ownedSlots || ownedSlots.length !== ids.length) {
+      return NextResponse.json({ error: "소스 슬롯 중 소유하지 않거나 유효하지 않은 항목이 있습니다." }, { status: 403 });
+    }
+  }
+
   const { data, error } = await supabase
     .from("storage_change_requests")
     .insert({
@@ -108,6 +130,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       requested_plan_type:  body.requested_plan_type ?? null,
       customer_note:        body.customer_note ?? null,
       target_storage_id:    body.target_storage_id ?? null,
+      source_storage_ids:   body.source_storage_ids ?? null,
     })
     .select()
     .single();
