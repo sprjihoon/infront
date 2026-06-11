@@ -76,7 +76,7 @@ export default function RegisterParcelPage() {
   const [notes, setNotes] = useState("");
 
   // Step 2: 물품 내역
-  const [condition, setCondition] = useState<"NEW" | "USED">("NEW");
+  const [condition, setCondition] = useState<"NEW" | "USED" | "SEALED">("NEW");
   const [items, setItems] = useState<InvoiceItem[]>([newItem()]);
 
   const [specialsOpenKeys, setSpecialsOpenKeys] = useState<Set<string>>(new Set());
@@ -471,30 +471,31 @@ export default function RegisterParcelPage() {
                 <Tag size={14} className="inline mr-1.5 text-gray-500" />
                 물품 상태
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
-                  { value: "NEW",  label: "새 제품",  sub: "신품 · 미사용" },
-                  { value: "USED", label: "중고품",   sub: "사용품 · 유학생 짐" },
+                  { value: "NEW",    label: "새 제품",  sub: "신품 · 미사용" },
+                  { value: "SEALED", label: "미개봉",   sub: "박스 봉인 상태" },
+                  { value: "USED",   label: "중고품",   sub: "사용품 · 유학생 짐" },
                 ].map((opt) => (
                   <button
                     key={opt.value}
                     type="button"
-                    onClick={() => setCondition(opt.value as "NEW" | "USED")}
-                    className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                    onClick={() => setCondition(opt.value as "NEW" | "USED" | "SEALED")}
+                    className={`flex flex-col gap-1 px-3 py-3 rounded-xl border-2 transition-all text-left ${
                       condition === opt.value
                         ? "border-brand-500 bg-brand-50"
                         : "border-gray-200 bg-white hover:border-brand-200"
                     }`}
                   >
-                    <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
-                      condition === opt.value ? "border-brand-500 bg-brand-500" : "border-gray-300"
-                    }`}>
-                      {condition === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </div>
-                    <div>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                        condition === opt.value ? "border-brand-500 bg-brand-500" : "border-gray-300"
+                      }`}>
+                        {condition === opt.value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
                       <p className={`text-sm font-semibold ${condition === opt.value ? "text-brand-700" : "text-gray-800"}`}>{opt.label}</p>
-                      <p className="text-xs text-gray-400">{opt.sub}</p>
                     </div>
+                    <p className="text-[10px] text-gray-400 pl-5">{opt.sub}</p>
                   </button>
                 ))}
               </div>
