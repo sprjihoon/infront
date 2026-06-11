@@ -243,8 +243,8 @@ function ShippingRequestContent() {
           .from("parcels")
           .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable")
           .eq("customer_id", user.id)
-          .eq("status", "INBOUND")
           .eq("is_shippable", true)
+          .not("status", "in", '("SHIPPED","RETURNED","PICKUP_CANCELLED","DISPOSED")')
           .order("inbound_at", { ascending: false }),
         supabase
           .from("customer_addresses")
