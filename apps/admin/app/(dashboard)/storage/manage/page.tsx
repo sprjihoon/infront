@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown, Check, X, Layers } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, AlertTriangle, Warehouse, Grid3X3, RefreshCw, ChevronDown, Check, X, Layers, Bell, ArrowRight } from "lucide-react";
 
 type StorageTypeOption = {
   id: string;
@@ -16,6 +16,21 @@ type StorageTypeOption = {
   price_per_week: number;
   price_max: number | null;
   price_per_month: number | null;
+};
+
+type ChangeRequest = {
+  id: string;
+  request_type: string;
+  status: string;
+  customer_note: string | null;
+  admin_note: string | null;
+  requested_type_code: string | null;
+  requested_plan_type: string | null;
+  created_at: string;
+  processed_at: string | null;
+  customers: { id: string; name: string | null; customer_code: string; email: string | null } | null;
+  customer_storages: { id: string; storage_name: string; storage_mode: string; plan_type: string | null } | null;
+  storage_types: { code: string; name: string; price_per_week: number; price_per_month: number | null; max_parcels: number | null; volume_liter: number | null } | null;
 };
 
 type LocationRow = {
@@ -57,6 +72,12 @@ export default function StorageManagePage() {
   const [locations, setLocations]   = useState<LocationRow[]>([]);
   const [types, setTypes]           = useState<StorageTypeOption[]>([]);
   const [loading, setLoading]       = useState(true);
+
+  // 변경 요청
+  const [changeRequests, setChangeRequests]       = useState<ChangeRequest[]>([]);
+  const [reqStatusFilter, setReqStatusFilter]     = useState<"PENDING" | "ALL">("PENDING");
+  const [processingReqId, setProcessingReqId]     = useState<string | null>(null);
+  const [adminNoteInput, setAdminNoteInput]        = useState<Record<string, string>>({});
 
   // 추가 폼
   const [newZone,   setNewZone]   = useState("");
@@ -128,26 +149,43 @@ export default function StorageManagePage() {
       return next;
     });
 
+  const handleProcessRequest = async (reqId: string, status: "APPROVED" | "REJECTED") => {
+    setProcessingReqId(reqId);
+    const note = adminNoteInput[reqId] ?? "";
+    const res = await fetch("/api/admin/storage/change-requests", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: reqId, status, admin_note: note || undefined }),
+    });
+    const json = await res.json();
+    if (!res.ok) { alert(json.error ?? "처리 실패"); }
+    else { await load(); }
+    setProcessingReqId(null);
+  };
+
   const getActiveZone = (idx: number, chunk: string[]) =>
     (activeZones[idx] && chunk.includes(activeZones[idx])) ? activeZones[idx] : chunk[0];
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [locRes, typeRes] = await Promise.all([
+      const [locRes, typeRes, reqRes] = await Promise.all([
         fetch("/api/admin/storage/list"),
         fetch("/api/admin/storage"),
+        fetch(`/api/admin/storage/change-requests?status=${reqStatusFilter}`),
       ]);
       const locJson  = locRes.ok  ? await locRes.json()  : { locations: [] };
       const typeJson = typeRes.ok ? await typeRes.json() : { types: [] };
+      const reqJson  = reqRes.ok  ? await reqRes.json()  : { requests: [] };
       setLocations(locJson.locations ?? []);
       setTypes(typeJson.types ?? []);
+      setChangeRequests(reqJson.requests ?? []);
     } catch (e) {
       console.error("[manage] load error:", e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [reqStatusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -480,9 +518,145 @@ export default function StorageManagePage() {
         </div>
       </div>
 
-      {/* 추가 폼 */}
+      {/* 변경 요청 섹션 */}
       <div className="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 font-semibold text-gray-700 flex items-center gap-2">
+        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2 font-semibold text-gray-700">
+            <Bell size={16} className="text-orange-500" />
+            고객 변경 요청
+            {changeRequests.filter(r => r.status === "PENDING").length > 0 && (
+              <span className="text-xs bg-orange-500 text-white font-bold px-2 py-0.5 rounded-full">
+                {changeRequests.filter(r => r.status === "PENDING").length}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={reqStatusFilter}
+              onChange={(e) => setReqStatusFilter(e.target.value as "PENDING" | "ALL")}
+              className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none"
+            >
+              <option value="PENDING">대기 중</option>
+              <option value="ALL">전체</option>
+            </select>
+          </div>
+        </div>
+
+        {changeRequests.length === 0 ? (
+          <div className="p-8 text-center text-sm text-gray-400">
+            {reqStatusFilter === "PENDING" ? "대기 중인 요청이 없습니다" : "요청 내역이 없습니다"}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {changeRequests.map((req) => {
+              const REQ_TYPE_LABEL: Record<string, string> = {
+                CAPACITY_CHANGE:      "용량 변경",
+                CONVERT_TO_LONG_TERM: "장기 전환",
+                ADD_SLOT:             "슬롯 추가",
+              };
+              const STATUS_STYLE: Record<string, string> = {
+                PENDING:  "bg-orange-100 text-orange-700",
+                APPROVED: "bg-green-100 text-green-700",
+                REJECTED: "bg-gray-100 text-gray-500",
+                CANCELLED:"bg-gray-100 text-gray-400",
+              };
+              const isPending = req.status === "PENDING";
+              return (
+                <div key={req.id} className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_STYLE[req.status] ?? "bg-gray-100 text-gray-500"}`}>
+                          {req.status === "PENDING" ? "대기" : req.status === "APPROVED" ? "승인" : req.status === "REJECTED" ? "반려" : "취소"}
+                        </span>
+                        <span className="text-xs font-semibold text-gray-700">{REQ_TYPE_LABEL[req.request_type] ?? req.request_type}</span>
+                        <span className="text-xs text-gray-400">
+                          {new Date(req.created_at).toLocaleDateString("ko-KR")}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-gray-800 mt-1">
+                        {req.customers?.name ?? "-"}
+                        <span className="ml-1.5 text-xs text-gray-400 font-mono">{req.customers?.customer_code}</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        스토리지: <span className="font-medium">{req.customer_storages?.storage_name ?? "-"}</span>
+                        <span className="ml-1 text-gray-400">
+                          ({req.customer_storages?.storage_mode === "short_term" ? "단기" : "장기"})
+                        </span>
+                      </p>
+                      {req.request_type === "CAPACITY_CHANGE" && req.requested_type_code && (
+                        <p className="text-xs text-indigo-600 mt-0.5">
+                          요청 타입: <span className="font-bold">{req.requested_type_code}</span>
+                          {req.storage_types && (
+                            <span className="text-gray-400 ml-1">
+                              {req.storage_types.volume_liter}L · {req.storage_types.price_per_week.toLocaleString()}원/주
+                              {req.storage_types.price_per_month != null && ` · ${req.storage_types.price_per_month.toLocaleString()}원/월`}
+                            </span>
+                          )}
+                        </p>
+                      )}
+                      {req.request_type === "CONVERT_TO_LONG_TERM" && req.requested_plan_type && (
+                        <p className="text-xs text-blue-600 mt-0.5">
+                          요청 플랜: <span className="font-bold">{req.requested_plan_type}</span>
+                        </p>
+                      )}
+                      {req.customer_note && (
+                        <p className="text-xs text-gray-500 mt-1 italic">"{req.customer_note}"</p>
+                      )}
+                    </div>
+                    {isPending && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleProcessRequest(req.id, "APPROVED")}
+                          disabled={processingReqId === req.id}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-green-600 text-white text-xs font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50"
+                        >
+                          <Check size={12} /> 승인
+                        </button>
+                        <button
+                          onClick={() => handleProcessRequest(req.id, "REJECTED")}
+                          disabled={processingReqId === req.id}
+                          className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-200 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                        >
+                          <X size={12} /> 반려
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {/* 관리자 메모 입력 (대기 중일 때만) */}
+                  {isPending && (
+                    <input
+                      type="text"
+                      placeholder="처리 메모 (선택)"
+                      value={adminNoteInput[req.id] ?? ""}
+                      onChange={(e) => setAdminNoteInput(prev => ({ ...prev, [req.id]: e.target.value }))}
+                      className="w-full text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-300"
+                    />
+                  )}
+                  {req.admin_note && !isPending && (
+                    <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                      처리 메모: {req.admin_note}
+                    </p>
+                  )}
+                  {!isPending && req.customer_storages && (
+                    <a
+                      href={`/storage/${req.customer_storages.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:underline"
+                    >
+                      스토리지 바로가기 <ArrowRight size={11} />
+                    </a>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 추가 폼 */}
+      <div className="bg-white rounded-2xl shadow-sm mb-6 overflow-hidden">        <div className="px-5 py-3 border-b border-gray-100 font-semibold text-gray-700 flex items-center gap-2">
           <Plus size={16} className="text-indigo-500" />
           로케이션 추가
         </div>

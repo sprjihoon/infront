@@ -877,11 +877,27 @@ function CapacityChangeSheet({
     if (!selected) return;
     setSubmitting(true);
     const type = types.find((t) => t.id === selected);
-    // 관리자에게 알림 또는 별도 요청 테이블 기록 (현재는 콘솔 + 확인 메시지)
-    console.log("[용량 변경 요청]", { storage_id: storage.id, requested_type: type?.code });
-    await new Promise((r) => setTimeout(r, 600)); // 실제 API 연결 전 UX 딜레이
-    setSubmitting(false);
-    setDone(true);
+    try {
+      const res = await fetch(`/api/storage/${storage.id}/change-request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request_type:        "CAPACITY_CHANGE",
+          requested_type_id:   selected,
+          requested_type_code: type?.code,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        alert(json.error ?? "요청 접수에 실패했습니다.");
+        return;
+      }
+      setDone(true);
+    } catch {
+      alert("오류가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
