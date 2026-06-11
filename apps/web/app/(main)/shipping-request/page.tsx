@@ -50,6 +50,7 @@ interface Parcel {
   weight_actual: number | null;
   notes: string | null;
   pre_invoice_items: PreInvoiceItem[] | null;
+  is_shippable?: boolean | null;
 }
 
 // 아이템 선택 단위 (parcel 내 개별 내품)
