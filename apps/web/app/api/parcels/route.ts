@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     .order("created_at", { ascending: false });
 
   if (shippable) {
-    query = query.eq("status", "INBOUND").eq("is_shippable", true);
+    query = query.eq("is_shippable", true);
   }
 
   const { data: parcels } = await query;
