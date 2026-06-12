@@ -86,31 +86,49 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "해당 보관 타입을 찾을 수 없습니다." }, { status: 404 });
     }
 
-    // ── 업그레이드 전용 검증 ──────────────────────────────
-    const currentVolume = storage.capacity_score ?? 0;
+    // ── 용량 변경 검증 ──────────────────────────────────
+    const currentVolume = Number(storage.capacity_score ?? 0);
+    const usedVolume    = Number(storage.used_score ?? 0);
+    const newVolume     = Number(newType.volume_liter ?? 0);
 
-    // 다운그레이드 차단
-    if (currentVolume > 0 && (newType.volume_liter ?? 0) <= currentVolume) {
+    if (newVolume === currentVolume) {
       return NextResponse.json(
-        { error: "현재 용량보다 큰 사이즈로만 변경 가능합니다." },
+        { error: "현재와 동일한 용량입니다." },
         { status: 422 }
       );
     }
 
-    // 현재가 최대 사이즈인지 확인 (더 큰 타입이 없으면 최대)
-    const { count: biggerCount } = await supabase
-      .from("storage_types")
-      .select("id", { count: "exact", head: true })
-      .gt("volume_liter", currentVolume);
+    const isDowngrade = currentVolume > 0 && newVolume < currentVolume;
 
-    if (biggerCount === 0) {
-      return NextResponse.json(
-        {
-          error: "현재 최대 용량 사이즈입니다. 슬롯을 추가해주세요.",
-          suggest_add_slot: true,
-        },
-        { status: 422 }
-      );
+    if (isDowngrade) {
+      // 다운그레이드: 현재 사용량이 새 용량 이하여야만 허용
+      if (usedVolume > newVolume) {
+        const exceed = (usedVolume - newVolume).toFixed(1);
+        return NextResponse.json(
+          {
+            error: `현재 사용량(${usedVolume}L)이 변경하려는 용량(${newVolume}L)보다 많습니다. ${exceed}L를 비워야 합니다.`,
+            used_volume: usedVolume,
+            new_volume:  newVolume,
+          },
+          { status: 422 }
+        );
+      }
+    } else {
+      // 업그레이드: 현재가 최대 사이즈이면 슬롯 추가 유도
+      const { count: biggerCount } = await supabase
+        .from("storage_types")
+        .select("id", { count: "exact", head: true })
+        .gt("volume_liter", currentVolume);
+
+      if (biggerCount === 0) {
+        return NextResponse.json(
+          {
+            error: "현재 최대 용량 사이즈입니다. 슬롯을 추가해주세요.",
+            suggest_add_slot: true,
+          },
+          { status: 422 }
+        );
+      }
     }
     // ────────────────────────────────────────────────────
 
