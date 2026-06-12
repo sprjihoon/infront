@@ -24,7 +24,7 @@ type Params = { params: Promise<{ id: string }> };
  * POST /api/storage/[id]/change-request
  *
  * 즉시 적용 타입 (DB 자동 변경 → 관리자 작업지시서 생성):
- *   CAPACITY_CHANGE  — plan_type·capacity_score 즉시 변경
+ *   CAPACITY_CHANGE  — storage_type_id·capacity_score 즉시 변경
  *   MERGE_SLOTS      — 리터 기반 용량 검증 → 소스 슬롯 즉시 CANCELLED
  *
  * 관리자 승인 필요 타입:
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   // 본인 스토리지 조회 (capacity 정보 포함)
   const { data: storage, error: sErr } = await supabase
     .from("customer_storages")
-    .select("id, storage_mode, plan_type, capacity_score, used_score")
+    .select("id, storage_mode, plan_type, storage_type_id, capacity_score, used_score")
     .eq("id", storage_id)
     .eq("user_id", user.id)
     .single();
@@ -118,9 +118,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     const { error: upErr } = await supabase
       .from("customer_storages")
       .update({
-        plan_type:      newType.code,
-        capacity_score: newType.volume_liter,
-        updated_at:     new Date().toISOString(),
+        storage_type_id: newType.id,
+        capacity_score:  newType.volume_liter,
+        updated_at:      new Date().toISOString(),
       })
       .eq("id", storage_id);
 

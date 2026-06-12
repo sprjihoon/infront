@@ -33,8 +33,9 @@ export async function GET() {
       id, storage_name, storage_mode, plan_type, current_plan_type, max_plan_type,
       monthly_amount, capacity_score, used_score, usage_percent,
       status, short_term_started_at, paid_until_date, next_billing_date,
-      created_at, updated_at, card_color,
-      storage_plan_config!customer_storages_plan_type_fkey (label_ko, label_en, weekly_rate)
+      created_at, updated_at, card_color, storage_type_id,
+      storage_plan_config!customer_storages_plan_type_fkey (label_ko, label_en, weekly_rate),
+      storage_types!customer_storages_storage_type_id_fkey (code, name, volume_liter)
     `)
     .eq("user_id", user.id)
     .neq("status", "CANCELLED")

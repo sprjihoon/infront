@@ -41,7 +41,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   // 대상 스토리지 조회 (소유자 확인용)
   const { data: storage } = await adminDb
     .from("customer_storages")
-    .select("id, user_id, plan_type, capacity_score")
+    .select("id, user_id, plan_type, storage_type_id, capacity_score")
     .eq("id", storage_id)
     .neq("status", "CANCELLED")
     .single();
@@ -54,9 +54,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { error: upErr } = await adminDb
     .from("customer_storages")
     .update({
-      plan_type:      newType.code,
-      capacity_score: newType.volume_liter,
-      updated_at:     new Date().toISOString(),
+      storage_type_id: newType.id,
+      capacity_score:  newType.volume_liter,
+      updated_at:      new Date().toISOString(),
     })
     .eq("id", storage_id);
 

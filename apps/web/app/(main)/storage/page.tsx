@@ -30,7 +30,9 @@ interface Storage {
   paid_until_date: string | null;
   created_at: string;
   card_color: string | null;
+  storage_type_id: string | null;
   storage_plan_config: PlanConfig | null;
+  storage_types: { code: string; name: string; volume_liter: number | null } | null;
 }
 
 interface ProductItem {
@@ -705,7 +707,7 @@ function StorageCard({
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
   const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
-  const planName    = locationSummary?.dominant_type?.name ?? s.plan_type ?? "-";
+  const planName    = locationSummary?.dominant_type?.name ?? s.storage_types?.name ?? s.plan_type ?? "-";
   const usagePct    = Math.round(s.usage_percent ?? 0);
 
   const mainFee = isShortTerm
@@ -881,6 +883,7 @@ function CapacityChangeSheet({
   currentTypeName: string | null;
   onClose: () => void;
 }) {
+  const resolvedTypeName = currentTypeName ?? storage.storage_types?.name ?? storage.plan_type;
   const [types, setTypes] = useState<StorageType[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -960,7 +963,7 @@ function CapacityChangeSheet({
           <div>
             <p className="text-base font-bold text-gray-900">용량 변경</p>
             <p className="text-xs text-gray-400 mt-0.5">
-              현재: {currentTypeName ?? storage.plan_type ?? "-"}
+              현재: {resolvedTypeName ?? "-"}
             </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
@@ -995,7 +998,7 @@ function CapacityChangeSheet({
                   <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
                     <p className="font-bold mb-1">현재 최대 용량 사이즈입니다</p>
                     <p className="text-xs text-amber-700">
-                      {currentTypeName ?? storage.plan_type ?? "-"} 은 가장 큰 보관함 사이즈입니다.<br />
+                      {resolvedTypeName ?? "-"} 은 가장 큰 보관함 사이즈입니다.<br />
                       용량이 더 필요하다면 새 슬롯을 추가해 주세요.
                     </p>
                   </div>
@@ -1015,7 +1018,7 @@ function CapacityChangeSheet({
               ) : (
                 <>
                   <p className="text-xs text-gray-500 mb-3">
-                    현재({currentTypeName ?? storage.plan_type ?? "-"}, {currentVolume}L)보다 큰 사이즈로 즉시 변경됩니다.
+                    현재({resolvedTypeName ?? "-"}, {currentVolume}L)보다 큰 사이즈로 즉시 변경됩니다.
                   </p>
 
                   {loading ? (
@@ -1382,8 +1385,8 @@ function MergeSlotSheet({
             {s.storage_name}
           </p>
           <div className="flex items-center gap-1.5 mt-0.5">
-            {s.plan_type && (
-              <span className="text-[10px] text-gray-400">{s.plan_type}</span>
+            {(s.storage_types?.code ?? s.plan_type) && (
+              <span className="text-[10px] text-gray-400">{s.storage_types?.code ?? s.plan_type}</span>
             )}
             {cap > 0 && (
               <span className="text-[10px] text-gray-500">
