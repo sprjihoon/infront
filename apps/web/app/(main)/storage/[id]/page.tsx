@@ -67,6 +67,7 @@ interface Storage {
   created_at: string;
   card_color: string | null;
   storage_plan_config: PlanConfig | null;
+  storage_type_id?: string | null;
   storage_types?: { code: string; name?: string; volume_liter?: number } | null;
 }
 
@@ -900,6 +901,10 @@ function CapacityChangeSheet({
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [serverError, setServerError] = useState("");
+
+  const usedScore = storage.used_score ?? 0;
+  const currentTypeId = storage.storage_type_id;
 
   useEffect(() => {
     fetch("/api/storage/types")
@@ -911,6 +916,7 @@ function CapacityChangeSheet({
   async function handleRequest() {
     if (!selected) return;
     setSubmitting(true);
+    setServerError("");
     const type = types.find((t) => t.id === selected);
     try {
       const res = await fetch(`/api/storage/${storage.id}/change-request`, {
@@ -924,12 +930,12 @@ function CapacityChangeSheet({
       });
       const json = await res.json();
       if (!res.ok) {
-        alert(json.error ?? "요청 접수에 실패했습니다.");
+        setServerError(json.error ?? "요청 접수에 실패했습니다.");
         return;
       }
       setDone(true);
     } catch {
-      alert("오류가 발생했습니다. 다시 시도해 주세요.");
+      setServerError("오류가 발생했습니다. 다시 시도해 주세요.");
     } finally {
       setSubmitting(false);
     }
@@ -944,6 +950,7 @@ function CapacityChangeSheet({
             <p className="text-base font-bold text-gray-900">용량 변경</p>
             <p className="text-xs text-gray-400 mt-0.5">
               현재: {currentTypeName ?? storage.plan_type ?? "-"}
+              {usedScore > 0 && <span className="ml-1">· 사용 {usedScore}L</span>}
             </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
@@ -971,7 +978,6 @@ function CapacityChangeSheet({
         ) : (
           <>
             <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
-              <p className="text-xs text-gray-500 mb-3">원하는 사이즈를 선택하면 관리자에게 변경 요청이 전달됩니다.</p>
               {loading ? (
                 <div className="py-10 flex justify-center">
                   <RefreshCw size={24} className="animate-spin text-gray-300" />
@@ -979,28 +985,33 @@ function CapacityChangeSheet({
               ) : (
                 types.map((t) => {
                   const isSelected = selected === t.id;
-                  const isCurrent = currentTypeName === t.name || currentTypeName === t.code;
+                  const isCurrent = t.id === currentTypeId;
+                  const tooSmall = t.volume_liter != null && usedScore > 0 && usedScore > t.volume_liter;
+                  const disabled = isCurrent || tooSmall;
+                  const col = isSelected ? "#6366f1" : disabled ? "#d1d5db" : "#9ca3af";
                   return (
                     <button
                       key={t.id}
-                      onClick={() => setSelected(t.id)}
+                      onClick={() => !disabled && setSelected(t.id)}
+                      disabled={disabled}
                       className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
                         isSelected
                           ? "border-brand-500 bg-brand-50"
                           : isCurrent
-                          ? "border-gray-300 bg-gray-50 opacity-60"
+                          ? "border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed"
+                          : tooSmall
+                          ? "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
                           : "border-gray-100 bg-white hover:border-gray-300"
                       }`}
                     >
                       <div className="w-10 h-10 flex items-center justify-center shrink-0">
                         {(() => {
                           const Comp = BLOCK_SVG_MAP[t.code] ?? Block2SVG;
-                          const col = isSelected ? "#6366f1" : "#9ca3af";
                           return <Comp dark={shadeColor(col, 0.5)} medium={col} light={shadeColor(col, 1.5)} size={40} />;
                         })()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
+                        <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : disabled ? "text-gray-400" : "text-gray-800"}`}>
                           {TYPE_SIZE_KO[t.code] ?? t.name}
                           {isCurrent && (
                             <span className="ml-2 text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full">현재</span>
@@ -1010,20 +1021,29 @@ function CapacityChangeSheet({
                           {t.max_parcels != null ? `최대 ${t.max_parcels}개 물품` : "무제한"}
                           {t.volume_liter != null && ` · ${t.volume_liter}L`}
                         </p>
+                        {tooSmall && (
+                          <p className="text-[10px] text-red-400 font-semibold mt-0.5">
+                            물품 {usedScore}L → 용량 부족 ({(usedScore - (t.volume_liter ?? 0)).toFixed(1)}L 초과)
+                          </p>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : "text-gray-700"}`}>
-                          {t.price_per_week.toLocaleString()}원/주
-                        </p>
-                        {t.price_per_month != null && (
-                          <p className={`text-[11px] font-semibold ${isSelected ? "text-blue-500" : "text-blue-400"}`}>
+                        {t.price_per_month != null ? (
+                          <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : disabled ? "text-gray-300" : "text-gray-700"}`}>
                             {t.price_per_month.toLocaleString()}원/월
+                          </p>
+                        ) : (
+                          <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : disabled ? "text-gray-300" : "text-gray-700"}`}>
+                            {t.price_per_week.toLocaleString()}원/주
                           </p>
                         )}
                       </div>
                     </button>
                   );
                 })
+              )}
+              {serverError && (
+                <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">{serverError}</p>
               )}
             </div>
             <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
