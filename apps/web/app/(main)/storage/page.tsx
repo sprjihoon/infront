@@ -756,93 +756,102 @@ function StorageCard({
       className="rounded-2xl overflow-hidden relative select-none h-full bg-white border border-gray-100"
       style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" }}
     >
-      <div className="flex flex-col items-center px-3 pt-2 pb-2 h-full">
-        {/* 이름 + 수정 버튼 */}
-        <div className="w-full flex items-center justify-between mb-1">
-          <div className="flex items-center gap-1 min-w-0">
-            <p className="text-[11px] font-bold text-gray-800 truncate">{s.storage_name}</p>
+      {/* ── 가로 2열: 좌=블록 이미지, 우=정보+버튼 ── */}
+      <div className="flex h-full gap-2 px-3 py-3">
+
+        {/* 왼쪽: 블록 아이콘 */}
+        <div className="flex items-center justify-center shrink-0 w-[38%]">
+          <BlockIcon typeCode={typeCode} size={80} />
+        </div>
+
+        {/* 오른쪽: 정보 + 버튼 */}
+        <div className="flex flex-col flex-1 min-w-0">
+
+          {/* 이름 + 단기/장기 뱃지 */}
+          <div className="flex items-center justify-between gap-1 mb-0.5">
+            <p className="text-[12px] font-bold text-gray-900 truncate">{s.storage_name}</p>
+            <span
+              className="text-[8px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+              style={{ background: `${accentColor}18`, color: accentColor, border: `1px solid ${accentColor}30` }}
+            >
+              {isShortTerm ? "단기" : "장기"}
+            </span>
+          </div>
+
+          {/* 타입명 + 용량 + 수정 버튼 */}
+          <div className="flex items-center gap-1 mb-1">
+            <p className="text-[10px] text-gray-400 truncate">
+              {typeName}{s.storage_types?.volume_liter ? ` · ${s.storage_types.volume_liter}L` : ""}
+            </p>
             <button
               type="button"
               onClick={e => { e.stopPropagation(); onRename(); }}
               className="shrink-0 p-0.5 opacity-40 hover:opacity-80 transition-opacity"
             >
-              <svg width="9" height="9" fill="none" stroke={accentColor} strokeWidth="2" viewBox="0 0 24 24">
+              <svg width="8" height="8" fill="none" stroke={accentColor} strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
             </button>
           </div>
-          <span
-            className="text-[8px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-            style={{ background: `${accentColor}18`, color: accentColor, border: `1px solid ${accentColor}30` }}
-          >
-            {isShortTerm ? "단기" : "장기"}
-          </span>
-        </div>
 
-        {/* 블록 아이콘 */}
-        <div className="my-0.5">
-          <BlockIcon typeCode={typeCode} size={46} />
-        </div>
+          {/* 요금 */}
+          <p className="text-[20px] font-black text-gray-900 leading-none mb-1.5">
+            {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+            {mainUnit && mainFeeLabel !== "FREE" && (
+              <span className="text-[10px] font-normal text-gray-400 ml-0.5">{mainUnit}</span>
+            )}
+          </p>
 
-        {/* 타입명 + 용량 */}
-        <p className="text-[10px] text-gray-400 mb-0.5">{typeName}{s.storage_types?.volume_liter ? ` · ${s.storage_types.volume_liter}L` : ""}</p>
+          {/* 사용률 도트 */}
+          <div className="flex items-center gap-1.5 mb-1">
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="w-2 h-2 rounded-full"
+                  style={{
+                    background: i < Math.ceil(usagePct / 20)
+                      ? freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor
+                      : "#E5E7EB",
+                  }}
+                />
+              ))}
+            </div>
+            <span className="text-[9px] text-gray-400">{freeBadge ?? `${usagePct}%`}</span>
+          </div>
 
-        {/* 요금 */}
-        <p className="text-[18px] font-black text-gray-900 leading-none">
-          {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
-          {mainUnit && mainFeeLabel !== "FREE" && (
-            <span className="text-[10px] font-normal text-gray-400 ml-0.5">{mainUnit}</span>
-          )}
-        </p>
+          {/* 보관 물품 */}
+          <p className="text-[10px] text-gray-400 mb-1.5">
+            보관 물품 <span className="text-[14px] font-black text-gray-800">{itemCount}개</span>
+          </p>
 
-        {/* 사용률 도트 */}
-        <div className="flex gap-1 mt-1 mb-1">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="w-2.5 h-2.5 rounded-full transition-colors"
-              style={{
-                background: i < Math.ceil(usagePct / 20)
-                  ? freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor
-                  : "#E5E7EB",
+          {/* 버튼 */}
+          <div className="grid grid-cols-2 gap-1.5 mt-auto">
+            <button
+              type="button"
+              className="py-1.5 rounded-xl text-white font-bold transition-colors text-[11px]"
+              style={{ background: accentColor }}
+              onClick={e => {
+                e.stopPropagation();
+                const parcelIds = [...new Set(
+                  storageItems.filter(it => it.storage_id === s.id && it.parcel_id).map(it => it.parcel_id)
+                )];
+                if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
+                onRelease(parcelIds as string[]);
               }}
-            />
-          ))}
-        </div>
-        <p className="text-[9px] text-gray-400">{freeBadge ?? `사용 ${usagePct}%`}</p>
+            >
+              출고하기
+            </button>
+            <button
+              type="button"
+              className="py-1.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors text-[11px]"
+              onClick={e => { e.stopPropagation(); onDetail(); }}
+            >
+              상세보기
+            </button>
+          </div>
 
-        {/* 물품 수 */}
-        <div className="mt-1.5 text-center">
-          <p className="text-[9px] text-gray-400">보관 물품</p>
-          <p className="text-[15px] font-black text-gray-700">{itemCount}개</p>
-        </div>
-
-        {/* 버튼 */}
-        <div className="w-full grid grid-cols-2 gap-1.5 mt-2">
-          <button
-            type="button"
-            className="py-1.5 rounded-xl text-white font-bold transition-colors"
-            style={{ background: accentColor, fontSize: "11px" }}
-            onClick={e => {
-              e.stopPropagation();
-              const parcelIds = [...new Set(
-                storageItems.filter(it => it.storage_id === s.id && it.parcel_id).map(it => it.parcel_id)
-              )];
-              if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
-              onRelease(parcelIds as string[]);
-            }}
-          >
-            출고하기
-          </button>
-          <button
-            type="button"
-            className="py-1.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
-            style={{ fontSize: "11px" }}
-            onClick={e => { e.stopPropagation(); onDetail(); }}
-          >
-            상세보기
-          </button>
         </div>
       </div>
     </div>
