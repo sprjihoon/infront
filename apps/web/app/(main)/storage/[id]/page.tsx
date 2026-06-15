@@ -426,15 +426,28 @@ export default function StorageDetailPage() {
           </button>
         )}
 
-        {/* 블록 합치기 */}
+        {/* 블록 합치기 배너 */}
         {allStorages.length >= 2 && storage.status === "ACTIVE" && (
-          <button
-            onClick={() => setShowMergeSheet(true)}
-            className="w-full bg-white border-2 border-gray-200 text-gray-700 rounded-2xl px-4 py-3.5 flex items-center justify-center gap-2 text-sm font-bold hover:bg-gray-50 transition-colors"
-          >
-            <TruckIcon size={16} />
-            블록 합치기
-          </button>
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+            <div className="flex items-center gap-3">
+              <div className="shrink-0 w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center">
+                <Archive size={16} className="text-amber-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-amber-900">보관료를 줄일 수 있어요</p>
+                <p className="text-xs text-amber-700 mt-0.5 leading-snug">
+                  여러 블록을 하나로 합치면 월 요금을 절약할 수 있어요.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMergeSheet(true)}
+                className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+              >
+                블록 합치기
+              </button>
+            </div>
+          </div>
         )}
 
         {/* 단기보관 — 결제 대기 안내 */}
