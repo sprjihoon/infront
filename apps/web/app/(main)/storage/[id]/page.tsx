@@ -9,6 +9,7 @@ import {
   CreditCard, Loader2, TruckIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { CARD_THEME_MAP } from "../constants";
 
 interface PlanConfig {
   label_ko: string;
@@ -229,13 +230,6 @@ export default function StorageDetailPage() {
       <div className="px-4 py-4 space-y-4">
         {/* ── 스토리지 카드 (리스트와 동일 스타일) ── */}
         {(() => {
-          const CARD_THEME_MAP: Record<string, { bg: string; accent: string }> = {
-            green:  { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#4ade80" },
-            purple: { bg: "linear-gradient(160deg,#1c1240 0%,#2d1b69 60%,#110b30 100%)", accent: "#a78bfa" },
-            red:    { bg: "linear-gradient(160deg,#3a0e0e 0%,#5c1a1a 60%,#280a0a 100%)", accent: "#f87171" },
-            blue:   { bg: "linear-gradient(160deg,#0c253d 0%,#1a3f60 60%,#071928 100%)", accent: "#38bdf8" },
-            pink:   { bg: "linear-gradient(160deg,#1c0a30 0%,#2e1065 60%,#110520 100%)", accent: "#e879f9" },
-          };
           const CARD_THEME_KEYS = Object.keys(CARD_THEME_MAP);
           const themeKey = (storage.card_color && CARD_THEME_MAP[storage.card_color])
             ? storage.card_color
