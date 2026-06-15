@@ -10,6 +10,24 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CARD_THEME_MAP } from "../constants";
+import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG } from "../BlockSVGs";
+
+function shadeColor(hex: string, factor: number): string {
+  const h = hex.replace("#", "").padEnd(6, "0");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const clamp = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
+  if (factor >= 1) {
+    const t = factor - 1;
+    return `#${clamp(r+(255-r)*t).toString(16).padStart(2,"0")}${clamp(g+(255-g)*t).toString(16).padStart(2,"0")}${clamp(b+(255-b)*t).toString(16).padStart(2,"0")}`;
+  }
+  return `#${clamp(r*factor).toString(16).padStart(2,"0")}${clamp(g*factor).toString(16).padStart(2,"0")}${clamp(b*factor).toString(16).padStart(2,"0")}`;
+}
+
+const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: string; light: string; size?: number }>> = {
+  MINI: Block1SVG, STANDARD: Block2SVG, LONG: Block3SVG, XL: Block4SVG, OVERSIZE: Block5SVG, DEFAULT: Block2SVG,
+};
 
 interface PlanConfig {
   label_ko: string;
@@ -248,87 +266,85 @@ export default function StorageDetailPage() {
           const badgeText = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : `${usagePct}%`;
           const itemCount = parcels.length;
 
+          const typeCode = "DEFAULT";
+          const accentColor = theme.accent;
+          const BlockComp = BLOCK_SVG_MAP[typeCode] ?? Block2SVG;
+          const blockLight = shadeColor(accentColor, 1.6);
+          const blockDark  = shadeColor(accentColor, 0.45);
+          const freeBadge = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
+
           return (
             <div
-              className="rounded-3xl overflow-hidden relative"
-              style={{
-                background: theme.bg,
-                boxShadow: "0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)",
-              }}
+              className="rounded-2xl overflow-hidden bg-white border border-gray-100"
+              style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" }}
             >
-              {/* 텍스처 */}
-              <div
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: "repeating-linear-gradient(60deg,transparent,transparent 44px,rgba(255,255,255,0.012) 44px,rgba(255,255,255,0.012) 88px)" }}
-              />
-              {/* 상단 */}
-              <div className="relative px-5 pt-4 flex items-start justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
-                  >
-                    <Package size={14} style={{ color: theme.accent }} />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-bold text-white leading-tight mt-0.5">{storage.storage_name}</p>
-                  </div>
+              <div className="flex gap-4 px-4 pt-4 pb-3">
+                {/* 블록 이미지 */}
+                <div className="flex items-center justify-center shrink-0 w-[90px]">
+                  <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={90} />
                 </div>
-                <div
-                  className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wide"
-                  style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35` }}
-                >
-                  {isShortTerm ? "단기" : "장기"} · {planLabel}
-                </div>
-              </div>
-              {/* 중단 */}
-              <div className="relative px-5 mt-3 flex items-end justify-between">
-                <div>
-                  <p className="text-[10px] text-white/30 mb-1">{isShortTerm ? "주 요금" : "월 요금"}</p>
-                  <p className="text-[28px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
-                    {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+
+                {/* 정보 영역 */}
+                <div className="flex flex-col flex-1 min-w-0">
+                  {/* 이름 + 타입 배지 */}
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <p className="text-[14px] font-bold text-gray-900 leading-tight truncate">{storage.storage_name}</p>
+                    <span
+                      className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold"
+                      style={{ background: `${accentColor}18`, color: accentColor, border: `1px solid ${accentColor}35` }}
+                    >
+                      {isShortTerm ? "단기" : "장기"} · {planLabel}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 mb-2">
+                    {storage.plan_type ?? "-"}
                   </p>
-                  {mainUnit && mainFeeLabel !== "FREE" && <p className="text-[10px] text-white/30 mt-0.5">{mainUnit}</p>}
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-white/30 mb-1">보관 물품</p>
-                  <p className="text-[28px] font-black leading-none text-white">{itemCount}</p>
-                  <p className="text-[10px] text-white/30 mt-0.5">개</p>
+
+                  {/* 가격 + 물품수 */}
+                  <div className="flex items-end justify-between mb-2">
+                    <div>
+                      <p className="text-[22px] font-black leading-none" style={{ color: accentColor }}>
+                        {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+                      </p>
+                      {mainUnit && mainFeeLabel !== "FREE" && (
+                        <p className="text-[9px] text-gray-400 mt-0.5">{mainUnit}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[20px] font-black leading-none text-gray-900">{itemCount}</p>
+                      <p className="text-[9px] text-gray-400 mt-0.5">개</p>
+                    </div>
+                  </div>
+
+                  {/* 사용률 바 */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] text-gray-400">사용률</span>
+                      <span className="text-[10px] font-bold" style={{ color: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor }}>
+                        {freeBadge ?? `${usagePct}%`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5">
+                      <div
+                        className="h-1.5 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(usagePct, 100)}%`,
+                          background: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor,
+                        }}
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
-              {/* 바코드 + 뱃지 */}
-              <div className="relative px-5 mt-3 flex items-center gap-2">
-                <div className="flex items-end gap-[1.5px] flex-1" style={{ height: 18 }}>
-                  {Array.from({ length: 44 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="rounded-[1px]"
-                      style={{
-                        width: i % 4 === 0 ? 2.5 : 1,
-                        height: `${i % 5 === 0 ? 100 : i % 3 === 0 ? 70 : 45}%`,
-                        backgroundColor: i % 7 === 0 ? `${theme.accent}60` : "rgba(255,255,255,0.15)",
-                      }}
-                    />
-                  ))}
-                </div>
-                <span
-                  className="shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-md"
-                  style={{ background: `${theme.accent}22`, color: theme.accent }}
-                >
-                  {badgeText}
-                </span>
-              </div>
-              {/* 카드 하단 버튼 */}
-              <div className="relative px-3 pb-3 mt-2 grid grid-cols-2 gap-1.5">
+
+              {/* 버튼 */}
+              <div className="px-3 pb-3 grid grid-cols-2 gap-1.5">
                 <button
                   type="button"
                   className="py-2 rounded-xl font-bold text-white transition-colors text-[12px]"
-                  style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)` }}
+                  style={{ background: accentColor }}
                   onClick={() => {
-                    if (shippableParcels.length === 0) {
-                      alert("출고 가능한 물품이 없습니다.");
-                      return;
-                    }
+                    if (shippableParcels.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
                     setShowReleaseSheet(true);
                   }}
                 >
@@ -336,8 +352,7 @@ export default function StorageDetailPage() {
                 </button>
                 <button
                   type="button"
-                  className="py-2 rounded-xl font-bold text-[12px] transition-colors"
-                  style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)" }}
+                  className="py-2 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 text-[12px] transition-colors"
                   onClick={() => setShowCapacitySheet(true)}
                 >
                   용량 변경
