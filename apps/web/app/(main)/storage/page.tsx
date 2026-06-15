@@ -1001,7 +1001,7 @@ function CapacityChangeSheet({
           !canFit ? "bg-gray-200 text-gray-400" :
           isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
         }`}>
-          {t.code.slice(0, 2)}
+          {(TYPE_SIZE_KO[t.code] ?? t.code).slice(0, 2)}
         </div>
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
