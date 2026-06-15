@@ -583,15 +583,20 @@ export default function StoragePage() {
                 <>
                   <div className="grid grid-cols-3 gap-2 p-3">
                     {pagedItems.map((item) => {
-                      const storageName =
-                        active.find((s) => s.id === item.storage_id)?.storage_name ?? "-";
-                      const statusCfg =
-                        item.is_shippable
-                          ? { label: "출고 가능", color: "bg-green-100 text-green-700" }
-                          : (PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-gray-100 text-gray-500" });
+                      const storage = active.find((s) => s.id === item.storage_id);
+                      const storageName = storage?.storage_name ?? "-";
+                      const themeKey = (storage?.card_color && CARD_THEME_MAP[storage.card_color])
+                        ? storage.card_color
+                        : CARD_THEME_KEYS[parseInt((storage?.id ?? "0").replace(/-/g, "").slice(0, 8), 16) % CARD_THEME_KEYS.length];
+                      const blockAccent = CARD_THEME_MAP[themeKey]?.accent ?? "#6366f1";
+                      const typeCode = storage?.storage_types?.code ?? storage?.plan_type ?? "DEFAULT";
+                      const TYPE_KO: Record<string, string> = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "하프블록", S: "파인트블록", M: "싱글블록", L: "더블블록" };
+                      const blockLabel = TYPE_KO[typeCode] ?? storageName;
+                      const isShippable = item.is_shippable;
                       return (
-                        <div key={item.id} className="flex flex-col">
-                          <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 mb-1.5">
+                        <div key={item.id} className="flex flex-col bg-white rounded-2xl overflow-hidden border border-gray-100" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}>
+                          {/* 이미지 */}
+                          <div className="relative aspect-square bg-gray-50 overflow-hidden">
                             {item.photo_url ? (
                               <img
                                 src={item.photo_url}
@@ -608,15 +613,39 @@ export default function StoragePage() {
                                 <Package size={20} className="text-gray-300" />
                               </div>
                             )}
-                            <span className={`absolute top-1 right-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${statusCfg.color}`}>
-                              {statusCfg.label}
-                            </span>
+                            {item.quantity > 1 && (
+                              <span className="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/60 text-white">
+                                {item.quantity}개
+                              </span>
+                            )}
                           </div>
-                          <p className="text-xs font-medium text-gray-800 truncate leading-tight">{item.name}</p>
-                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                            {storageName}
-                            {item.quantity > 1 && <span className="ml-1 font-semibold text-gray-500">{item.quantity}개</span>}
-                          </p>
+                          {/* 정보 */}
+                          <div className="px-2 pt-1.5 pb-2 flex flex-col gap-1">
+                            {/* 블록 타입 배지 */}
+                            <span
+                              className="self-start text-[8px] font-bold px-1.5 py-0.5 rounded-full truncate max-w-full"
+                              style={{ background: `${blockAccent}18`, color: blockAccent, border: `1px solid ${blockAccent}30` }}
+                            >
+                              {blockLabel}
+                            </span>
+                            {/* 물품명 */}
+                            <p className="text-[11px] font-semibold text-gray-800 truncate leading-tight">{item.name || "-"}</p>
+                            {/* 상태 */}
+                            <span className={`self-start text-[8px] font-bold px-1.5 py-0.5 rounded-full ${isShippable ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
+                              {isShippable ? "출고 가능" : (PARCEL_STATUS_DISPLAY[item.parcel_status]?.label ?? "보관 중")}
+                            </span>
+                            {/* 출고하기 버튼 */}
+                            {isShippable && (
+                              <button
+                                type="button"
+                                onClick={() => setReleaseSheet([item.id])}
+                                className="mt-0.5 w-full py-1.5 rounded-xl text-[10px] font-bold text-white transition-colors"
+                                style={{ background: blockAccent }}
+                              >
+                                출고하기
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
