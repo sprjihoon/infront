@@ -119,43 +119,20 @@ const BLOCK_TYPE_COLORS: Record<string, BrickColors> = {
   DEFAULT:  { front: "#2E8FDE", top: "#5AB4F5", side: "#1A6CB5", studTop: "#72C0F7", studSide: "#2580CC" },
 };
 
+const BLOCK_IMG_MAP: Record<string, string> = {
+  MINI:     "/blocks/block1.svg",
+  STANDARD: "/blocks/block2.svg",
+  LONG:     "/blocks/block3.svg",
+  XL:       "/blocks/block4.svg",
+  OVERSIZE: "/blocks/block5.svg",
+  DEFAULT:  "/blocks/block2.svg",
+};
+
 function BlockIcon({ typeCode, size = 60 }: { typeCode: string; size?: number }) {
-  const c = BLOCK_TYPE_COLORS[typeCode] ?? BLOCK_TYPE_COLORS.DEFAULT;
-  const rx = 7.5, ry = 3.8, sh = 4;
-
-  // 각 스터드 렌더링: 바닥 면 위에 돌기 표현
-  function Stud({ cx, cy }: { cx: number; cy: number }) {
-    return (
-      <>
-        {/* cylinder body */}
-        <path
-          d={`M${cx - rx},${cy} L${cx - rx},${cy - sh} A${rx},${ry} 0 0,0 ${cx + rx},${cy - sh} L${cx + rx},${cy} Z`}
-          fill={c.studSide}
-        />
-        {/* bottom arc (overlap seam) */}
-        <path d={`M${cx - rx},${cy} A${rx},${ry} 0 0,0 ${cx + rx},${cy}`} fill="none" stroke={c.studSide} strokeWidth="0.5" />
-        {/* top cap */}
-        <ellipse cx={cx} cy={cy - sh} rx={rx} ry={ry} fill={c.studTop} />
-      </>
-    );
-  }
-
+  const src = BLOCK_IMG_MAP[typeCode] ?? BLOCK_IMG_MAP.DEFAULT;
   return (
-    <svg width={size} height={size} viewBox="0 0 74 68" fill="none">
-      {/* 오른쪽 측면 */}
-      <polygon points="52,32 64,20 64,50 52,62" fill={c.side} />
-      {/* 앞면 */}
-      <rect x="4" y="32" width="48" height="30" rx="1" fill={c.front} />
-      {/* 윗면 */}
-      <polygon points="4,32 16,20 64,20 52,32" fill={c.top} />
-
-      {/* 스터드 — 뒷줄 먼저 렌더링 */}
-      <Stud cx={26} cy={24} />
-      <Stud cx={50} cy={24} />
-      {/* 스터드 — 앞줄 */}
-      <Stud cx={20} cy={30} />
-      <Stud cx={44} cy={30} />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} width={size} height={size} alt={typeCode} style={{ objectFit: "contain" }} />
   );
 }
 
