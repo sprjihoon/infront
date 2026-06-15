@@ -4,6 +4,24 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Check, Package } from "lucide-react";
 import { Suspense } from "react";
+import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG } from "../BlockSVGs";
+
+function shadeColor(hex: string, factor: number): string {
+  const h = hex.replace("#", "").padEnd(6, "0");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const clamp = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
+  if (factor >= 1) {
+    const t = factor - 1;
+    return `#${clamp(r+(255-r)*t).toString(16).padStart(2,"0")}${clamp(g+(255-g)*t).toString(16).padStart(2,"0")}${clamp(b+(255-b)*t).toString(16).padStart(2,"0")}`;
+  }
+  return `#${clamp(r*factor).toString(16).padStart(2,"0")}${clamp(g*factor).toString(16).padStart(2,"0")}${clamp(b*factor).toString(16).padStart(2,"0")}`;
+}
+
+const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: string; light: string; size?: number }>> = {
+  MINI: Block1SVG, STANDARD: Block2SVG, LONG: Block3SVG, XL: Block4SVG, OVERSIZE: Block5SVG, DEFAULT: Block2SVG,
+};
 
 interface StorageType {
   id: string;
@@ -112,15 +130,15 @@ function StorageNewInner() {
                     key={type.id}
                     onClick={() => setSelectedCode(type.code)}
                     className={`w-full p-4 rounded-2xl border-2 text-left flex items-center gap-3 transition-all ${
-                      isSelected
-                        ? "border-brand-500 bg-brand-50"
-                        : "border-gray-200 bg-white"
+                      isSelected ? "border-brand-500 bg-brand-50" : "border-gray-200 bg-white"
                     }`}
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0 ${
-                      isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-600"
-                    }`}>
-                      {type.code}
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                      {(() => {
+                        const Comp = BLOCK_SVG_MAP[type.code] ?? Block2SVG;
+                        const col = isSelected ? "#6366f1" : "#9ca3af";
+                        return <Comp dark={shadeColor(col, 0.5)} medium={col} light={shadeColor(col, 1.5)} size={40} />;
+                      })()}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2">
@@ -133,12 +151,7 @@ function StorageNewInner() {
                         )}
                       </div>
                       <span className={`text-xs font-bold mt-1 block ${isSelected ? "text-brand-700" : "text-gray-500"}`}>
-                        {type.price_per_week.toLocaleString()}원/주
-                        <span className="font-normal text-gray-400 ml-1">
-                          (월 {type.price_per_month != null
-                            ? type.price_per_month.toLocaleString()
-                            : (type.price_per_week * 4).toLocaleString()}원)
-                        </span>
+                        {(type.price_per_month ?? type.price_per_week * 4).toLocaleString()}원/월
                       </span>
                     </div>
                     {isSelected && (
