@@ -758,15 +758,15 @@ function StorageCard({
     >
       <div className="flex flex-col h-full px-3 pt-3 pb-2">
 
-        {/* 상단: 블록 이미지 */}
-        <div className="flex items-center justify-center h-[96px] shrink-0">
+        {/* 상단: 블록 이미지 — 남은 공간 채움 */}
+        <div className="flex items-center justify-center flex-1 min-h-0">
           <BlockIcon typeCode={typeCode} size={90} />
         </div>
 
         {/* 구분선 */}
         <div className="border-t border-gray-100 my-2" />
 
-        {/* 중단: 정보 가로 배치 */}
+        {/* 하단 정보 가로 배치 */}
         <div className="flex items-center justify-between gap-1 mb-1.5">
           {/* 이름 + 타입 */}
           <div className="flex flex-col min-w-0">
@@ -798,28 +798,37 @@ function StorageCard({
             )}
           </div>
 
-          {/* 사용률 + 보관 물품 */}
+          {/* 보관 물품 수 */}
           <div className="text-center shrink-0">
-            <div className="flex gap-0.5 justify-center mb-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{
-                    background: i < Math.ceil(usagePct / 20)
-                      ? freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor
-                      : "#E5E7EB",
-                  }}
-                />
-              ))}
-            </div>
-            <p className="text-[9px] text-gray-400">{freeBadge ?? `${usagePct}%`}</p>
-            <p className="text-[11px] font-black text-gray-800 mt-0.5">{itemCount}<span className="text-[8px] font-normal text-gray-400">개</span></p>
+            <p className="text-[11px] font-black text-gray-800 leading-none">{itemCount}</p>
+            <p className="text-[8px] text-gray-400 mt-0.5">개</p>
           </div>
         </div>
 
-        {/* 하단: 버튼 */}
-        <div className="grid grid-cols-2 gap-1.5 mt-auto">
+        {/* 사용률 바 — 독립 시각 요소 */}
+        <div className="mb-2">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[9px] text-gray-400">사용률</span>
+            <span
+              className="text-[10px] font-bold"
+              style={{ color: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor }}
+            >
+              {freeBadge ?? `${usagePct}%`}
+            </span>
+          </div>
+          <div className="w-full bg-gray-100 rounded-full h-1.5">
+            <div
+              className="h-1.5 rounded-full transition-all"
+              style={{
+                width: `${Math.min(usagePct, 100)}%`,
+                background: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* 버튼 */}
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
             className="py-1.5 rounded-xl text-white font-bold text-[11px] transition-colors"
