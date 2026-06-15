@@ -417,7 +417,7 @@ export default function StoragePage() {
                   <div
                     ref={carouselRef}
                     className="relative overflow-hidden select-none"
-                    style={{ height: "320px", touchAction: "none" }}
+                    style={{ height: "288px", touchAction: "none" }}
                     onPointerDown={e => {
                       // 버튼 / 링크 클릭은 캡처 제외 — 드래그 없이 바로 이동 허용
                       if ((e.target as HTMLElement).closest("button,a")) return;
