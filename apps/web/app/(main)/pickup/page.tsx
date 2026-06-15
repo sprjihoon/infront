@@ -970,41 +970,8 @@ function PickupPageInner() {
                         </div>
                       )}
 
-                      {/* 미개봉 체크박스 */}
-                      <div className="mt-2">
-                        <label className="flex items-center gap-2 cursor-pointer select-none group">
-                          <div
-                            className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all ${
-                              item.is_sealed ? "bg-blue-500 border-blue-500" : "border-gray-300 group-hover:border-blue-300"
-                            }`}
-                          >
-                            {item.is_sealed && (
-                              <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
-                                <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            )}
-                          </div>
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={!!item.is_sealed}
-                            onChange={() => setInvoiceItems(p => p.map((it, i) => i === idx ? { ...it, is_sealed: !it.is_sealed } : it))}
-                          />
-                          <span className="text-xs font-semibold text-gray-600">박스 미개봉 보관</span>
-                          <span className="text-[10px] text-gray-400">개봉 없이 원박스 보관</span>
-                        </label>
-                        {item.is_sealed && (
-                          <div className="mt-1.5 flex items-start gap-1.5 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                            <span className="text-amber-500 text-xs mt-0.5">⚠</span>
-                            <p className="text-[11px] text-amber-700 leading-relaxed">
-                              미개봉 상태로 보관됩니다. 단, <span className="font-bold">해외 배송 출고 시에는 세관 신고 및 검수를 위해 개봉 후 처리</span>됩니다.
-                            </p>
-                          </div>
-                        )}
-                      </div>
-
                       <div className="mt-2 pt-2 border-t border-gray-100 space-y-2">
-                        {item.is_sealed ? (
+                        {false ? (
                           <p className="text-[11px] text-blue-500 font-medium">📦 미개봉 보관 — 검품·특수 처리 없이 원박스 보관됩니다</p>
                         ) : (
                           <>
