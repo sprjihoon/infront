@@ -5,6 +5,28 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   MapPin, Calendar, CheckCircle, Info, Truck, ArrowLeft, ArrowRight, Plus, Trash2, ChevronDown, ScanSearch, Package, Archive,
 } from "lucide-react";
+import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG } from "../storage/BlockSVGs";
+
+function shadeColor(hex: string, factor: number): string {
+  const h = hex.replace("#", "").padEnd(6, "0");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const clamp = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
+  if (factor >= 1) {
+    const t = factor - 1;
+    return `#${clamp(r+(255-r)*t).toString(16).padStart(2,"0")}${clamp(g+(255-g)*t).toString(16).padStart(2,"0")}${clamp(b+(255-b)*t).toString(16).padStart(2,"0")}`;
+  }
+  return `#${clamp(r*factor).toString(16).padStart(2,"0")}${clamp(g*factor).toString(16).padStart(2,"0")}${clamp(b*factor).toString(16).padStart(2,"0")}`;
+}
+
+const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: string; light: string; size?: number }>> = {
+  MINI: Block1SVG, STANDARD: Block2SVG, LONG: Block3SVG, XL: Block4SVG, OVERSIZE: Block5SVG, DEFAULT: Block2SVG,
+};
+
+const TYPE_NAME_KO: Record<string, string> = {
+  MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "하프블록",
+};
 import {
   normalizeEpostZip,
   normalizeEpostAddr1,
@@ -1219,35 +1241,37 @@ function PickupPageInner() {
                         <p className="text-xs text-brand-600 mt-0.5">장기보관 슬롯으로 바로 입고됩니다</p>
                       </div>
                       <div className="px-3 py-2 space-y-1.5">
-                        {longTermSlots.map(slot => (
-                          <button
-                            key={slot.id}
-                            type="button"
-                            onClick={() => setSelectedStorageId(slot.id)}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
-                              selectedStorageId === slot.id
-                                ? "border-brand-500 bg-white"
-                                : "border-gray-200 bg-white"
-                            }`}
-                          >
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                              selectedStorageId === slot.id ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
-                            }`}>
-                              <Archive size={14} />
-                            </div>
-                            <div className="flex-1">
-                              <p className={`text-sm font-bold ${selectedStorageId === slot.id ? "text-brand-700" : "text-gray-800"}`}>
-                                {slot.storage_name}
-                              </p>
-                              {slot.plan_type && (
-                                <p className="text-[10px] text-gray-400">{slot.plan_type} 플랜</p>
-                              )}
-                            </div>
-                            {selectedStorageId === slot.id && (
-                              <CheckCircle size={16} className="text-brand-600 shrink-0" />
-                            )}
-                          </button>
-                        ))}
+                        {longTermSlots.map(slot => {
+                          const isSel = selectedStorageId === slot.id;
+                          const tc = slot.plan_type ?? "DEFAULT";
+                          const Comp = BLOCK_SVG_MAP[tc] ?? Block2SVG;
+                          const col = isSel ? "#6366f1" : "#9ca3af";
+                          return (
+                            <button
+                              key={slot.id}
+                              type="button"
+                              onClick={() => setSelectedStorageId(slot.id)}
+                              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 text-left transition-all ${
+                                isSel ? "border-brand-500 bg-white" : "border-gray-200 bg-white"
+                              }`}
+                            >
+                              <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                                <Comp dark={shadeColor(col, 0.5)} medium={col} light={shadeColor(col, 1.5)} size={36} />
+                              </div>
+                              <div className="flex-1">
+                                <p className={`text-sm font-bold ${isSel ? "text-brand-700" : "text-gray-800"}`}>
+                                  {slot.storage_name}
+                                </p>
+                                {slot.plan_type && (
+                                  <p className="text-[10px] text-gray-400">
+                                    {TYPE_NAME_KO[slot.plan_type] ?? slot.plan_type}
+                                  </p>
+                                )}
+                              </div>
+                              {isSel && <CheckCircle size={16} className="text-brand-600 shrink-0" />}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   );
