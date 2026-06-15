@@ -1394,8 +1394,7 @@ function EmptyState() {
 }
 
 /* ─────────────────────────────────────────────
-   블록 합치기 시트
-   여러 블록을 하나의 대표 블록으로 통합 신청
+   블록 합치기 시트 (단순화: 남길 블록만 선택)
 ───────────────────────────────────────────── */
 function MergeSlotSheet({
   storages,
@@ -1406,59 +1405,33 @@ function MergeSlotSheet({
   onClose: () => void;
   onDone?: () => void;
 }) {
-  const [targetId, setTargetId] = useState<string | null>(
-    storages.length > 0 ? storages[0].id : null
-  );
-  const [sourceIds, setSourceIds] = useState<Set<string>>(new Set());
+  const [targetId, setTargetId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState("");
 
-  useEffect(() => { setSourceIds(new Set()); }, [targetId]);
-
-  function toggleSource(id: string) {
-    setSourceIds(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function getCapInfo(target: Storage) {
+    const others = storages.filter(s => s.id !== target.id);
+    const free = (target.capacity_score ?? 0) - (target.used_score ?? 0);
+    const srcUsed = others.reduce((a, s) => a + (s.used_score ?? 0), 0);
+    const fits = (target.capacity_score ?? 0) === 0 || srcUsed <= free;
+    return { fits, overBy: srcUsed - free, srcUsed, free, count: others.length };
   }
 
-  const targetStorage = storages.find(s => s.id === targetId);
-  const sourceStorages = storages.filter(s => s.id !== targetId);
-  const selectedSources = storages.filter(s => sourceIds.has(s.id));
-
-  // 리터 기반 용량 검증
-  // capacity_score = volume_liter (스토리지 타입의 총 리터)
-  // used_score = 현재 사용 리터
-  const targetCapacity  = targetStorage?.capacity_score ?? 0;
-  const targetUsed      = targetStorage?.used_score ?? 0;
-  const targetFree      = targetCapacity - targetUsed;
-  const totalSourceUsed = selectedSources.reduce((acc, s) => acc + (s.used_score ?? 0), 0);
-  const canMerge        = sourceIds.size > 0 && (targetCapacity === 0 || totalSourceUsed <= targetFree);
-  const overBy          = totalSourceUsed - targetFree;
-
   async function handleSubmit() {
-    if (!targetId || !canMerge) return;
+    if (!targetId) return;
     setSubmitting(true);
     setServerError("");
+    const sourceIds = storages.filter(s => s.id !== targetId).map(s => s.id);
     try {
       const res = await fetch(`/api/storage/${targetId}/change-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          request_type:       "MERGE_SLOTS",
-          source_storage_ids: Array.from(sourceIds),
-          customer_note:      note.trim() || null,
-        }),
+        body: JSON.stringify({ request_type: "MERGE_SLOTS", source_storage_ids: sourceIds, customer_note: note.trim() || null }),
       });
       const json = await res.json();
-      if (!res.ok) {
-        setServerError(json.error ?? "요청 접수에 실패했습니다.");
-        return;
-      }
+      if (!res.ok) { setServerError(json.error ?? "요청 접수에 실패했습니다."); return; }
       setDone(true);
     } catch {
       setServerError("오류가 발생했습니다. 다시 시도해 주세요.");
@@ -1467,51 +1440,16 @@ function MergeSlotSheet({
     }
   }
 
-  function SlotRow({ s, isTarget }: { s: Storage; isTarget?: boolean }) {
-    const cap  = s.capacity_score ?? 0;
-    const used = s.used_score ?? 0;
-    const pct  = cap > 0 ? Math.round((used / cap) * 100) : 0;
-    return (
-      <div className="flex items-center gap-2 flex-1 min-w-0">
-        <div className="flex-1 min-w-0">
-          <p className={`text-sm font-bold ${isTarget ? "text-brand-700" : "text-gray-800"}`}>
-            {s.storage_name}
-          </p>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            {(s.storage_types?.code ?? s.plan_type) && (
-              <span className="text-[10px] text-gray-400">{s.storage_types?.code ?? s.plan_type}</span>
-            )}
-            {cap > 0 && (
-              <span className="text-[10px] text-gray-500">
-                {used}L / {cap}L ({pct}%)
-              </span>
-            )}
-          </div>
-          {cap > 0 && (
-            <div className="mt-1 h-1 rounded-full bg-gray-100 w-24 overflow-hidden">
-              <div
-                className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : pct >= 70 ? "bg-orange-400" : "bg-brand-400"}`}
-                style={{ width: `${Math.min(pct, 100)}%` }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full sm:max-w-[520px] bg-white rounded-t-3xl sm:rounded-3xl max-h-[88vh] flex flex-col shadow-2xl">
+      <div className="relative w-full sm:max-w-[480px] bg-white rounded-t-3xl sm:rounded-3xl max-h-[88vh] flex flex-col shadow-2xl">
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
           <div>
             <p className="text-base font-bold text-gray-900">블록 합치기</p>
-            <p className="text-xs text-gray-400 mt-0.5">여러 블록을 하나의 보관함으로 즉시 통합합니다</p>
+            <p className="text-xs text-gray-400 mt-0.5">남길 블록을 선택하면 나머지가 자동으로 합쳐집니다</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
-            <X size={18} />
-          </button>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400"><X size={18} /></button>
         </div>
 
         {done ? (
@@ -1520,163 +1458,66 @@ function MergeSlotSheet({
               <Check size={24} className="text-green-600" strokeWidth={2.5} />
             </div>
             <p className="text-sm font-bold text-gray-900">블록이 합쳐졌습니다</p>
-            <p className="text-xs text-gray-500 text-center">
-              DB가 즉시 반영되었으며 관리자가 물품을 이전합니다.
-            </p>
-            <button onClick={() => { onDone ? onDone() : onClose(); }} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
-              확인
-            </button>
+            <p className="text-xs text-gray-500 text-center">관리자가 물품을 선택한 블록으로 이전합니다.</p>
+            <button onClick={() => { onDone ? onDone() : onClose(); }} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">확인</button>
           </div>
         ) : (
           <>
-            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-4">
-              {/* 안내 */}
-              <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 text-xs text-blue-700 space-y-1">
-                <p className="font-bold text-blue-800">합치기 즉시 적용됩니다</p>
-                <ul className="space-y-0.5">
-                  {[
-                    "요청 즉시 DB에 반영되고 소스 블록이 종료됩니다",
-                    "관리자가 물품을 대표 블록으로 물리적 이전합니다",
-                    "대표 블록의 남은 용량(리터) 기준으로 합치기 가능 여부가 검증됩니다",
-                  ].map(t => (
-                    <li key={t} className="flex items-start gap-1"><span>•</span><span>{t}</span></li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* STEP 1 */}
-              <div>
-                <p className="text-xs font-bold text-gray-700 mb-2">STEP 1. 남길 대표 보관함 선택</p>
-                <div className="space-y-2">
-                  {storages.map(s => {
-                    const isTarget = targetId === s.id;
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => setTargetId(s.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left ${
-                          isTarget ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white hover:border-gray-300"
-                        }`}
-                      >
-                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                          <BrickSVG
-                            color={isTarget ? "#6366f1" : "#9ca3af"}
-                            typeCode={s.storage_types?.code ?? "DEFAULT"}
-                            size={40}
-                          />
-                        </div>
-                        <SlotRow s={s} isTarget={isTarget} />
-                        {isTarget && <Check size={15} className="text-brand-600 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* STEP 2 */}
-              <div>
-                <p className="text-xs font-bold text-gray-700 mb-2">
-                  STEP 2. 합칠 블록 선택
-                  <span className="font-normal text-gray-400 ml-1">(선택 시 즉시 종료됨)</span>
-                </p>
-                {sourceStorages.length === 0 ? (
-                  <p className="text-xs text-gray-400 py-2">대표 블록을 먼저 선택해주세요.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {sourceStorages.map(s => {
-                      const isSel = sourceIds.has(s.id);
-                      return (
-                        <button
-                          key={s.id}
-                          onClick={() => toggleSource(s.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left ${
-                            isSel ? "border-orange-400 bg-orange-50" : "border-gray-100 bg-white hover:border-gray-300"
-                          }`}
-                        >
-                          <div className={`w-6 h-6 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                            isSel ? "bg-orange-500 border-orange-500" : "border-gray-300"
-                          }`}>
-                            {isSel && <Check size={13} className="text-white" strokeWidth={3} />}
-                          </div>
-                          <div className="w-9 h-9 flex items-center justify-center shrink-0">
-                            <BrickSVG
-                              color={isSel ? "#f97316" : "#9ca3af"}
-                              typeCode={s.storage_types?.code ?? "DEFAULT"}
-                              size={36}
-                            />
-                          </div>
-                          <SlotRow s={s} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* 용량 검증 요약 */}
-              {sourceIds.size > 0 && targetCapacity > 0 && (
-                <div className={`rounded-2xl px-4 py-3 space-y-1.5 ${canMerge ? "bg-green-50 border border-green-100" : "bg-red-50 border border-red-100"}`}>
-                  <p className={`text-xs font-bold ${canMerge ? "text-green-700" : "text-red-700"}`}>
-                    {canMerge ? "✓ 합치기 가능" : "✗ 용량 부족"}
-                  </p>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="text-[10px] text-gray-500">대표 용량</p>
-                      <p className="text-xs font-bold text-gray-800">{targetCapacity}L</p>
+            <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
+              {storages.map(s => {
+                const { fits, overBy, count, srcUsed } = getCapInfo(s);
+                const isSel = targetId === s.id;
+                const tc = s.storage_types?.code ?? s.plan_type ?? "DEFAULT";
+                const col = isSel ? "#6366f1" : fits ? "#6b7280" : "#d1d5db";
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => fits && setTargetId(s.id)}
+                    disabled={!fits}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
+                      isSel ? "border-brand-500 bg-brand-50" :
+                      fits ? "border-gray-100 bg-white hover:border-gray-300" :
+                      "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
+                    }`}
+                  >
+                    <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                      <BrickSVG color={col} typeCode={tc} size={40} />
                     </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500">현재 사용</p>
-                      <p className="text-xs font-bold text-gray-800">{targetUsed}L</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] text-gray-500">이전 물품</p>
-                      <p className={`text-xs font-bold ${canMerge ? "text-green-700" : "text-red-600"}`}>
-                        {totalSourceUsed}L
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-bold ${isSel ? "text-brand-700" : fits ? "text-gray-800" : "text-gray-400"}`}>
+                        {s.storage_name}
                       </p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {s.storage_types?.name ?? tc} · {s.capacity_score ?? 0}L · 사용 {s.used_score ?? 0}L
+                      </p>
+                      {fits ? (
+                        <p className="text-[10px] text-brand-500 mt-0.5">
+                          이 블록에 나머지 {count}개 블록({srcUsed}L)이 합쳐집니다
+                        </p>
+                      ) : (
+                        <p className="text-[10px] text-red-500 font-semibold mt-0.5">용량 부족 ({overBy}L 초과)</p>
+                      )}
                     </div>
-                  </div>
-                  <div className="h-2 rounded-full bg-gray-200 overflow-hidden mt-1">
-                    <div
-                      className={`h-full rounded-full transition-all ${canMerge ? "bg-green-500" : "bg-red-500"}`}
-                      style={{ width: `${Math.min(((targetUsed + totalSourceUsed) / targetCapacity) * 100, 100)}%` }}
-                    />
-                  </div>
-                  {!canMerge && (
-                    <p className="text-[10px] text-red-600 font-semibold">
-                      {overBy}L 초과 — 더 큰 대표 블록을 선택하거나 일부 블록만 선택하세요
-                    </p>
-                  )}
-                </div>
-              )}
+                    {isSel && <Check size={15} className="text-brand-600 shrink-0" />}
+                  </button>
+                );
+              })}
 
-              {serverError && (
-                <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">{serverError}</p>
-              )}
+              {serverError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">{serverError}</p>}
 
-              <div>
-                <label className="text-xs font-bold text-gray-700 mb-1 block">
-                  요청 메모 <span className="font-normal text-gray-400">(선택)</span>
-                </label>
-                <textarea
-                  value={note}
-                  onChange={e => setNote(e.target.value)}
-                  placeholder="특이사항을 입력해 주세요. (예: MINI 2개 → STANDARD 1개로 통합)"
-                  rows={2}
-                  maxLength={200}
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-400 resize-none"
-                />
+              <div className="pt-1">
+                <label className="text-xs font-bold text-gray-700 mb-1 block">요청 메모 <span className="font-normal text-gray-400">(선택)</span></label>
+                <textarea value={note} onChange={e => setNote(e.target.value)}
+                  placeholder="특이사항을 입력해 주세요." rows={2} maxLength={200}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-brand-400 resize-none" />
               </div>
             </div>
 
             <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
-              <button
-                onClick={handleSubmit}
-                disabled={!targetId || !canMerge || submitting}
+              <button onClick={handleSubmit} disabled={!targetId || submitting}
                 className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                {submitting
-                  ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
-                  : `지금 합치기 (${1 + sourceIds.size}개 → 1개)`}
+                {submitting ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</> : "이 블록에 합치기"}
               </button>
             </div>
           </>
