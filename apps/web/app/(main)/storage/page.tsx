@@ -123,12 +123,18 @@ const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: 
   DEFAULT:  Block2SVG,
 };
 
-function BrickSVG({ color, typeCode, size = 90 }: { color: string; typeCode: string; size?: number }) {
-  const medium = color;
-  const light  = shadeColor(color, 1.6);
-  const dark   = shadeColor(color, 0.45);
-  const Comp   = BLOCK_SVG_MAP[typeCode] ?? Block2SVG;
-  return <Comp dark={dark} medium={medium} light={light} size={size} />;
+/* 타입별 기본 크기 — 큰 블록일수록 실제로 더 크게 표시 */
+const BLOCK_BASE_SIZE: Record<string, number> = {
+  MINI: 64, STANDARD: 76, LONG: 88, XL: 100, OVERSIZE: 112, DEFAULT: 76,
+};
+
+function BrickSVG({ color, typeCode, size }: { color: string; typeCode: string; size?: number }) {
+  const medium   = color;
+  const light    = shadeColor(color, 1.6);
+  const dark     = shadeColor(color, 0.45);
+  const Comp     = BLOCK_SVG_MAP[typeCode] ?? Block2SVG;
+  const autoSize = size ?? BLOCK_BASE_SIZE[typeCode] ?? 76;
+  return <Comp dark={dark} medium={medium} light={light} size={autoSize} />;
 }
 
 function SummaryTile({
@@ -759,7 +765,7 @@ function StorageCard({
 
         {/* 상단: 블록 이미지 — 남은 공간 채움 */}
         <div className="flex items-center justify-center flex-1 min-h-0">
-          <BrickSVG color={accentColor} typeCode={typeCode} size={90} />
+          <BrickSVG color={accentColor} typeCode={typeCode} />
         </div>
 
         {/* 구분선 */}
@@ -1317,7 +1323,7 @@ function RenameSheet({
                       boxShadow: active ? `0 0 0 3px ${t.accent}30` : "none",
                     }}
                   >
-                    <BrickSVG color={t.accent} typeCode={typeCode} size={40} />
+                    <BrickSVG color={t.accent} typeCode={typeCode} size={Math.round((BLOCK_BASE_SIZE[typeCode] ?? 76) * 0.48)} />
                     <span className="text-[10px] font-semibold" style={{ color: active ? t.accent : "#9ca3af" }}>
                       {LABEL[key] ?? key}
                     </span>

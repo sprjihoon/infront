@@ -279,10 +279,16 @@ export default function StorageDetailPage() {
               style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" }}
             >
               <div className="flex gap-4 px-4 pt-4 pb-3">
-                {/* 블록 이미지 */}
-                <div className="flex items-center justify-center shrink-0 w-[90px]">
-                  <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={90} />
-                </div>
+                {/* 블록 이미지 — 타입별 크기 */}
+                {(() => {
+                  const SIZES: Record<string, number> = { MINI: 64, STANDARD: 76, LONG: 88, XL: 100, OVERSIZE: 112, DEFAULT: 76 };
+                  const bSize = SIZES[typeCode] ?? 76;
+                  return (
+                    <div className="flex items-center justify-center shrink-0" style={{ width: bSize, minWidth: bSize }}>
+                      <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={bSize} />
+                    </div>
+                  );
+                })()}
 
                 {/* 정보 영역 */}
                 <div className="flex flex-col flex-1 min-w-0">
