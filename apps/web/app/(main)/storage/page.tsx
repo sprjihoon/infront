@@ -177,6 +177,15 @@ export default function StoragePage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // 탭이 다시 활성화될 때 조용히 새로고침
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") load(true);
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [load]);
+
   const active = storages.filter((s) => s.status !== "CANCELLED");
 
   /* 요약 */
@@ -626,6 +635,7 @@ export default function StoragePage() {
         storage={capacitySheet}
         currentTypeName={locationSummary?.dominant_type?.name ?? null}
         onClose={() => setCapacitySheet(null)}
+        onDone={() => { setCapacitySheet(null); load(true); }}
       />
     )}
 
@@ -634,6 +644,7 @@ export default function StoragePage() {
       <MergeSlotSheet
         storages={active}
         onClose={() => setMergeSheet(false)}
+        onDone={() => { setMergeSheet(false); load(true); }}
       />
     )}
 
@@ -878,10 +889,12 @@ function CapacityChangeSheet({
   storage,
   currentTypeName,
   onClose,
+  onDone,
 }: {
   storage: Storage;
   currentTypeName: string | null;
   onClose: () => void;
+  onDone?: () => void;
 }) {
   const resolvedTypeName = currentTypeName ?? storage.storage_types?.name ?? storage.plan_type;
   const [types, setTypes] = useState<StorageType[]>([]);
@@ -1061,7 +1074,7 @@ function CapacityChangeSheet({
             <p className="text-xs text-gray-500 text-center">
               관리자가 물리적 로케이션을 재배정합니다.
             </p>
-            <button onClick={onClose} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
+            <button onClick={() => { onDone ? onDone() : onClose(); }} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
               확인
             </button>
           </div>
@@ -1345,9 +1358,11 @@ function EmptyState() {
 function MergeSlotSheet({
   storages,
   onClose,
+  onDone,
 }: {
   storages: Storage[];
   onClose: () => void;
+  onDone?: () => void;
 }) {
   const [targetId, setTargetId] = useState<string | null>(
     storages.length > 0 ? storages[0].id : null
@@ -1466,7 +1481,7 @@ function MergeSlotSheet({
             <p className="text-xs text-gray-500 text-center">
               DB가 즉시 반영되었으며 관리자가 물품을 이전합니다.
             </p>
-            <button onClick={() => { onClose(); window.location.reload(); }} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
+            <button onClick={() => { onDone ? onDone() : onClose(); }} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
               확인
             </button>
           </div>

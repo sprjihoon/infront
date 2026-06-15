@@ -136,6 +136,15 @@ export default function StorageDetailPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // 탭이 다시 활성화될 때 조용히 새로고침
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") load(true);
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [load]);
+
   async function saveName() {
     if (!storage || !nameInput.trim()) return;
     setSaving(true);
@@ -592,6 +601,7 @@ export default function StorageDetailPage() {
           storage={storage}
           currentTypeName={planLabel}
           onClose={() => setShowCapacitySheet(false)}
+          onDone={() => { setShowCapacitySheet(false); load(true); }}
         />
       )}
 
@@ -600,6 +610,7 @@ export default function StorageDetailPage() {
         <ConvertToLongTermSheet
           storage={storage}
           onClose={() => setShowConvertSheet(false)}
+          onDone={() => { setShowConvertSheet(false); load(true); }}
         />
       )}
 
@@ -608,6 +619,7 @@ export default function StorageDetailPage() {
         <TransferToSlotSheet
           storage={storage}
           onClose={() => setShowTransferSheet(false)}
+          onDone={() => { setShowTransferSheet(false); load(true); }}
         />
       )}
     </div>
@@ -925,10 +937,12 @@ function CapacityChangeSheet({
   storage,
   currentTypeName,
   onClose,
+  onDone,
 }: {
   storage: Storage;
   currentTypeName: string | null;
   onClose: () => void;
+  onDone?: () => void;
 }) {
   const [types, setTypes] = useState<StorageType[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -997,7 +1011,7 @@ function CapacityChangeSheet({
               처리 완료 시 알림으로 안내해 드립니다.
             </p>
             <button
-              onClick={onClose}
+              onClick={() => { onDone ? onDone() : onClose(); }}
               className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl"
             >
               확인
@@ -1092,8 +1106,12 @@ interface PlanOption {
 function ConvertToLongTermSheet({
   storage,
   onClose,
+  onDone,
 }: {
   storage: Storage;
+  onClose: () => void;
+  onDone?: () => void;
+}) {
   onClose: () => void;
 }) {
   const [plans, setPlans] = useState<PlanOption[]>([]);
@@ -1162,7 +1180,7 @@ function ConvertToLongTermSheet({
               처리 완료 시 알림으로 안내해 드립니다.
             </p>
             <button
-              onClick={onClose}
+              onClick={() => { onDone ? onDone() : onClose(); }}
               className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl"
             >
               확인
@@ -1276,9 +1294,11 @@ function ConvertToLongTermSheet({
 function TransferToSlotSheet({
   storage,
   onClose,
+  onDone,
 }: {
   storage: Storage;
   onClose: () => void;
+  onDone?: () => void;
 }) {
   type SlotOption = { id: string; storage_name: string; plan_type: string | null; storage_mode: string };
   const [slots, setSlots] = useState<SlotOption[]>([]);
@@ -1352,7 +1372,7 @@ function TransferToSlotSheet({
               관리자가 확인 후 물품을 이동해 드립니다.<br />
               처리 완료 시 알림으로 안내해 드립니다.
             </p>
-            <button onClick={onClose} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
+            <button onClick={() => { onDone ? onDone() : onClose(); }} className="mt-2 px-8 py-2.5 bg-brand-600 text-white text-sm font-bold rounded-2xl">
               확인
             </button>
           </div>
