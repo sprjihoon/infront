@@ -771,10 +771,6 @@ function StorageCard({
     : "/월";
   const freeBadge = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
 
-  const shippableItems = storageItems.filter(
-    it => it.storage_id === s.id && (it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable)
-  ).length;
-
   const blockColors = BLOCK_TYPE_COLORS[typeCode] ?? BLOCK_TYPE_COLORS.DEFAULT;
   const accentColor = blockColors.front;
 
@@ -840,19 +836,13 @@ function StorageCard({
         <p className="text-[9px] text-gray-400">{freeBadge ?? `사용 ${usagePct}%`}</p>
 
         {/* 물품 수 */}
-        <div className="w-full grid grid-cols-2 gap-1 mt-1 text-center">
-          <div>
-            <p className="text-[9px] text-gray-400">보관 물품</p>
-            <p className="text-[13px] font-black text-gray-700">{itemCount}개</p>
-          </div>
-          <div>
-            <p className="text-[9px] text-gray-400">출고 가능</p>
-            <p className="text-[13px] font-black text-green-600">{shippableItems}개</p>
-          </div>
+        <div className="mt-1.5 text-center">
+          <p className="text-[9px] text-gray-400">보관 물품</p>
+          <p className="text-[15px] font-black text-gray-700">{itemCount}개</p>
         </div>
 
         {/* 버튼 */}
-        <div className="w-full grid grid-cols-2 gap-1.5 mt-auto pt-1">
+        <div className="w-full grid grid-cols-2 gap-1.5 mt-2">
           <button
             type="button"
             className="py-1.5 rounded-xl text-white font-bold transition-colors"
