@@ -902,10 +902,10 @@ function CapacityChangeSheet({
             <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
               <Check size={24} className="text-green-600" strokeWidth={2.5} />
             </div>
-            <p className="text-sm font-bold text-gray-900">변경 요청이 접수되었습니다</p>
+            <p className="text-sm font-bold text-gray-900">용량이 변경되었습니다</p>
             <p className="text-xs text-gray-500 text-center">
-              관리자가 확인 후 로케이션을 재배정해 드립니다.<br />
-              처리 완료 시 알림으로 안내해 드립니다.
+              보관함 용량이 즉시 반영되었습니다.<br />
+              관리자가 물리적 슬롯을 재배치합니다.
             </p>
             <button
               onClick={() => { onDone ? onDone() : onClose(); }}

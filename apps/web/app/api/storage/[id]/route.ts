@@ -100,7 +100,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     card_color?: string;
   };
 
-  const VALID_COLORS = ["green", "purple", "red", "blue", "pink"];
+  const VALID_COLORS = ["red", "green", "yellow", "blue", "black"];
   const allowed: Record<string, unknown> = {};
   if (body.storage_name) allowed.storage_name = body.storage_name;
   if (body.status === "CANCELLED") allowed.status = "CANCELLED";
