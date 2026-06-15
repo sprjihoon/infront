@@ -266,103 +266,101 @@ export default function StorageDetailPage() {
           const badgeText = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : `${usagePct}%`;
           const itemCount = parcels.length;
 
-          const typeCode = "DEFAULT";
+          /* plan_type → block SVG 코드 매핑 */
+          const PT_MAP: Record<string, string> = {
+            MINI: "MINI", STANDARD: "STANDARD", LONG: "LONG", XL: "XL", OVERSIZE: "OVERSIZE",
+            S: "MINI", M: "STANDARD", L: "LONG",
+          };
+          const typeCode    = PT_MAP[storage.plan_type ?? ""] ?? "DEFAULT";
           const accentColor = theme.accent;
-          const BlockComp = BLOCK_SVG_MAP[typeCode] ?? Block2SVG;
-          const blockLight = shadeColor(accentColor, 1.6);
-          const blockDark  = shadeColor(accentColor, 0.45);
-          const freeBadge = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
+          const BlockComp   = BLOCK_SVG_MAP[typeCode] ?? Block2SVG;
+          const blockLight  = shadeColor(accentColor, 1.6);
+          const blockDark   = shadeColor(accentColor, 0.45);
+          const freeBadge   = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
+          const BLOCK_SIZES: Record<string, number> = { MINI: 64, STANDARD: 76, LONG: 88, XL: 100, OVERSIZE: 112, DEFAULT: 76 };
+          const bSize = BLOCK_SIZES[typeCode] ?? 76;
+
+          const typeName = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "점보블록" }[typeCode] ?? planLabel;
 
           return (
             <div
               className="rounded-2xl overflow-hidden bg-white border border-gray-100"
               style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" }}
             >
-              <div className="flex gap-4 px-4 pt-4 pb-3">
-                {/* 블록 이미지 — 타입별 크기 */}
-                {(() => {
-                  const SIZES: Record<string, number> = { MINI: 64, STANDARD: 76, LONG: 88, XL: 100, OVERSIZE: 112, DEFAULT: 76 };
-                  const bSize = SIZES[typeCode] ?? 76;
-                  return (
-                    <div className="flex items-center justify-center shrink-0" style={{ width: bSize, minWidth: bSize }}>
-                      <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={bSize} />
-                    </div>
-                  );
-                })()}
+              <div className="flex flex-col px-3 pt-3 pb-2">
+                {/* 블록 이미지 */}
+                <div className="flex items-center justify-center flex-1 min-h-0 py-2">
+                  <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={bSize} />
+                </div>
 
-                {/* 정보 영역 */}
-                <div className="flex flex-col flex-1 min-w-0">
-                  {/* 이름 + 타입 배지 */}
-                  <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="text-[14px] font-bold text-gray-900 leading-tight truncate">{storage.storage_name}</p>
-                    <span
-                      className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-bold"
-                      style={{ background: `${accentColor}18`, color: accentColor, border: `1px solid ${accentColor}35` }}
-                    >
-                      {isShortTerm ? "단기" : "장기"} · {planLabel}
-                    </span>
+                {/* 구분선 */}
+                <div className="border-t border-gray-100 my-2" />
+
+                {/* 정보 행 */}
+                <div className="flex items-center justify-between gap-1 mb-1.5">
+                  {/* 이름 + 타입 */}
+                  <div className="flex flex-col min-w-0">
+                    <p className="text-[12px] font-bold text-gray-900 truncate">{storage.storage_name}</p>
+                    <p className="text-[9px] text-gray-400 truncate">
+                      {typeName}{storage.capacity_score ? ` · ${storage.capacity_score}L` : ""}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-gray-400 mb-2">
-                    {storage.plan_type ?? "-"}
-                  </p>
-
-                  {/* 가격 + 물품수 */}
-                  <div className="flex items-end justify-between mb-2">
-                    <div>
-                      <p className="text-[22px] font-black leading-none" style={{ color: accentColor }}>
-                        {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
-                      </p>
-                      {mainUnit && mainFeeLabel !== "FREE" && (
-                        <p className="text-[9px] text-gray-400 mt-0.5">{mainUnit}</p>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[20px] font-black leading-none text-gray-900">{itemCount}</p>
-                      <p className="text-[9px] text-gray-400 mt-0.5">개</p>
-                    </div>
+                  {/* 가격 */}
+                  <div className="text-center shrink-0">
+                    <p className="text-[14px] font-black text-gray-900 leading-none">
+                      {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+                    </p>
+                    {mainUnit && mainFeeLabel !== "FREE" && (
+                      <p className="text-[8px] text-gray-400">{mainUnit}</p>
+                    )}
                   </div>
-
-                  {/* 사용률 바 */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[9px] text-gray-400">사용률</span>
-                      <span className="text-[10px] font-bold" style={{ color: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor }}>
-                        {freeBadge ?? `${usagePct}%`}
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-1.5">
-                      <div
-                        className="h-1.5 rounded-full transition-all"
-                        style={{
-                          width: `${Math.min(usagePct, 100)}%`,
-                          background: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor,
-                        }}
-                      />
-                    </div>
+                  {/* 물품수 */}
+                  <div className="text-center shrink-0">
+                    <p className="text-[11px] font-black text-gray-800 leading-none">{itemCount}</p>
+                    <p className="text-[8px] text-gray-400 mt-0.5">개</p>
                   </div>
                 </div>
-              </div>
 
-              {/* 버튼 */}
-              <div className="px-3 pb-3 grid grid-cols-2 gap-1.5">
-                <button
-                  type="button"
-                  className="py-2 rounded-xl font-bold text-white transition-colors text-[12px]"
-                  style={{ background: accentColor }}
-                  onClick={() => {
-                    if (shippableParcels.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
-                    setShowReleaseSheet(true);
-                  }}
-                >
-                  출고 요청
-                </button>
-                <button
-                  type="button"
-                  className="py-2 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 text-[12px] transition-colors"
-                  onClick={() => setShowCapacitySheet(true)}
-                >
-                  용량 변경
-                </button>
+                {/* 사용률 바 */}
+                <div className="mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[9px] text-gray-400">사용률</span>
+                    <span className="text-[10px] font-bold" style={{ color: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor }}>
+                      {freeBadge ?? `${usagePct}%`}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div
+                      className="h-1.5 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(usagePct, 100)}%`,
+                        background: freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* 버튼 */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    className="py-1.5 rounded-xl font-bold text-white transition-colors text-[11px]"
+                    style={{ background: accentColor }}
+                    onClick={() => {
+                      if (shippableParcels.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
+                      setShowReleaseSheet(true);
+                    }}
+                  >
+                    출고하기
+                  </button>
+                  <button
+                    type="button"
+                    className="py-1.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 text-[11px] transition-colors"
+                    onClick={() => setShowCapacitySheet(true)}
+                  >
+                    용량 변경
+                  </button>
+                </div>
               </div>
             </div>
           );
