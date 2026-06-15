@@ -759,8 +759,8 @@ function StorageCard({
       <div className="flex flex-col h-full px-3 pt-3 pb-2">
 
         {/* 상단: 블록 이미지 */}
-        <div className="flex items-center justify-center h-[110px] shrink-0">
-          <BlockIcon typeCode={typeCode} size={84} />
+        <div className="flex items-center justify-center h-[80px] shrink-0">
+          <BlockIcon typeCode={typeCode} size={64} />
         </div>
 
         {/* 구분선 */}
