@@ -439,7 +439,7 @@ export default function StoragePage() {
                   <div
                     ref={carouselRef}
                     className="relative overflow-hidden select-none"
-                    style={{ height: "300px", touchAction: "none" }}
+                    style={{ height: "320px", touchAction: "none" }}
                     onPointerDown={e => {
                       // 버튼만 캡처 제외 (버튼 클릭은 정상 동작), <a>는 드래그 시 preventDefault로 이동 차단
                       if ((e.target as HTMLElement).closest("button")) return;
@@ -630,13 +630,11 @@ export default function StoragePage() {
                               {statusCfg.label}
                             </span>
                           </div>
-                          <p className="text-xs font-medium text-gray-800 truncate leading-tight">
-                            {item.name}
-                            {item.quantity > 1 && (
-                              <span className="ml-1 text-[10px] text-gray-400">{item.quantity}개</span>
-                            )}
+                          <p className="text-xs font-medium text-gray-800 truncate leading-tight">{item.name}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">
+                            {storageName}
+                            {item.quantity > 1 && <span className="ml-1 font-semibold text-gray-500">{item.quantity}개</span>}
                           </p>
-                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">{storageName}</p>
                         </div>
                       );
                     })}
