@@ -439,7 +439,7 @@ export default function StoragePage() {
                   <div
                     ref={carouselRef}
                     className="relative overflow-hidden select-none"
-                    style={{ height: 0, paddingBottom: "30.6%", touchAction: "none" }}
+                    style={{ height: "300px", touchAction: "none" }}
                     onPointerDown={e => {
                       // 버튼만 캡처 제외 (버튼 클릭은 정상 동작), <a>는 드래그 시 preventDefault로 이동 차단
                       if ((e.target as HTMLElement).closest("button")) return;
@@ -785,9 +785,9 @@ function StorageCard({
       className="rounded-2xl overflow-hidden relative select-none h-full bg-white border border-gray-100"
       style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" }}
     >
-      <div className="flex flex-col items-center px-3 pt-3 pb-2 h-full">
+      <div className="flex flex-col items-center px-3 pt-2 pb-2 h-full">
         {/* 이름 + 수정 버튼 */}
-        <div className="w-full flex items-center justify-between mb-1.5">
+        <div className="w-full flex items-center justify-between mb-1">
           <div className="flex items-center gap-1 min-w-0">
             <p className="text-[11px] font-bold text-gray-800 truncate">{s.storage_name}</p>
             <button
@@ -810,8 +810,8 @@ function StorageCard({
         </div>
 
         {/* 블록 아이콘 */}
-        <div className="my-1">
-          <BlockIcon typeCode={typeCode} size={52} />
+        <div className="my-0.5">
+          <BlockIcon typeCode={typeCode} size={46} />
         </div>
 
         {/* 타입명 + 용량 */}
@@ -826,7 +826,7 @@ function StorageCard({
         </p>
 
         {/* 사용률 도트 */}
-        <div className="flex gap-1 mt-2 mb-1.5">
+        <div className="flex gap-1 mt-1 mb-1">
           {Array.from({ length: 5 }).map((_, i) => (
             <div
               key={i}
@@ -842,7 +842,7 @@ function StorageCard({
         <p className="text-[9px] text-gray-400">{freeBadge ?? `사용 ${usagePct}%`}</p>
 
         {/* 물품 수 */}
-        <div className="w-full grid grid-cols-2 gap-1 mt-2 text-center">
+        <div className="w-full grid grid-cols-2 gap-1 mt-1 text-center">
           <div>
             <p className="text-[9px] text-gray-400">보관 물품</p>
             <p className="text-[13px] font-black text-gray-700">{itemCount}개</p>
@@ -854,7 +854,7 @@ function StorageCard({
         </div>
 
         {/* 버튼 */}
-        <div className="w-full grid grid-cols-2 gap-1.5 mt-2">
+        <div className="w-full grid grid-cols-2 gap-1.5 mt-auto pt-1">
           <button
             type="button"
             className="py-1.5 rounded-xl text-white font-bold transition-colors"
