@@ -312,7 +312,7 @@ export default function StorageDetailPage() {
               <div className="flex flex-col px-3 pt-3 pb-2">
                 {/* 블록 이미지 */}
                 <div className="flex items-center justify-center flex-1 min-h-0 py-2">
-                  <div style={{ filter: "drop-shadow(2px 8px 12px rgba(0,0,0,0.22))" }}>
+                  <div style={{ filter: "drop-shadow(5px 8px 14px rgba(0,0,0,0.30))" }}>
                     <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={bSize} />
                   </div>
                 </div>
