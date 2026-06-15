@@ -225,6 +225,15 @@ export default function StorageDetailPage() {
   const SIcon = sCfg.icon;
   const planLabel = storage.storage_plan_config?.label_ko ?? storage.plan_type ?? "-";
   const freeInfo = storage.storage_mode === "short_term" ? calcFreeInfo(storage.short_term_started_at) : null;
+
+  /* 블록 타입 (헤더 + 카드 공용) */
+  const PT_MAP_TOP: Record<string, string> = {
+    MINI: "MINI", STANDARD: "STANDARD", LONG: "LONG", XL: "XL", OVERSIZE: "OVERSIZE",
+    S: "MINI", M: "STANDARD", L: "LONG",
+  };
+  const topTypeCode = storage.storage_types?.code ?? PT_MAP_TOP[storage.plan_type ?? ""] ?? "DEFAULT";
+  const TYPE_KO_TOP: Record<string, string> = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "하프블록" };
+  const topTypeName = storage.storage_types?.name ?? TYPE_KO_TOP[topTypeCode] ?? planLabel;
   const weeksUsed = freeInfo?.billableWeeks ?? calcWeeksUsed(storage.short_term_started_at);
 
   return (
@@ -259,7 +268,7 @@ export default function StorageDetailPage() {
           )}
           <p className="text-xs text-gray-400">
             {storage.storage_mode === "short_term" ? "단기보관" : "장기보관"}
-            {planLabel !== "-" && ` · ${planLabel}`}
+            {topTypeName !== "-" && ` · ${topTypeName}`}
           </p>
         </div>
         <button onClick={() => load(true)} disabled={refreshing} className="p-2 rounded-full hover:bg-gray-100">
