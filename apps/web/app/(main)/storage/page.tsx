@@ -593,6 +593,7 @@ export default function StoragePage() {
                       const TYPE_KO: Record<string, string> = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "하프블록", S: "파인트블록", M: "싱글블록", L: "더블블록" };
                       const blockLabel = TYPE_KO[typeCode] ?? storageName;
                       const isShippable = item.is_shippable;
+                      const statusLabel = isShippable ? "출고 가능" : (PARCEL_STATUS_DISPLAY[item.parcel_status]?.label ?? "보관 중");
                       return (
                         <div key={item.id} className="flex flex-col bg-white rounded-2xl overflow-hidden border border-gray-100" style={{ boxShadow: "0 1px 8px rgba(0,0,0,0.07)" }}>
                           {/* 이미지 */}
@@ -613,38 +614,41 @@ export default function StoragePage() {
                                 <Package size={20} className="text-gray-300" />
                               </div>
                             )}
+                            {/* 수량 뱃지 */}
                             {item.quantity > 1 && (
                               <span className="absolute top-1.5 left-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/60 text-white">
                                 {item.quantity}개
                               </span>
                             )}
+                            {/* 상태 뱃지 */}
+                            <span className={`absolute bottom-1.5 right-1.5 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${isShippable ? "bg-green-500 text-white" : "bg-black/50 text-white"}`}>
+                              {statusLabel}
+                            </span>
                           </div>
-                          {/* 정보 */}
-                          <div className="px-2 pt-1.5 pb-2 flex flex-col gap-1">
+
+                          {/* 정보 영역 */}
+                          <div className="px-2 pt-1.5 pb-2 flex flex-col gap-1 flex-1">
+                            {/* 보관함 이름 */}
+                            <p className="text-[9px] text-gray-400 truncate leading-none">{storageName}</p>
+                            {/* 물품명 */}
+                            <p className="text-[11px] font-bold text-gray-800 line-clamp-2 leading-snug">{item.name || "-"}</p>
                             {/* 블록 타입 배지 */}
                             <span
-                              className="self-start text-[8px] font-bold px-1.5 py-0.5 rounded-full truncate max-w-full"
+                              className="self-start text-[8px] font-bold px-1.5 py-0.5 rounded-full truncate max-w-full mt-auto"
                               style={{ background: `${blockAccent}18`, color: blockAccent, border: `1px solid ${blockAccent}30` }}
                             >
                               {blockLabel}
                             </span>
-                            {/* 물품명 */}
-                            <p className="text-[11px] font-semibold text-gray-800 truncate leading-tight">{item.name || "-"}</p>
-                            {/* 상태 */}
-                            <span className={`self-start text-[8px] font-bold px-1.5 py-0.5 rounded-full ${isShippable ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                              {isShippable ? "출고 가능" : (PARCEL_STATUS_DISPLAY[item.parcel_status]?.label ?? "보관 중")}
-                            </span>
-                            {/* 출고하기 버튼 */}
-                            {isShippable && (
-                              <button
-                                type="button"
-                                onClick={() => setReleaseSheet([item.id])}
-                                className="mt-0.5 w-full py-1.5 rounded-xl text-[10px] font-bold text-white transition-colors"
-                                style={{ background: blockAccent }}
-                              >
-                                출고하기
-                              </button>
-                            )}
+                            {/* 출고하기 버튼 — 항상 표시, 비활성 시 흐리게 */}
+                            <button
+                              type="button"
+                              onClick={() => isShippable && setReleaseSheet([item.id])}
+                              disabled={!isShippable}
+                              className="mt-1 w-full py-1.5 rounded-xl text-[10px] font-bold text-white transition-colors disabled:opacity-35"
+                              style={{ background: blockAccent }}
+                            >
+                              출고하기
+                            </button>
                           </div>
                         </div>
                       );
