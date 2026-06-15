@@ -250,55 +250,54 @@ export default function MyPage() {
       <p className="text-center text-xs text-gray-300 pb-2">인프론트 v1.0.0</p>
     </div>
 
-    {/* 프로필 수정 시트 */}
+    {/* 프로필 수정 모달 */}
     {editSheet && (
-      <div className="fixed inset-0 z-50 flex flex-col bg-black/40">
+      <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
         <div
-          className="flex-1 flex items-end justify-center"
-          onClick={e => { if (e.target === e.currentTarget) setEditSheet(false); }}
-        >
-          <div className="w-full max-w-[600px] bg-white rounded-t-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <p className="text-sm font-bold text-gray-900">프로필 수정</p>
-              <button onClick={() => setEditSheet(false)} className="p-1.5 rounded-full hover:bg-gray-100">
-                <X size={18} className="text-gray-500" />
-              </button>
+          className="absolute inset-0 bg-black/50"
+          onClick={() => setEditSheet(false)}
+        />
+        <div className="relative w-full max-w-[440px] bg-white rounded-3xl shadow-2xl overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <p className="text-base font-bold text-gray-900">프로필 수정</p>
+            <button onClick={() => setEditSheet(false)} className="p-1.5 rounded-full hover:bg-gray-100">
+              <X size={18} className="text-gray-500" />
+            </button>
+          </div>
+          <div className="px-5 py-4 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                이름 <span className="text-red-400">*</span>
+              </label>
+              <input
+                value={editName}
+                onChange={e => setEditName(e.target.value)}
+                placeholder="이름을 입력해주세요"
+                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+              />
             </div>
-            <div className="px-5 py-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
-                  이름 <span className="text-red-400">*</span>
-                </label>
-                <input
-                  value={editName}
-                  onChange={e => setEditName(e.target.value)}
-                  placeholder="이름을 입력해주세요"
-                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1.5">연락처</label>
-                <input
-                  value={editPhone}
-                  onChange={e => setEditPhone(e.target.value)}
-                  placeholder="010-0000-0000"
-                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">연락처</label>
+              <input
+                value={editPhone}
+                onChange={e => setEditPhone(e.target.value)}
+                placeholder="010-0000-0000"
+                className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+              />
             </div>
-            <div className="px-5 pb-6 pt-2">
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                disabled={saving || !editName.trim()}
-                className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-4 rounded-2xl disabled:opacity-50 active:scale-[0.98] transition-transform"
-              >
-                {saving
-                  ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  : <Check size={16} />}
-                저장하기
-              </button>
-            </div>
+          </div>
+          <div className="px-5 pb-6 pt-2">
+            <button
+              type="button"
+              onClick={handleSaveProfile}
+              disabled={saving || !editName.trim()}
+              className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white font-semibold py-4 rounded-2xl disabled:opacity-50 active:scale-[0.98] transition-transform"
+            >
+              {saving
+                ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <Check size={16} />}
+              저장하기
+            </button>
           </div>
         </div>
       </div>
