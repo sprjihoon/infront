@@ -57,11 +57,11 @@ interface LocationSummary {
 /* ─── 상수 ──────────────────────────────────────── */
 
 export const CARD_THEME_MAP: Record<string, { bg: string; accent: string }> = {
-  green:  { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#4ade80" },
-  purple: { bg: "linear-gradient(160deg,#1c1240 0%,#2d1b69 60%,#110b30 100%)", accent: "#a78bfa" },
-  red:    { bg: "linear-gradient(160deg,#3a0e0e 0%,#5c1a1a 60%,#280a0a 100%)", accent: "#f87171" },
-  blue:   { bg: "linear-gradient(160deg,#0c253d 0%,#1a3f60 60%,#071928 100%)", accent: "#38bdf8" },
-  pink:   { bg: "linear-gradient(160deg,#1c0a30 0%,#2e1065 60%,#110520 100%)", accent: "#e879f9" },
+  red:    { bg: "linear-gradient(160deg,#3a0e0e 0%,#5c1a1a 60%,#280a0a 100%)", accent: "#ef4444" },
+  green:  { bg: "linear-gradient(160deg,#0d2b18 0%,#1a4d2e 60%,#0a1f12 100%)", accent: "#22c55e" },
+  yellow: { bg: "linear-gradient(160deg,#2b1f00 0%,#4d3800 60%,#1a1200 100%)", accent: "#eab308" },
+  blue:   { bg: "linear-gradient(160deg,#0c1f3d 0%,#1a3060 60%,#070f28 100%)", accent: "#3b82f6" },
+  black:  { bg: "linear-gradient(160deg,#0a0a0a 0%,#1a1a1a 60%,#050505 100%)", accent: "#374151" },
 };
 const CARD_THEME_KEYS = Object.keys(CARD_THEME_MAP) as (keyof typeof CARD_THEME_MAP)[];
 
@@ -107,32 +107,46 @@ function ProgressBar({ percent }: { percent: number }) {
   );
 }
 
-/* ─── 블록 타입별 색상 ──────────────────────────── */
-type BrickColors = { front: string; top: string; side: string; studTop: string; studSide: string };
-
-const BLOCK_TYPE_COLORS: Record<string, BrickColors> = {
-  MINI:     { front: "#F5A520", top: "#FFD047", side: "#C07800", studTop: "#FFE066", studSide: "#E09010" },
-  STANDARD: { front: "#2E8FDE", top: "#5AB4F5", side: "#1A6CB5", studTop: "#72C0F7", studSide: "#2580CC" },
-  LONG:     { front: "#22A85E", top: "#3FCC7E", side: "#147840", studTop: "#55D890", studSide: "#1D9A52" },
-  XL:       { front: "#E83535", top: "#FF6B6B", side: "#B81818", studTop: "#FF8888", studSide: "#D42A2A" },
-  OVERSIZE: { front: "#7C3AED", top: "#A855F7", side: "#5B21B6", studTop: "#C084FC", studSide: "#6D28D9" },
-  DEFAULT:  { front: "#2E8FDE", top: "#5AB4F5", side: "#1A6CB5", studTop: "#72C0F7", studSide: "#2580CC" },
+/* ─── 블록 타입별 스터드 수 ──────────────────────── */
+const STUD_COUNTS: Record<string, number> = {
+  MINI: 2, STANDARD: 4, LONG: 6, XL: 8, OVERSIZE: 10, DEFAULT: 4,
 };
 
-const BLOCK_IMG_MAP: Record<string, string> = {
-  MINI:     "/blocks/block1.svg",
-  STANDARD: "/blocks/block2.svg",
-  LONG:     "/blocks/block3.svg",
-  XL:       "/blocks/block4.svg",
-  OVERSIZE: "/blocks/block5.svg",
-  DEFAULT:  "/blocks/block2.svg",
-};
+function shadeColor(hex: string, factor: number): string {
+  const h = hex.replace("#", "").padEnd(6, "0");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  const clamp = (n: number) => Math.min(255, Math.max(0, Math.round(n)));
+  if (factor >= 1) {
+    const t = factor - 1;
+    return `#${clamp(r+(255-r)*t).toString(16).padStart(2,"0")}${clamp(g+(255-g)*t).toString(16).padStart(2,"0")}${clamp(b+(255-b)*t).toString(16).padStart(2,"0")}`;
+  }
+  return `#${clamp(r*factor).toString(16).padStart(2,"0")}${clamp(g*factor).toString(16).padStart(2,"0")}${clamp(b*factor).toString(16).padStart(2,"0")}`;
+}
 
-function BlockIcon({ typeCode, size = 60 }: { typeCode: string; size?: number }) {
-  const src = BLOCK_IMG_MAP[typeCode] ?? BLOCK_IMG_MAP.DEFAULT;
+function BrickSVG({ color, typeCode, size = 80 }: { color: string; typeCode: string; size?: number }) {
+  const studs = STUD_COUNTS[typeCode] ?? 4;
+  const light = shadeColor(color, 1.55);
+  const dark  = shadeColor(color, 0.48);
+  const bx = 6, by = 28, bw = 68, bh = 28;
+  const spacing = bw / studs;
+  const sr = Math.min(spacing * 0.38, 7.5);
+  const studH = 13;
+  const studCx = Array.from({ length: studs }, (_, i) => bx + spacing * (i + 0.5));
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} width={size} height={size} alt={typeCode} style={{ objectFit: "contain" }} />
+    <svg width={size} height={size} viewBox="0 0 80 60" fill="none">
+      {studCx.map((cx, i) => (
+        <rect key={`ss-${i}`} x={cx - sr} y={by - studH} width={sr * 2} height={studH + 3} rx="2" fill={dark} />
+      ))}
+      <rect x={bx} y={by} width={bw} height={bh} rx="5" fill={color} />
+      <rect x={bx} y={by + bh - 7} width={bw} height={7} rx="5" fill="rgba(0,0,0,0.18)" />
+      <rect x={bx + bw - 6} y={by} width={6} height={bh} rx="5" fill="rgba(0,0,0,0.12)" />
+      <rect x={bx} y={by} width={bw} height={5} rx="5" fill="rgba(255,255,255,0.22)" />
+      {studCx.map((cx, i) => (
+        <ellipse key={`st-${i}`} cx={cx} cy={by - studH} rx={sr} ry={sr * 0.44} fill={light} />
+      ))}
+    </svg>
   );
 }
 
@@ -748,8 +762,7 @@ function StorageCard({
     : "/월";
   const freeBadge = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
 
-  const blockColors = BLOCK_TYPE_COLORS[typeCode] ?? BLOCK_TYPE_COLORS.DEFAULT;
-  const accentColor = blockColors.front;
+  const accentColor = theme.accent;
 
   return (
     <div
@@ -760,7 +773,7 @@ function StorageCard({
 
         {/* 상단: 블록 이미지 — 남은 공간 채움 */}
         <div className="flex items-center justify-center flex-1 min-h-0">
-          <BlockIcon typeCode={typeCode} size={90} />
+          <BrickSVG color={accentColor} typeCode={typeCode} size={90} />
         </div>
 
         {/* 구분선 */}
@@ -1300,25 +1313,27 @@ function RenameSheet({
           {/* 카드 색상 */}
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-2">카드 색상</p>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {CARD_THEME_KEYS.map(key => {
                 const t = CARD_THEME_MAP[key];
                 const active = selectedColor === key;
+                const LABEL: Record<string, string> = { red: "레드", green: "그린", yellow: "옐로", blue: "블루", black: "블랙" };
                 return (
                   <button
                     key={key}
                     type="button"
                     onClick={() => setSelectedColor(active ? "" : key)}
-                    className="flex-1 h-10 rounded-2xl transition-all"
+                    className="flex-1 flex flex-col items-center gap-1.5 py-2 rounded-2xl transition-all border-2"
                     style={{
-                      background: t.bg,
-                      outline: active ? `3px solid ${t.accent}` : "2px solid transparent",
-                      outlineOffset: 2,
-                      boxShadow: active ? `0 0 0 1px ${t.accent}40` : "none",
+                      borderColor: active ? t.accent : "transparent",
+                      background: "#f9fafb",
+                      boxShadow: active ? `0 0 0 3px ${t.accent}30` : "none",
                     }}
-                    title={key}
                   >
-                    <div className="w-2 h-2 rounded-full mx-auto" style={{ background: t.accent }} />
+                    <BrickSVG color={t.accent} typeCode="STANDARD" size={36} />
+                    <span className="text-[10px] font-semibold" style={{ color: active ? t.accent : "#9ca3af" }}>
+                      {LABEL[key] ?? key}
+                    </span>
                   </button>
                 );
               })}
