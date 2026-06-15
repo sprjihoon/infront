@@ -639,16 +639,6 @@ export default function StoragePage() {
                             >
                               {blockLabel}
                             </span>
-                            {/* 출고하기 버튼 — 항상 표시, 비활성 시 흐리게 */}
-                            <button
-                              type="button"
-                              onClick={() => isShippable && setReleaseSheet([item.id])}
-                              disabled={!isShippable}
-                              className="mt-1 w-full py-1.5 rounded-xl text-[10px] font-bold text-white transition-colors disabled:opacity-35"
-                              style={{ background: blockAccent }}
-                            >
-                              출고하기
-                            </button>
                           </div>
                         </div>
                       );
