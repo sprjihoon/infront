@@ -1050,10 +1050,12 @@ function CapacityChangeSheet({
                           : "border-gray-100 bg-white hover:border-gray-300"
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs ${
-                        isSelected ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
-                      }`}>
-                        {t.code.slice(0, 2)}
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                        {(() => {
+                          const Comp = BLOCK_SVG_MAP[t.code] ?? Block2SVG;
+                          const col = isSelected ? "#6366f1" : "#9ca3af";
+                          return <Comp dark={shadeColor(col, 0.5)} medium={col} light={shadeColor(col, 1.5)} size={40} />;
+                        })()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-bold ${isSelected ? "text-brand-700" : "text-gray-800"}`}>
