@@ -1248,6 +1248,7 @@ function RenameSheet({
   const [name, setName] = useState(storage.storage_name);
   const [selectedColor, setSelectedColor] = useState<string>(storage.card_color ?? "");
   const [saving, setSaving] = useState(false);
+  const typeCode = storage.storage_types?.code ?? "DEFAULT";
 
   async function handleSave() {
     const trimmed = name.trim();
@@ -1312,7 +1313,7 @@ function RenameSheet({
                       boxShadow: active ? `0 0 0 3px ${t.accent}30` : "none",
                     }}
                   >
-                    <BrickSVG color={t.accent} typeCode="STANDARD" size={36} />
+                    <BrickSVG color={t.accent} typeCode={typeCode} size={40} />
                     <span className="text-[10px] font-semibold" style={{ color: active ? t.accent : "#9ca3af" }}>
                       {LABEL[key] ?? key}
                     </span>
