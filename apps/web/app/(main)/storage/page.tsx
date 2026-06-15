@@ -984,6 +984,11 @@ function CapacityChangeSheet({
     const isSelected = selected === t.id;
     const diff       = isUp ? `+${(vol - currentVolume).toFixed(1)}L` : `-${(currentVolume - vol).toFixed(1)}L`;
 
+    // 단기 보관 = 주단위 요금, 장기 보관 = 월단위 요금
+    const isShortTerm = storage.storage_mode === "short_term";
+    const fee         = isShortTerm ? t.price_per_week : (t.price_per_month ?? t.price_per_week);
+    const feeUnit     = isShortTerm ? "/주" : (t.price_per_month != null ? "/월" : "/주");
+
     return (
       <button
         key={t.id}
@@ -1029,12 +1034,10 @@ function CapacityChangeSheet({
         </div>
         <div className="text-right shrink-0">
           <p className={`text-sm font-bold ${isSelected ? "text-brand-600" : "text-gray-700"}`}>
-            {t.price_per_month != null
-              ? `${t.price_per_month.toLocaleString()}원`
-              : `${t.price_per_week.toLocaleString()}원`}
+            {fee != null ? `${fee.toLocaleString()}원` : "-"}
           </p>
           <p className="text-[10px] text-gray-400">
-            {t.price_per_month != null ? "/월" : "/주"}
+            {feeUnit}
           </p>
         </div>
       </button>
