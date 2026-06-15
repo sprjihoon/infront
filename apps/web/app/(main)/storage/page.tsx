@@ -413,8 +413,8 @@ export default function StoragePage() {
                     className="relative overflow-hidden select-none"
                     style={{ height: "320px", touchAction: "none" }}
                     onPointerDown={e => {
-                      // 버튼만 캡처 제외 (버튼 클릭은 정상 동작), <a>는 드래그 시 preventDefault로 이동 차단
-                      if ((e.target as HTMLElement).closest("button")) return;
+                      // 버튼 / 링크 클릭은 캡처 제외 — 드래그 없이 바로 이동 허용
+                      if ((e.target as HTMLElement).closest("button,a")) return;
                       isDraggingRef.current = true;
                       dragStartX.current = e.clientX;
                       const cardEl = (e.target as HTMLElement).closest("[data-card-idx]");
@@ -468,7 +468,11 @@ export default function StoragePage() {
                             transition: dragOffset !== 0 ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.4s",
                             cursor: abs > 0 ? "pointer" : "default",
                           }}
-                          onClick={abs > 0 ? () => { if (!isDraggingRef.current) setActiveIdx(i); } : undefined}
+                          onClick={abs > 0 ? () => {
+                            if (isDraggingRef.current) return;
+                            if (!card) { router.push("/storage/new"); return; }
+                            setActiveIdx(i);
+                          } : undefined}
                         >
                           {card ? (
                             <StorageCard
