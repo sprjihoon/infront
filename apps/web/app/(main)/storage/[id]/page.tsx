@@ -926,11 +926,11 @@ type StorageType = {
 };
 
 const TYPE_SIZE_KO: Record<string, string> = {
-  MINI:     "미니 (소형)",
-  STANDARD: "스탠다드 (중형)",
-  LONG:     "롱박스 (대형)",
-  XL:       "XL (특대)",
-  OVERSIZE: "오버사이즈 (랙)",
+  MINI:     "파인트블록",
+  STANDARD: "싱글블록",
+  LONG:     "더블블록",
+  XL:       "패밀리블록",
+  OVERSIZE: "하프블록",
 };
 
 function CapacityChangeSheet({
