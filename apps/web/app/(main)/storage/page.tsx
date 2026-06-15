@@ -722,6 +722,7 @@ function StorageCard({
   itemCount,
   locationSummary,
   storageItems,
+  theme,
   onDetail,
   onRelease,
   onCapacity: _onCapacity,
