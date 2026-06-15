@@ -777,15 +777,15 @@ function PickupPageInner() {
                 )}
               </div>
             </button>
-            {isAllSealed && (
-              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                <span className="text-amber-500 text-sm mt-0.5">⚠</span>
-                <p className="text-[11px] text-amber-700 leading-relaxed">
-                  미개봉 상태로 보관됩니다. 단,{" "}
-                  <span className="font-bold">해외 배송 출고 시에는 세관 신고 및 검수를 위해 개봉 후 처리</span>됩니다.
-                </p>
-              </div>
-            )}
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+              <span className="text-amber-500 text-sm mt-0.5">⚠</span>
+              <p className="text-[11px] text-amber-700 leading-relaxed">
+                {isAllSealed
+                  ? <>미개봉 상태로 보관됩니다. 단, <span className="font-bold">해외 배송 출고 시에는 세관 신고 및 검수를 위해 개봉 후 처리</span>됩니다.</>
+                  : <>미개봉 박스로 보관하더라도 <span className="font-bold">해외 배송 출고 시에는 세관 신고 및 검수를 위해 개봉 후 처리</span>될 수 있습니다.</>
+                }
+              </p>
+            </div>
           </>
         )}
 
