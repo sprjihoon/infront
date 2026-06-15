@@ -108,27 +108,53 @@ function ProgressBar({ percent }: { percent: number }) {
 }
 
 /* ─── 블록 타입별 색상 ──────────────────────────── */
-const BLOCK_TYPE_COLORS: Record<string, { top: string; left: string; right: string; stud: string }> = {
-  MINI:     { top: "#FDE68A", left: "#B45309", right: "#F59E0B", stud: "#FCD34D" },
-  STANDARD: { top: "#BFDBFE", left: "#1D4ED8", right: "#3B82F6", stud: "#93C5FD" },
-  LONG:     { top: "#A7F3D0", left: "#047857", right: "#10B981", stud: "#6EE7B7" },
-  XL:       { top: "#FECACA", left: "#B91C1C", right: "#EF4444", stud: "#FCA5A5" },
-  OVERSIZE: { top: "#DDD6FE", left: "#5B21B6", right: "#8B5CF6", stud: "#C4B5FD" },
-  DEFAULT:  { top: "#BFDBFE", left: "#1D4ED8", right: "#3B82F6", stud: "#93C5FD" },
+type BrickColors = { front: string; top: string; side: string; studTop: string; studSide: string };
+
+const BLOCK_TYPE_COLORS: Record<string, BrickColors> = {
+  MINI:     { front: "#F5A520", top: "#FFD047", side: "#C07800", studTop: "#FFE066", studSide: "#E09010" },
+  STANDARD: { front: "#2E8FDE", top: "#5AB4F5", side: "#1A6CB5", studTop: "#72C0F7", studSide: "#2580CC" },
+  LONG:     { front: "#22A85E", top: "#3FCC7E", side: "#147840", studTop: "#55D890", studSide: "#1D9A52" },
+  XL:       { front: "#E83535", top: "#FF6B6B", side: "#B81818", studTop: "#FF8888", studSide: "#D42A2A" },
+  OVERSIZE: { front: "#7C3AED", top: "#A855F7", side: "#5B21B6", studTop: "#C084FC", studSide: "#6D28D9" },
+  DEFAULT:  { front: "#2E8FDE", top: "#5AB4F5", side: "#1A6CB5", studTop: "#72C0F7", studSide: "#2580CC" },
 };
 
-function BlockIcon({ typeCode, size = 56 }: { typeCode: string; size?: number }) {
+function BlockIcon({ typeCode, size = 60 }: { typeCode: string; size?: number }) {
   const c = BLOCK_TYPE_COLORS[typeCode] ?? BLOCK_TYPE_COLORS.DEFAULT;
+  const rx = 7.5, ry = 3.8, sh = 4;
+
+  // 각 스터드 렌더링: 바닥 면 위에 돌기 표현
+  function Stud({ cx, cy }: { cx: number; cy: number }) {
+    return (
+      <>
+        {/* cylinder body */}
+        <path
+          d={`M${cx - rx},${cy} L${cx - rx},${cy - sh} A${rx},${ry} 0 0,0 ${cx + rx},${cy - sh} L${cx + rx},${cy} Z`}
+          fill={c.studSide}
+        />
+        {/* bottom arc (overlap seam) */}
+        <path d={`M${cx - rx},${cy} A${rx},${ry} 0 0,0 ${cx + rx},${cy}`} fill="none" stroke={c.studSide} strokeWidth="0.5" />
+        {/* top cap */}
+        <ellipse cx={cx} cy={cy - sh} rx={rx} ry={ry} fill={c.studTop} />
+      </>
+    );
+  }
+
   return (
-    <svg width={size} height={size} viewBox="0 0 48 52" fill="none">
-      {/* right face */}
-      <polygon points="24,20 44,10 44,38 24,48" fill={c.right} />
-      {/* left face */}
-      <polygon points="4,10 24,20 24,48 4,38" fill={c.left} />
-      {/* top face */}
-      <polygon points="4,10 24,0 44,10 24,20" fill={c.top} />
-      {/* stud */}
-      <ellipse cx="24" cy="4" rx="7" ry="3.5" fill={c.stud} opacity="0.9" />
+    <svg width={size} height={size} viewBox="0 0 74 68" fill="none">
+      {/* 오른쪽 측면 */}
+      <polygon points="52,32 64,20 64,50 52,62" fill={c.side} />
+      {/* 앞면 */}
+      <rect x="4" y="32" width="48" height="30" rx="1" fill={c.front} />
+      {/* 윗면 */}
+      <polygon points="4,32 16,20 64,20 52,32" fill={c.top} />
+
+      {/* 스터드 — 뒷줄 먼저 렌더링 */}
+      <Stud cx={26} cy={24} />
+      <Stud cx={50} cy={24} />
+      {/* 스터드 — 앞줄 */}
+      <Stud cx={20} cy={30} />
+      <Stud cx={44} cy={30} />
     </svg>
   );
 }
@@ -752,6 +778,7 @@ function StorageCard({
   ).length;
 
   const blockColors = BLOCK_TYPE_COLORS[typeCode] ?? BLOCK_TYPE_COLORS.DEFAULT;
+  const accentColor = blockColors.front;
 
   return (
     <div
@@ -768,7 +795,7 @@ function StorageCard({
               onClick={e => { e.stopPropagation(); onRename(); }}
               className="shrink-0 p-0.5 opacity-40 hover:opacity-80 transition-opacity"
             >
-              <svg width="9" height="9" fill="none" stroke={blockColors.right} strokeWidth="2" viewBox="0 0 24 24">
+              <svg width="9" height="9" fill="none" stroke={accentColor} strokeWidth="2" viewBox="0 0 24 24">
                 <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
@@ -776,7 +803,7 @@ function StorageCard({
           </div>
           <span
             className="text-[8px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
-            style={{ background: `${blockColors.right}18`, color: blockColors.right, border: `1px solid ${blockColors.right}30` }}
+            style={{ background: `${accentColor}18`, color: accentColor, border: `1px solid ${accentColor}30` }}
           >
             {isShortTerm ? "단기" : "장기"}
           </span>
@@ -806,7 +833,7 @@ function StorageCard({
               className="w-2.5 h-2.5 rounded-full transition-colors"
               style={{
                 background: i < Math.ceil(usagePct / 20)
-                  ? freeBadge ? blockColors.right : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : blockColors.right
+                  ? freeBadge ? accentColor : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : accentColor
                   : "#E5E7EB",
               }}
             />
@@ -831,7 +858,7 @@ function StorageCard({
           <button
             type="button"
             className="py-1.5 rounded-xl text-white font-bold transition-colors"
-            style={{ background: blockColors.right, fontSize: "11px" }}
+            style={{ background: accentColor, fontSize: "11px" }}
             onClick={e => {
               e.stopPropagation();
               const parcelIds = [...new Set(
