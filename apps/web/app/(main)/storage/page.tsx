@@ -115,6 +115,7 @@ export default function StoragePage() {
   const [storages, setStorages] = useState<Storage[]>([]);
   const [items, setItems] = useState<ProductItem[]>([]);
   const [locationSummary, setLocationSummary] = useState<LocationSummary | null>(null);
+  const [storageTypes, setStorageTypes] = useState<StorageType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("전체");
@@ -157,18 +158,21 @@ export default function StoragePage() {
     if (!quiet) setLoading(true);
     else setRefreshing(true);
     try {
-      const [storageRes, itemsRes, locRes] = await Promise.all([
+      const [storageRes, itemsRes, locRes, typesRes] = await Promise.all([
         fetch("/api/storage"),
         fetch("/api/storage/all-items"),
         fetch("/api/storage/my-locations"),
+        fetch("/api/storage/types"),
       ]);
       if (storageRes.status === 401) { router.push("/login"); return; }
       const storageJson = await storageRes.json();
       const itemsJson = itemsRes.ok ? await itemsRes.json() : { items: [] };
       const locJson = locRes.ok ? await locRes.json() : { summary: null };
+      const typesJson = typesRes.ok ? await typesRes.json() : { types: [] };
       setStorages(storageJson.storages ?? []);
       setItems(itemsJson.items ?? []);
       setLocationSummary(locJson.summary ?? null);
+      setStorageTypes(typesJson.types ?? []);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -219,6 +223,32 @@ export default function StoragePage() {
   const PAGE_SIZE_OPTIONS = [10, 30, 50, 0] as const; // 0 = 전체
   const totalPages = pageSize === 0 ? 1 : Math.ceil(filteredItems.length / pageSize);
   const pagedItems = pageSize === 0 ? filteredItems : filteredItems.slice((page - 1) * pageSize, page * pageSize);
+
+  /* ── 블록 통합 추천 카드 조건 계산 ───────────────────── */
+  const mergeRecommendation = (() => {
+    if (active.length < 2 || storageTypes.length === 0) return null;
+
+    const totalUsedLiters = active.reduce((sum, s) => sum + (s.used_score ?? 0), 0);
+    const currentTotalMonthly = active.reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
+    if (currentTotalMonthly === 0) return null;
+
+    // 조건 2a: 각 블록의 사용률이 낮은지 (모두 50% 미만)
+    const allLowUsage = active.every((s) => (s.usage_percent ?? 0) < 50);
+
+    // 조건 2b: 합산 사용량을 담을 수 있는 가장 저렴한 단일 블록 타입 탐색
+    const fittingType = storageTypes
+      .filter((t) => (t.volume_liter ?? 0) >= totalUsedLiters && (t.price_per_month ?? 0) > 0)
+      .sort((a, b) => (a.price_per_month ?? 0) - (b.price_per_month ?? 0))[0] ?? null;
+
+    // 조건 2: allLowUsage OR fitsInOneBlock — 단, 가격 비교를 위해 fittingType 필수
+    if (!fittingType || (!allLowUsage && !fittingType)) return null;
+
+    const mergedMonthly = fittingType.price_per_month ?? 0;
+    const saving = currentTotalMonthly - mergedMonthly;
+    if (saving <= 0) return null;
+
+    return { saving, mergedMonthly, typeName: fittingType.name, currentTotalMonthly };
+  })();
 
   if (loading) {
     return (
@@ -424,7 +454,7 @@ export default function StoragePage() {
                               <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                                 <Plus size={18} className="text-white/50" />
                               </div>
-                              <p className="text-[12px] font-semibold text-white/40">스토리지 추가</p>
+                              <p className="text-[12px] font-semibold text-white/40">블록 추가</p>
                             </Link>
                           )}
                         </div>
@@ -437,16 +467,36 @@ export default function StoragePage() {
               );
             })()}
 
-            {/* ── 슬롯 합치기 버튼 (2개 이상일 때) ── */}
-            {active.length >= 2 && (
-              <button
-                type="button"
-                onClick={() => setMergeSheet(true)}
-                className="w-full flex items-center justify-center gap-2 bg-white border-2 border-gray-200 text-gray-700 text-sm font-bold px-4 py-3.5 rounded-2xl hover:bg-gray-50 transition-colors"
-              >
-                <Archive size={16} />
-                슬롯 합치기 (용량 통합 신청)
-              </button>
+            {/* ── 블록 통합 추천 카드 ─────────────────── */}
+            {mergeRecommendation && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
+                    <Archive size={15} className="text-amber-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-amber-900">블록 통합하면 월 절약 가능</p>
+                    <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
+                      현재 {active.length}개 블록({mergeRecommendation.currentTotalMonthly.toLocaleString()}원/월)을{" "}
+                      {mergeRecommendation.typeName} 1개로 합치면{" "}
+                      <span className="font-bold text-amber-900">{mergeRecommendation.mergedMonthly.toLocaleString()}원/월</span>로 줄어들어요.
+                    </p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">
+                        월 {mergeRecommendation.saving.toLocaleString()}원 절약
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setMergeSheet(true)}
+                        className="text-xs font-bold text-amber-700 hover:text-amber-900 transition-colors flex items-center gap-1"
+                      >
+                        통합 신청
+                        <ChevronRight size={13} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* ── 물품 목록 ────────────────────────── */}
@@ -639,7 +689,7 @@ export default function StoragePage() {
       />
     )}
 
-    {/* 슬롯 합치기 시트 */}
+    {/* 블록 합치기 시트 */}
     {mergeSheet && active.length >= 2 && (
       <MergeSlotSheet
         storages={active}
@@ -828,7 +878,7 @@ function StorageCard({
       </div>
 
       {/* ── 하단 버튼 ── */}
-      <div className="relative px-2 mt-1.5 grid grid-cols-3 gap-1">
+      <div className="relative px-2 mt-1.5 grid grid-cols-2 gap-1">
         <button
           type="button"
           className="py-1.5 rounded-xl font-bold text-white transition-colors"
@@ -843,14 +893,6 @@ function StorageCard({
           }}
         >
           출고 요청
-        </button>
-        <button
-          type="button"
-          className="py-1.5 rounded-xl font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "11px" }}
-          onClick={e => { e.stopPropagation(); onCapacity(); }}
-        >
-          용량 변경
         </button>
         <button
           type="button"
@@ -1103,13 +1145,13 @@ function CapacityChangeSheet({
               {isAlreadyMax && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-2">
                   <p className="text-xs font-bold text-amber-800">최대 사이즈 — 업그레이드 불가</p>
-                  <p className="text-xs text-amber-700 mt-0.5">더 큰 용량이 필요하면 슬롯을 추가해 주세요.</p>
+                  <p className="text-xs text-amber-700 mt-0.5">더 큰 용량이 필요하면 블록을 추가해 주세요.</p>
                   <button
                     onClick={handleAddSlot}
                     disabled={submitting}
                     className="mt-2 w-full bg-amber-600 text-white text-xs font-bold py-2.5 rounded-xl disabled:opacity-40"
                   >
-                    슬롯 추가 신청
+                    블록 추가 신청
                   </button>
                 </div>
               )}
@@ -1369,8 +1411,8 @@ function EmptyState() {
 }
 
 /* ─────────────────────────────────────────────
-   슬롯 합치기 시트
-   여러 슬롯을 하나의 대표 슬롯으로 통합 신청
+   블록 합치기 시트
+   여러 블록을 하나의 대표 블록으로 통합 신청
 ───────────────────────────────────────────── */
 function MergeSlotSheet({
   storages,
@@ -1481,8 +1523,8 @@ function MergeSlotSheet({
       <div className="relative w-full sm:max-w-[520px] bg-white rounded-t-3xl sm:rounded-3xl max-h-[88vh] flex flex-col shadow-2xl">
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
           <div>
-            <p className="text-base font-bold text-gray-900">슬롯 합치기</p>
-            <p className="text-xs text-gray-400 mt-0.5">여러 슬롯을 하나의 보관함으로 즉시 통합합니다</p>
+            <p className="text-base font-bold text-gray-900">블록 합치기</p>
+            <p className="text-xs text-gray-400 mt-0.5">여러 블록을 하나의 보관함으로 즉시 통합합니다</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
             <X size={18} />
@@ -1494,7 +1536,7 @@ function MergeSlotSheet({
             <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
               <Check size={24} className="text-green-600" strokeWidth={2.5} />
             </div>
-            <p className="text-sm font-bold text-gray-900">슬롯이 합쳐졌습니다</p>
+            <p className="text-sm font-bold text-gray-900">블록이 합쳐졌습니다</p>
             <p className="text-xs text-gray-500 text-center">
               DB가 즉시 반영되었으며 관리자가 물품을 이전합니다.
             </p>
@@ -1510,9 +1552,9 @@ function MergeSlotSheet({
                 <p className="font-bold text-blue-800">합치기 즉시 적용됩니다</p>
                 <ul className="space-y-0.5">
                   {[
-                    "요청 즉시 DB에 반영되고 소스 슬롯이 종료됩니다",
-                    "관리자가 물품을 대표 슬롯으로 물리적 이전합니다",
-                    "대표 슬롯의 남은 용량(리터) 기준으로 합치기 가능 여부가 검증됩니다",
+                    "요청 즉시 DB에 반영되고 소스 블록이 종료됩니다",
+                    "관리자가 물품을 대표 블록으로 물리적 이전합니다",
+                    "대표 블록의 남은 용량(리터) 기준으로 합치기 가능 여부가 검증됩니다",
                   ].map(t => (
                     <li key={t} className="flex items-start gap-1"><span>•</span><span>{t}</span></li>
                   ))}
@@ -1549,11 +1591,11 @@ function MergeSlotSheet({
               {/* STEP 2 */}
               <div>
                 <p className="text-xs font-bold text-gray-700 mb-2">
-                  STEP 2. 합칠 슬롯 선택
+                  STEP 2. 합칠 블록 선택
                   <span className="font-normal text-gray-400 ml-1">(선택 시 즉시 종료됨)</span>
                 </p>
                 {sourceStorages.length === 0 ? (
-                  <p className="text-xs text-gray-400 py-2">대표 슬롯을 먼저 선택해주세요.</p>
+                  <p className="text-xs text-gray-400 py-2">대표 블록을 먼저 선택해주세요.</p>
                 ) : (
                   <div className="space-y-2">
                     {sourceStorages.map(s => {
@@ -1609,7 +1651,7 @@ function MergeSlotSheet({
                   </div>
                   {!canMerge && (
                     <p className="text-[10px] text-red-600 font-semibold">
-                      {overBy}L 초과 — 더 큰 대표 슬롯을 선택하거나 일부 슬롯만 선택하세요
+                      {overBy}L 초과 — 더 큰 대표 블록을 선택하거나 일부 블록만 선택하세요
                     </p>
                   )}
                 </div>
