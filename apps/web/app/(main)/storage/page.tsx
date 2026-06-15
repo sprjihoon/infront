@@ -798,7 +798,7 @@ function StorageCard({
 
         {/* 상단: 블록 이미지 — 남은 공간 채움 */}
         <div className="flex items-center justify-center flex-1 min-h-0">
-          <div style={{ filter: "drop-shadow(0px 12px 18px rgba(0,0,0,0.45))" }}>
+          <div style={{ filter: "drop-shadow(8px 14px 18px rgba(0,0,0,0.40))" }}>
             <BrickSVG color={accentColor} typeCode={typeCode} />
           </div>
         </div>
