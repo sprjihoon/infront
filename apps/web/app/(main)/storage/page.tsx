@@ -125,7 +125,7 @@ const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: 
 
 /* 타입별 기본 크기 — 큰 블록일수록 실제로 더 크게 표시 */
 const BLOCK_BASE_SIZE: Record<string, number> = {
-  MINI: 64, STANDARD: 76, LONG: 88, XL: 100, OVERSIZE: 112, DEFAULT: 76,
+  MINI: 80, STANDARD: 96, LONG: 110, XL: 124, OVERSIZE: 140, DEFAULT: 96,
 };
 
 function BrickSVG({ color, typeCode, size }: { color: string; typeCode: string; size?: number }) {
@@ -765,7 +765,9 @@ function StorageCard({
 
         {/* 상단: 블록 이미지 — 남은 공간 채움 */}
         <div className="flex items-center justify-center flex-1 min-h-0">
-          <BrickSVG color={accentColor} typeCode={typeCode} />
+          <div style={{ filter: "drop-shadow(2px 8px 12px rgba(0,0,0,0.22))" }}>
+            <BrickSVG color={accentColor} typeCode={typeCode} />
+          </div>
         </div>
 
         {/* 구분선 */}

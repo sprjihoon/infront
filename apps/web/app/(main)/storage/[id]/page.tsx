@@ -299,8 +299,8 @@ export default function StorageDetailPage() {
           const blockLight  = shadeColor(accentColor, 1.6);
           const blockDark   = shadeColor(accentColor, 0.45);
           const freeBadge   = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
-          const BLOCK_SIZES: Record<string, number> = { MINI: 64, STANDARD: 76, LONG: 88, XL: 100, OVERSIZE: 112, DEFAULT: 76 };
-          const bSize = BLOCK_SIZES[typeCode] ?? 76;
+          const BLOCK_SIZES: Record<string, number> = { MINI: 80, STANDARD: 96, LONG: 110, XL: 124, OVERSIZE: 140, DEFAULT: 96 };
+          const bSize = BLOCK_SIZES[typeCode] ?? 96;
 
           const typeName = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "점보블록" }[typeCode] ?? planLabel;
 
@@ -312,7 +312,9 @@ export default function StorageDetailPage() {
               <div className="flex flex-col px-3 pt-3 pb-2">
                 {/* 블록 이미지 */}
                 <div className="flex items-center justify-center flex-1 min-h-0 py-2">
-                  <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={bSize} />
+                  <div style={{ filter: "drop-shadow(2px 8px 12px rgba(0,0,0,0.22))" }}>
+                    <BlockComp dark={blockDark} medium={accentColor} light={blockLight} size={bSize} />
+                  </div>
                 </div>
 
                 {/* 구분선 */}
