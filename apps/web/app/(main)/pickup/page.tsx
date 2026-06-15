@@ -22,10 +22,12 @@ function shadeColor(hex: string, factor: number): string {
 
 const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: string; light: string; size?: number }>> = {
   MINI: Block1SVG, STANDARD: Block2SVG, LONG: Block3SVG, XL: Block4SVG, OVERSIZE: Block5SVG, DEFAULT: Block2SVG,
+  S: Block1SVG, M: Block2SVG, L: Block3SVG,
 };
 
 const TYPE_NAME_KO: Record<string, string> = {
   MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "하프블록",
+  S: "파인트블록", M: "싱글블록", L: "더블블록",
 };
 import {
   normalizeEpostZip,
