@@ -67,7 +67,7 @@ interface Storage {
   created_at: string;
   card_color: string | null;
   storage_plan_config: PlanConfig | null;
-  storage_types?: { code: string } | null;
+  storage_types?: { code: string; name?: string; volume_liter?: number } | null;
 }
 
 interface StorageParcel {
@@ -288,12 +288,12 @@ export default function StorageDetailPage() {
           const badgeText = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : `${usagePct}%`;
           const itemCount = parcels.length;
 
-          /* plan_type → block SVG 코드 매핑 */
+          /* typeCode: storage_types.code 우선, 없으면 plan_type 매핑 (메인 캐러셀과 동일 로직) */
           const PT_MAP: Record<string, string> = {
             MINI: "MINI", STANDARD: "STANDARD", LONG: "LONG", XL: "XL", OVERSIZE: "OVERSIZE",
             S: "MINI", M: "STANDARD", L: "LONG",
           };
-          const typeCode    = PT_MAP[storage.plan_type ?? ""] ?? "DEFAULT";
+          const typeCode    = storage.storage_types?.code ?? PT_MAP[storage.plan_type ?? ""] ?? "DEFAULT";
           const accentColor = theme.accent;
           const BlockComp   = BLOCK_SVG_MAP[typeCode] ?? Block2SVG;
           const blockLight  = shadeColor(accentColor, 1.6);
@@ -302,7 +302,11 @@ export default function StorageDetailPage() {
           const BLOCK_SIZES: Record<string, number> = { MINI: 80, STANDARD: 96, LONG: 110, XL: 124, OVERSIZE: 140, DEFAULT: 96 };
           const bSize = BLOCK_SIZES[typeCode] ?? 96;
 
-          const typeName = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "점보블록" }[typeCode] ?? planLabel;
+          /* typeName: storage_types.name 우선, 없으면 한국어 코드 매핑 (메인과 동일) */
+          const TYPE_KO: Record<string, string> = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "점보블록" };
+          const typeName = storage.storage_types?.name ?? TYPE_KO[typeCode] ?? planLabel;
+          /* 볼륨: storage_types.volume_liter 우선, 없으면 capacity_score */
+          const volumeL = storage.storage_types?.volume_liter ?? storage.capacity_score;
 
           return (
             <div
@@ -326,7 +330,7 @@ export default function StorageDetailPage() {
                   <div className="flex flex-col min-w-0">
                     <p className="text-[12px] font-bold text-gray-900 truncate">{storage.storage_name}</p>
                     <p className="text-[9px] text-gray-400 truncate">
-                      {typeName}{storage.capacity_score ? ` · ${storage.capacity_score}L` : ""}
+                      {typeName}{volumeL ? ` · ${volumeL}L` : ""}
                     </p>
                   </div>
                   {/* 가격 */}
