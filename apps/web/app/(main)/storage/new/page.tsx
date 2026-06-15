@@ -171,22 +171,12 @@ function StorageNewInner() {
         {selectedType && (
           <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-600">주간 요금</span>
+              <span className="text-sm text-gray-600">월 요금</span>
               <span className="text-lg font-black text-brand-600">
-                {selectedType.price_per_week.toLocaleString()}원/주
+                {(selectedType.price_per_month ?? selectedType.price_per_week * 4).toLocaleString()}원/월
               </span>
             </div>
-            {selectedType.price_per_month != null && (
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">월 요금</span>
-                <span className="text-base font-bold text-blue-600">
-                  {selectedType.price_per_month.toLocaleString()}원/월
-                </span>
-              </div>
-            )}
-            <p className="text-xs text-gray-400">
-              {selectedType.price_per_month == null && `월 약 ${(selectedType.price_per_week * 4).toLocaleString()}원 · `}로케이션 배정 후 자동 정산
-            </p>
+            <p className="text-xs text-gray-400">로케이션 배정 후 자동 정산</p>
           </div>
         )}
 
