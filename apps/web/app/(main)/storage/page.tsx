@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Package, Plus, RefreshCw, Archive,
-  ChevronRight, X, Check, Loader2,
+  ChevronRight, X, Check, Loader2, Search,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -107,6 +107,50 @@ function ProgressBar({ percent }: { percent: number }) {
   );
 }
 
+/* ─── 블록 타입별 색상 ──────────────────────────── */
+const BLOCK_TYPE_COLORS: Record<string, { top: string; left: string; right: string; stud: string }> = {
+  MINI:     { top: "#FDE68A", left: "#B45309", right: "#F59E0B", stud: "#FCD34D" },
+  STANDARD: { top: "#BFDBFE", left: "#1D4ED8", right: "#3B82F6", stud: "#93C5FD" },
+  LONG:     { top: "#A7F3D0", left: "#047857", right: "#10B981", stud: "#6EE7B7" },
+  XL:       { top: "#FECACA", left: "#B91C1C", right: "#EF4444", stud: "#FCA5A5" },
+  OVERSIZE: { top: "#DDD6FE", left: "#5B21B6", right: "#8B5CF6", stud: "#C4B5FD" },
+  DEFAULT:  { top: "#BFDBFE", left: "#1D4ED8", right: "#3B82F6", stud: "#93C5FD" },
+};
+
+function BlockIcon({ typeCode, size = 56 }: { typeCode: string; size?: number }) {
+  const c = BLOCK_TYPE_COLORS[typeCode] ?? BLOCK_TYPE_COLORS.DEFAULT;
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 52" fill="none">
+      {/* right face */}
+      <polygon points="24,20 44,10 44,38 24,48" fill={c.right} />
+      {/* left face */}
+      <polygon points="4,10 24,20 24,48 4,38" fill={c.left} />
+      {/* top face */}
+      <polygon points="4,10 24,0 44,10 24,20" fill={c.top} />
+      {/* stud */}
+      <ellipse cx="24" cy="4" rx="7" ry="3.5" fill={c.stud} opacity="0.9" />
+    </svg>
+  );
+}
+
+function SummaryTile({
+  icon, label, value, color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  color: "green" | "blue" | "orange" | "purple";
+}) {
+  const bg = { green: "bg-green-50", blue: "bg-blue-50", orange: "bg-orange-50", purple: "bg-purple-50" }[color];
+  return (
+    <div className="flex flex-col items-center text-center gap-1.5">
+      <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center`}>{icon}</div>
+      <p className="text-sm font-black text-gray-900 leading-none">{value}</p>
+      <p className="text-[9px] text-gray-400 leading-tight">{label}</p>
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════
    메인 페이지
 ══════════════════════════════════════════════════ */
@@ -119,9 +163,9 @@ export default function StoragePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("전체");
-  const [pageSize, setPageSize] = useState<number>(10);
+  const [pageSize, setPageSize] = useState<number>(6);
   const [page, setPage] = useState<number>(1);
-  const [itemListOpen, setItemListOpen] = useState(true);
+
   const [releaseSheet, setReleaseSheet] = useState<string[] | null>(null);
   const [capacitySheet, setCapacitySheet] = useState<Storage | null>(null);
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
@@ -193,7 +237,6 @@ export default function StoragePage() {
   const active = storages.filter((s) => s.status !== "CANCELLED");
 
   /* 요약 */
-  const totalMonthly = active.reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
   const totalMonthlyFee = active
     .filter((s) => s.storage_mode === "long_term")
     .reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
@@ -220,9 +263,7 @@ export default function StoragePage() {
             return s?.storage_name === itemFilter;
           });
 
-  const PAGE_SIZE_OPTIONS = [10, 30, 50, 0] as const; // 0 = 전체
-  const totalPages = pageSize === 0 ? 1 : Math.ceil(filteredItems.length / pageSize);
-  const pagedItems = pageSize === 0 ? filteredItems : filteredItems.slice((page - 1) * pageSize, page * pageSize);
+  const pagedItems = pageSize === 0 ? filteredItems : filteredItems.slice(0, pageSize);
 
   /* ── 블록 통합 추천 카드 조건 계산 ───────────────────── */
   const mergeRecommendation = (() => {
@@ -292,71 +333,69 @@ export default function StoragePage() {
           <EmptyState />
         ) : (
           <>
-            {/* ── 전체 요약 카드 ───────────────────── */}
-            <div className="bg-brand-600 rounded-2xl p-4 text-white">
-              <p className="text-xs font-semibold text-brand-200 mb-3">전체 요약</p>
-              {/* 1행: 물품·상태 */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <SummaryCell label="이용 중" value={`${active.length}개`} />
-                <SummaryCell label="총 물품" value={`${items.length}개`} />
-                <SummaryCell
+            {/* ── 이번 달 요약 ─────────────────────── */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-4">
+              <p className="text-xs font-bold text-gray-500 mb-3">이번 달 요약</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                <SummaryTile
+                  icon={
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <rect x="3" y="3" width="7" height="7" rx="1.5" fill="#10B981" />
+                      <rect x="14" y="3" width="7" height="7" rx="1.5" fill="#10B981" opacity="0.45" />
+                      <rect x="3" y="14" width="7" height="7" rx="1.5" fill="#10B981" opacity="0.45" />
+                    </svg>
+                  }
+                  label="사용 중인 블록"
+                  value={`${active.length}개`}
+                  color="green"
+                />
+                <SummaryTile
+                  icon={<Package size={18} className="text-blue-500" />}
+                  label="보관 물품"
+                  value={`${items.length}개`}
+                  color="blue"
+                />
+                <SummaryTile
+                  icon={
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  }
                   label="출고 가능"
                   value={shippableCount > 0 ? `${shippableCount}개` : "-"}
-                  accent={shippableCount > 0 ? "text-green-300" : undefined}
+                  color="orange"
                 />
-              </div>
-              {/* 구분선 */}
-              <div className="border-t border-brand-500/50 mb-3" />
-              {/* 2행: 요금·결제 */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <SummaryCell
-                  label="주간 요금"
-                  value={locationSummary?.total_weekly_fee
-                    ? `${locationSummary.total_weekly_fee.toLocaleString()}원`
-                    : totalMonthly > 0 ? `${totalMonthly.toLocaleString()}원` : "-"}
-                />
-                <SummaryCell
-                  label="월 요금"
+                <SummaryTile
+                  icon={
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2">
+                      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" />
+                    </svg>
+                  }
+                  label="월 보관료"
                   value={totalMonthlyFee > 0 ? `${totalMonthlyFee.toLocaleString()}원` : "-"}
-                />
-                <SummaryCell
-                  label="다음 결제일"
-                  value={nextBilling
-                    ? new Date(nextBilling).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })
-                    : "-"}
+                  color="purple"
                 />
               </div>
-              {/* 3행: 용량 바 */}
               {active.length > 0 && (
-                <>
-                  <div className="border-t border-brand-500/50 mb-3" />
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] text-brand-200">평균 용량 사용률</span>
-                      <span className={`text-[11px] font-bold ${avgUsage >= 90 ? "text-red-300" : avgUsage >= 70 ? "text-orange-300" : "text-brand-200"}`}>
-                        {avgUsage}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-brand-700/60 rounded-full h-1.5">
+                <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-2">
+                  <span className="text-[10px] text-gray-400">평균 공간 사용률</span>
+                  <div className="flex gap-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
                       <div
-                        className={`h-1.5 rounded-full transition-all ${avgUsage >= 90 ? "bg-red-400" : avgUsage >= 70 ? "bg-orange-400" : "bg-brand-300"}`}
-                        style={{ width: `${Math.min(avgUsage, 100)}%` }}
+                        key={i}
+                        className="w-3 h-3 rounded-full transition-colors"
+                        style={{
+                          background: i < Math.round(avgUsage / 20)
+                            ? avgUsage >= 90 ? "#EF4444" : avgUsage >= 70 ? "#F97316" : "#10B981"
+                            : "#E5E7EB",
+                        }}
                       />
-                    </div>
-                    {active.length > 1 && (
-                      <div className="flex gap-1.5 flex-wrap mt-1">
-                        {active.map((s) => (
-                          <span key={s.id} className="text-[9px] text-brand-300 flex items-center gap-0.5">
-                            <span>{s.storage_name}</span>
-                            <span className={`font-bold ${(s.usage_percent ?? 0) >= 90 ? "text-red-300" : "text-brand-200"}`}>
-                              {Math.round(s.usage_percent ?? 0)}%
-                            </span>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    ))}
                   </div>
-                </>
+                  <span className={`text-[11px] font-bold ml-0.5 ${avgUsage >= 90 ? "text-red-500" : avgUsage >= 70 ? "text-orange-500" : "text-gray-600"}`}>
+                    {avgUsage}%
+                  </span>
+                </div>
               )}
             </div>
 
@@ -448,13 +487,12 @@ export default function StoragePage() {
                           ) : (
                             <Link
                               href="/storage/new"
-                              className="flex flex-col items-center justify-center gap-3 h-full rounded-3xl border-2 border-dashed border-white/20 hover:border-white/40 transition-colors"
-                              style={{ background: "linear-gradient(160deg,#1c1c2e 0%,#12122a 100%)" }}
+                              className="flex flex-col items-center justify-center gap-3 h-full rounded-2xl border-2 border-dashed border-gray-200 hover:border-brand-300 bg-white/70 transition-colors"
                             >
-                              <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                                <Plus size={18} className="text-white/50" />
+                              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
+                                <Plus size={18} className="text-gray-400" />
                               </div>
-                              <p className="text-[12px] font-semibold text-white/40">블록 추가</p>
+                              <p className="text-[12px] font-semibold text-gray-400">블록 추가</p>
                             </Link>
                           )}
                         </div>
@@ -470,83 +508,52 @@ export default function StoragePage() {
             {/* ── 블록 통합 추천 카드 ─────────────────── */}
             {mergeRecommendation && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center mt-0.5">
-                    <Archive size={15} className="text-amber-600" />
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center">
+                    <Archive size={16} className="text-amber-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-amber-900">블록 통합하면 월 절약 가능</p>
-                    <p className="text-xs text-amber-700 mt-0.5 leading-relaxed">
-                      현재 {active.length}개 블록({mergeRecommendation.currentTotalMonthly.toLocaleString()}원/월)을{" "}
-                      {mergeRecommendation.typeName} 1개로 합치면{" "}
-                      <span className="font-bold text-amber-900">{mergeRecommendation.mergedMonthly.toLocaleString()}원/월</span>로 줄어들어요.
+                    <p className="text-sm font-bold text-amber-900">보관료를 줄일 수 있어요</p>
+                    <p className="text-xs text-amber-700 mt-0.5 leading-snug">
+                      현재 {active.length}개 블록을 {mergeRecommendation.typeName} 1개로 합치면{" "}
+                      <span className="font-bold">월 {mergeRecommendation.saving.toLocaleString()}원</span> 절약돼요.
                     </p>
-                    <div className="mt-2 flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-xs font-bold px-2.5 py-1 rounded-full">
-                        월 {mergeRecommendation.saving.toLocaleString()}원 절약
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setMergeSheet(true)}
-                        className="text-xs font-bold text-amber-700 hover:text-amber-900 transition-colors flex items-center gap-1"
-                      >
-                        통합 신청
-                        <ChevronRight size={13} />
-                      </button>
-                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => setMergeSheet(true)}
+                    className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                  >
+                    블록 합치기
+                  </button>
                 </div>
               </div>
             )}
 
-            {/* ── 물품 목록 ────────────────────────── */}
+            {/* ── 보관 물품 ────────────────────────── */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-              {/* 헤더 — 클릭으로 아코디언 토글 */}
-              <button
-                type="button"
-                onClick={() => setItemListOpen((o) => !o)}
-                className="w-full px-4 py-3 flex items-center justify-between text-left"
-              >
+              {/* 헤더 */}
+              <div className="px-4 py-3 flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-bold text-gray-900">물품 목록</p>
+                  <p className="text-sm font-bold text-gray-900">보관 물품</p>
                   <p className="text-xs text-gray-400 mt-0.5">
                     전체 {items.length}개
-                    {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable === true).length > 0 && (
-                      <span className="ml-2 text-green-600 font-semibold">
-                        출고 가능 {items.filter((it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable === true).length}개
-                      </span>
+                    {shippableCount > 0 && (
+                      <span className="ml-2 text-green-600 font-semibold">출고 가능 {shippableCount}개</span>
                     )}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  {itemListOpen && (
-                    <select
-                      value={pageSize}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                      className="text-xs text-gray-500 border border-gray-200 rounded-lg px-2 py-1 outline-none bg-white"
-                    >
-                      <option value={10}>10개</option>
-                      <option value={30}>30개</option>
-                      <option value={50}>50개</option>
-                      <option value={0}>전체</option>
-                    </select>
-                  )}
-                  <ChevronRight
-                    size={16}
-                    className={`text-gray-400 transition-transform duration-200 ${itemListOpen ? "rotate-90" : ""}`}
-                  />
-                </div>
-              </button>
+                <button className="p-2 rounded-full hover:bg-gray-100 transition-colors">
+                  <Search size={15} className="text-gray-400" />
+                </button>
+              </div>
 
-              {itemListOpen && (
-                <>
               {/* 필터 탭 */}
               <div className="flex overflow-x-auto border-b border-gray-50 px-2 gap-0.5">
                 {filterTabs.map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => { setItemFilter(tab); setPage(1); }}
+                    onClick={() => { setItemFilter(tab); setPageSize(6); }}
                     className={`shrink-0 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                       itemFilter === tab
                         ? "border-brand-600 text-brand-600"
@@ -558,7 +565,7 @@ export default function StoragePage() {
                 ))}
               </div>
 
-              {/* 물품 행 */}
+              {/* 그리드 */}
               {filteredItems.length === 0 ? (
                 <div className="py-10 flex flex-col items-center gap-2">
                   <Package size={24} className="text-gray-200" />
@@ -566,7 +573,7 @@ export default function StoragePage() {
                 </div>
               ) : (
                 <>
-                  <div className="divide-y divide-gray-50">
+                  <div className="grid grid-cols-3 gap-2 p-3">
                     {pagedItems.map((item) => {
                       const storageName =
                         active.find((s) => s.id === item.storage_id)?.storage_name ?? "-";
@@ -575,14 +582,13 @@ export default function StoragePage() {
                           ? { label: "출고 가능", color: "bg-green-100 text-green-700" }
                           : (PARCEL_STATUS_DISPLAY[item.parcel_status] ?? { label: "보관 중", color: "bg-gray-100 text-gray-500" });
                       return (
-                        <div key={item.id} className="px-4 py-3 flex items-center gap-3">
-                          {/* 썸네일 */}
-                          <div className="shrink-0">
+                        <div key={item.id} className="flex flex-col">
+                          <div className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 mb-1.5">
                             {item.photo_url ? (
                               <img
                                 src={item.photo_url}
                                 alt={item.name}
-                                className="w-10 h-10 rounded-xl object-cover cursor-pointer"
+                                className="w-full h-full object-cover cursor-pointer"
                                 onMouseEnter={(e) => {
                                   const rect = (e.target as HTMLElement).getBoundingClientRect();
                                   setHoverPhoto({ url: item.photo_url!, x: rect.left, y: rect.top });
@@ -590,55 +596,37 @@ export default function StoragePage() {
                                 onMouseLeave={() => setHoverPhoto(null)}
                               />
                             ) : (
-                              <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-                                <Package size={16} className="text-gray-400" />
+                              <div className="w-full h-full flex items-center justify-center">
+                                <Package size={20} className="text-gray-300" />
                               </div>
                             )}
+                            <span className={`absolute top-1 right-1 text-[8px] font-bold px-1.5 py-0.5 rounded-full ${statusCfg.color}`}>
+                              {statusCfg.label}
+                            </span>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">
-                              {item.name}
-                              {item.quantity > 1 && (
-                                <span className="ml-1.5 text-xs text-gray-400 font-normal">{item.quantity}개</span>
-                              )}
-                            </p>
-                            <p className="text-[11px] text-gray-400 mt-0.5">{storageName}</p>
-                          </div>
-                          <span className={`text-[10px] font-semibold px-2 py-1 rounded-full shrink-0 ${statusCfg.color}`}>
-                            {statusCfg.label}
-                          </span>
+                          <p className="text-xs font-medium text-gray-800 truncate leading-tight">
+                            {item.name}
+                            {item.quantity > 1 && (
+                              <span className="ml-1 text-[10px] text-gray-400">{item.quantity}개</span>
+                            )}
+                          </p>
+                          <p className="text-[10px] text-gray-400 mt-0.5 truncate">{storageName}</p>
                         </div>
                       );
                     })}
                   </div>
 
-                  {/* 페이지네이션 */}
-                  {totalPages > 1 && (
-                    <div className="px-4 py-3 flex items-center justify-between border-t border-gray-50">
-                      <button
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg disabled:opacity-30"
-                      >
-                        이전
-                      </button>
-                      <span className="text-xs text-gray-400">
-                        {page} / {totalPages}
-                        <span className="ml-1 text-gray-300">({filteredItems.length}개)</span>
-                      </span>
-                      <button
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-500 border border-gray-200 rounded-lg disabled:opacity-30"
-                      >
-                        다음
-                      </button>
-                    </div>
+                  {/* 더 많은 물품 보기 */}
+                  {pageSize > 0 && filteredItems.length > pageSize && (
+                    <button
+                      onClick={() => setPageSize((p) => p + 6)}
+                      className="w-full py-3.5 text-xs font-semibold text-gray-500 border-t border-gray-50 hover:bg-gray-50 transition-colors"
+                    >
+                      더 많은 물품 보기
+                    </button>
                   )}
                 </>
               )}
-            </>
-          )}
             </div>
           </>
         )}
@@ -717,29 +705,18 @@ export default function StoragePage() {
   );
 }
 
-/* ─── 요약 셀 ──────────────────────────────────── */
-function SummaryCell({ label, value, accent }: { label: string; value: string; accent?: string }) {
-  return (
-    <div className="text-center">
-      <p className="text-[10px] text-brand-200 mb-1">{label}</p>
-      <p className={`text-sm font-bold ${accent ?? ""}`}>{value}</p>
-    </div>
-  );
-}
-
 /* ─── 카드 테마 타입 ────────────────────────── */
 type CardTheme = { bg: string; accent: string };
 
-/* ─── 스토리지 카드 (로열티 카드 스타일) ─────── */
+/* ─── 스토리지 카드 (밝은 블록 카드 스타일) ── */
 function StorageCard({
   storage: s,
   itemCount,
   locationSummary,
   storageItems,
-  theme,
   onDetail,
   onRelease,
-  onCapacity,
+  onCapacity: _onCapacity,
   onRename,
 }: {
   storage: Storage;
@@ -752,24 +729,12 @@ function StorageCard({
   onCapacity: () => void;
   onRename: () => void;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [zoom, setZoom] = useState(1);
-
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(entries => {
-      const w = entries[0].contentRect.width;
-      setZoom(Math.min(1, w / 295));
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
   const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
-  const planName    = locationSummary?.dominant_type?.name ?? s.storage_types?.name ?? s.plan_type ?? "-";
   const usagePct    = Math.round(s.usage_percent ?? 0);
+  const typeCode    = s.storage_types?.code ?? "DEFAULT";
+  const typeName    = s.storage_types?.name ?? s.plan_type ?? "-";
 
   const mainFee = isShortTerm
     ? (freeInfo?.inFreePeriod ? 0 : weeklyFee)
@@ -782,128 +747,112 @@ function StorageCard({
     : "/월";
   const freeBadge = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
 
+  const shippableItems = storageItems.filter(
+    it => it.storage_id === s.id && (it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable)
+  ).length;
+
+  const blockColors = BLOCK_TYPE_COLORS[typeCode] ?? BLOCK_TYPE_COLORS.DEFAULT;
+
   return (
     <div
-      ref={cardRef}
-      className="rounded-xl overflow-hidden relative select-none h-full"
-      style={{
-        background: theme.bg,
-        boxShadow: `0 4px 16px rgba(0,0,0,0.28), 0 0 0 1px rgba(255,255,255,0.06)`,
-      }}
+      className="rounded-2xl overflow-hidden relative select-none h-full bg-white border border-gray-100"
+      style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" }}
     >
-      {/* zoom 래퍼 — 카드 너비 기준으로 전체 콘텐츠 비율 유지 */}
-      <div style={{ zoom, transformOrigin: "top left" }}>
-      {/* 배경 텍스처 */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: "repeating-linear-gradient(60deg,transparent,transparent 44px,rgba(255,255,255,0.012) 44px,rgba(255,255,255,0.012) 88px)",
-        }}
-      />
-
-      {/* ── 상단: 아이콘 + 스토리지명 + 티어 뱃지 ── */}
-      <div className="relative px-3 pt-2 flex items-start justify-between">
-          <div className="flex items-center gap-1.5">
-          <div
-            className="w-6 h-6 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: `${theme.accent}18`, border: `1.5px solid ${theme.accent}40` }}
+      <div className="flex flex-col items-center px-3 pt-3 pb-2 h-full">
+        {/* 이름 + 수정 버튼 */}
+        <div className="w-full flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1 min-w-0">
+            <p className="text-[11px] font-bold text-gray-800 truncate">{s.storage_name}</p>
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onRename(); }}
+              className="shrink-0 p-0.5 opacity-40 hover:opacity-80 transition-opacity"
+            >
+              <svg width="9" height="9" fill="none" stroke={blockColors.right} strokeWidth="2" viewBox="0 0 24 24">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+            </button>
+          </div>
+          <span
+            className="text-[8px] font-bold px-1.5 py-0.5 rounded-full shrink-0"
+            style={{ background: `${blockColors.right}18`, color: blockColors.right, border: `1px solid ${blockColors.right}30` }}
           >
-            <Package size={10} style={{ color: theme.accent }} />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-1 mt-0.5">
-              <p className="text-[12px] font-bold text-white leading-tight truncate">{s.storage_name}</p>
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); onRename(); }}
-                className="shrink-0 p-0.5 rounded-md opacity-40 hover:opacity-80 transition-opacity"
-                style={{ color: theme.accent }}
-              >
-                <svg width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                </svg>
-              </button>
-              {/* 팔레트 버튼 제거 — 이름 변경 팝업에서 색상 선택 가능 */}
-            </div>
-          </div>
+            {isShortTerm ? "단기" : "장기"}
+          </span>
         </div>
-        <div
-          className="px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wide shrink-0"
-          style={{ background: `${theme.accent}18`, color: theme.accent, border: `1px solid ${theme.accent}35`, fontSize: "8px" }}
-        >
-          {isShortTerm ? "단기" : "장기"} · {planName}
-        </div>
-      </div>
 
-      {/* ── 중단: 요금 + 물품 수 ── */}
-      <div className="relative px-3 mt-1.5 flex items-end justify-between">
-        <div>
-          <p className="text-[9px] text-white/30 mb-0.5">{isShortTerm ? "주 요금" : "월 요금"}</p>
-          <p className="text-[22px] font-black leading-none tracking-tight" style={{ color: theme.accent }}>
-            {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
-          </p>
+        {/* 블록 아이콘 */}
+        <div className="my-1">
+          <BlockIcon typeCode={typeCode} size={52} />
+        </div>
+
+        {/* 타입명 + 용량 */}
+        <p className="text-[10px] text-gray-400 mb-0.5">{typeName}{s.storage_types?.volume_liter ? ` · ${s.storage_types.volume_liter}L` : ""}</p>
+
+        {/* 요금 */}
+        <p className="text-[18px] font-black text-gray-900 leading-none">
+          {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
           {mainUnit && mainFeeLabel !== "FREE" && (
-            <p className="text-[9px] text-white/30 mt-0.5">{mainUnit}</p>
+            <span className="text-[10px] font-normal text-gray-400 ml-0.5">{mainUnit}</span>
           )}
-        </div>
-        <div className="text-right">
-          <p className="text-[9px] text-white/30 mb-0.5">보관 물품</p>
-          <p className="text-[22px] font-black leading-none text-white">{itemCount}</p>
-          <p className="text-[9px] text-white/30 mt-0.5">개</p>
-        </div>
-      </div>
+        </p>
 
-      {/* ── 눈금 게이지 ── */}
-      <div className="relative px-3 mt-1.5 flex items-center gap-2">
-        <div className="flex gap-[2px] flex-1">
-          {Array.from({ length: 20 }).map((_, i) => {
-            const filled = i < Math.round(usagePct / 5);
-            return (
-              <div
-                key={i}
-                className="flex-1 rounded-[2px]"
-                style={{
-                  height: 7,
-                  background: filled ? theme.accent : "rgba(255,255,255,0.12)",
-                  transition: "background 0.3s",
-                }}
-              />
-            );
-          })}
+        {/* 사용률 도트 */}
+        <div className="flex gap-1 mt-2 mb-1.5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="w-2.5 h-2.5 rounded-full transition-colors"
+              style={{
+                background: i < Math.ceil(usagePct / 20)
+                  ? freeBadge ? blockColors.right : usagePct >= 90 ? "#EF4444" : usagePct >= 70 ? "#F97316" : blockColors.right
+                  : "#E5E7EB",
+              }}
+            />
+          ))}
         </div>
-        <span className="shrink-0 font-bold" style={{ color: theme.accent, fontSize: "9px" }}>
-          {freeBadge ?? `${usagePct}%`}
-        </span>
-      </div>
+        <p className="text-[9px] text-gray-400">{freeBadge ?? `사용 ${usagePct}%`}</p>
 
-      {/* ── 하단 버튼 ── */}
-      <div className="relative px-2 mt-1.5 grid grid-cols-2 gap-1">
-        <button
-          type="button"
-          className="py-1.5 rounded-xl font-bold text-white transition-colors"
-          style={{ background: `linear-gradient(90deg,${theme.accent}cc,${theme.accent}99)`, fontSize: "11px" }}
-          onClick={e => {
-            e.stopPropagation();
-            const parcelIds = [...new Set(
-              storageItems.filter(it => it.storage_id === s.id && it.parcel_id).map(it => it.parcel_id)
-            )];
-            if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
-            onRelease(parcelIds as string[]);
-          }}
-        >
-          출고 요청
-        </button>
-        <button
-          type="button"
-          className="py-1.5 rounded-xl font-bold transition-colors"
-          style={{ background: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.75)", border: "1px solid rgba(255,255,255,0.15)", fontSize: "11px" }}
-          onClick={e => { e.stopPropagation(); onDetail(); }}
-        >
-          상세 보기
-        </button>
+        {/* 물품 수 */}
+        <div className="w-full grid grid-cols-2 gap-1 mt-2 text-center">
+          <div>
+            <p className="text-[9px] text-gray-400">보관 물품</p>
+            <p className="text-[13px] font-black text-gray-700">{itemCount}개</p>
+          </div>
+          <div>
+            <p className="text-[9px] text-gray-400">출고 가능</p>
+            <p className="text-[13px] font-black text-green-600">{shippableItems}개</p>
+          </div>
+        </div>
+
+        {/* 버튼 */}
+        <div className="w-full grid grid-cols-2 gap-1.5 mt-2">
+          <button
+            type="button"
+            className="py-1.5 rounded-xl text-white font-bold transition-colors"
+            style={{ background: blockColors.right, fontSize: "11px" }}
+            onClick={e => {
+              e.stopPropagation();
+              const parcelIds = [...new Set(
+                storageItems.filter(it => it.storage_id === s.id && it.parcel_id).map(it => it.parcel_id)
+              )];
+              if (parcelIds.length === 0) { alert("출고 가능한 물품이 없습니다."); return; }
+              onRelease(parcelIds as string[]);
+            }}
+          >
+            출고하기
+          </button>
+          <button
+            type="button"
+            className="py-1.5 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+            style={{ fontSize: "11px" }}
+            onClick={e => { e.stopPropagation(); onDetail(); }}
+          >
+            상세보기
+          </button>
+        </div>
       </div>
-      </div>{/* /zoom wrapper */}
     </div>
   );
 }
