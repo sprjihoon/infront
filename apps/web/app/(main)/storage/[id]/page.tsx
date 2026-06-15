@@ -1112,8 +1112,6 @@ function ConvertToLongTermSheet({
   onClose: () => void;
   onDone?: () => void;
 }) {
-  onClose: () => void;
-}) {
   const [plans, setPlans] = useState<PlanOption[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [note, setNote] = useState("");
