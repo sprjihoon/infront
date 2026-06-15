@@ -1052,12 +1052,7 @@ function CapacityChangeSheet({
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
           <div>
             <p className="text-base font-bold text-gray-900">용량 변경</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              현재: {resolvedTypeName ?? "-"} · {currentVolume}L
-              {usedVolume > 0 && (
-                <span className="ml-1">· 사용 {usedVolume}L ({Math.round((usedVolume / currentVolume) * 100)}%)</span>
-              )}
-            </p>
+            <p className="text-xs text-gray-400 mt-0.5">사용 중인 블록 변경 — 즉시 적용</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
             <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -1084,6 +1079,25 @@ function CapacityChangeSheet({
         ) : (
           <>
             <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
+
+              {/* 현재 사용 중 블록 표시 */}
+              {!loading && resolvedTypeName && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl border-2 border-brand-200 bg-brand-50 mb-1">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-xs bg-brand-600 text-white">
+                    {resolvedTypeName.slice(0, 2)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-brand-700">{resolvedTypeName}</p>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-200 text-brand-800">현재 사용 중</span>
+                    </div>
+                    <p className="text-xs text-brand-500 mt-0.5">
+                      {currentVolume}L
+                      {usedVolume > 0 && ` · 사용 ${usedVolume}L (${Math.round((usedVolume / currentVolume) * 100)}%)`}
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* 최대 사이즈 안내 (업그레이드 없음, 다운그레이드만 남음) */}
               {isAlreadyMax && (
