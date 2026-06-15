@@ -1523,10 +1523,12 @@ function MergeSlotSheet({
                           isTarget ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white hover:border-gray-300"
                         }`}
                       >
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          isTarget ? "bg-brand-600 text-white" : "bg-gray-100 text-gray-500"
-                        }`}>
-                          <Archive size={15} />
+                        <div className="w-10 h-10 flex items-center justify-center shrink-0">
+                          <BrickSVG
+                            color={isTarget ? "#6366f1" : "#9ca3af"}
+                            typeCode={s.storage_types?.code ?? "DEFAULT"}
+                            size={40}
+                          />
                         </div>
                         <SlotRow s={s} isTarget={isTarget} />
                         {isTarget && <Check size={15} className="text-brand-600 shrink-0" />}
@@ -1560,6 +1562,13 @@ function MergeSlotSheet({
                             isSel ? "bg-orange-500 border-orange-500" : "border-gray-300"
                           }`}>
                             {isSel && <Check size={13} className="text-white" strokeWidth={3} />}
+                          </div>
+                          <div className="w-9 h-9 flex items-center justify-center shrink-0">
+                            <BrickSVG
+                              color={isSel ? "#f97316" : "#9ca3af"}
+                              typeCode={s.storage_types?.code ?? "DEFAULT"}
+                              size={36}
+                            />
                           </div>
                           <SlotRow s={s} />
                         </button>
