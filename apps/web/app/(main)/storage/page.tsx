@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { CARD_THEME_MAP, CARD_THEME_KEYS } from "./constants";
+import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG } from "./BlockSVGs";
 
 /* ─── 타입 ──────────────────────────────────────── */
 interface PlanConfig {
@@ -100,11 +101,6 @@ function ProgressBar({ percent }: { percent: number }) {
   );
 }
 
-/* ─── 블록 타입별 스터드 수 ──────────────────────── */
-const STUD_COUNTS: Record<string, number> = {
-  MINI: 2, STANDARD: 4, LONG: 6, XL: 8, OVERSIZE: 10, DEFAULT: 4,
-};
-
 function shadeColor(hex: string, factor: number): string {
   const h = hex.replace("#", "").padEnd(6, "0");
   const r = parseInt(h.slice(0, 2), 16);
@@ -118,29 +114,21 @@ function shadeColor(hex: string, factor: number): string {
   return `#${clamp(r*factor).toString(16).padStart(2,"0")}${clamp(g*factor).toString(16).padStart(2,"0")}${clamp(b*factor).toString(16).padStart(2,"0")}`;
 }
 
-function BrickSVG({ color, typeCode, size = 80 }: { color: string; typeCode: string; size?: number }) {
-  const studs = STUD_COUNTS[typeCode] ?? 4;
-  const light = shadeColor(color, 1.55);
-  const dark  = shadeColor(color, 0.48);
-  const bx = 6, by = 28, bw = 68, bh = 28;
-  const spacing = bw / studs;
-  const sr = Math.min(spacing * 0.38, 7.5);
-  const studH = 13;
-  const studCx = Array.from({ length: studs }, (_, i) => bx + spacing * (i + 0.5));
-  return (
-    <svg width={size} height={size} viewBox="0 0 80 60" fill="none">
-      {studCx.map((cx, i) => (
-        <rect key={`ss-${i}`} x={cx - sr} y={by - studH} width={sr * 2} height={studH + 3} rx="2" fill={dark} />
-      ))}
-      <rect x={bx} y={by} width={bw} height={bh} rx="5" fill={color} />
-      <rect x={bx} y={by + bh - 7} width={bw} height={7} rx="5" fill="rgba(0,0,0,0.18)" />
-      <rect x={bx + bw - 6} y={by} width={6} height={bh} rx="5" fill="rgba(0,0,0,0.12)" />
-      <rect x={bx} y={by} width={bw} height={5} rx="5" fill="rgba(255,255,255,0.22)" />
-      {studCx.map((cx, i) => (
-        <ellipse key={`st-${i}`} cx={cx} cy={by - studH} rx={sr} ry={sr * 0.44} fill={light} />
-      ))}
-    </svg>
-  );
+const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: string; light: string; size?: number }>> = {
+  MINI:     Block1SVG,
+  STANDARD: Block2SVG,
+  LONG:     Block3SVG,
+  XL:       Block4SVG,
+  OVERSIZE: Block5SVG,
+  DEFAULT:  Block2SVG,
+};
+
+function BrickSVG({ color, typeCode, size = 90 }: { color: string; typeCode: string; size?: number }) {
+  const medium = color;
+  const light  = shadeColor(color, 1.6);
+  const dark   = shadeColor(color, 0.45);
+  const Comp   = BLOCK_SVG_MAP[typeCode] ?? Block2SVG;
+  return <Comp dark={dark} medium={medium} light={light} size={size} />;
 }
 
 function SummaryTile({
