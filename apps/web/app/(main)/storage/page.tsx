@@ -819,7 +819,7 @@ function StorageCard({
         </div>
 
         {/* 하단: 버튼 */}
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5 mt-auto">
           <button
             type="button"
             className="py-1.5 rounded-xl text-white font-bold text-[11px] transition-colors"
