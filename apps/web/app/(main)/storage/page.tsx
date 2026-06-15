@@ -1441,9 +1441,9 @@ function MergeSlotSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full sm:max-w-[480px] bg-white rounded-t-3xl sm:rounded-3xl max-h-[88vh] flex flex-col shadow-2xl">
+      <div className="relative w-full max-w-[480px] bg-white rounded-3xl max-h-[88vh] flex flex-col shadow-2xl">
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
           <div>
             <p className="text-base font-bold text-gray-900">블록 합치기</p>
