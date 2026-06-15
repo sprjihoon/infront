@@ -1114,6 +1114,55 @@ Next.js ����
 - `054_storage_merge_slots.sql`: `source_storage_ids UUID[]` 컬럼 + `MERGE_SLOTS` 타입
 ---
 
+### 2026-06-12 ~ 2026-06-15 스토리지 고도화 + UI 정비
+
+**DB 마이그레이션**
+- `055_capacity_score_numeric.sql`: `capacity_score` / `used_score` 컬럼 INTEGER → NUMERIC(8,2) 변경
+  - `volume_liter`가 40.5(STANDARD) 등 소수점 값이어서 발생하던 `invalid input syntax for type integer` 오류 수정
+  - `usage_percent` generated column + `trg_update_storage_max_plan` 트리거 재생성
+- `056_customer_storages_storage_type_id.sql`: `customer_storages`에 `storage_type_id UUID REFERENCES storage_types(id)` 컬럼 추가
+  - `plan_type`(청구 플랜 S/M/L/XL FK) ≠ 물리 박스 타입(MINI/STANDARD/LONG...) 분리
+  - `CAPACITY_CHANGE` / `force-plan` 에서 `plan_type`에 storage_types.code를 넣던 FK 위반 수정
+- `057_storage_type_names.sql`: 스토리지 타입 명칭 변경
+  - MINI → 파인트블록 / STANDARD → 싱글블록 / LONG → 더블블록 / XL → 패밀리블록 / OVERSIZE → 하프블록
+
+**스토리지 용량 변경 로직 개선**
+- 다운그레이드 허용: `used_score <= newVolume`이면 더 작은 용량으로 변경 가능
+  - 초과 시 "XXL 비워야 합니다" 에러 반환 (422)
+  - 기존: 업그레이드 전용 → 변경: 사용량 기반 다운그레이드 허용
+- `CapacityChangeSheet` UI 전면 개편
+  - 현재 사용 중 블록 상단 카드 표시 ("현재 사용 중" 배지 + 사용량 %)
+  - 업그레이드 / 다운그레이드 섹션 분리
+  - 다운그레이드 옵션별 가/불가 실시간 표시 (초록/빨강 인디케이터)
+  - 단기보관(`short_term`) 슬롯은 주단위 요금, 장기보관은 월단위 요금 표시
+  - 타입 아이콘: 영문 코드 앞 2자 → 한글 명칭 앞 2자로 변경
+
+**로케이션 이동 페이지 작업지시서 패널 추가** (`/transfer`)
+- 레이아웃: `max-w-md` 단일 컬럼 → `max-w-5xl` 2열 (`xl:grid-cols-[1fr_400px]`)
+- 좌측 `WorkOrderPanel`: PENDING `storage_change_requests` 자동 로딩
+  - 요청 타입별 색상 구분 (용량변경/슬롯추가/합치기/물품이동/장기전환)
+  - DB자동적용 타입에 "DB자동적용" 뱃지 표시
+  - "작업완료" 버튼 → APPROVED 처리 후 목록 갱신
+- 우측: 기존 바코드 스캐너 (기능 그대로)
+- `change-requests` API GET에 `target_storage_id` 필드 추가
+
+**스토리지 페이지 실시간 상태 유지**
+- 변경 완료 후 `onDone()` 콜백으로 조용한 재로드 (`load(true)`)
+- `visibilitychange` 이벤트: 탭 복귀 시 자동 새로고침
+- 적용 시트: `CapacityChangeSheet`, `MergeSlotSheet`, `ConvertToLongTermSheet`, `TransferToSlotSheet`
+- 기존 `window.location.reload()` 제거
+
+**API 수정**
+- `change-request/route.ts`: `plan_type` 대신 `storage_type_id` 업데이트
+- `force-plan/route.ts`: 동일
+- `storage/route.ts` GET: `storage_types` join 추가 (`storage_type_id` FK 기반)
+
+**UI 정비**
+- 프로필 수정 팝업: 바텀시트 → 화면 중앙 모달 (`rounded-3xl`, 다른 팝업과 동일 스타일)
+- 스토리지 명칭 `TYPE_SIZE_KO` 매핑 업데이트 (파인트블록/싱글블록/더블블록/패밀리블록/하프블록)
+
+---
+
 ## ?? 라이선스
 
 Private ? ���� ���� �� ���� ����
