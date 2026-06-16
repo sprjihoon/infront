@@ -513,8 +513,8 @@ export default function StoragePage() {
               );
             })()}
 
-            {/* ── 블록 통합 추천 카드 ─────────────────── */}
-            {mergeRecommendation && (
+            {/* ── 블록 통합 배너 (블록 2개 이상이면 항상 표시) ─── */}
+            {active.length >= 2 && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0 relative w-10 h-10">
@@ -528,8 +528,9 @@ export default function StoragePage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-amber-900">보관료를 줄일 수 있어요</p>
                     <p className="text-xs text-amber-700 mt-0.5 leading-snug">
-                      현재 {active.length}개 블록을 {mergeRecommendation.typeName} 1개로 합치면{" "}
-                      <span className="font-bold">월 {mergeRecommendation.saving.toLocaleString()}원</span> 절약돼요.
+                      {mergeRecommendation
+                        ? <>현재 {active.length}개 블록을 {mergeRecommendation.typeName} 1개로 합치면{" "}<span className="font-bold">월 {mergeRecommendation.saving.toLocaleString()}원</span> 절약돼요.</>
+                        : "여러 블록을 하나로 합치면 보관료와 관리를 줄일 수 있어요."}
                     </p>
                   </div>
                   <button
