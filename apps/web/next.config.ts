@@ -35,6 +35,14 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // KG이니시스 returnUrl — 타 도메인 iframe 내에서 로드되므로 X-Frame-Options 해제
+        source: "/api/inicis/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "" },
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
+        ],
+      },
+      {
         // 우편번호 검색 페이지 — Daum CDN 스크립트 허용
         source: "/postcode.html",
         headers: [
