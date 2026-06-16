@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { isParcelShippable } from "@/lib/parcel-shippable";
+import { CARD_THEME_MAP } from "@/app/(main)/storage/constants";
 import OverseasAddressPicker, { OverseasAddressValue } from "@/components/ui/OverseasAddressPicker";
 import { useFlowMode } from "@/lib/flow-mode";
 import { parcelIdsInActiveOrders } from "@/lib/order-reservation";
@@ -51,6 +52,8 @@ interface Parcel {
   notes: string | null;
   pre_invoice_items: PreInvoiceItem[] | null;
   is_shippable?: boolean | null;
+  customer_storage_id?: string | null;
+  customer_storages?: { storage_name: string | null; card_color: string | null } | null;
 }
 
 // 아이템 선택 단위 (parcel 내 개별 내품)
@@ -242,7 +245,7 @@ function ShippingRequestContent() {
       const [{ data: parcelData }, { data: addrData }, { data: reservedLinks }] = await Promise.all([
         supabase
           .from("parcels")
-          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable")
+          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable, customer_storage_id, customer_storages(storage_name, card_color)")
           .eq("customer_id", user.id)
           .eq("is_shippable", true)
           .order("inbound_at", { ascending: false }),
@@ -687,7 +690,20 @@ function ShippingRequestContent() {
                       {p.weight_actual ? ` \u00b7 ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
                     </p>
                   </div>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                  {p.customer_storages?.storage_name && (() => {
+                    const THEME_KEYS = Object.keys(CARD_THEME_MAP);
+                    const colorKey = (p.customer_storages.card_color && CARD_THEME_MAP[p.customer_storages.card_color])
+                      ? p.customer_storages.card_color
+                      : THEME_KEYS[parseInt((p.customer_storage_id ?? "").replace(/-/g, "").slice(0, 8), 16) % THEME_KEYS.length];
+                    const accent = CARD_THEME_MAP[colorKey]?.accent ?? "#6366f1";
+                    return (
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full shrink-0 max-w-[80px] truncate">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
+                        <span className="truncate">{p.customer_storages.storage_name}</span>
+                      </span>
+                    );
+                  })()}
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0 ${
                     p.is_shippable ? "text-green-700 bg-green-50 border-green-200"
                     : p.status === "HOLD" ? "text-orange-700 bg-orange-50 border-orange-200"
                     : "text-indigo-700 bg-indigo-50 border-indigo-200"
