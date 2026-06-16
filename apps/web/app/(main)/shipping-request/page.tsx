@@ -262,23 +262,20 @@ function ShippingRequestContent() {
           .eq("orders.customer_id", user.id),
         supabase
           .from("customer_storages")
-          .select("id, storage_name, card_color")
-          .eq("user_id", user.id)
-          .in("status", ["ACTIVE", "PENDING_PAYMENT"]),
+          .select("id, storage_name, card_color, status")
+          .eq("user_id", user.id),
       ]);
       const reserved = parcelIdsInActiveOrders(reservedLinks, user.id);
-      const filtered = (parcelData ?? []).filter((p) => !reserved.has(p.id));
-      setShippableParcels(filtered);
       // 스토리지 맵 구성: id → { storage_name, card_color }
       const sMap = new Map<string, { storage_name: string; card_color: string | null }>();
       for (const s of storageData ?? []) sMap.set(s.id, { storage_name: s.storage_name, card_color: s.card_color });
-      // customer_storage_id가 없는 파셀에 단일 스토리지 자동 매핑
+      // customer_storage_id가 없는 파셀에 단일 스토리지 자동 매핑 (먼저 처리 후 setState)
+      let filtered = (parcelData ?? []).filter((p) => !reserved.has(p.id));
       if (sMap.size === 1) {
         const singleId = [...sMap.keys()][0];
-        for (const p of filtered) {
-          if (!p.customer_storage_id) p.customer_storage_id = singleId;
-        }
+        filtered = filtered.map((p) => p.customer_storage_id ? p : { ...p, customer_storage_id: singleId });
       }
+      setShippableParcels(filtered);
       setStorageMap(sMap);
       const defaultAddr = (addrData ?? []).find((a) => a.is_default) ?? addrData?.[0];
       if (defaultAddr) {
