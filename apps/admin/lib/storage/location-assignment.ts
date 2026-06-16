@@ -156,16 +156,18 @@ export async function resolvePlannedLocation(
   return { plannedLocationId, reserveNewLocation, splitLocationIds };
 }
 
+type LocationResult = { locationId: string | null; locationCode: string | null; zone: string | null; slot: string | null };
+
 /**
- * 변경 요청(작업지시서) 처리용: 요청된 타입 코드에 맞는 첫 번째 AVAILABLE 로케이션 탐색
- * - storage_type_id 직접 매칭 (typeId 우선)
- * - typeCode로 storage_types 조인 (typeId 없을 때)
+ * 변경 요청(작업지시서) 처리용: 로케이션 미리보기 (READ-ONLY, 배정 안 함)
+ * - GET 응답의 suggested_location 계산에 사용
+ * - 실제 배정은 claimLocationForType (FOR UPDATE SKIP LOCKED) 사용
  */
 export async function resolveLocationForType(
   db: SupabaseClient,
   opts: { typeId?: string | null; typeCode?: string | null },
-): Promise<{ locationId: string | null; locationCode: string | null; zone: string | null; slot: string | null }> {
-  const empty = { locationId: null, locationCode: null, zone: null, slot: null };
+): Promise<LocationResult> {
+  const empty: LocationResult = { locationId: null, locationCode: null, zone: null, slot: null };
 
   if (opts.typeId) {
     const { data } = await db
@@ -195,6 +197,39 @@ export async function resolveLocationForType(
       .maybeSingle();
     if (!data) return empty;
     return { locationId: data.id, locationCode: data.code, zone: data.zone, slot: data.slot };
+  }
+
+  return empty;
+}
+
+/**
+ * 로케이션 원자적 선점 (FOR UPDATE SKIP LOCKED — 동시 배정 충돌 방지)
+ * DB 함수 `claim_available_location` / `claim_available_location_by_code` 호출
+ */
+export async function claimLocationForType(
+  db: SupabaseClient,
+  opts: { typeId?: string | null; typeCode?: string | null; customerId: string },
+): Promise<LocationResult> {
+  const empty: LocationResult = { locationId: null, locationCode: null, zone: null, slot: null };
+
+  if (opts.typeId) {
+    const { data, error } = await db.rpc("claim_available_location", {
+      p_type_id:     opts.typeId,
+      p_customer_id: opts.customerId,
+    });
+    if (error || !data || data.length === 0) return empty;
+    const row = data[0] as { id: string; code: string; zone: string; slot: string };
+    return { locationId: row.id, locationCode: row.code, zone: row.zone, slot: row.slot };
+  }
+
+  if (opts.typeCode) {
+    const { data, error } = await db.rpc("claim_available_location_by_code", {
+      p_type_code:   opts.typeCode,
+      p_customer_id: opts.customerId,
+    });
+    if (error || !data || data.length === 0) return empty;
+    const row = data[0] as { id: string; code: string; zone: string; slot: string };
+    return { locationId: row.id, locationCode: row.code, zone: row.zone, slot: row.slot };
   }
 
   return empty;

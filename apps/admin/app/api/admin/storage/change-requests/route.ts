@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
-import { resolveLocationForType } from "@/lib/storage/location-assignment";
+import { resolveLocationForType, claimLocationForType } from "@/lib/storage/location-assignment";
 
 /**
  * GET /api/admin/storage/change-requests
@@ -169,25 +169,15 @@ export async function PATCH(req: NextRequest) {
   const AUTO_ASSIGN_TYPES = ["CAPACITY_CHANGE", "ADD_SLOT", "CONVERT_TO_LONG_TERM"];
 
   if (body.status === "APPROVED" && AUTO_ASSIGN_TYPES.includes(req_row.request_type) && req_row.user_id) {
-    const { locationId, locationCode, zone, slot } = await resolveLocationForType(adminDb, {
-      typeId:   req_row.requested_type_id,
-      typeCode: req_row.requested_type_code,
+    /* FOR UPDATE SKIP LOCKED 기반 원자적 선점 — 동시 배정 충돌 방지 */
+    const { locationId, locationCode, zone, slot } = await claimLocationForType(adminDb, {
+      typeId:     req_row.requested_type_id,
+      typeCode:   req_row.requested_type_code,
+      customerId: req_row.user_id,
     });
 
     if (locationId && locationCode) {
-      const { error: assignErr } = await adminDb
-        .from("storage_locations")
-        .update({
-          status:      "RESERVED",
-          customer_id: req_row.user_id,
-          assigned_at: new Date().toISOString(),
-        })
-        .eq("id", locationId)
-        .eq("status", "AVAILABLE"); // 동시 처리 방지
-
-      if (!assignErr) {
-        assignedLocation = { id: locationId, code: locationCode, zone: zone ?? "", slot: slot ?? "" };
-      }
+      assignedLocation = { id: locationId, code: locationCode, zone: zone ?? "", slot: slot ?? "" };
     }
   }
 
