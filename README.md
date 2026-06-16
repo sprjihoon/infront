@@ -443,6 +443,8 @@ infront/
 | `049_storage_card_color.sql` | customer_storages.card_color �÷� �߰� ? ī�� �׸� ���� ��� ���� (green\|purple\|red\|blue\|pink\|null=����) |
 | `050_storage_type_price_per_month.sql` | storage_types�� `price_per_month` �÷� �߰� ? ������ ��⺸�� ��� (NULL�̸� �ְ� ��� ǥ��, ���� �� �� ���� ǥ��) |
 | `051_oversize_price_fix.sql` | OVERSIZE Ÿ�� ��� ����ȭ ? 29,900��/�� Ȯ��, price_max NULL ó�� |
+| `058_inbound_putaway_flow.sql` | 입고 2단계: `planned_storage_location_id` + TEMP 적치, `putaway_at`, `parcel_location_events.photo_url`, `parcel_media.location_event_id` |
+| `059_putaway_photo_customer_rls.sql` | 고객 RLS: 본인 소포 `PUTAWAY_PHOTO` 조회 허용 |
 
 > �� ���� ��Ȳ: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -1065,6 +1067,35 @@ Next.js ����
 ---
 
 ## ?? 변경 이력
+
+### 2026-06-16 입고 적치 2단계 + 적치 사진 + 싱글블록 SVG 복원
+
+**입고 → 적치 분리 (Admin)**
+- 입고(`/inbound`): 최종 로케이션 즉시 배정 대신 **예정 로케이션(`planned_storage_location_id`)** 배정 + **현재 위치 TEMP(`TEMP-001`)** 적치
+- 바코드·라벨은 예정 로케이션 코드 기준, 물리 적치는 `/transfer`에서 확정
+- `apps/admin/lib/storage/`: `location-assignment`, `temp-location`, `location-move` 공통화
+- 입고 UI: TEMP·예정 로케이션 표시 + `/transfer` 링크
+
+**로케이션 이동 + 적치 사진 필수 (Admin `/transfer`)**
+- 스캔 → 목적지 → **사진 1장 필수** → 완료 4단계 플로우
+- TEMP → 비-TEMP 이동 시 `parcel_location_events.reason = INBOUND` 자동
+- `POST /api/admin/location-events/[id]/photo`: `photo_url` + `parcel_media` (`PUTAWAY_PHOTO`, 고객 노출)
+
+**고객 Web — 적치 사진 보기**
+- `/api/storage`, `/api/storage/[id]`: `putaway_photos` (+ dev `putaway_photos_mock`)
+- `/storage`, `/storage/[id]`: **보관함 사진 보기** 버튼 + `PutawayPhotoModal`
+- UI: 「카드 색상」→「**블록 색상**」
+
+**블록 SVG**
+- `Block2SVG`(STANDARD·싱글블록): Block1 별칭 제거 → **3×3 돌기** 원본 형태 복원
+
+**DB 마이그레이션 (배포 전 Supabase 적용 필수)**
+```bash
+supabase db query --linked --file apps/sql/058_inbound_putaway_flow.sql
+supabase db query --linked --file apps/sql/059_putaway_photo_customer_rls.sql
+```
+
+---
 
 ### 2026-06-11 스토리지 비즈니스 로직 구현
 

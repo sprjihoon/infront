@@ -18,6 +18,7 @@ export async function GET(
       id,
       reason,
       notes,
+      photo_url,
       created_by,
       created_at,
       from_location:from_location_id(id, code, zone, is_temp),

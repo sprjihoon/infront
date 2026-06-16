@@ -9,6 +9,9 @@ import {
   CreditCard, Loader2, TruckIcon, Camera,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { PutawayPhotoDto } from "@/lib/storage/mock-putaway-photo";
+import { isPutawayMockPhotos } from "@/lib/storage/putaway-photos";
+import PutawayPhotoModal from "../PutawayPhotoModal";
 import { CARD_THEME_MAP } from "../constants";
 import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG, CapacityChangeSVG } from "../BlockSVGs";
 
@@ -85,14 +88,7 @@ interface StorageParcel {
   parcel_media?: { storage_url: string | null; cf_thumbnail_url: string | null; stage: string; is_visible: boolean }[];
 }
 
-interface PutawayPhoto {
-  id: string;
-  storage_url: string;
-  caption: string | null;
-  created_at: string;
-  parcel_id: string;
-  tracking_no: string | null;
-}
+interface PutawayPhoto extends PutawayPhotoDto {}
 
 const PARCEL_STATUS_MAP: Record<string, { label: string; color: string }> = {
   CREATED:          { label: "입고중",   color: "bg-indigo-50 text-indigo-700" },
@@ -162,6 +158,7 @@ export default function StorageDetailPage() {
   const [showMergeSheet, setShowMergeSheet] = useState(false);
   const [showColorSheet, setShowColorSheet] = useState(false);
   const [putawayPhotos, setPutawayPhotos] = useState<PutawayPhoto[]>([]);
+  const [putawayPhotosMock, setPutawayPhotosMock] = useState(false);
   const [showPutawayPhoto, setShowPutawayPhoto] = useState(false);
   const [putawayPhotoIdx, setPutawayPhotoIdx] = useState(0);
 
@@ -179,6 +176,7 @@ export default function StorageDetailPage() {
       setStorage(json.storage);
       setParcels(json.parcels ?? []);
       setPutawayPhotos(json.putaway_photos ?? []);
+      setPutawayPhotosMock(json.putaway_photos_mock === true);
       setNameInput(json.storage?.storage_name ?? "");
       if (allRes.ok) {
         const allJson = await allRes.json();
@@ -418,6 +416,11 @@ export default function StorageDetailPage() {
                   >
                     <Camera size={12} />
                     보관함 사진 보기
+                    {putawayPhotosMock && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                        목업
+                      </span>
+                    )}
                   </button>
                 )}
 
@@ -640,92 +643,9 @@ export default function StorageDetailPage() {
           index={putawayPhotoIdx}
           onIndexChange={setPutawayPhotoIdx}
           onClose={() => setShowPutawayPhoto(false)}
+          isMock={putawayPhotosMock || isPutawayMockPhotos(putawayPhotos)}
         />
       )}
-    </div>
-  );
-}
-
-function PutawayPhotoModal({
-  photos,
-  index,
-  onIndexChange,
-  onClose,
-}: {
-  photos: PutawayPhoto[];
-  index: number;
-  onIndexChange: (i: number) => void;
-  onClose: () => void;
-}) {
-  const photo = photos[index];
-  if (!photo) return null;
-
-  const takenAt = new Date(photo.created_at).toLocaleString("ko-KR", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <div>
-            <p className="text-base font-bold text-gray-900">보관함 적치 사진</p>
-            <p className="text-xs text-gray-400 mt-0.5">{photo.caption ?? "센터 적치 확인"}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
-          >
-            <X size={16} />
-          </button>
-        </div>
-
-        <div className="bg-gray-900">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={photo.storage_url}
-            alt="보관함 적치 사진"
-            className="w-full max-h-[60vh] object-contain"
-          />
-        </div>
-
-        <div className="px-5 py-4 space-y-3">
-          <div className="flex items-center justify-between text-xs text-gray-500">
-            <span>{takenAt}</span>
-            {photo.tracking_no && (
-              <span className="font-mono">{photo.tracking_no}</span>
-            )}
-          </div>
-
-          {photos.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {photos.map((p, i) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => onIndexChange(i)}
-                  className={`shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 ${
-                    i === index ? "border-brand-600" : "border-transparent opacity-60"
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={p.storage_url} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
@@ -1803,7 +1723,7 @@ function ColorPickerSheet({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-[400px] bg-white rounded-3xl shadow-2xl">
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
-          <p className="text-base font-bold text-gray-900">카드 색상</p>
+          <p className="text-base font-bold text-gray-900">블록 색상</p>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400"><X size={18} /></button>
         </div>
         <div className="px-4 py-5">

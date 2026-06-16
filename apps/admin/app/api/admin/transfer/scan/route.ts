@@ -30,7 +30,11 @@ export async function GET(req: NextRequest) {
         item_count,
         pre_invoice_items,
         storage_location_id,
-        customers(id, name, customer_code)
+        planned_storage_location_id,
+        putaway_at,
+        storage_locations(id, code, zone, slot, is_temp),
+        customers(id, name, customer_code),
+        planned_location:planned_storage_location_id(id, code, zone, slot)
       )
     `)
     .eq("barcode_no", q)
@@ -73,8 +77,11 @@ export async function GET(req: NextRequest) {
       id, tracking_no, status, parcel_size_code,
       item_count, pre_invoice_items,
       storage_location_id,
-      storage_locations(id, code, zone, slot),
-      customers(id, name, customer_code)
+      planned_storage_location_id,
+      putaway_at,
+      storage_locations(id, code, zone, slot, is_temp),
+      customers(id, name, customer_code),
+      planned_location:planned_storage_location_id(id, code, zone, slot)
     `)
     .eq("tracking_no", q)
     .not("status", "in", '("DONE","SHIPPING","PICKUP_CANCELLED")')
@@ -171,7 +178,10 @@ interface RawParcel {
   item_count?: number;
   pre_invoice_items: unknown;
   storage_location_id: string | null;
-  storage_locations?: { id: string; code: string; zone: string; slot: string } | null;
+  planned_storage_location_id: string | null;
+  putaway_at: string | null;
+  storage_locations?: { id: string; code: string; zone: string; slot: string; is_temp?: boolean } | null;
+  planned_location?: { id: string; code: string; zone: string; slot: string } | null;
   customers: { id: string; name: string | null; customer_code: string } | null;
 }
 
@@ -188,6 +198,8 @@ function normalizeParcel(p: RawParcel) {
     display_name: firstName ?? p.tracking_no ?? "물품 미등록",
     storage_location_id: p.storage_location_id ?? null,
     location: p.storage_locations ?? null,
+    planned_location: p.planned_location ?? null,
+    putaway_at: p.putaway_at ?? null,
     customer: p.customers ?? null,
   };
 }

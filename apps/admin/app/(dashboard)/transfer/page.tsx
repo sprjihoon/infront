@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import PutawayPhotoCapture from "@/components/transfer/PutawayPhotoCapture";
 import {
   ArrowLeft, CheckCircle2, AlertTriangle, ScanLine,
   Package, User, X, RefreshCw, RotateCcw, MoveRight,
@@ -18,7 +19,9 @@ type ParcelInfo = {
   item_count: number;
   display_name: string;
   storage_location_id: string | null;
-  location: { id: string; code: string; zone: string; slot: string } | null;
+  location: { id: string; code: string; zone: string; slot: string; is_temp?: boolean } | null;
+  planned_location: { id: string; code: string; zone: string; slot: string } | null;
+  putaway_at: string | null;
   customer: { id: string; name: string | null; customer_code: string } | null;
 };
 
@@ -314,12 +317,13 @@ function WorkOrderPanel() {
 
 /* ── 메인 컴포넌트 ────────────────────────────────────── */
 export default function TransferPage() {
-  const [step, setStep] = useState<"source" | "dest" | "done">("source");
+  const [step, setStep] = useState<"source" | "dest" | "photo" | "done">("source");
 
   const [sourceInput, setSourceInput] = useState("");
   const [destInput,   setDestInput]   = useState("");
   const [scanning,    setScanning]    = useState(false);
   const [moving,      setMoving]      = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [error,       setError]       = useState<string | null>(null);
 
   const [moveTarget, setMoveTarget] = useState<
@@ -329,8 +333,9 @@ export default function TransferPage() {
   >(null);
 
   const [destLoc, setDestLoc] = useState<LocationInfo | null>(null);
+  const [pendingEventId, setPendingEventId] = useState<string | null>(null);
   const [doneInfo, setDoneInfo] = useState<{
-    from: string; to: string; label: string; mode: "item" | "parcel";
+    from: string; to: string; label: string; mode: "item" | "parcel"; photoUrl?: string;
   } | null>(null);
 
   const sourceRef = useRef<HTMLInputElement>(null);
@@ -340,6 +345,13 @@ export default function TransferPage() {
     if (step === "source") setTimeout(() => sourceRef.current?.focus(), 50);
     if (step === "dest")   setTimeout(() => destRef.current?.focus(), 50);
   }, [step]);
+
+  const plannedLocCode =
+    moveTarget?.mode === "item"
+      ? moveTarget.parcel.planned_location?.code ?? null
+      : moveTarget?.mode === "parcel"
+      ? moveTarget.parcel.planned_location?.code ?? null
+      : null;
 
   async function handleSourceScan(e: React.FormEvent) {
     e.preventDefault();
@@ -411,10 +423,11 @@ export default function TransferPage() {
         const res = await fetch(`/api/admin/barcodes/${target.item.barcode_id}/move`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to_location_id: dest.id, reason: "TRANSFER" }),
+          body: JSON.stringify({ to_location_id: dest.id }),
         });
         const json = await res.json();
         if (!res.ok) { setError(json.error ?? "이동 실패"); return; }
+        setPendingEventId(json.event_id);
         setDoneInfo({
           from: fromCode,
           to: dest.code,
@@ -429,10 +442,11 @@ export default function TransferPage() {
         const res = await fetch(`/api/admin/parcels/${target.parcel.id}/move`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ to_location_id: dest.id, reason: "TRANSFER" }),
+          body: JSON.stringify({ to_location_id: dest.id }),
         });
         const json = await res.json();
         if (!res.ok) { setError(json.error ?? "이동 실패"); return; }
+        setPendingEventId(json.event_id);
         setDoneInfo({
           from: fromCode,
           to: dest.code,
@@ -440,9 +454,34 @@ export default function TransferPage() {
           mode: "parcel",
         });
       }
-      setStep("done");
+      setStep("photo");
     } finally {
       setMoving(false);
+    }
+  }
+
+  async function handlePhotoUpload(blob: Blob) {
+    if (!pendingEventId || !doneInfo) return;
+    setUploadingPhoto(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", new File([blob], `putaway-${Date.now()}.jpg`, { type: "image/jpeg" }));
+      const res = await fetch(`/api/admin/location-events/${pendingEventId}/photo`, {
+        method: "POST",
+        body: fd,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error ?? "사진 업로드 실패");
+        return;
+      }
+      setDoneInfo((prev) => (prev ? { ...prev, photoUrl: json.photo_url } : prev));
+      setStep("done");
+    } catch {
+      setError("사진 업로드 중 오류가 발생했습니다");
+    } finally {
+      setUploadingPhoto(false);
     }
   }
 
@@ -453,6 +492,7 @@ export default function TransferPage() {
     setDestInput("");
     setError(null);
     setDoneInfo(null);
+    setPendingEventId(null);
     setStep("source");
   }
 
@@ -461,6 +501,7 @@ export default function TransferPage() {
     setSourceInput("");
     setError(null);
     setDoneInfo(null);
+    setPendingEventId(null);
     setStep("source");
   }
 
@@ -484,7 +525,7 @@ export default function TransferPage() {
             <MoveRight size={20} className="text-indigo-600" />
             로케이션 이동처리
           </h1>
-          <p className="text-sm text-gray-400 mt-0.5">작업지시서 확인 후 바코드 스캔으로 이동 처리</p>
+          <p className="text-sm text-gray-400 mt-0.5">바코드 스캔 → 적치 → 사진 1장 등록</p>
         </div>
       </div>
 
@@ -498,17 +539,17 @@ export default function TransferPage() {
         <div className="space-y-0">
 
           {/* 스캐너 단계 표시 */}
-          <div className="mb-4 flex items-center gap-2">
-            {["source", "dest", "done"].map((s, i) => (
+          <div className="mb-4 flex items-center gap-2 flex-wrap">
+            {(["source", "dest", "photo", "done"] as const).map((s, i) => (
               <div key={s} className="flex items-center gap-1.5">
-                {i > 0 && <div className={`h-px w-6 ${step === "source" && i > 0 ? "bg-gray-200" : "bg-indigo-300"}`} />}
+                {i > 0 && <div className={`h-px w-4 ${step === "source" && i > 0 ? "bg-gray-200" : "bg-indigo-300"}`} />}
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                   step === s ? "bg-indigo-600 text-white" :
-                  (step === "done" || (step === "dest" && i === 0)) ? "bg-indigo-200 text-indigo-700" :
+                  (["photo", "done"].includes(step) && i < (step === "photo" ? 2 : 3)) ? "bg-indigo-200 text-indigo-700" :
                   "bg-gray-100 text-gray-400"
                 }`}>{i + 1}</div>
                 <span className={`text-xs ${step === s ? "text-indigo-700 font-semibold" : "text-gray-400"}`}>
-                  {s === "source" ? "소포스캔" : s === "dest" ? "목적지" : "완료"}
+                  {s === "source" ? "스캔" : s === "dest" ? "목적지" : s === "photo" ? "사진" : "완료"}
                 </span>
               </div>
             ))}
@@ -647,9 +688,17 @@ export default function TransferPage() {
                   <span className="font-mono font-bold text-sm text-gray-700">{currentLocCode}</span>
                   <MoveRight size={14} className="text-indigo-400 mx-1" />
                   <span className={`font-mono font-bold text-sm ${destLoc ? "text-indigo-700" : "text-gray-300"}`}>
-                    {destLoc?.code ?? "?"}
+                    {destLoc?.code ?? plannedLocCode ?? "?"}
                   </span>
                 </div>
+
+                {plannedLocCode && !destLoc && (
+                  <div className="mt-3 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2.5">
+                    <p className="text-xs font-semibold text-indigo-800">배정 예정 로케이션</p>
+                    <p className="font-mono font-bold text-lg text-indigo-700 mt-0.5">{plannedLocCode}</p>
+                    <p className="text-[11px] text-indigo-500 mt-1">목적지 스캔 시 이 코드를 사용하세요</p>
+                  </div>
+                )}
               </div>
 
               {/* 목적지 스캔 */}
@@ -679,13 +728,22 @@ export default function TransferPage() {
                       {(scanning || moving) ? <RefreshCw size={14} className="animate-spin" /> : <MoveRight size={14} />}
                     </button>
                   </form>
-                  <p className="text-xs text-gray-400 mt-2 text-center">스캔 즉시 이동 처리됩니다</p>
+                  <p className="text-xs text-gray-400 mt-2 text-center">스캔 즉시 이동 → 사진 촬영 단계로 이동</p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* STEP 3: 완료 */}
+          {/* STEP 3: 적치 확인 사진 */}
+          {step === "photo" && doneInfo && (
+            <PutawayPhotoCapture
+              locationCode={doneInfo.to}
+              onConfirm={handlePhotoUpload}
+              uploading={uploadingPhoto}
+            />
+          )}
+
+          {/* STEP 4: 완료 */}
           {step === "done" && doneInfo && (
             <div className="space-y-3">
               <div className="bg-white rounded-2xl shadow-sm p-6 text-center space-y-4">
@@ -707,6 +765,14 @@ export default function TransferPage() {
                   <MoveRight size={22} className="text-indigo-500 shrink-0" />
                   <span className="font-mono font-bold text-indigo-700 text-xl">{doneInfo.to}</span>
                 </div>
+                {doneInfo.photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={doneInfo.photoUrl}
+                    alt="적치 확인"
+                    className="w-full max-h-40 object-cover rounded-xl border border-gray-200"
+                  />
+                )}
               </div>
 
               <button

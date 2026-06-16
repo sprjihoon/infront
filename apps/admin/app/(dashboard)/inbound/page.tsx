@@ -60,6 +60,7 @@ export default function InboundPage() {
     parcel_id: string;
     location_id: string | null;
     location_code: string | null;
+    temp_location_code: string | null;
     location_max_parcels: number | null;
     location_current_count: number | null;
     location_volume_liter: number | null;
@@ -204,8 +205,9 @@ export default function InboundPage() {
 
       setResult({
         parcel_id: json.parcel_id,
-        location_id: json.location_id,
+        location_id: json.planned_location_id ?? json.location_id,
         location_code: json.location_code,
+        temp_location_code: json.temp_location_code ?? null,
         location_max_parcels: json.location_max_parcels ?? null,
         location_current_count: json.location_current_count ?? null,
         location_volume_liter: json.location_volume_liter ?? null,
@@ -451,7 +453,7 @@ export default function InboundPage() {
           {/* 로케이션 */}
           <div className="bg-white rounded-2xl p-4 shadow-sm">            <div className="flex items-center gap-2 mb-3">
               <MapPin size={15} className="text-indigo-500" />
-              <span className="font-semibold text-gray-800 text-sm">보관 로케이션</span>
+              <span className="font-semibold text-gray-800 text-sm">배정 예정 로케이션</span>
             </div>
             <div className="flex gap-2 mb-3">
               <button onClick={() => setLocationMode("auto")}
@@ -464,7 +466,9 @@ export default function InboundPage() {
               </button>
             </div>
             {locationMode === "auto" && (
-              <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">빈 슬롯 중 첫 번째를 자동 배정합니다</p>
+              <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                입고 시 배정 예정 로케이션을 계산합니다. 물리 적치는 로케이션 이동에서 처리합니다.
+              </p>
             )}
             {locationMode === "manual" && (
               <div className="relative">
@@ -550,12 +554,20 @@ export default function InboundPage() {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-gray-900">입고처리 완료</h2>
-                <p className="text-sm text-gray-500 mt-1">바코드 라벨이 새 탭에서 출력됩니다</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  바코드 라벨 출력 후 <strong>로케이션 이동</strong>에서 적치·사진 등록
+                </p>
               </div>
               <div className="bg-gray-50 rounded-xl p-4 text-left space-y-2">
+                {result.temp_location_code && (
+                  <div className="flex justify-between text-sm items-center">
+                    <span className="text-gray-500">현재 위치 (임시)</span>
+                    <span className="font-bold font-mono text-orange-700">{result.temp_location_code}</span>
+                  </div>
+                )}
                 {result.location_code && (
                   <div className="flex justify-between text-sm items-center">
-                    <span className="text-gray-500">로케이션</span>
+                    <span className="text-gray-500">배정 예정 로케이션</span>
                     <div className="flex items-center gap-2 flex-wrap justify-end">
                       <span className="font-bold text-blue-700 text-lg">{result.location_code}</span>
                       {/* 리터 기반 표시 우선, 없으면 건수 */}
@@ -636,6 +648,12 @@ export default function InboundPage() {
                 )}
               </div>
               <div className="flex gap-2">
+                <Link
+                  href="/transfer"
+                  className="flex-1 border border-indigo-200 bg-indigo-50 text-indigo-700 py-3 rounded-xl text-sm font-bold hover:bg-indigo-100 text-center"
+                >
+                  로케이션 이동 →
+                </Link>
                 {resultBarcodes.length > 0 && parcel && (
                   <Link
                     href={`/print/barcodes?data=${encodeURIComponent(JSON.stringify(buildLabelDataForDone()))}`}
