@@ -445,6 +445,7 @@ infront/
 | `051_oversize_price_fix.sql` | OVERSIZE Ÿ�� ��� ����ȭ ? 29,900��/�� Ȯ��, price_max NULL ó�� |
 | `058_inbound_putaway_flow.sql` | 입고 2단계: `planned_storage_location_id` + TEMP 적치, `putaway_at`, `parcel_location_events.photo_url`, `parcel_media.location_event_id` |
 | `059_putaway_photo_customer_rls.sql` | 고객 RLS: 본인 소포 `PUTAWAY_PHOTO` 조회 허용 |
+| `060_claim_available_location.sql` | `claim_available_location(type_id, customer_id)` 함수 — `FOR UPDATE SKIP LOCKED` 원자적 로케이션 선점 (동시 배정 충돌 방지) |
 
 > �� ���� ��Ȳ: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -1067,6 +1068,31 @@ Next.js ����
 ---
 
 ## ?? 변경 이력
+
+### 2026-06-16 로케이션 자동 배정 + 결제 수정 + 기타 UX
+
+**작업지시서 로케이션 자동 배정 (Admin `/transfer`)**
+- `CAPACITY_CHANGE`, `ADD_SLOT`, `CONVERT_TO_LONG_TERM` 작업완료 시 요청 타입과 일치하는 `AVAILABLE` 로케이션 자동 `RESERVED` 배정
+- 작업지시서 카드에 이동 대상 로케이션 코드 미리 표시 (파란 칩)
+- 완료 후 녹색 토스트로 배정된 로케이션 코드 확인
+- AVAILABLE 로케이션 없을 때 "수동 배정 필요" 경고 표시
+- `FOR UPDATE SKIP LOCKED` 기반 원자적 선점 — 동시 완료 처리 시 같은 로케이션 이중 배정 방지
+- DB 함수: `060_claim_available_location.sql` (`claim_available_location`, `claim_available_location_by_code`)
+
+**샘플페이지(KG Inicis) 결제 수정**
+- `next.config.ts` 전체 경로에 `X-Frame-Options: SAMEORIGIN` 적용 → KG Inicis overlay iframe의 `/api/inicis/return` 응답 로드 차단 문제 수정
+- `/api/inicis/:path*` 경로에 `X-Frame-Options: ""` + `Content-Security-Policy: frame-ancestors *` 오버라이드 추가
+
+**UX 수정**
+- 스토리지 sticky 헤더 `z-10` → `z-20` : 캐러셀 활성 카드(z-index 10)가 헤더를 가리는 문제 수정
+- 보관함 적치 사진 팝업: `items-end sm:items-center` → `items-center` (모바일·PC 모두 중앙 정렬)
+
+**DB 마이그레이션 (Supabase 적용 필수)**
+```bash
+supabase db query --linked --file apps/sql/060_claim_available_location.sql
+```
+
+---
 
 ### 2026-06-16 입고 적치 2단계 + 적치 사진 + 싱글블록 SVG 복원
 
