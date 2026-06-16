@@ -446,8 +446,13 @@ export default function StorageDetailPage() {
         {allStorages.length >= 2 && storage.status === "ACTIVE" && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
             <div className="flex items-center gap-3">
-              <div className="shrink-0 w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center">
-                <Archive size={16} className="text-amber-600" />
+              <div className="flex-shrink-0 relative w-10 h-10">
+                <div className="absolute bottom-0 left-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.25))" }}>
+                  <BrickSVG color="#f59e0b" typeCode={allStorages[0]?.storage_types?.code ?? "MINI"} size={32} />
+                </div>
+                <div className="absolute top-0 right-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.25))" }}>
+                  <BrickSVG color="#ef4444" typeCode={allStorages[1]?.storage_types?.code ?? "MINI"} size={28} />
+                </div>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-amber-900">보관료를 줄일 수 있어요</p>
