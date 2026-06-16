@@ -277,16 +277,16 @@ export default function StoragePage() {
     const currentTotalMonthly = active.reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
     if (currentTotalMonthly === 0) return null;
 
-    // 조건 2a: 각 블록의 사용률이 낮은지 (모두 50% 미만)
-    const allLowUsage = active.every((s) => (s.usage_percent ?? 0) < 50);
+    // 조건: 모든 블록의 사용률이 70% 이상일 때만 추천 (슬롯이 꽉 찼을 때)
+    const allHighUsage = active.every((s) => (s.usage_percent ?? 0) >= 70);
+    if (!allHighUsage) return null;
 
-    // 조건 2b: 합산 사용량을 담을 수 있는 가장 저렴한 단일 블록 타입 탐색
+    // 합산 사용량을 담을 수 있는 가장 저렴한 단일 블록 타입 탐색
     const fittingType = storageTypes
       .filter((t) => (t.volume_liter ?? 0) >= totalUsedLiters && (t.price_per_month ?? 0) > 0)
       .sort((a, b) => (a.price_per_month ?? 0) - (b.price_per_month ?? 0))[0] ?? null;
 
-    // 조건 2: allLowUsage OR fitsInOneBlock — 단, 가격 비교를 위해 fittingType 필수
-    if (!fittingType || (!allLowUsage && !fittingType)) return null;
+    if (!fittingType) return null;
 
     const mergedMonthly = fittingType.price_per_month ?? 0;
     const saving = currentTotalMonthly - mergedMonthly;
