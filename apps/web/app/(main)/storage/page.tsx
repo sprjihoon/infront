@@ -712,6 +712,7 @@ export default function StoragePage() {
         storages={active}
         onClose={() => setMergeSheet(false)}
         onDone={() => { setMergeSheet(false); load(true); }}
+        onCapacityChange={(s) => { setMergeSheet(false); setCapacitySheet(s); }}
       />
     )}
 
@@ -1400,10 +1401,12 @@ function MergeSlotSheet({
   storages,
   onClose,
   onDone,
+  onCapacityChange,
 }: {
   storages: Storage[];
   onClose: () => void;
   onDone?: () => void;
+  onCapacityChange?: (storage: Storage) => void;
 }) {
   const [targetId, setTargetId] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -1541,7 +1544,13 @@ function MergeSlotSheet({
                         </p>
                       </div>
                       <button
-                        onClick={onClose}
+                        onClick={() => {
+                          if (onCapacityChange) {
+                            onCapacityChange(storages[0]);
+                          } else {
+                            onClose();
+                          }
+                        }}
                         className="text-[11px] font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-lg whitespace-nowrap"
                       >
                         용량 변경
