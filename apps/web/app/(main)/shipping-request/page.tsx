@@ -53,7 +53,6 @@ interface Parcel {
   pre_invoice_items: PreInvoiceItem[] | null;
   is_shippable?: boolean | null;
   customer_storage_id?: string | null;
-  customer_storages?: { storage_name: string | null; card_color: string | null } | null;
 }
 
 // 아이템 선택 단위 (parcel 내 개별 내품)
@@ -127,6 +126,7 @@ function ShippingRequestContent() {
   const [flowStep, setFlowStep] = useState(1);
   const prevFlowMode = useRef(flowMode);
   const [shippableParcels, setShippableParcels] = useState<Parcel[]>([]);
+  const [storageMap, setStorageMap] = useState<Map<string, { storage_name: string; card_color: string | null }>>(new Map());
   const [preflowLoading, setPreflowLoading] = useState(false);
   const [defaultOverseasAddress, setDefaultOverseasAddress] = useState<OverseasAddressValue | null>(null);
 
@@ -242,10 +242,10 @@ function ShippingRequestContent() {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (!user) return;
       setCustomerId(user.id);
-      const [{ data: parcelData }, { data: addrData }, { data: reservedLinks }] = await Promise.all([
+      const [{ data: parcelData }, { data: addrData }, { data: reservedLinks }, { data: storageData }] = await Promise.all([
         supabase
           .from("parcels")
-          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable, customer_storage_id, customer_storages(storage_name, card_color)")
+          .select("id, tracking_no, sender_name, sender_address, status, weight_actual, notes, pre_invoice_items, is_shippable, customer_storage_id")
           .eq("customer_id", user.id)
           .eq("is_shippable", true)
           .order("inbound_at", { ascending: false }),
@@ -260,9 +260,26 @@ function ShippingRequestContent() {
           .from("order_parcels")
           .select("parcel_id, orders!inner(status, customer_id)")
           .eq("orders.customer_id", user.id),
+        supabase
+          .from("customer_storages")
+          .select("id, storage_name, card_color")
+          .eq("user_id", user.id)
+          .in("status", ["ACTIVE", "PENDING_PAYMENT"]),
       ]);
       const reserved = parcelIdsInActiveOrders(reservedLinks, user.id);
-      setShippableParcels((parcelData ?? []).filter((p) => !reserved.has(p.id)));
+      const filtered = (parcelData ?? []).filter((p) => !reserved.has(p.id));
+      setShippableParcels(filtered);
+      // 스토리지 맵 구성: id → { storage_name, card_color }
+      const sMap = new Map<string, { storage_name: string; card_color: string | null }>();
+      for (const s of storageData ?? []) sMap.set(s.id, { storage_name: s.storage_name, card_color: s.card_color });
+      // customer_storage_id가 없는 파셀에 단일 스토리지 자동 매핑
+      if (sMap.size === 1) {
+        const singleId = [...sMap.keys()][0];
+        for (const p of filtered) {
+          if (!p.customer_storage_id) p.customer_storage_id = singleId;
+        }
+      }
+      setStorageMap(sMap);
       const defaultAddr = (addrData ?? []).find((a) => a.is_default) ?? addrData?.[0];
       if (defaultAddr) {
         const addr: OverseasAddressValue = {
@@ -690,16 +707,17 @@ function ShippingRequestContent() {
                       {p.weight_actual ? ` \u00b7 ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
                     </p>
                   </div>
-                  {p.customer_storages?.storage_name && (() => {
+                  {p.customer_storage_id && storageMap.get(p.customer_storage_id) && (() => {
+                    const s = storageMap.get(p.customer_storage_id!)!;
                     const THEME_KEYS = Object.keys(CARD_THEME_MAP);
-                    const colorKey = (p.customer_storages.card_color && CARD_THEME_MAP[p.customer_storages.card_color])
-                      ? p.customer_storages.card_color
+                    const colorKey = (s.card_color && CARD_THEME_MAP[s.card_color])
+                      ? s.card_color
                       : THEME_KEYS[parseInt((p.customer_storage_id ?? "").replace(/-/g, "").slice(0, 8), 16) % THEME_KEYS.length];
                     const accent = CARD_THEME_MAP[colorKey]?.accent ?? "#6366f1";
                     return (
                       <span className="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full shrink-0 max-w-[80px] truncate">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
-                        <span className="truncate">{p.customer_storages.storage_name}</span>
+                        <span className="truncate">{s.storage_name}</span>
                       </span>
                     );
                   })()}
