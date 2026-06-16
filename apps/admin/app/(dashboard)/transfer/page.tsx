@@ -49,6 +49,8 @@ type ScanResult =
   | { type: "location"; location: LocationInfo; items: unknown[] };
 
 /* ── 작업지시서 타입 ───────────────────────────────────── */
+type SuggestedLocation = { id: string; code: string; zone: string; slot: string };
+
 type WorkOrder = {
   id: string;
   request_type: string;
@@ -63,6 +65,7 @@ type WorkOrder = {
   customers: { name: string | null; customer_code: string } | null;
   customer_storages: { id: string; storage_name: string; plan_type: string | null } | null;
   storage_types: { code: string; name: string; volume_liter: number | null } | null;
+  suggested_location: SuggestedLocation | null;
 };
 
 /* ── 작업 타입 설정 ────────────────────────────────────── */
@@ -142,6 +145,7 @@ function WorkOrderPanel() {
   const [loading, setLoading] = useState(false);
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [assignedToast, setAssignedToast] = useState<{ orderId: string; location: SuggestedLocation } | null>(null);
 
   const fetch_ = useCallback(async () => {
     setLoading(true);
@@ -159,11 +163,16 @@ function WorkOrderPanel() {
   async function handleComplete(id: string) {
     setCompletingId(id);
     try {
-      await fetch("/api/admin/storage/change-requests", {
+      const res = await fetch("/api/admin/storage/change-requests", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, status: "APPROVED" }),
       });
+      const json = await res.json();
+      if (json.assignedLocation) {
+        setAssignedToast({ orderId: id, location: json.assignedLocation });
+        setTimeout(() => setAssignedToast(null), 5000);
+      }
       await fetch_();
     } finally {
       setCompletingId(null);
@@ -178,6 +187,21 @@ function WorkOrderPanel() {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      {/* 로케이션 배정 완료 토스트 */}
+      {assignedToast && (
+        <div className="mx-3 mt-3 flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold shadow-sm">
+          <MapPin size={14} className="text-emerald-600 shrink-0" />
+          <span>
+            로케이션 자동 배정 완료:&nbsp;
+            <span className="font-mono font-bold text-emerald-700">{assignedToast.location.code}</span>
+            &nbsp;({assignedToast.location.zone}-{assignedToast.location.slot})
+          </span>
+          <button onClick={() => setAssignedToast(null)} className="ml-auto text-emerald-400 hover:text-emerald-600">
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
       {/* 헤더 */}
       <div
         className="flex items-center justify-between px-5 py-4 border-b border-gray-100 cursor-pointer select-none"
@@ -275,7 +299,7 @@ function WorkOrderPanel() {
                   )}
                 </div>
 
-                {/* 작업 설명 */}
+                {/* 작업 설명 + 추천 로케이션 */}
                 <div className="bg-gray-50 rounded-lg px-3 py-2 mb-2">
                   <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5">
                     <span>📌</span>
@@ -286,6 +310,23 @@ function WorkOrderPanel() {
                       </span>
                     )}
                   </p>
+                  {order.suggested_location && (
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <MapPin size={11} className="text-indigo-500 shrink-0" />
+                      <span className="text-[11px] text-gray-500">이동 대상 로케이션:</span>
+                      <span className="font-mono font-bold text-[11px] text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">
+                        {order.suggested_location.code}
+                      </span>
+                      <span className="text-[10px] text-gray-400">
+                        ({order.suggested_location.zone}-{order.suggested_location.slot})
+                      </span>
+                    </div>
+                  )}
+                  {!order.suggested_location && ["CAPACITY_CHANGE", "ADD_SLOT"].includes(order.request_type) && (
+                    <p className="mt-1 text-[11px] text-amber-600 flex items-center gap-1">
+                      <span>⚠️</span> 해당 타입 AVAILABLE 로케이션 없음 — 수동 배정 필요
+                    </p>
+                  )}
                 </div>
 
                 {/* 고객 메모 */}

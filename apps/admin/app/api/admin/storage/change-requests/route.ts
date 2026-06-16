@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
+import { resolveLocationForType } from "@/lib/storage/location-assignment";
 
 /**
  * GET /api/admin/storage/change-requests
  * 전체 변경 요청 목록 (status 필터 지원)
+ * 각 요청에 suggested_location 포함 (CAPACITY_CHANGE, ADD_SLOT 대상)
  */
 export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
@@ -17,7 +19,7 @@ export async function GET(req: NextRequest) {
     .from("storage_change_requests")
     .select(`
       id, request_type, status, customer_note, admin_note,
-      requested_type_code, requested_plan_type, source_storage_ids,
+      requested_type_code, requested_type_id, requested_plan_type, source_storage_ids,
       target_storage_id,
       created_at, processed_at,
       customers!storage_change_requests_user_id_fkey (
@@ -40,7 +42,51 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ requests: data ?? [] });
+  const requests = data ?? [];
+
+  /* ── 타입별 추천 로케이션 일괄 조회 ────────────────────────────
+     CAPACITY_CHANGE / ADD_SLOT 요청에 대해 requested_type_id 기준으로
+     AVAILABLE 로케이션을 1개씩 조회해 suggested_location으로 첨부 */
+  const typedRequests = requests.filter(
+    (r) => ["CAPACITY_CHANGE", "ADD_SLOT"].includes(r.request_type) && r.requested_type_id
+  );
+
+  const uniqueTypeIds = [...new Set(typedRequests.map((r) => r.requested_type_id as string))];
+
+  // typeId → first AVAILABLE location
+  const locationByTypeId: Record<string, { id: string; code: string; zone: string; slot: string }> = {};
+
+  if (uniqueTypeIds.length > 0) {
+    const { data: availLocs } = await adminDb
+      .from("storage_locations")
+      .select("id, code, zone, slot, storage_type_id")
+      .eq("status", "AVAILABLE")
+      .is("customer_id", null)
+      .in("storage_type_id", uniqueTypeIds)
+      .order("zone")
+      .order("slot");
+
+    for (const loc of availLocs ?? []) {
+      if (loc.storage_type_id && !locationByTypeId[loc.storage_type_id]) {
+        locationByTypeId[loc.storage_type_id] = {
+          id: loc.id,
+          code: loc.code,
+          zone: loc.zone,
+          slot: loc.slot,
+        };
+      }
+    }
+  }
+
+  const enriched = requests.map((r) => ({
+    ...r,
+    suggested_location:
+      r.requested_type_id && locationByTypeId[r.requested_type_id]
+        ? locationByTypeId[r.requested_type_id]
+        : null,
+  }));
+
+  return NextResponse.json({ requests: enriched });
 }
 
 /**
@@ -48,9 +94,9 @@ export async function GET(req: NextRequest) {
  * 요청 처리 (승인/반려)
  * body: { id, status: 'APPROVED'|'REJECTED', admin_note? }
  *
- * APPROVED + CONVERT_TO_LONG_TERM 시:
- *   customer_storages.storage_mode = 'long_term',
- *   plan_type = requested_plan_type 도 함께 업데이트
+ * APPROVED 처리 시 자동 로케이션 배정:
+ *   - CAPACITY_CHANGE / ADD_SLOT → requested_type_id 와 맞는 AVAILABLE 로케이션 배정
+ *   - CONVERT_TO_LONG_TERM → customer_storages 업데이트 + 로케이션 배정
  */
 export async function PATCH(req: NextRequest) {
   const admin = await requireAdmin();
@@ -66,10 +112,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "id, status(APPROVED|REJECTED) 필수" }, { status: 400 });
   }
 
-  // 요청 조회
+  // 요청 조회 (user_id 포함)
   const { data: req_row, error: fetchErr } = await adminDb
     .from("storage_change_requests")
-    .select("id, storage_id, request_type, requested_plan_type, requested_type_id, status")
+    .select("id, storage_id, user_id, request_type, requested_plan_type, requested_type_id, requested_type_code, status")
     .eq("id", body.id)
     .single();
 
@@ -114,5 +160,36 @@ export async function PATCH(req: NextRequest) {
       .eq("id", req_row.storage_id);
   }
 
-  return NextResponse.json({ ok: true });
+  /* ── 승인 시 로케이션 자동 배정 ─────────────────────────────────
+     CAPACITY_CHANGE, ADD_SLOT, CONVERT_TO_LONG_TERM:
+       requested_type_id 에 맞는 AVAILABLE 로케이션을 찾아 고객에게 RESERVED 배정
+  ──────────────────────────────────────────────────────────────── */
+  let assignedLocation: { id: string; code: string; zone: string; slot: string } | null = null;
+
+  const AUTO_ASSIGN_TYPES = ["CAPACITY_CHANGE", "ADD_SLOT", "CONVERT_TO_LONG_TERM"];
+
+  if (body.status === "APPROVED" && AUTO_ASSIGN_TYPES.includes(req_row.request_type) && req_row.user_id) {
+    const { locationId, locationCode, zone, slot } = await resolveLocationForType(adminDb, {
+      typeId:   req_row.requested_type_id,
+      typeCode: req_row.requested_type_code,
+    });
+
+    if (locationId && locationCode) {
+      const { error: assignErr } = await adminDb
+        .from("storage_locations")
+        .update({
+          status:      "RESERVED",
+          customer_id: req_row.user_id,
+          assigned_at: new Date().toISOString(),
+        })
+        .eq("id", locationId)
+        .eq("status", "AVAILABLE"); // 동시 처리 방지
+
+      if (!assignErr) {
+        assignedLocation = { id: locationId, code: locationCode, zone: zone ?? "", slot: slot ?? "" };
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, assignedLocation });
 }

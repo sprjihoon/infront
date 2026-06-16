@@ -156,6 +156,50 @@ export async function resolvePlannedLocation(
   return { plannedLocationId, reserveNewLocation, splitLocationIds };
 }
 
+/**
+ * 변경 요청(작업지시서) 처리용: 요청된 타입 코드에 맞는 첫 번째 AVAILABLE 로케이션 탐색
+ * - storage_type_id 직접 매칭 (typeId 우선)
+ * - typeCode로 storage_types 조인 (typeId 없을 때)
+ */
+export async function resolveLocationForType(
+  db: SupabaseClient,
+  opts: { typeId?: string | null; typeCode?: string | null },
+): Promise<{ locationId: string | null; locationCode: string | null; zone: string | null; slot: string | null }> {
+  const empty = { locationId: null, locationCode: null, zone: null, slot: null };
+
+  if (opts.typeId) {
+    const { data } = await db
+      .from("storage_locations")
+      .select("id, code, zone, slot")
+      .eq("status", "AVAILABLE")
+      .is("customer_id", null)
+      .eq("storage_type_id", opts.typeId)
+      .order("zone")
+      .order("slot")
+      .limit(1)
+      .maybeSingle();
+    if (!data) return empty;
+    return { locationId: data.id, locationCode: data.code, zone: data.zone, slot: data.slot };
+  }
+
+  if (opts.typeCode) {
+    const { data } = await db
+      .from("storage_locations")
+      .select("id, code, zone, slot, storage_types!inner(code)")
+      .eq("status", "AVAILABLE")
+      .is("customer_id", null)
+      .eq("storage_types.code", opts.typeCode)
+      .order("zone")
+      .order("slot")
+      .limit(1)
+      .maybeSingle();
+    if (!data) return empty;
+    return { locationId: data.id, locationCode: data.code, zone: data.zone, slot: data.slot };
+  }
+
+  return empty;
+}
+
 export async function reservePlannedLocations(
   db: SupabaseClient,
   customerId: string,
