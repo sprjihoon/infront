@@ -151,6 +151,7 @@ export default function StorageDetailPage() {
   const [showCapacitySheet, setShowCapacitySheet] = useState(false);
   const [showConvertSheet, setShowConvertSheet] = useState(false);
   const [showMergeSheet, setShowMergeSheet] = useState(false);
+  const [showColorSheet, setShowColorSheet] = useState(false);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -272,6 +273,20 @@ export default function StorageDetailPage() {
             {topTypeName !== "-" && ` · ${topTypeName}`}
           </p>
         </div>
+        <button
+          onClick={() => setShowColorSheet(true)}
+          className="p-1.5 rounded-full hover:bg-gray-100"
+          title="색상 변경"
+        >
+          {(() => {
+            const CARD_THEME_KEYS = Object.keys(CARD_THEME_MAP);
+            const themeKey = (storage.card_color && CARD_THEME_MAP[storage.card_color])
+              ? storage.card_color
+              : CARD_THEME_KEYS[parseInt(storage.id.replace(/-/g, "").slice(0, 8), 16) % CARD_THEME_KEYS.length];
+            const accent = CARD_THEME_MAP[themeKey]?.accent ?? "#6366f1";
+            return <div className="w-5 h-5 rounded-full border-2 border-white shadow" style={{ background: accent }} />;
+          })()}
+        </button>
         <button onClick={() => load(true)} disabled={refreshing} className="p-2 rounded-full hover:bg-gray-100">
           <RefreshCw size={16} className={`text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
         </button>
@@ -549,6 +564,16 @@ export default function StorageDetailPage() {
         <ReleasePaymentSheet
           storage={storage}
           onClose={() => setShowReleaseSheet(false)}
+        />
+      )}
+
+      {/* 색상 변경 시트 */}
+      {showColorSheet && storage && (
+        <ColorPickerSheet
+          storageId={storage.id}
+          currentColor={storage.card_color}
+          onClose={() => setShowColorSheet(false)}
+          onDone={(color) => { setStorage(s => s ? { ...s, card_color: color } : s); setShowColorSheet(false); }}
         />
       )}
 
@@ -1610,6 +1635,70 @@ function MergeSlotSheet({
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ── 색상 변경 시트 ───────────────────────── */
+const COLOR_LABELS: Record<string, string> = { red: "레드", green: "그린", yellow: "옐로", blue: "블루", black: "블랙" };
+
+function ColorPickerSheet({
+  storageId, currentColor, onClose, onDone,
+}: {
+  storageId: string;
+  currentColor: string | null;
+  onClose: () => void;
+  onDone: (color: string) => void;
+}) {
+  const [selected, setSelected] = useState<string>(currentColor ?? "blue");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/storage/${storageId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ card_color: selected }),
+      });
+      if (res.ok) onDone(selected);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative w-full max-w-[400px] bg-white rounded-3xl shadow-2xl">
+        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+          <p className="text-base font-bold text-gray-900">카드 색상</p>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400"><X size={18} /></button>
+        </div>
+        <div className="px-4 py-5">
+          <div className="flex gap-3 justify-center">
+            {Object.entries(CARD_THEME_MAP).map(([key, theme]) => {
+              const isSel = selected === key;
+              return (
+                <button key={key} onClick={() => setSelected(key)} className="flex flex-col items-center gap-1.5">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all ${isSel ? "border-gray-800 scale-110" : "border-transparent"}`}
+                    style={{ background: theme.accent }}>
+                    <BrickSVG color={theme.accent} typeCode="MINI" size={32} />
+                  </div>
+                  <span className={`text-[10px] font-semibold ${isSel ? "text-gray-900" : "text-gray-400"}`}>{COLOR_LABELS[key] ?? key}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="px-4 pb-5">
+          <button onClick={handleSave} disabled={saving}
+            className="w-full bg-brand-600 text-white text-sm font-bold py-3.5 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
+          >
+            {saving ? <><Loader2 size={16} className="animate-spin" />저장 중...</> : "저장"}
+          </button>
+        </div>
       </div>
     </div>
   );

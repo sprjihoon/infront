@@ -310,7 +310,7 @@ export default function StoragePage() {
       {/* ── 헤더 ─────────────────────────────── */}
       <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center justify-between sticky top-0 z-10">
         <div>
-          <h1 className="text-base font-bold text-gray-900">내 스토리지</h1>
+          <h1 className="text-base font-bold text-gray-900">내 블록 보관함</h1>
           <p className="text-xs text-gray-400 mt-0.5">물품을 안전하게 보관해 드립니다</p>
         </div>
         <div className="flex items-center gap-2">
