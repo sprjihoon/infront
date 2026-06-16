@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { CARD_THEME_MAP, CARD_THEME_KEYS } from "./constants";
-import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG } from "./BlockSVGs";
+import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG, CapacityChangeSVG } from "./BlockSVGs";
 
 /* ─── 타입 ──────────────────────────────────────── */
 interface PlanConfig {
@@ -548,8 +548,15 @@ export default function StoragePage() {
             {active.length === 1 && (
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.2))" }}>
-                    <BrickSVG color="#3b82f6" typeCode={active[0]?.storage_types?.code ?? "MINI"} size={36} />
+                  <div className="flex-shrink-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.18))" }}>
+                    {(() => {
+                      const ck = (active[0]?.card_color && CARD_THEME_MAP[active[0].card_color]) ? active[0].card_color : CARD_THEME_KEYS[parseInt((active[0]?.id ?? "").replace(/-/g,"").slice(0,8),16) % CARD_THEME_KEYS.length];
+                      const t = CARD_THEME_MAP[ck];
+                      const med = t.accent;
+                      const shd = (h: string, f: number) => { const c=h.replace("#","").padEnd(6,"0"); const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16); const cl=(n:number)=>Math.min(255,Math.max(0,Math.round(n))); return f>=1?`#${cl(r+(255-r)*(f-1)).toString(16).padStart(2,"0")}${cl(g+(255-g)*(f-1)).toString(16).padStart(2,"0")}${cl(b+(255-b)*(f-1)).toString(16).padStart(2,"0")}`:`#${cl(r*f).toString(16).padStart(2,"0")}${cl(g*f).toString(16).padStart(2,"0")}${cl(b*f).toString(16).padStart(2,"0")}`; };
+                      return <CapacityChangeSVG dark={shd(med,0.45)} medium={med} light={shd(med,1.6)} size={48} />;
+                    })()
+                    }
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-blue-900">보관 공간을 미리 확보하세요</p>

@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CARD_THEME_MAP } from "../constants";
-import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG } from "../BlockSVGs";
+import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG, CapacityChangeSVG } from "../BlockSVGs";
 
 function shadeColor(hex: string, factor: number): string {
   const h = hex.replace("#", "").padEnd(6, "0");
@@ -977,12 +977,21 @@ function CapacityChangeSheet({
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-[520px] bg-white rounded-3xl max-h-[80vh] flex flex-col shadow-2xl">
         <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100 sticky top-0 bg-white rounded-t-3xl">
-          <div>
-            <p className="text-base font-bold text-gray-900">용량 변경</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              현재: {currentTypeName ?? storage.plan_type ?? "-"}
-              {usedScore > 0 && <span className="ml-1">· 사용 {usedScore}L</span>}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0" style={{ filter: "drop-shadow(2px 2px 2px rgba(0,0,0,0.18))" }}>
+              {(() => {
+                const ck = (storage.card_color && CARD_THEME_MAP[storage.card_color]) ? storage.card_color : Object.keys(CARD_THEME_MAP)[parseInt(storage.id.replace(/-/g,"").slice(0,8),16) % Object.keys(CARD_THEME_MAP).length];
+                const acc = CARD_THEME_MAP[ck].accent;
+                return <CapacityChangeSVG dark={shadeColor(acc,0.45)} medium={acc} light={shadeColor(acc,1.6)} size={44} />;
+              })()}
+            </div>
+            <div>
+              <p className="text-base font-bold text-gray-900">용량 변경</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                현재: {currentTypeName ?? storage.plan_type ?? "-"}
+                {usedScore > 0 && <span className="ml-1">· 사용 {usedScore}L</span>}
+              </p>
+            </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400">
             <X size={18} />
