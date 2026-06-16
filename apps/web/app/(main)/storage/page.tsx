@@ -544,6 +544,28 @@ export default function StoragePage() {
               </div>
             )}
 
+            {/* 블록 1개일 때 — 용량 확장 유도 배너 */}
+            {active.length === 1 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.2))" }}>
+                    <BrickSVG color="#3b82f6" typeCode={active[0]?.storage_types?.code ?? "MINI"} size={36} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-blue-900">보관 공간을 미리 확보하세요</p>
+                    <p className="text-xs text-blue-700 mt-0.5 leading-snug">용량을 확장하면 더 많은 물품을 안전하게 보관할 수 있어요.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCapacitySheet(active[0])}
+                    className="shrink-0 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
+                  >
+                    용량 변경
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── 보관 물품 ────────────────────────── */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
               {/* 헤더 */}
