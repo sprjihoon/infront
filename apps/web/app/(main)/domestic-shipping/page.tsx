@@ -9,6 +9,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 import { useFlowMode } from "@/lib/flow-mode";
+import { CARD_THEME_MAP } from "@/app/(main)/storage/constants";
 
 // ── 타입 ──────────────────────────────────────────────────────
 interface PreInvoiceItem { name_en: string; quantity: number; unit_price_usd: number; }
@@ -21,6 +22,7 @@ interface Parcel {
   weight_actual: number | null;
   status: string;
   pre_invoice_items: PreInvoiceItem[] | null;
+  customer_storage_id?: string | null;
 }
 
 // 아이템 선택 단위 (parcel 내 개별 내품) — 국제 배송과 동일 구조
@@ -89,6 +91,7 @@ function DomesticShippingContent() {
 
   // Step 1: 박스 구성
   const [shippableParcels, setShippableParcels] = useState<Parcel[]>([]);
+  const [storageMap, setStorageMap] = useState<Map<string, { storage_name: string; card_color: string | null }>>(new Map());
   const [loadingParcels, setLoadingParcels] = useState(true);
   const [boxes, setBoxes] = useState<BoxSetup[]>([{ id: 1, address: null, items: [] }]);
   const [selectingForBoxId, setSelectingForBoxId] = useState<number | null>(null);
@@ -121,8 +124,19 @@ function DomesticShippingContent() {
   const loadParcels = useCallback(async () => {
     if (loadingRef.current) return;
     loadingRef.current = true;
-    const res = await fetch("/api/parcels?shippable=true");
-    if (res.ok) setShippableParcels((await res.json()).parcels ?? []);
+    const supabaseClient = createClient();
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const [parcelRes, { data: storageData }] = await Promise.all([
+      fetch("/api/parcels?shippable=true"),
+      user ? supabaseClient.from("customer_storages").select("id, storage_name, card_color").eq("user_id", user.id) : Promise.resolve({ data: [] }),
+    ]);
+    if (parcelRes.ok) {
+      const parcels: Parcel[] = (await parcelRes.json()).parcels ?? [];
+      const sMap = new Map<string, { storage_name: string; card_color: string | null }>();
+      for (const s of storageData ?? []) sMap.set(s.id, { storage_name: s.storage_name, card_color: s.card_color });
+      setStorageMap(sMap);
+      setShippableParcels(parcels);
+    }
     setLoadingParcels(false);
     loadingRef.current = false;
   }, []);
@@ -431,7 +445,21 @@ function DomesticShippingContent() {
                     {p.weight_actual ? ` · ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
                   </p>
                 </div>
-                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-green-700 bg-green-50 border-green-200">입고완료</span>
+                {(() => {
+                  const sid = p.customer_storage_id ?? (storageMap.size === 1 ? [...storageMap.keys()][0] : null);
+                  const s = sid ? storageMap.get(sid) : null;
+                  if (!s) return null;
+                  const TK = Object.keys(CARD_THEME_MAP);
+                  const ck = (s.card_color && CARD_THEME_MAP[s.card_color]) ? s.card_color : TK[parseInt((sid ?? "").replace(/-/g,"").slice(0,8),16) % TK.length];
+                  const accent = CARD_THEME_MAP[ck]?.accent ?? "#6366f1";
+                  return (
+                    <span className="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full shrink-0 max-w-[80px]">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
+                      <span className="truncate">{s.storage_name}</span>
+                    </span>
+                  );
+                })()}
+                <span className="text-[10px] font-medium px-2 py-0.5 rounded-full border text-green-700 bg-green-50 border-green-200 shrink-0">입고완료</span>
               </div>
               <div className="divide-y divide-gray-50">
                 {pItems.map(item => {

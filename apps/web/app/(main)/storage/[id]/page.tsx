@@ -6,7 +6,7 @@ import {
   ArrowLeft, Package, RefreshCw,
   CheckCircle, Clock, AlertTriangle,
   XCircle, Archive, Edit3, X, Check,
-  CreditCard, Loader2, TruckIcon,
+  CreditCard, Loader2, TruckIcon, Camera,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { CARD_THEME_MAP } from "../constants";
@@ -85,6 +85,15 @@ interface StorageParcel {
   parcel_media?: { storage_url: string | null; cf_thumbnail_url: string | null; stage: string; is_visible: boolean }[];
 }
 
+interface PutawayPhoto {
+  id: string;
+  storage_url: string;
+  caption: string | null;
+  created_at: string;
+  parcel_id: string;
+  tracking_no: string | null;
+}
+
 const PARCEL_STATUS_MAP: Record<string, { label: string; color: string }> = {
   CREATED:          { label: "입고중",   color: "bg-indigo-50 text-indigo-700" },
   PICKUP_REQUESTED: { label: "입고중",   color: "bg-indigo-50 text-indigo-700" },
@@ -152,6 +161,9 @@ export default function StorageDetailPage() {
   const [showConvertSheet, setShowConvertSheet] = useState(false);
   const [showMergeSheet, setShowMergeSheet] = useState(false);
   const [showColorSheet, setShowColorSheet] = useState(false);
+  const [putawayPhotos, setPutawayPhotos] = useState<PutawayPhoto[]>([]);
+  const [showPutawayPhoto, setShowPutawayPhoto] = useState(false);
+  const [putawayPhotoIdx, setPutawayPhotoIdx] = useState(0);
 
   const load = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -166,6 +178,7 @@ export default function StorageDetailPage() {
       const json = await res.json();
       setStorage(json.storage);
       setParcels(json.parcels ?? []);
+      setPutawayPhotos(json.putaway_photos ?? []);
       setNameInput(json.storage?.storage_name ?? "");
       if (allRes.ok) {
         const allJson = await allRes.json();
@@ -393,6 +406,21 @@ export default function StorageDetailPage() {
                   </div>
                 </div>
 
+                {putawayPhotos.length > 0 && (
+                  <button
+                    type="button"
+                    className="w-full mb-2 py-1.5 rounded-xl font-semibold text-[11px] transition-colors flex items-center justify-center gap-1.5 border"
+                    style={{ color: accentColor, borderColor: `${accentColor}40`, background: `${accentColor}10` }}
+                    onClick={() => {
+                      setPutawayPhotoIdx(0);
+                      setShowPutawayPhoto(true);
+                    }}
+                  >
+                    <Camera size={12} />
+                    보관함 사진 보기
+                  </button>
+                )}
+
                 {/* 버튼 */}
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
@@ -605,6 +633,99 @@ export default function StorageDetailPage() {
           onCapacityChange={() => { setShowMergeSheet(false); setShowCapacitySheet(true); }}
         />
       )}
+
+      {showPutawayPhoto && putawayPhotos.length > 0 && (
+        <PutawayPhotoModal
+          photos={putawayPhotos}
+          index={putawayPhotoIdx}
+          onIndexChange={setPutawayPhotoIdx}
+          onClose={() => setShowPutawayPhoto(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function PutawayPhotoModal({
+  photos,
+  index,
+  onIndexChange,
+  onClose,
+}: {
+  photos: PutawayPhoto[];
+  index: number;
+  onIndexChange: (i: number) => void;
+  onClose: () => void;
+}) {
+  const photo = photos[index];
+  if (!photo) return null;
+
+  const takenAt = new Date(photo.created_at).toLocaleString("ko-KR", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <p className="text-base font-bold text-gray-900">보관함 적치 사진</p>
+            <p className="text-xs text-gray-400 mt-0.5">{photo.caption ?? "센터 적치 확인"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="bg-gray-900">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photo.storage_url}
+            alt="보관함 적치 사진"
+            className="w-full max-h-[60vh] object-contain"
+          />
+        </div>
+
+        <div className="px-5 py-4 space-y-3">
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>{takenAt}</span>
+            {photo.tracking_no && (
+              <span className="font-mono">{photo.tracking_no}</span>
+            )}
+          </div>
+
+          {photos.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {photos.map((p, i) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => onIndexChange(i)}
+                  className={`shrink-0 w-14 h-14 rounded-xl overflow-hidden border-2 ${
+                    i === index ? "border-brand-600" : "border-transparent opacity-60"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.storage_url} alt="" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

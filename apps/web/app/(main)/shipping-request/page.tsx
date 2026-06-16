@@ -704,15 +704,15 @@ function ShippingRequestContent() {
                       {p.weight_actual ? ` \u00b7 ${(p.weight_actual / 1000).toFixed(2)}kg` : ""}
                     </p>
                   </div>
-                  {p.customer_storage_id && storageMap.get(p.customer_storage_id) && (() => {
-                    const s = storageMap.get(p.customer_storage_id!)!;
-                    const THEME_KEYS = Object.keys(CARD_THEME_MAP);
-                    const colorKey = (s.card_color && CARD_THEME_MAP[s.card_color])
-                      ? s.card_color
-                      : THEME_KEYS[parseInt((p.customer_storage_id ?? "").replace(/-/g, "").slice(0, 8), 16) % THEME_KEYS.length];
-                    const accent = CARD_THEME_MAP[colorKey]?.accent ?? "#6366f1";
+                  {(() => {
+                    const sid = p.customer_storage_id ?? (storageMap.size === 1 ? [...storageMap.keys()][0] : null);
+                    const s = sid ? storageMap.get(sid) : null;
+                    if (!s) return null;
+                    const TK = Object.keys(CARD_THEME_MAP);
+                    const ck = (s.card_color && CARD_THEME_MAP[s.card_color]) ? s.card_color : TK[parseInt((sid ?? "").replace(/-/g,"").slice(0,8),16) % TK.length];
+                    const accent = CARD_THEME_MAP[ck]?.accent ?? "#6366f1";
                     return (
-                      <span className="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full shrink-0 max-w-[80px] truncate">
+                      <span className="flex items-center gap-1 text-[10px] font-medium text-gray-600 bg-white border border-gray-200 px-2 py-0.5 rounded-full shrink-0 max-w-[80px]">
                         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: accent }} />
                         <span className="truncate">{s.storage_name}</span>
                       </span>

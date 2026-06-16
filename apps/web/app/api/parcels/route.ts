@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   // parcels.customer_id = auth.user.id (customers.id == auth.user.id)
   let query = supabase
     .from("parcels")
-    .select("id, tracking_no, sender_name, sender_address, weight_actual, status, is_shippable, pre_invoice_items")
+    .select("id, tracking_no, sender_name, sender_address, weight_actual, status, is_shippable, pre_invoice_items, customer_storage_id")
     .eq("customer_id", user.id)
     .order("created_at", { ascending: false });
 

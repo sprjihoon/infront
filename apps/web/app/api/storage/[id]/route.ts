@@ -82,7 +82,56 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (iErr) console.error("[storage/[id] items]", iErr);
   if (pErr) console.error("[storage/[id] parcels]", pErr);
 
-  return NextResponse.json({ storage, items: items ?? [], parcels: parcels ?? [] });
+  const parcelList = parcels ?? [];
+  const parcelIds = parcelList.map((p) => p.id);
+
+  let putawayPhotos: Array<{
+    id: string;
+    storage_url: string;
+    caption: string | null;
+    created_at: string;
+    parcel_id: string;
+    tracking_no: string | null;
+  }> = [];
+
+  if (parcelIds.length > 0) {
+    const { data: photos, error: photoErr } = await supabase
+      .from("parcel_media")
+      .select(`
+        id, storage_url, caption, created_at, parcel_id,
+        parcels(tracking_no)
+      `)
+      .in("parcel_id", parcelIds)
+      .eq("stage", "PUTAWAY_PHOTO")
+      .not("storage_url", "is", null)
+      .order("created_at", { ascending: false });
+
+    if (photoErr) {
+      console.error("[storage/[id] putaway photos]", photoErr);
+    } else {
+      putawayPhotos = (photos ?? [])
+        .filter((p) => p.storage_url)
+        .map((p) => {
+          const parcelRow = p.parcels as { tracking_no: string | null } | { tracking_no: string | null }[] | null;
+          const tracking = Array.isArray(parcelRow) ? parcelRow[0]?.tracking_no ?? null : parcelRow?.tracking_no ?? null;
+          return {
+            id: p.id,
+            storage_url: p.storage_url as string,
+            caption: p.caption,
+            created_at: p.created_at,
+            parcel_id: p.parcel_id as string,
+            tracking_no: tracking,
+          };
+        });
+    }
+  }
+
+  return NextResponse.json({
+    storage,
+    items: items ?? [],
+    parcels: parcelList,
+    putaway_photos: putawayPhotos,
+  });
 }
 
 /** PATCH /api/storage/[id] — 스토리지 정보 수정 (이름, 해지 신청 등) */
