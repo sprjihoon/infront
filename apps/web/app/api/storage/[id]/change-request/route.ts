@@ -132,19 +132,13 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
     // ────────────────────────────────────────────────────
 
-    // 용량 변경 후 usage_percent 재계산
-    const newCapacity = Number(newType.volume_liter ?? 0);
-    const usedNow     = Number(storage.used_score ?? 0);
-    const newUsagePct = newCapacity > 0 ? Math.round((usedNow / newCapacity) * 100) : 0;
-
-    // customer_storages 즉시 업데이트
+    // customer_storages 즉시 업데이트 (usage_percent는 generated column이므로 제외)
     const { error: upErr } = await supabase
       .from("customer_storages")
       .update({
         storage_type_id: newType.id,
         plan_type:       newType.code,
         capacity_score:  newType.volume_liter,
-        usage_percent:   newUsagePct,
         updated_at:      new Date().toISOString(),
       })
       .eq("id", storage_id);
