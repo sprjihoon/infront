@@ -29,9 +29,7 @@ export function buildMockPutawayPhotos(parcelId?: string | null): PutawayPhotoDt
   ];
 }
 
+/** 실제 적치 사진 없을 때 목업 표시 (끄려면 NEXT_PUBLIC_SHOW_PUTAWAY_MOCK=false) */
 export function shouldUsePutawayMock() {
-  return (
-    process.env.NODE_ENV === "development" ||
-    process.env.NEXT_PUBLIC_SHOW_PUTAWAY_MOCK === "true"
-  );
+  return process.env.NEXT_PUBLIC_SHOW_PUTAWAY_MOCK !== "false";
 }
