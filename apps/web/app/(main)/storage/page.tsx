@@ -1410,14 +1410,31 @@ function MergeSlotSheet({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [suggestedType, setSuggestedType] = useState<{ name: string; code: string; volume_liter: number; price_per_month?: number } | null>(null);
+
+  const totalUsed = storages.reduce((a, s) => a + (s.used_score ?? 0), 0);
 
   function getCapInfo(target: Storage) {
     const others = storages.filter(s => s.id !== target.id);
     const free = (target.capacity_score ?? 0) - (target.used_score ?? 0);
     const srcUsed = others.reduce((a, s) => a + (s.used_score ?? 0), 0);
     const fits = (target.capacity_score ?? 0) === 0 || srcUsed <= free;
-    return { fits, overBy: srcUsed - free, srcUsed, free, count: others.length };
+    return { fits, overBy: srcUsed - free, srcUsed, count: others.length };
   }
+
+  const anyFits = storages.some(s => getCapInfo(s).fits);
+
+  useEffect(() => {
+    if (!anyFits && totalUsed > 0) {
+      fetch("/api/storage/types")
+        .then(r => r.json())
+        .then(j => {
+          const types: { id: string; code: string; name: string; volume_liter: number; price_per_month?: number }[] = j.types ?? [];
+          const sorted = types.filter(t => t.volume_liter >= totalUsed).sort((a, b) => a.volume_liter - b.volume_liter);
+          setSuggestedType(sorted[0] ?? null);
+        });
+    }
+  }, [anyFits, totalUsed]);
 
   async function handleSubmit() {
     if (!targetId) return;
@@ -1502,6 +1519,39 @@ function MergeSlotSheet({
                   </button>
                 );
               })}
+
+              {/* 모든 블록이 합치기 불가능할 때 추천 */}
+              {!anyFits && (
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
+                  <p className="text-sm font-bold text-amber-800">현재 블록들을 합칠 수 없어요</p>
+                  <p className="text-xs text-amber-700">
+                    전체 물품 사용량이 <span className="font-bold">{totalUsed}L</span>입니다.
+                    기존 블록 중 이를 담을 수 있는 여유 공간이 없습니다.
+                  </p>
+                  {suggestedType ? (
+                    <div className="bg-white rounded-xl p-3 flex items-center gap-3 border border-amber-100">
+                      <BrickSVG color="#f59e0b" typeCode={suggestedType.code} size={36} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-gray-800">
+                          {suggestedType.name} 으로 용량 변경 후 합치기
+                        </p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">
+                          {suggestedType.volume_liter}L
+                          {suggestedType.price_per_month != null && ` · ${suggestedType.price_per_month.toLocaleString()}원/월`}
+                        </p>
+                      </div>
+                      <button
+                        onClick={onClose}
+                        className="text-[11px] font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-lg whitespace-nowrap"
+                      >
+                        용량 변경
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-amber-600">현재 최대 용량 블록도 부족합니다. 새 블록을 추가해 주세요.</p>
+                  )}
+                </div>
+              )}
 
               {serverError && <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">{serverError}</p>}
 
