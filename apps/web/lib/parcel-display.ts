@@ -2,15 +2,6 @@ import { isParcelShippable } from "./parcel-shippable";
 
 export type ParcelJourneyPhase = "INCOMING" | "SHIPPABLE" | "HOLD";
 
-export type WarehouseFilterKey = "ALL" | "INCOMING" | "SHIPPABLE" | "HOLD";
-
-export const WAREHOUSE_FILTER_TABS: { key: WarehouseFilterKey; label: string }[] = [
-  { key: "ALL",      label: "전체" },
-  { key: "INCOMING", label: "입고중" },
-  { key: "SHIPPABLE", label: "출고가능" },
-  { key: "HOLD",     label: "보류" },
-];
-
 export type TrackingLastEvent = {
   statusLabel?: string;
   description?: string;
@@ -86,14 +77,6 @@ export function getParcelJourneyPhase(
   return "INCOMING";
 }
 
-export function matchesWarehouseFilter(
-  parcel: ParcelDisplayInput,
-  filter: WarehouseFilterKey,
-): boolean {
-  if (filter === "ALL") return true;
-  return getParcelJourneyPhase(parcel) === filter;
-}
-
 export function getParcelDisplaySummary(
   parcel: ParcelDisplayInput,
   options?: { isReserved?: boolean },
@@ -150,30 +133,5 @@ export function getParcelDisplaySummary(
       return { ...incomingBase, subtitle: "검수 진행 중", meta: inboundMeta ?? undefined };
     default:
       return { ...incomingBase, subtitle: formatInboundDate(parcel.inbound_at) ?? "처리 중", meta: formatWeight(parcel.weight_actual) ?? undefined };
-  }
-}
-
-export function getWarehouseEmptyMessage(filter: WarehouseFilterKey): { title: string; desc: string } {
-  switch (filter) {
-    case "INCOMING":
-      return {
-        title: "입고중인 물품이 없어요",
-        desc: "수거 신청 또는 직접 보내기 후\n센터에 도착하면 여기에 표시됩니다",
-      };
-    case "SHIPPABLE":
-      return {
-        title: "출고 가능한 물품이 없어요",
-        desc: "검수가 완료되면\n해외배송을 신청할 수 있어요",
-      };
-    case "HOLD":
-      return {
-        title: "보류된 물품이 없어요",
-        desc: "조치가 필요한 물품이 여기에 표시됩니다",
-      };
-    default:
-      return {
-        title: "등록된 물품이 없어요",
-        desc: "쇼핑몰에서 창고 주소로 발송한 물품을\n미리 등록해두세요",
-      };
   }
 }

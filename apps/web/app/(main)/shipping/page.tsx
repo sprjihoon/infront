@@ -65,7 +65,7 @@ export default function ShippingHubPage() {
           <div className="text-sm text-amber-800 space-y-1">
             <p className="font-semibold">출고 신청 전 확인사항</p>
             <p>
-              <Link href="/warehouse" className="underline font-semibold">보관 물품 목록</Link>에서
+              <Link href="/storage" className="underline font-semibold">내 블록 보관함</Link>에서
               물품 상태가 <span className="font-semibold">출고 가능</span>인지 확인해주세요.
             </p>
           </div>

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   getParcelDisplaySummary,
   getParcelJourneyPhase,
-  matchesWarehouseFilter,
 } from "./parcel-display";
 
 describe("getParcelJourneyPhase", () => {
@@ -66,19 +65,5 @@ describe("getParcelDisplaySummary", () => {
       { isReserved: true },
     );
     expect(summary.badgeLabel).toBe("출고 신청 중");
-  });
-});
-
-describe("matchesWarehouseFilter", () => {
-  it("filters by journey phase", () => {
-    expect(
-      matchesWarehouseFilter({ status: "PICKED_UP" }, "INCOMING"),
-    ).toBe(true);
-    expect(
-      matchesWarehouseFilter(
-        { status: "INBOUND", is_shippable: true },
-        "SHIPPABLE",
-      ),
-    ).toBe(true);
   });
 });

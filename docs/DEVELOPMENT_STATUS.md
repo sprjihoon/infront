@@ -10,24 +10,20 @@
 
 ## 아키텍처 핵심 결정 사항
 
-### 웨어하우스 + 보관 서비스 통합 방향
+### 보관 서비스 통합 (구 `/warehouse` 제거)
 
-현재 `/warehouse` (입고 소포 목록)와 `/storage` (유료 보관 서비스)는 **동일한 물리 센터를 다른 뷰로 보는 것**이므로 통합이 원칙이다.
+고객 Web의 `/warehouse`·`/warehouse/[id]` 페이지는 **2026-06-16 제거**되었으며 `/storage`로 **301 리다이렉트**합니다. 물품 목록·출고 연동은 `/storage`·`/storage/[id]`가 담당합니다.
 
 ```
 고객 물품 수거/직접발송
          ↓
-    parcels 테이블 (기존 — 물리 입고 관리)
+    parcels 테이블
          ↓
-    /storage 통합 화면
-    ├─ 보관 플랜 없음 → 물품 목록 + "보관 서비스 신청" 배너
-    └─ 보관 플랜 있음 → 플랜·요금 + 입고 물품 통합 뷰 (parcel_id FK 연결)
+    /storage · /storage/[id]  (블록 보관함 + 물품 목록)
 ```
 
-**통합 방법 (예정):**
-- `customer_storage_items.parcel_id` FK 추가 → 기존 소포와 연결
-- `/warehouse` 는 `/storage` 내부로 흡수, 독립 라우트 점진적 deprecate
-- `/storage` 상단: 플랜·요금 현황 / 하단: 입고된 소포 아이템 통합 목록
+**남은 통합 작업 (선택):**
+- `customer_storage_items.parcel_id` FK 추가 → 기존 소포와 명시적 연결
 
 ---
 
@@ -62,13 +58,14 @@ supabase db query --linked --file apps/sql/044_pickup_box_fees.sql
 
 > **범례:** ✅ 완료 · 🔄 진행 중 · 🔲 예정 · ⏸ 다음 단계 (계약/조건 필요)
 
-### Phase 3.5 — 웨어하우스·보관 서비스 통합 🔄 진행 중
+### Phase 3.5 — 구 웨어하우스 → 스토리지 통합 ✅
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| `/storage` 통합 뷰 설계 | 🔲 | `/warehouse` 내용 흡수, 플랜+소포 통합 화면 |
-| `customer_storage_items.parcel_id` FK 추가 | 🔲 | SQL 마이그레이션 필요 |
-| `/warehouse` → `/storage` 점진적 통합 | 🔲 | 라우트 리다이렉트 또는 탭 전환 |
+| `/storage` 통합 뷰 | ✅ | 캐러셀·물품 목록·출고 연동 |
+| `/warehouse` 페이지 제거 | ✅ | `next.config` → `/storage` 리다이렉트 |
+| 앱 내 `/warehouse` 링크 정리 | ✅ | 홈·출고·알림·주문 등 → `/storage` |
+| `parcel-display` warehouse 전용 필터 제거 | ✅ | `getParcelDisplaySummary` 등 공용 유지 |
 
 ---
 

@@ -301,7 +301,7 @@ function OrdersContent() {
               <p className="text-gray-500 text-sm font-medium mb-1 whitespace-pre-line">{emptyMessage.title}</p>
               <p className="text-gray-400 text-xs whitespace-pre-line">{emptyMessage.desc}</p>
               {filter === "ALL" && !search.trim() && (
-                <button onClick={() => router.push("/warehouse")} className="mt-5 bg-indigo-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">
+                <button onClick={() => router.push("/storage")} className="mt-5 bg-indigo-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">
                   스토리지 가기
                 </button>
               )}

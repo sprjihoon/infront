@@ -10,7 +10,7 @@ import {
   normalizeParcelItems,
 } from "@/lib/parcel-item-display";
 import { getParcelDisplaySummary } from "@/lib/parcel-display";
-import { isParcelVisibleInWarehouse } from "@/lib/parcel-lifecycle";
+import { isParcelVisibleToCustomer } from "@/lib/parcel-lifecycle";
 
 interface UserInfo {
   name: string;
@@ -136,7 +136,7 @@ function markSynced() {
 
 const PROTECTED_PREFIXES = [
   "/pickup",
-  "/warehouse",
+  "/storage",
   "/shipping-request",
   "/orders",
   "/notifications",
@@ -193,7 +193,7 @@ export default function HomeClient() {
           .order("created_at", { ascending: false })
           .limit(30)
           .then(({ data }) =>
-            setParcels((data ?? []).filter(isParcelVisibleInWarehouse).slice(0, 1)),
+            setParcels((data ?? []).filter(isParcelVisibleToCustomer).slice(0, 1)),
           );
 
       // 최근 배송 현황 1건
@@ -288,7 +288,7 @@ export default function HomeClient() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-base font-bold text-gray-900">최근 물품 현황</h2>
-          <Link href={authHref("/warehouse", isLoggedIn)} className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
+          <Link href={authHref("/storage", isLoggedIn)} className="text-xs text-brand-600 font-medium flex items-center gap-0.5">
             전체보기 <ChevronRight size={14} />
           </Link>
         </div>
@@ -318,7 +318,7 @@ export default function HomeClient() {
               return (
                 <Link
                   key={parcel.id}
-                  href={`/warehouse/${parcel.id}`}
+                  href="/storage"
                   className="block bg-white rounded-2xl p-4 shadow-sm active:scale-[0.98] transition-transform"
                 >
                   <div className="flex items-start justify-between gap-3">

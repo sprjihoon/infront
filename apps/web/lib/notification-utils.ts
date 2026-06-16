@@ -11,7 +11,7 @@ export interface AppNotification {
 
 export function notificationHref(n: Pick<AppNotification, "order_id" | "parcel_id">): string | null {
   if (n.order_id) return `/orders/${n.order_id}`;
-  if (n.parcel_id) return `/warehouse/${n.parcel_id}`;
+  if (n.parcel_id) return "/storage";
   return null;
 }
 

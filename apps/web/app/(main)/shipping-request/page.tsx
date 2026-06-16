@@ -841,8 +841,8 @@ function ShippingRequestContent() {
               <Package size={36} className="text-gray-200 mx-auto mb-3" />
               <p className="text-sm font-semibold text-gray-500">{"\ucd9c\uace0 \uac00\ub2a5\ud55c \ubb3c\ud488\uc774 \uc5c6\uc2b5\ub2c8\ub2e4"}</p>
               <p className="text-xs text-gray-400 mt-1">{"\uc785\uace0 \uc644\ub8cc\ub41c \ubb3c\ud488\uc774 \uc5c6\uc73c\uba74 \ucd9c\uace0\uc2e0\uccad\uc744 \ud560 \uc218 \uc5c6\uc5b4\uc694"}</p>
-              <button onClick={() => router.push("/warehouse")} className="mt-5 bg-brand-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">
-                {"\ub9c8\uc774\ucc3d\uace0 \ubcf4\uae30"}
+              <button onClick={() => router.push("/storage")} className="mt-5 bg-brand-600 text-white text-sm font-bold px-6 py-3 rounded-2xl">
+                스토리지 보기
               </button>
             </div>
           ) : (

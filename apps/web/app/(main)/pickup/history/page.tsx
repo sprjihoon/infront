@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, RefreshCw, Package, Truck, Warehouse, X, ChevronRight } from "lucide-react";
+import { ArrowLeft, RefreshCw, Package, Truck, X, ChevronRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 interface PickupParcel {
@@ -39,7 +39,7 @@ const STATUS_GROUPS = {
   },
   inbound: {
     label: "입고 중",
-    icon: Warehouse,
+    icon: Package,
     color: "text-green-600",
     bg: "bg-green-50",
     border: "border-green-200",

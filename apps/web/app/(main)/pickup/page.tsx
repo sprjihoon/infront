@@ -580,10 +580,10 @@ function PickupPageInner() {
         </p>
         <button
           type="button"
-          onClick={() => router.push(storageOptIn ? "/storage" : "/warehouse")}
+          onClick={() => router.push("/storage")}
           className="w-full py-3.5 bg-brand-600 text-white font-bold rounded-xl text-sm"
         >
-          {storageOptIn ? "스토리지에서 확인" : "배송현황에서 확인"}
+          스토리지에서 확인
         </button>
       </div>
     );

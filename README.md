@@ -1095,6 +1095,10 @@ supabase db query --linked --file apps/sql/058_inbound_putaway_flow.sql
 supabase db query --linked --file apps/sql/059_putaway_photo_customer_rls.sql
 ```
 
+**구 `/warehouse` 제거**
+- 페이지 삭제, `/warehouse`·`/warehouse/:id` → `/storage` 리다이렉트
+- 앱 전역 링크·`parcel-display` warehouse 전용 필터·`isParcelVisibleInWarehouse` 등 정리
+
 ---
 
 ### 2026-06-11 스토리지 비즈니스 로직 구현

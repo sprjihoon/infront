@@ -4,12 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Package, Plus, RefreshCw, Archive,
-  ChevronRight, X, Check, Loader2, Search, Camera,
+  ChevronRight, X, Check, Loader2, Search,
 } from "lucide-react";
 import Link from "next/link";
-import PutawayPhotoModal from "./PutawayPhotoModal";
-import type { PutawayPhotoDto } from "@/lib/storage/mock-putaway-photo";
-import { isPutawayMockPhotos } from "@/lib/storage/putaway-photos";
 import { CARD_THEME_MAP, CARD_THEME_KEYS } from "./constants";
 import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG, CapacityChangeSVG } from "./BlockSVGs";
 
@@ -178,12 +175,6 @@ export default function StoragePage() {
   const [renameSheet, setRenameSheet] = useState<Storage | null>(null);
   const [mergeSheet, setMergeSheet] = useState(false);
   const [hoverPhoto, setHoverPhoto] = useState<{ url: string; x: number; y: number } | null>(null);
-  const [putawayByStorage, setPutawayByStorage] = useState<Record<string, PutawayPhotoDto[]>>({});
-  const [putawayModal, setPutawayModal] = useState<{
-    photos: PutawayPhotoDto[];
-    index: number;
-    isMock: boolean;
-  } | null>(null);
   const [activeIdx, setActiveIdx] = useState(1);
   const [dragOffset, setDragOffset] = useState(0);
   const isDraggingRef = useRef(false);
@@ -227,7 +218,6 @@ export default function StoragePage() {
       const locJson = locRes.ok ? await locRes.json() : { summary: null };
       const typesJson = typesRes.ok ? await typesRes.json() : { types: [] };
       setStorages(storageJson.storages ?? []);
-      setPutawayByStorage(storageJson.putaway_by_storage ?? {});
       setItems(itemsJson.items ?? []);
       setLocationSummary(locJson.summary ?? null);
       setStorageTypes(typesJson.types ?? []);
@@ -497,16 +487,6 @@ export default function StoragePage() {
                               locationSummary={locationSummary}
                               storageItems={items}
                               theme={theme}
-                              putawayPhotos={putawayByStorage[card.id] ?? []}
-                              onPutawayPhoto={() => {
-                                const photos = putawayByStorage[card.id] ?? [];
-                                if (photos.length === 0) return;
-                                setPutawayModal({
-                                  photos,
-                                  index: 0,
-                                  isMock: isPutawayMockPhotos(photos),
-                                });
-                              }}
                               onDetail={() => router.push(`/storage/${card.id}`)}
                               onRelease={parcelIds => setReleaseSheet(parcelIds)}
                               onCapacity={() => setCapacitySheet(card)}
@@ -786,16 +766,6 @@ export default function StoragePage() {
         }}
       />
     )}
-
-    {putawayModal && (
-      <PutawayPhotoModal
-        photos={putawayModal.photos}
-        index={putawayModal.index}
-        onIndexChange={(i) => setPutawayModal((m) => (m ? { ...m, index: i } : m))}
-        onClose={() => setPutawayModal(null)}
-        isMock={putawayModal.isMock}
-      />
-    )}
     </>
   );
 }
@@ -810,8 +780,6 @@ function StorageCard({
   locationSummary,
   storageItems,
   theme,
-  putawayPhotos,
-  onPutawayPhoto,
   onDetail,
   onRelease,
   onCapacity: _onCapacity,
@@ -822,8 +790,6 @@ function StorageCard({
   locationSummary: LocationSummary | null;
   storageItems: ProductItem[];
   theme: CardTheme;
-  putawayPhotos: PutawayPhotoDto[];
-  onPutawayPhoto: () => void;
   onDetail: () => void;
   onRelease: (ids: string[]) => void;
   onCapacity: () => void;
@@ -926,23 +892,6 @@ function StorageCard({
             />
           </div>
         </div>
-
-        {putawayPhotos.length > 0 && (
-          <button
-            type="button"
-            className="w-full mb-2 py-1.5 rounded-xl font-semibold text-[11px] transition-colors flex items-center justify-center gap-1.5 border"
-            style={{ color: accentColor, borderColor: `${accentColor}40`, background: `${accentColor}10` }}
-            onClick={(e) => { e.stopPropagation(); onPutawayPhoto(); }}
-          >
-            <Camera size={12} />
-            보관함 사진 보기
-            {isPutawayMockPhotos(putawayPhotos) && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
-                목업
-              </span>
-            )}
-          </button>
-        )}
 
         {/* 버튼 */}
         <div className="grid grid-cols-2 gap-1.5">

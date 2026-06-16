@@ -21,6 +21,12 @@ const nextConfig: NextConfig = {
     images: { unoptimized: true },
     trailingSlash: true,
   }),
+  async redirects() {
+    return [
+      { source: "/warehouse", destination: "/storage", permanent: true },
+      { source: "/warehouse/:id", destination: "/storage", permanent: true },
+    ];
+  },
   async headers() {
     return [
       {

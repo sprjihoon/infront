@@ -58,7 +58,7 @@ describe("buildActionCards", () => {
     );
     expect(cards[0].id).toBe("pickup");
     expect(cards[0].message).toContain("2건");
-    expect(cards[0].button?.href).toBe("/warehouse");
+    expect(cards[0].button?.href).toBe("/pickup/history");
   });
 
   it("shows in-transit card", () => {

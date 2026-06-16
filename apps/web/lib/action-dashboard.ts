@@ -89,7 +89,7 @@ export function buildActionCards(
       priority: 3,
       emoji: "🚚",
       message: `수거 예정 ${pickupScheduled.length}건 — ${formatPickupDate(earliest.pickup_date, earliest.epost_pickup_date)} 방문 예정`,
-      button: { label: "수거 현황 보기", href: "/warehouse" },
+      button: { label: "수거 현황 보기", href: "/pickup/history" },
     });
   }
 

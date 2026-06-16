@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { fetchPutawayPhotosByStorage } from "@/lib/storage/putaway-photos";
 
 function createSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -47,9 +46,7 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const putawayByStorage = await fetchPutawayPhotosByStorage(supabase, user.id);
-
-  return NextResponse.json({ storages: data ?? [], putaway_by_storage: putawayByStorage });
+  return NextResponse.json({ storages: data ?? [] });
 }
 
 /** POST /api/storage — 새 스토리지 신청 */

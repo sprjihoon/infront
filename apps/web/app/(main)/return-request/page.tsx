@@ -99,7 +99,7 @@ function ReturnRequestContent() {
           처리 결과는 마이페이지에서 확인할 수 있어요.
         </p>
         <button
-          onClick={() => router.push("/warehouse")}
+          onClick={() => router.push("/storage")}
           className="w-full bg-brand-600 text-white font-semibold py-4 rounded-2xl"
         >
           스토리지로 돌아가기
