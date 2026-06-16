@@ -132,12 +132,12 @@ export async function POST(req: NextRequest, { params }: Params) {
     }
     // ────────────────────────────────────────────────────
 
-    // customer_storages 즉시 업데이트 (usage_percent는 generated column이므로 제외)
+    // customer_storages 즉시 업데이트
+    // plan_type은 FK 제약으로 직접 변경 불가 → storage_type_id + capacity_score만 업데이트
     const { error: upErr } = await supabase
       .from("customer_storages")
       .update({
         storage_type_id: newType.id,
-        plan_type:       newType.code,
         capacity_score:  newType.volume_liter,
         updated_at:      new Date().toISOString(),
       })
