@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
+import { createClient } from "@supabase/supabase-js";
 
 /* ────────────────────────────────────────────────────────────────
    KG이니시스 결제 결과 처리 (returnUrl POST)
@@ -10,6 +11,13 @@ import crypto from "crypto";
 
 function sha256hex(str: string): string {
   return crypto.createHash("sha256").update(str, "utf8").digest("hex");
+}
+
+function createAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
 }
 
 /** iframe 오버레이 또는 리다이렉트 방식 모두 처리 */
@@ -129,6 +137,19 @@ export async function POST(request: NextRequest) {
 
     const tid = net.tid ?? net.TID ?? net.P_TID ?? "";
     const successUrl = `/shop/payment/success?paymentId=${encodeURIComponent(oid ?? "")}&amount=${encodeURIComponent(price ?? "")}&tid=${encodeURIComponent(tid)}&verified=1`;
+
+    /* shop_order 결제 완료 처리 */
+    const admin = createAdminClient();
+    if (admin && oid) {
+      const { error: updErr } = await admin
+        .from("shop_orders")
+        .update({ status: "PAID", inicis_tid: tid, paid_at: new Date().toISOString() })
+        .eq("oid", oid);
+      if (updErr) {
+        console.error("[inicis/return] shop_order update error:", updErr.message);
+      }
+    }
+
     return redirectHtml(successUrl);
 
   } catch (e) {

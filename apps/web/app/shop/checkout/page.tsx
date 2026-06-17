@@ -19,6 +19,8 @@ interface AddressForm {
   zipcode: string;
   address: string;
   addressDetail: string;
+  addr1: string;   // 주/도 (sido) — EMS addr1
+  addr2: string;   // 시/군구 (sigungu) — EMS addr2
 }
 
 const EMPTY_ADDRESS: AddressForm = {
@@ -27,6 +29,8 @@ const EMPTY_ADDRESS: AddressForm = {
   zipcode: "",
   address: "",
   addressDetail: "",
+  addr1: "",
+  addr2: "",
 };
 
 declare global {
@@ -43,7 +47,7 @@ function AddressFields({
 }: {
   values: AddressForm;
   onChange: (field: keyof AddressForm, value: string) => void;
-  onAddressSelect: (zipcode: string, address: string) => void;
+  onAddressSelect: (zipcode: string, address: string, sido?: string, sigungu?: string) => void;
   disabled?: boolean;
   tx: TxType;
 }) {
@@ -141,6 +145,18 @@ export default function ShopCheckoutPage() {
     setProduct(found);
   }, [router]);
 
+  /* KG이니시스 광고 팝업 제거 */
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      document.querySelectorAll('img[src*="ds-cdn.inicis.com"]').forEach((img) => {
+        const table = img.closest("table");
+        if (table) table.remove();
+      });
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
   function handleSender(field: keyof AddressForm, value: string) {
     setSender((prev) => {
       const next = { ...prev, [field]: value };
@@ -158,7 +174,40 @@ export default function ShopCheckoutPage() {
     if (checked) setRecipient(sender);
   }
 
+  /** sido/sigungu를 addr1/addr2로, 나머지 도로명 주소를 addr3 기반으로 파생 */
+  function deriveAddrParts(address: string, sido: string, sigungu: string) {
+    const prefix = [sido, sigungu].filter(Boolean).join(" ");
+    const street = prefix && address.startsWith(prefix)
+      ? address.slice(prefix.length).trim()
+      : address;
+    return { addr1: sido, addr2: sigungu, street };
+  }
+
+  function handleSenderAddressSelect(zipcode: string, address: string, sido?: string, sigungu?: string) {
+    const { addr1, addr2 } = deriveAddrParts(address, sido ?? "", sigungu ?? "");
+    setSender((prev) => {
+      const next = { ...prev, zipcode, address, addressDetail: "", addr1, addr2 };
+      if (sameAsSender) setRecipient(next);
+      return next;
+    });
+  }
+
+  function handleRecipientAddressSelect(zipcode: string, address: string, sido?: string, sigungu?: string) {
+    const { addr1, addr2 } = deriveAddrParts(address, sido ?? "", sigungu ?? "");
+    setRecipient((prev) => ({ ...prev, zipcode, address, addressDetail: "", addr1, addr2 }));
+  }
+
   const effectiveRecipient = sameAsSender ? sender : recipient;
+
+  /** addr3 = 도로명(addr2 이후 부분) + 상세주소 */
+  function buildAddr3(form: AddressForm): string {
+    const { addr1, addr2, address, addressDetail } = form;
+    const prefix = [addr1, addr2].filter(Boolean).join(" ");
+    const street = prefix && address.startsWith(prefix)
+      ? address.slice(prefix.length).trim()
+      : address;
+    return [street, addressDetail].filter(Boolean).join(" ");
+  }
 
   function isFormValid() {
     return (
@@ -212,6 +261,12 @@ export default function ShopCheckoutPage() {
             buyername: sender.name,
             buyertel: sender.phone.replace(/-/g, ""),
             buyeremail: email,
+            productId: product.id,
+            sender: { ...sender },
+            recipient: {
+              ...effectiveRecipient,
+              addr3: buildAddr3(effectiveRecipient),
+            },
           }),
         });
         const data = await res.json() as Record<string, string>;
@@ -244,6 +299,12 @@ export default function ShopCheckoutPage() {
           buyername: sender.name,
           buyertel: sender.phone.replace(/-/g, ""),
           buyeremail: email,
+          productId: product.id,
+          sender: { ...sender },
+          recipient: {
+            ...effectiveRecipient,
+            addr3: buildAddr3(effectiveRecipient),
+          },
         }),
       });
 
@@ -347,7 +408,7 @@ export default function ShopCheckoutPage() {
         {/* 보내는 분 */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-4">{tx.senderSection}</p>
-          <AddressFields values={sender} onChange={handleSender} onAddressSelect={(z, a) => setSender(f => ({ ...f, zipcode: z, address: a, addressDetail: "" }))} tx={tx} />
+          <AddressFields values={sender} onChange={handleSender} onAddressSelect={handleSenderAddressSelect} tx={tx} />
           <div className="mt-3 pt-3 border-t border-gray-50">
             <label className="block text-xs font-medium text-gray-600 mb-1">
               {tx.labelEmail} <span className="text-red-500">*</span>
@@ -381,7 +442,7 @@ export default function ShopCheckoutPage() {
           <AddressFields
             values={sameAsSender ? sender : recipient}
             onChange={handleRecipient}
-            onAddressSelect={(z, a) => setRecipient(f => ({ ...f, zipcode: z, address: a, addressDetail: "" }))}
+            onAddressSelect={handleRecipientAddressSelect}
             disabled={sameAsSender}
             tx={tx}
           />

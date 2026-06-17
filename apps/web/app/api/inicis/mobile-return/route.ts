@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 /* ────────────────────────────────────────────────────────────────
    KG이니시스 모바일 결제 결과 처리 (P_NEXT_URL POST)
    모바일 성공코드: P_STATUS === "00" (2자리, PC의 "0000"과 다름)
    승인요청: P_REQ_URL에 { P_MID, P_TID } POST
 ──────────────────────────────────────────────────────────────── */
+
+function createAdminClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key, { auth: { persistSession: false } });
+}
 
 function redirectHtml(url: string): NextResponse {
   const html = `<!DOCTYPE html>
@@ -82,6 +90,19 @@ export async function POST(request: NextRequest) {
 
     const tid = result.P_TID ?? result.tid ?? P_TID;
     const successUrl = `/shop/payment/success?paymentId=${encodeURIComponent(P_OID ?? "")}&amount=${encodeURIComponent(P_AMT ?? "")}&tid=${encodeURIComponent(tid)}&verified=1`;
+
+    /* shop_order 결제 완료 처리 */
+    const admin = createAdminClient();
+    if (admin && P_OID) {
+      const { error: updErr } = await admin
+        .from("shop_orders")
+        .update({ status: "PAID", inicis_tid: tid, paid_at: new Date().toISOString() })
+        .eq("oid", P_OID);
+      if (updErr) {
+        console.error("[inicis/mobile-return] shop_order update error:", updErr.message);
+      }
+    }
+
     return redirectHtml(successUrl);
 
   } catch (e) {

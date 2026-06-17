@@ -14,6 +14,8 @@ declare global {
           addressType: string;
           jibunAddress: string;
           roadAddress: string;
+          sido: string;
+          sigungu: string;
         }) => void;
         width?: string;
         height?: string;
@@ -33,7 +35,13 @@ export default function PostcodePage() {
       new window.daum.Postcode({
         oncomplete: (data) => {
           const addr = data.addressType === "R" ? data.roadAddress : data.jibunAddress;
-          const message = { type: "ADDRESS_SELECTED", zipcode: data.zonecode, address: addr };
+          const message = {
+            type: "ADDRESS_SELECTED",
+            zipcode: data.zonecode,
+            address: addr,
+            sido: data.sido ?? "",
+            sigungu: data.sigungu ?? "",
+          };
           if (window.opener) {
             window.opener.postMessage(message, "*");
             window.close();

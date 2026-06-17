@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { MapPin, X } from "lucide-react";
 
 interface AddressSearchButtonProps {
-  onSelect: (zipcode: string, address: string) => void;
+  onSelect: (zipcode: string, address: string, sido?: string, sigungu?: string) => void;
   className?: string;
   label?: string;
 }
@@ -27,7 +27,7 @@ export function AddressSearchButton({
 
     function handler(e: MessageEvent) {
       if (e.data?.type === "ADDRESS_SELECTED") {
-        onSelectRef.current(e.data.zipcode, e.data.address);
+        onSelectRef.current(e.data.zipcode, e.data.address, e.data.sido, e.data.sigungu);
         setOpen(false);
       }
     }
