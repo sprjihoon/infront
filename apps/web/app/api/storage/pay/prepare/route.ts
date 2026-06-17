@@ -42,15 +42,31 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json() as {
     storage_id: string;
-    payment_type: "PICKUP_FEE" | "SHORT_TERM_STORAGE" | "RELEASE_FEE";
+    payment_type:
+      | "PICKUP_FEE"
+      | "LISTING_FEE"
+      | "PHOTO_INSPECTION_FEE"
+      | "SHORT_TERM_STORAGE"
+      | "LONG_TERM_FIRST"
+      | "UPGRADE_FEE"
+      | "RELEASE_FEE"
+      | "SHIPPING_FEE"
+      | "OPEN_CHECK_FEE"
+      | "PENALTY_FEE";
     buyername: string;
     buyertel: string;
     buyeremail: string;
-    /** PICKUP_FEE: 수거할 박스 목록 */
+    /** PICKUP_FEE / LONG_TERM_FIRST: 수거할 박스 목록 */
     pickup_boxes?: Array<{ size_code: string; qty: number }>;
-    /** SHORT_TERM_STORAGE 정산 시만 사용 */
+    /** SHORT_TERM_STORAGE: 정산 주수 */
     billing_weeks?: number;
     billing_plan_type?: string;
+    /** LISTING_FEE / PHOTO_INSPECTION_FEE: 물품 개수 */
+    item_count?: number;
+    /** UPGRADE_FEE / SHIPPING_FEE / OPEN_CHECK_FEE / PENALTY_FEE: 직접 지정 금액 */
+    amount?: number;
+    /** LONG_TERM_FIRST: 장기보관 플랜 (첫 달 요금 계산) */
+    long_term_plan_type?: string;
   };
 
   const { storage_id, payment_type, buyername, buyertel, buyeremail } = body;
@@ -76,6 +92,7 @@ export async function POST(request: NextRequest) {
   let billing_memo: string | null = null;
   let billing_weeks: number | null = null;
   let billing_plan_type: string | null = null;
+  let item_count_val: number | null = null;
 
   if (payment_type === "PICKUP_FEE") {
     /* DB에서 박스 요금 조회 */
@@ -108,10 +125,81 @@ export async function POST(request: NextRequest) {
     goodname = `인프론트 보관 서비스 수거비`;
     billing_memo = boxLines.join(" / ");
 
+  } else if (payment_type === "LISTING_FEE") {
+    const cnt = Math.max(1, Math.floor(body.item_count ?? 1));
+    amount = cnt * 500;
+    item_count_val = cnt;
+    goodname = "인프론트 리스트 확인비";
+    billing_memo = `물품 ${cnt}개 × 500원`;
+
+  } else if (payment_type === "PHOTO_INSPECTION_FEE") {
+    const cnt = Math.max(1, Math.floor(body.item_count ?? 1));
+    amount = cnt * 1_000;
+    item_count_val = cnt;
+    goodname = "인프론트 사진·검품 등록비";
+    billing_memo = `물품 ${cnt}개 × 1,000원`;
+
   } else if (payment_type === "RELEASE_FEE") {
-    amount = 1000;
+    amount = 1_000;
     goodname = "인프론트 보관 서비스 출고 처리비";
     billing_memo = "출고 처리비 1,000원";
+
+  } else if (payment_type === "UPGRADE_FEE") {
+    amount = body.amount ?? 0;
+    if (amount <= 0) return NextResponse.json({ error: "업그레이드 차액을 입력해 주세요." }, { status: 400 });
+    goodname = "인프론트 플랜 업그레이드";
+    billing_memo = `업그레이드 차액 ${amount.toLocaleString()}원`;
+
+  } else if (payment_type === "SHIPPING_FEE") {
+    amount = body.amount ?? 0;
+    if (amount <= 0) return NextResponse.json({ error: "배송비를 입력해 주세요." }, { status: 400 });
+    goodname = "인프론트 배송비";
+    billing_memo = `배송비 ${amount.toLocaleString()}원`;
+
+  } else if (payment_type === "OPEN_CHECK_FEE") {
+    amount = body.amount ?? 5_000;
+    goodname = "인프론트 해외배송 개봉 확인비";
+    billing_memo = `개봉 확인비 ${amount.toLocaleString()}원`;
+
+  } else if (payment_type === "PENALTY_FEE") {
+    amount = body.amount ?? 0;
+    if (amount <= 0) return NextResponse.json({ error: "페널티 금액을 입력해 주세요." }, { status: 400 });
+    goodname = "인프론트 페널티";
+    billing_memo = `페널티 ${amount.toLocaleString()}원`;
+
+  } else if (payment_type === "LONG_TERM_FIRST") {
+    /* 장기보관 첫 결제: 수거비 + 첫 달 이용료 */
+    const planType = body.long_term_plan_type;
+    if (!planType) return NextResponse.json({ error: "long_term_plan_type 필수" }, { status: 400 });
+
+    const { data: planData } = await supabase
+      .from("storage_plan_config")
+      .select("monthly_rate, label_ko")
+      .eq("plan_type", planType)
+      .single();
+    if (!planData?.monthly_rate) return NextResponse.json({ error: "플랜 요금 정보 없음" }, { status: 400 });
+
+    /* 수거비 계산 */
+    const { data: feeRows } = await supabase
+      .from("pickup_box_fees")
+      .select("size_code, label_ko, pickup_fee")
+      .eq("is_active", true);
+    const feeMap = Object.fromEntries((feeRows ?? []).map((r) => [r.size_code, r]));
+    const boxes = body.pickup_boxes?.length ? body.pickup_boxes : [{ size_code: "DEFAULT", qty: 1 }];
+    let pickupAmount = 0;
+    const pickupLines: string[] = [];
+    for (const b of boxes) {
+      const spec = feeMap[b.size_code];
+      if (!spec) return NextResponse.json({ error: `잘못된 박스 규격: ${b.size_code}` }, { status: 400 });
+      const qty = Math.max(1, Math.floor(b.qty ?? 1));
+      pickupAmount += spec.pickup_fee * qty;
+      pickupLines.push(`${spec.label_ko} ${qty}개 × ${spec.pickup_fee.toLocaleString()}원`);
+    }
+    const monthlyAmount = Number(planData.monthly_rate);
+    amount = pickupAmount + monthlyAmount;
+    billing_plan_type = planType;
+    goodname = `인프론트 장기보관 시작 (${planType}플랜)`;
+    billing_memo = `수거비(${pickupLines.join("/")})+첫달이용료(${planData.label_ko} ${monthlyAmount.toLocaleString()}원)`;
 
   } else if (payment_type === "SHORT_TERM_STORAGE") {
     billing_weeks = body.billing_weeks ?? null;
@@ -140,6 +228,10 @@ export async function POST(request: NextRequest) {
 
   } else {
     return NextResponse.json({ error: "지원하지 않는 결제 유형입니다." }, { status: 400 });
+  }
+
+  if (amount <= 0) {
+    return NextResponse.json({ error: "결제 금액이 0원입니다." }, { status: 400 });
   }
 
   /* buyertel 정제 */
@@ -171,6 +263,7 @@ export async function POST(request: NextRequest) {
       billing_weeks,
       billing_plan_type,
       billing_memo,
+      item_count: item_count_val,
     })
     .select("id")
     .single();
