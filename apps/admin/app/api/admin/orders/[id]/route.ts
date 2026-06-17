@@ -357,5 +357,35 @@ export async function PATCH(
     return NextResponse.json({ data });
   }
 
+  // ─── CS 직접 수정 ─────────────────────────────────────────────
+  if (action === "update_recipient") {
+    const allowed = [
+      "recipient_name", "recipient_phone", "recipient_email",
+      "recipient_country",
+      "recipient_addr1", "recipient_addr2", "recipient_addr3",
+      "recipient_zip", "recipient_address",
+    ];
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    allowed.forEach(k => { if (k in body && body[k] !== undefined) update[k] = body[k] || null; });
+
+    const { data, error } = await adminDb
+      .from("orders").update(update).eq("id", id).select().single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ data });
+  }
+
+  if (action === "update_item_list") {
+    const { item_list } = body as { item_list: unknown[] };
+    if (!Array.isArray(item_list) || item_list.length === 0) {
+      return NextResponse.json({ error: "item_list는 1개 이상의 배열이어야 합니다" }, { status: 400 });
+    }
+    const { data, error } = await adminDb
+      .from("orders")
+      .update({ item_list, updated_at: new Date().toISOString() })
+      .eq("id", id).select().single();
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ data });
+  }
+
   return NextResponse.json({ error: "Unknown action" }, { status: 400 });
 }

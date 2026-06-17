@@ -173,6 +173,21 @@ export default function OrderDetailPage() {
   const [emsSubmitting, setEmsSubmitting] = useState(false);
   const [emsMsg, setEmsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
+  // 수취인 인라인 편집
+  const [editingRecipient, setEditingRecipient] = useState(false);
+  const [recipientDraft, setRecipientDraft] = useState<{
+    recipient_name: string; recipient_phone: string; recipient_email: string;
+    recipient_country: string;
+    recipient_addr1: string; recipient_addr2: string; recipient_addr3: string; recipient_zip: string;
+  } | null>(null);
+  const [recipientSaving, setRecipientSaving] = useState(false);
+
+  // 인보이스 품목 인라인 편집
+  type ItemDraft = { name_en: string; quantity: number; unit_price_usd: number; origin_country: string; hs_code: string };
+  const [editingItems, setEditingItems] = useState(false);
+  const [itemsDraft, setItemsDraft] = useState<ItemDraft[]>([]);
+  const [itemsSaving, setItemsSaving] = useState(false);
+
   // 박스 편집 상태 (box.id → 편집 중 데이터)
   const [editingBox, setEditingBox] = useState<string | null>(null);
   const [boxEdits, setBoxEdits] = useState<Record<string, Partial<ShippingBox>>>({});
@@ -325,6 +340,73 @@ export default function OrderDetailPage() {
     if (!confirm("박스를 삭제하시겠습니까?")) return;
     const ok = await callApi({ action: "delete_box", box_id: boxId });
     if (ok) loadOrder();
+  }
+
+  // ─── 수취인 정보 편집 ─────────────────────────────────────────
+  function startEditRecipient() {
+    if (!order) return;
+    setRecipientDraft({
+      recipient_name:    order.recipient_name ?? "",
+      recipient_phone:   order.recipient_phone ?? "",
+      recipient_email:   order.recipient_email ?? "",
+      recipient_country: order.recipient_country ?? "",
+      recipient_addr1:   order.recipient_addr1 ?? "",
+      recipient_addr2:   order.recipient_addr2 ?? "",
+      recipient_addr3:   order.recipient_addr3 ?? "",
+      recipient_zip:     order.recipient_zip ?? "",
+    });
+    setEditingRecipient(true);
+  }
+
+  async function saveRecipient() {
+    if (!recipientDraft) return;
+    setRecipientSaving(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_recipient", ...recipientDraft }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setMsg(`오류: ${json.error}`); return; }
+      setEditingRecipient(false);
+      setRecipientDraft(null);
+      loadOrder();
+    } finally {
+      setRecipientSaving(false);
+    }
+  }
+
+  // ─── 인보이스 품목 편집 ───────────────────────────────────────
+  function startEditItems() {
+    if (!order) return;
+    setItemsDraft((order.item_list ?? []).map(it => ({
+      name_en:        it.name_en ?? it.name ?? "",
+      quantity:       it.quantity ?? it.qty ?? 1,
+      unit_price_usd: it.unit_price_usd ?? it.price ?? 0,
+      origin_country: it.origin_country ?? it.origin ?? "KR",
+      hs_code:        it.hs_code ?? "",
+    })));
+    setEditingItems(true);
+  }
+
+  async function saveItems() {
+    if (!itemsDraft.length) return;
+    setItemsSaving(true);
+    try {
+      const res = await fetch(`/api/admin/orders/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_item_list", item_list: itemsDraft }),
+      });
+      const json = await res.json();
+      if (!res.ok) { setMsg(`오류: ${json.error}`); return; }
+      setEditingItems(false);
+      setItemsDraft([]);
+      loadOrder();
+    } finally {
+      setItemsSaving(false);
+    }
   }
 
   async function handleEmsApply() {
@@ -493,13 +575,65 @@ export default function OrderDetailPage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm col-span-2 lg:col-span-1">
           <h2 className="font-semibold text-gray-900 mb-3 flex items-center gap-1.5">
             <MapPin size={15} className="text-gray-400" /> 수취인 정보
+            {!editingRecipient && (
+              <button
+                onClick={startEditRecipient}
+                className="ml-auto text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <Edit3 size={12} /> 수정
+              </button>
+            )}
           </h2>
-          <div className="space-y-1.5 text-sm">
-            <Row label="이름" value={order.recipient_name} />
-            <Row label="국가" value={order.recipient_country} />
-            <Row label="주소" value={order.recipient_address} />
-            {order.recipient_phone && <Row label="연락처" value={order.recipient_phone} />}
-          </div>
+          {editingRecipient && recipientDraft ? (
+            <div className="space-y-2 text-sm">
+              {([
+                ["recipient_name",    "이름"],
+                ["recipient_country", "국가 코드 (예: JP)"],
+                ["recipient_phone",   "전화번호"],
+                ["recipient_email",   "이메일"],
+                ["recipient_zip",     "우편번호"],
+                ["recipient_addr1",   "주소1 (주/도)"],
+                ["recipient_addr2",   "주소2 (시/군)"],
+                ["recipient_addr3",   "주소3 (상세)"],
+              ] as [keyof typeof recipientDraft, string][]).map(([key, label]) => (
+                <div key={key}>
+                  <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">{label}</label>
+                  <input
+                    value={recipientDraft[key]}
+                    onChange={e => setRecipientDraft(d => d ? { ...d, [key]: e.target.value } : d)}
+                    className="w-full px-2.5 py-1.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+              ))}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={saveRecipient}
+                  disabled={recipientSaving}
+                  className="flex-1 bg-blue-600 text-white text-xs font-semibold py-2 rounded-lg flex items-center justify-center gap-1 disabled:opacity-60"
+                >
+                  {recipientSaving ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={12} /> 저장</>}
+                </button>
+                <button
+                  onClick={() => { setEditingRecipient(false); setRecipientDraft(null); }}
+                  className="px-4 py-2 text-xs text-gray-500 border border-gray-200 rounded-lg hover:bg-gray-50"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5 text-sm">
+              <Row label="이름" value={order.recipient_name} />
+              <Row label="국가" value={order.recipient_country} />
+              <Row label="주소" value={order.recipient_address} />
+              {order.recipient_phone && <Row label="연락처" value={order.recipient_phone} />}
+              {order.recipient_email && <Row label="이메일" value={order.recipient_email} />}
+              {order.recipient_addr1 && <Row label="주소1" value={order.recipient_addr1} />}
+              {order.recipient_addr2 && <Row label="주소2" value={order.recipient_addr2} />}
+              {order.recipient_addr3 && <Row label="주소3" value={order.recipient_addr3} />}
+              {order.recipient_zip && <Row label="우편번호" value={order.recipient_zip} />}
+            </div>
+          )}
         </div>
 
         {/* 금액 정보 */}
@@ -643,27 +777,122 @@ export default function OrderDetailPage() {
       {/* 인보이스 품목 */}
       {order.item_list && order.item_list.length > 0 && (
         <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h2 className="font-semibold text-gray-900 mb-3">인보이스 품목</h2>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs text-gray-500 border-b">
-                <th className="text-left py-1.5 font-medium">품명</th>
-                <th className="text-center py-1.5 font-medium">수량</th>
-                <th className="text-right py-1.5 font-medium">단가</th>
-                <th className="text-right py-1.5 font-medium">원산지</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.item_list.map((item, idx) => (
-                <tr key={idx} className="border-b border-gray-50 last:border-0">
-                  <td className="py-2">{item.name_en ?? item.name}</td>
-                  <td className="py-2 text-center">{item.quantity ?? item.qty}</td>
-                  <td className="py-2 text-right">${item.unit_price_usd ?? item.price}</td>
-                  <td className="py-2 text-right text-gray-500">{item.origin_country ?? item.origin}</td>
-                </tr>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-gray-900">인보이스 품목</h2>
+            {!editingItems ? (
+              <button
+                onClick={startEditItems}
+                className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                <Edit3 size={12} /> 수정
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setItemsDraft(d => [...d, { name_en: "", quantity: 1, unit_price_usd: 0, origin_country: "KR", hs_code: "" }])}
+                  className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
+                >
+                  <Plus size={12} /> 행 추가
+                </button>
+                <button
+                  onClick={saveItems}
+                  disabled={itemsSaving}
+                  className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg flex items-center gap-1 disabled:opacity-60"
+                >
+                  {itemsSaving ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Check size={11} /> 저장</>}
+                </button>
+                <button
+                  onClick={() => { setEditingItems(false); setItemsDraft([]); }}
+                  className="text-xs text-gray-500 border border-gray-200 px-3 py-1 rounded-lg hover:bg-gray-50"
+                >
+                  취소
+                </button>
+              </div>
+            )}
+          </div>
+
+          {editingItems ? (
+            <div className="space-y-2">
+              {itemsDraft.map((item, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-1.5 items-center bg-gray-50 rounded-xl p-2">
+                  <div className="col-span-4">
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">품명 (영문)</label>
+                    <input
+                      value={item.name_en}
+                      onChange={e => setItemsDraft(d => d.map((it, i) => i === idx ? { ...it, name_en: e.target.value } : it))}
+                      className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      placeholder="예: T-Shirt"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">수량</label>
+                    <input
+                      type="number" min={1}
+                      value={item.quantity}
+                      onChange={e => setItemsDraft(d => d.map((it, i) => i === idx ? { ...it, quantity: Number(e.target.value) } : it))}
+                      className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">단가 (USD)</label>
+                    <input
+                      type="number" min={0} step={0.01}
+                      value={item.unit_price_usd}
+                      onChange={e => setItemsDraft(d => d.map((it, i) => i === idx ? { ...it, unit_price_usd: Number(e.target.value) } : it))}
+                      className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">원산지</label>
+                    <input
+                      value={item.origin_country}
+                      onChange={e => setItemsDraft(d => d.map((it, i) => i === idx ? { ...it, origin_country: e.target.value } : it))}
+                      className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      placeholder="KR"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">HS코드</label>
+                    <input
+                      value={item.hs_code}
+                      onChange={e => setItemsDraft(d => d.map((it, i) => i === idx ? { ...it, hs_code: e.target.value } : it))}
+                      className="w-full px-2 py-1 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-center pt-4">
+                    <button
+                      onClick={() => setItemsDraft(d => d.filter((_, i) => i !== idx))}
+                      className="p-1 text-red-400 hover:text-red-600 disabled:opacity-30"
+                      disabled={itemsDraft.length <= 1}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-gray-500 border-b">
+                  <th className="text-left py-1.5 font-medium">품명</th>
+                  <th className="text-center py-1.5 font-medium">수량</th>
+                  <th className="text-right py-1.5 font-medium">단가</th>
+                  <th className="text-right py-1.5 font-medium">원산지</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.item_list.map((item, idx) => (
+                  <tr key={idx} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2">{item.name_en ?? item.name}</td>
+                    <td className="py-2 text-center">{item.quantity ?? item.qty}</td>
+                    <td className="py-2 text-right">${item.unit_price_usd ?? item.price}</td>
+                    <td className="py-2 text-right text-gray-500">{item.origin_country ?? item.origin}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
