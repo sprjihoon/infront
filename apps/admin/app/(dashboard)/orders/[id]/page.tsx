@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft, Package, User, MapPin, Send, Truck,
   CheckCircle, ChevronDown, DollarSign, Plus, Trash2,
   Box, Weight, Edit3, X, Check, Mail, Printer, ClipboardList,
+  ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 interface Order {
@@ -131,6 +132,9 @@ const BOX_STATUS_LABEL: Record<string, string> = {
 export default function OrderDetailPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const filterStatus = searchParams.get("status") ?? "";
+  const filterQ      = searchParams.get("q")      ?? "";
 
   const [order, setOrder] = useState<Order | null>(null);
   const [orderParcels, setOrderParcels] = useState<OrderParcel[]>([]);
@@ -139,6 +143,14 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actioning, setActioning] = useState(false);
   const [msg, setMsg] = useState("");
+
+  // 이전/다음 주문 네비게이션
+  const [adjacent, setAdjacent] = useState<{
+    prev: { id: string; order_no: string } | null;
+    next: { id: string; order_no: string } | null;
+    index: number;
+    total: number;
+  } | null>(null);
 
   // 견적 폼
   const [finalFee, setFinalFee] = useState("");
@@ -168,7 +180,17 @@ export default function OrderDetailPage() {
   // 품목 배정 패널 (box.id → 열림 여부)
   const [itemPanels, setItemPanels] = useState<Record<string, boolean>>({});
 
-  useEffect(() => { loadOrder(); }, [id]);
+  useEffect(() => {
+    loadOrder();
+    // 이전/다음 주문 조회
+    const qs = new URLSearchParams();
+    if (filterStatus) qs.set("status", filterStatus);
+    if (filterQ) qs.set("q", filterQ);
+    fetch(`/api/admin/orders/${id}/adjacent?${qs}`)
+      .then(r => r.json())
+      .then(setAdjacent)
+      .catch(() => {});
+  }, [id]);
 
   async function loadOrder() {
     const res = await fetch(`/api/admin/orders/${id}`);
@@ -391,13 +413,48 @@ export default function OrderDetailPage() {
   return (
     <div className="max-w-3xl space-y-5">
       <div className="flex items-center gap-3">
-        <Link href="/orders" className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+        <Link
+          href={`/orders${filterStatus || filterQ ? `?${new URLSearchParams({ ...(filterStatus && { status: filterStatus }), ...(filterQ && { q: filterQ }) })}` : ""}`}
+          className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+        >
           <ArrowLeft size={18} className="text-gray-600" />
         </Link>
         <div className="flex-1">
           <h1 className="text-lg font-bold text-gray-900">주문 상세</h1>
           <p className="text-xs text-gray-400">{order.order_no}</p>
         </div>
+
+        {/* 이전/다음 네비게이션 */}
+        {adjacent && (
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-400 mr-1">
+              {adjacent.index} / {adjacent.total}
+            </span>
+            {adjacent.prev ? (
+              <Link
+                href={`/orders/${adjacent.prev.id}${filterStatus || filterQ ? `?${new URLSearchParams({ ...(filterStatus && { status: filterStatus }), ...(filterQ && { q: filterQ }) })}` : ""}`}
+                title={adjacent.prev.order_no}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <ChevronLeft size={18} className="text-gray-600" />
+              </Link>
+            ) : (
+              <span className="p-1.5 opacity-30"><ChevronLeft size={18} className="text-gray-300" /></span>
+            )}
+            {adjacent.next ? (
+              <Link
+                href={`/orders/${adjacent.next.id}${filterStatus || filterQ ? `?${new URLSearchParams({ ...(filterStatus && { status: filterStatus }), ...(filterQ && { q: filterQ }) })}` : ""}`}
+                title={adjacent.next.order_no}
+                className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <ChevronRight size={18} className="text-gray-600" />
+              </Link>
+            ) : (
+              <span className="p-1.5 opacity-30"><ChevronRight size={18} className="text-gray-300" /></span>
+            )}
+          </div>
+        )}
+
         <Link
           href={`/orders/${id}/packing-slip`}
           target="_blank"

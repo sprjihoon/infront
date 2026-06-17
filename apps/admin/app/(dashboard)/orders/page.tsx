@@ -141,7 +141,7 @@ export default async function OrdersPage({
                       {new Date(o.created_at).toLocaleDateString("ko-KR")}
                     </td>
                     <td className="py-3 px-4">
-                      <Link href={`/orders/${o.id}`} className="text-blue-600 hover:text-blue-800">
+                      <Link href={`/orders/${o.id}${status || q ? `?${new URLSearchParams({ ...(status && { status }), ...(q && { q }) })}` : ""}`} className="text-blue-600 hover:text-blue-800">
                         <ChevronRight size={16} />
                       </Link>
                     </td>
