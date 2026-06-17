@@ -6,13 +6,24 @@ import { requireAdmin } from "@/lib/supabase/server";
 /* ────────────────────────────────────────────────────────────────
    POST /api/admin/shop-orders/[id]/cancel
    Body: { msg?: string }
-   KG이니시스 전액 취소 후 shop_orders.status = "CANCELLED" 업데이트
+   KG이니시스 INIAPI AES-128-CBC signData 방식 전액 취소
 ──────────────────────────────────────────────────────────────── */
 
 const CANCEL_URL = "https://iniapi.inicis.com/api/v1/refund";
 
-function sha256hex(str: string): string {
-  return crypto.createHash("sha256").update(str, "utf8").digest("hex");
+function buildSignData(
+  type: string, mid: string, tid: string,
+  msg: string, price: string, timestamp: string,
+): string {
+  const key = process.env.INICIS_INIAPI_KEY!;
+  const iv  = process.env.INICIS_INIAPI_IV!;
+  const plain = type + mid + tid + msg + price + timestamp;
+  const cipher = crypto.createCipheriv(
+    "aes-128-cbc",
+    Buffer.from(key, "utf8"),
+    Buffer.from(iv,  "utf8"),
+  );
+  return Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]).toString("base64");
 }
 
 export async function POST(
@@ -43,10 +54,11 @@ export async function POST(
     return NextResponse.json({ error: "결제 완료된 주문만 취소할 수 있습니다." }, { status: 400 });
   }
 
-  const mid = process.env.INICIS_MID;
-  const signKey = process.env.INICIS_SIGN_KEY;
-  if (!mid || !signKey) {
-    console.error("[shop-orders/cancel] INICIS_MID or INICIS_SIGN_KEY not set");
+  const mid     = process.env.INICIS_MID;
+  const apiKey  = process.env.INICIS_INIAPI_KEY;
+  const apiIv   = process.env.INICIS_INIAPI_IV;
+  if (!mid || !apiKey || !apiIv) {
+    console.error("[shop-orders/cancel] 환경변수 누락");
     return NextResponse.json({ error: "결제 설정 오류" }, { status: 500 });
   }
 
@@ -57,9 +69,8 @@ export async function POST(
   const price     = String(order.amount);
   const timestamp = Date.now().toString();
 
-  /* 2. KG이니시스 취소 요청 */
-  const signSource = `type=${type}&mid=${mid}&tid=${tid}&msg=${msg}&price=${price}&timestamp=${timestamp}&hashKey=${signKey}`;
-  const signData   = sha256hex(signSource);
+  /* 2. KG이니시스 취소 요청 (INIAPI AES-128-CBC signData) */
+  const signData   = buildSignData(type, mid, tid, msg, price, timestamp);
 
   const cancelParams = new URLSearchParams({ type, mid, tid, msg, price, timestamp, signData });
 

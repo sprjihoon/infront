@@ -2,17 +2,45 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
 /* ────────────────────────────────────────────────────────────────
-   KG이니시스 결제 취소 API
+   KG이니시스 결제 취소 API  (INIAPI v1)
    POST /api/inicis/cancel
    Body: { tid, price, msg?, type? }
    - type: "Refund" (전액취소, default) | "PartialRefund" (부분취소)
-   - 부분취소 시 price 필드 = 취소할 금액
+
+   signData = Base64( AES-128-CBC( type+mid+tid+msg+price+timestamp,
+                                   key=INIAPI_KEY, iv=INIAPI_IV ) )
 ──────────────────────────────────────────────────────────────── */
 
 const CANCEL_URL = "https://iniapi.inicis.com/api/v1/refund";
 
-function sha256hex(str: string): string {
-  return crypto.createHash("sha256").update(str, "utf8").digest("hex");
+/**
+ * KG이니시스 INIAPI signData 생성
+ * - plainText: 파라미터 값들을 순서대로 단순 연결 (key=value 형식 아님)
+ * - 암호화: AES-128-CBC / PKCS5Padding
+ * - KEY, IV: 포털에서 발급한 16-byte UTF-8 문자열
+ */
+function buildSignData(
+  type: string,
+  mid: string,
+  tid: string,
+  msg: string,
+  price: string,
+  timestamp: string,
+): string {
+  const key = process.env.INICIS_INIAPI_KEY!;
+  const iv  = process.env.INICIS_INIAPI_IV!;
+
+  const plain = type + mid + tid + msg + price + timestamp;
+  const cipher = crypto.createCipheriv(
+    "aes-128-cbc",
+    Buffer.from(key, "utf8"),
+    Buffer.from(iv,  "utf8"),
+  );
+  const encrypted = Buffer.concat([
+    cipher.update(plain, "utf8"),
+    cipher.final(),
+  ]);
+  return encrypted.toString("base64");
 }
 
 export async function POST(request: NextRequest) {
@@ -30,23 +58,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "tid, price는 필수입니다." }, { status: 400 });
     }
 
-    const mid = process.env.INICIS_MID;
-    const signKey = process.env.INICIS_SIGN_KEY;
+    const mid     = process.env.INICIS_MID;
+    const apiKey  = process.env.INICIS_INIAPI_KEY;
+    const apiIv   = process.env.INICIS_INIAPI_IV;
 
-    if (!mid || !signKey) {
-      console.error("[inicis/cancel] INICIS_MID or INICIS_SIGN_KEY not set");
+    if (!mid || !apiKey || !apiIv) {
+      console.error("[inicis/cancel] 환경변수 누락: INICIS_MID / INICIS_INIAPI_KEY / INICIS_INIAPI_IV");
       return NextResponse.json({ error: "결제 설정 오류" }, { status: 500 });
     }
 
     const timestamp = Date.now().toString();
-    const priceStr = String(price);
+    const priceStr  = String(price);
 
-    /*
-     * KG이니시스 REST API signData 계산
-     * signData = SHA256(type={type}&mid={mid}&tid={tid}&msg={msg}&price={price}&timestamp={timestamp}&hashKey={signKey})
-     */
-    const signSource = `type=${type}&mid=${mid}&tid=${tid}&msg=${msg}&price=${priceStr}&timestamp=${timestamp}&hashKey=${signKey}`;
-    const signData = sha256hex(signSource);
+    const signData = buildSignData(type, mid, tid, msg, priceStr, timestamp);
 
     const params = new URLSearchParams({
       type,
@@ -60,19 +84,15 @@ export async function POST(request: NextRequest) {
 
     const res = await fetch(CANCEL_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded; charset=utf-8" },
       body: params.toString(),
     });
 
     const resText = await res.text();
 
-    /* 응답 파싱 (URL-encoded 또는 JSON) */
     let result: Record<string, string> = {};
     try {
-      const json = JSON.parse(resText);
-      result = json;
+      result = JSON.parse(resText);
     } catch {
       new URLSearchParams(resText).forEach((v, k) => { result[k] = v; });
     }
@@ -81,7 +101,7 @@ export async function POST(request: NextRequest) {
     const resultMsg  = result.resultMsg  ?? result.P_RMESG1 ?? "알 수 없는 오류";
 
     if (resultCode !== "00" && resultCode !== "0000") {
-      console.error("[inicis/cancel] cancel failed:", resultCode, resultMsg, "raw:", resText);
+      console.error("[inicis/cancel] failed:", resultCode, resultMsg, "raw:", resText);
       return NextResponse.json({ error: resultMsg, code: resultCode }, { status: 400 });
     }
 
