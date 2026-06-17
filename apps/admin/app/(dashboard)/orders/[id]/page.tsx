@@ -311,6 +311,13 @@ export default function OrderDetailPage() {
       setEmsMsg({ type: "err", text: "모든 측정값(중량·가로·세로·높이)을 입력해주세요." });
       return;
     }
+    // 수취인 이름 이메일이거나 비어있으면 오버라이드 필수
+    const needNameOverride = !order?.recipient_name || order.recipient_name.includes("@");
+    if (needNameOverride && !receivename.trim()) {
+      setEmsMsg({ type: "err", text: "수취인 이름(영문)을 입력해주세요." });
+      setShowEmsForm(true);
+      return;
+    }
     setEmsSubmitting(true);
     setEmsMsg(null);
     try {
@@ -894,21 +901,7 @@ export default function OrderDetailPage() {
                 {/* 수취인 이름 이메일 감지 경고 */}
                 {order.recipient_name?.includes("@") && (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700">
-                    ⚠️ 수취인 이름이 이메일 주소입니다. 아래에 실제 이름(영문)을 입력하세요.
-                  </div>
-                )}
-
-                {/* 수취인 이름 오버라이드 */}
-                {(order.recipient_name?.includes("@") || !order.recipient_name) && (
-                  <div>
-                    <label className="text-xs font-medium text-gray-500 block mb-1">수취인 이름 (영문) *</label>
-                    <input
-                      type="text"
-                      value={emsForm.receivename}
-                      onChange={e => setEmsForm(f => ({ ...f, receivename: e.target.value }))}
-                      placeholder="예: Tanaka Yuki"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
+                    ⚠️ 수취인 이름이 이메일 주소입니다. 접수 폼에서 실제 이름(영문)을 입력하세요.
                   </div>
                 )}
 
@@ -930,6 +923,19 @@ export default function OrderDetailPage() {
 
                 {showEmsForm && (
                   <div className="space-y-3 pt-1">
+                    {/* 수취인 이름 오버라이드 — 이메일이거나 빈 경우 */}
+                    {(order.recipient_name?.includes("@") || !order.recipient_name) && (
+                      <div>
+                        <label className="text-xs font-medium text-red-500 block mb-1">수취인 이름 (영문) * <span className="text-gray-400 font-normal">— 이메일 대신 실명을 입력하세요</span></label>
+                        <input
+                          type="text"
+                          value={emsForm.receivename}
+                          onChange={e => setEmsForm(f => ({ ...f, receivename: e.target.value }))}
+                          placeholder="예: Tanaka Yuki"
+                          className={`w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${!emsForm.receivename.trim() ? "border-red-300 bg-red-50" : "border-gray-200"}`}
+                        />
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <label className="text-xs font-medium text-gray-500 block mb-1">총중량 (g) *</label>
