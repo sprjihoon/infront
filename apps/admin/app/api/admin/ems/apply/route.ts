@@ -12,16 +12,20 @@ export const preferredRegion = 'icn1';
 
 const USE_MOCK = process.env.EMS_MOCK === 'true';
 
+function cleanEnv(v: string | undefined, fallback = '') {
+  return (v ?? fallback).replace(/[\r\n\s]/g, '') || fallback;
+}
+
 const SENDER = {
-  name:    process.env.INFRONT_SENDER_NAME    ?? 'Infront',
-  zipcode: process.env.INFRONT_SENDER_ZIPCODE ?? '',
-  addr1:   process.env.INFRONT_SENDER_ADDR1   ?? '',
-  addr2:   process.env.INFRONT_SENDER_ADDR2   ?? '',
-  addr3:   process.env.INFRONT_SENDER_ADDR3   ?? '',
-  tel1:    process.env.INFRONT_SENDER_TEL1    ?? '82',
-  tel2:    process.env.INFRONT_SENDER_TEL2    ?? '',
-  tel3:    process.env.INFRONT_SENDER_TEL3    ?? '',
-  tel4:    process.env.INFRONT_SENDER_TEL4    ?? '',
+  name:    cleanEnv(process.env.INFRONT_SENDER_NAME,    'Infront'),
+  zipcode: cleanEnv(process.env.INFRONT_SENDER_ZIPCODE),
+  addr1:   cleanEnv(process.env.INFRONT_SENDER_ADDR1),
+  addr2:   cleanEnv(process.env.INFRONT_SENDER_ADDR2),
+  addr3:   cleanEnv(process.env.INFRONT_SENDER_ADDR3),
+  tel1:    cleanEnv(process.env.INFRONT_SENDER_TEL1,    '82'),
+  tel2:    cleanEnv(process.env.INFRONT_SENDER_TEL2),
+  tel3:    cleanEnv(process.env.INFRONT_SENDER_TEL3),
+  tel4:    cleanEnv(process.env.INFRONT_SENDER_TEL4),
 };
 
 const METHOD_MAP: Record<string, { premiumcd: string; em_ee: string }> = {
