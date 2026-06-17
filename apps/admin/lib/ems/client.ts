@@ -101,7 +101,7 @@ async function getQuery(endpoint: string, params: Record<string, string>, attemp
   }
 }
 
-/** POST 요청 (신청 API — SEED128 암호화) */
+/** POST 요청 (신청 API — SEED128 암호화, application/x-www-form-urlencoded) */
 async function postEncrypted(endpoint: string, params: Record<string, unknown>) {
   const sec = getSec();
   if (!sec) throw new Error('EMS_SECURITY_KEY 환경변수가 설정되지 않았습니다.');
@@ -109,12 +109,16 @@ async function postEncrypted(endpoint: string, params: Record<string, unknown>) 
   const plain = buildEpostParams(params);
   const encrypted = seed128Encrypt(plain, sec);
 
-  const url = new URL(`${BASE}/${endpoint}`);
-  url.searchParams.set('key', getKey());
-  url.searchParams.set('regData', encrypted);
+  const url = `${BASE}/${endpoint}`;
+  const body = `key=${encodeURIComponent(getKey())}&regData=${encodeURIComponent(encrypted)}`;
 
-  const res = await fetchWithTimeout(url.toString(), {
-    headers: { 'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)' },
+  const res = await fetchWithTimeout(url, {
+    method: 'POST',
+    headers: {
+      'User-Agent': 'Apache-HttpClient/4.5.1 (Java/1.8.0_91)',
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
   });
   if (!res.ok) throw new EmsApiError(`EMS HTTP ${res.status}`);
   const xml = await res.text();
