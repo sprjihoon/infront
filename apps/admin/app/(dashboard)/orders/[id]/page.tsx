@@ -157,7 +157,7 @@ export default function OrderDetailPage() {
 
   // EMS 접수 폼
   const [showEmsForm, setShowEmsForm] = useState(false);
-  const [emsForm, setEmsForm] = useState({ totweight: "", boxlength: "", boxwidth: "", boxheight: "" });
+  const [emsForm, setEmsForm] = useState({ totweight: "", boxlength: "", boxwidth: "", boxheight: "", receivename: "" });
   const [emsSubmitting, setEmsSubmitting] = useState(false);
   const [emsMsg, setEmsMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -306,7 +306,7 @@ export default function OrderDetailPage() {
   }
 
   async function handleEmsApply() {
-    const { totweight, boxlength, boxwidth, boxheight } = emsForm;
+    const { totweight, boxlength, boxwidth, boxheight, receivename } = emsForm;
     if (!totweight || !boxlength || !boxwidth || !boxheight) {
       setEmsMsg({ type: "err", text: "모든 측정값(중량·가로·세로·높이)을 입력해주세요." });
       return;
@@ -314,16 +314,18 @@ export default function OrderDetailPage() {
     setEmsSubmitting(true);
     setEmsMsg(null);
     try {
+      const body: Record<string, unknown> = {
+        order_id: id,
+        totweight: Number(totweight),
+        boxlength: Number(boxlength),
+        boxwidth:  Number(boxwidth),
+        boxheight: Number(boxheight),
+      };
+      if (receivename.trim()) body.receivename = receivename.trim();
       const res = await fetch(`/api/admin/ems/apply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          order_id: id,
-          totweight: Number(totweight),
-          boxlength: Number(boxlength),
-          boxwidth:  Number(boxwidth),
-          boxheight: Number(boxheight),
-        }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -888,6 +890,27 @@ export default function OrderDetailPage() {
                     <p className="flex items-center gap-1"><Mail size={10} />{order.recipient_email}</p>
                   )}
                 </div>
+
+                {/* 수취인 이름 이메일 감지 경고 */}
+                {order.recipient_name?.includes("@") && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700">
+                    ⚠️ 수취인 이름이 이메일 주소입니다. 아래에 실제 이름(영문)을 입력하세요.
+                  </div>
+                )}
+
+                {/* 수취인 이름 오버라이드 */}
+                {(order.recipient_name?.includes("@") || !order.recipient_name) && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 block mb-1">수취인 이름 (영문) *</label>
+                    <input
+                      type="text"
+                      value={emsForm.receivename}
+                      onChange={e => setEmsForm(f => ({ ...f, receivename: e.target.value }))}
+                      placeholder="예: Tanaka Yuki"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                )}
 
                 {emsMsg && (
                   <div className={`rounded-xl px-3 py-2 text-sm ${emsMsg.type === "ok" ? "bg-green-50 text-green-700" : "bg-red-50 text-red-600"}`}>

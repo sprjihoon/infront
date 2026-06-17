@@ -58,9 +58,10 @@ export async function POST(req: NextRequest) {
       boxwidth: number;
       boxheight: number;
       item_weights?: string;
+      receivename?: string;
     };
 
-    const { order_id, totweight, boxlength, boxwidth, boxheight, item_weights } = body;
+    const { order_id, totweight, boxlength, boxwidth, boxheight, item_weights, receivename: receiveNameOverride } = body;
 
     if (!order_id)  return NextResponse.json({ error: 'order_id 필수' }, { status: 400 });
     if (!totweight || !boxlength || !boxwidth || !boxheight) {
@@ -137,6 +138,14 @@ export async function POST(req: NextRequest) {
     const rateInfo = await getEmsUsdKrwRate(adminDb);
     const ins = getOrderInsuranceParams(order, getEmsUsdKrwRateNumber(rateInfo));
 
+    const effectiveReceiveName = receiveNameOverride?.trim() || order.recipient_name || '';
+    if (!effectiveReceiveName || effectiveReceiveName.includes('@')) {
+      return NextResponse.json(
+        { error: `수취인 이름이 유효하지 않습니다 ("${effectiveReceiveName}"). 이메일이 아닌 실제 이름(영문)을 입력하세요.` },
+        { status: 400 },
+      );
+    }
+
     const applyParams: EmsApplyParams = {
       premiumcd:   method.premiumcd,
       em_ee:       method.em_ee,
@@ -154,7 +163,7 @@ export async function POST(req: NextRequest) {
       sendertelno2:  SENDER.tel2,
       sendertelno3:  SENDER.tel3,
       sendertelno4:  SENDER.tel4,
-      receivename:    order.recipient_name    ?? '',
+      receivename:    effectiveReceiveName,
       receivezipcode: order.recipient_zip     ?? '',
       receiveaddr1:   order.recipient_addr1   ?? '',
       receiveaddr2:   order.recipient_addr2   ?? '',
