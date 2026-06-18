@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Truck, Package, ChevronRight } from "lucide-react";
+import { Truck, ChevronRight } from "lucide-react";
 
 export default function InboundPage() {
   const router = useRouter();
@@ -65,8 +65,9 @@ export default function InboundPage() {
         >
           <div className="p-5">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gray-700 flex items-center justify-center shrink-0">
-                <Package size={26} className="text-white" />
+              <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/inbound-direct.png" alt="직접 보내기" className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
