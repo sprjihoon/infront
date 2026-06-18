@@ -1646,7 +1646,7 @@ function MergeSlotSheet({
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
                   <p className="text-sm font-bold text-amber-800">현재 블록들을 합칠 수 없어요</p>
                   <p className="text-xs text-amber-700">
-                    전체 물품 사용량이 <span className="font-bold">{totalUsed}L</span>입니다.
+                    전체 물품 사용량이 <span className="font-bold">{totalUsed}L</span>입니다.<br />
                     기존 블록 중 이를 담을 수 있는 여유 공간이 없습니다.
                   </p>
                   {suggestedType ? (
