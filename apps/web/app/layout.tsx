@@ -28,6 +28,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko" className="h-full">
+      <head>
+        {/* 아이콘 PNG 사전 로드 — 첫 진입 시 깜빡임 방지 */}
+        <link rel="preload" as="image" href="/icons/inbound-pickup.png" />
+        <link rel="preload" as="image" href="/icons/inbound-direct.png" />
+        <link rel="preload" as="image" href="/icons/shipping-domestic.png" />
+        <link rel="preload" as="image" href="/icons/shipping-overseas.png" />
+      </head>
       <body className="h-full bg-gray-50 antialiased">{children}</body>
     </html>
   );
