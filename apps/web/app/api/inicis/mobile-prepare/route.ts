@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
     return NextResponse.json({
+      P_INI_PAYMENT: "Card",   // 필수 파라미터: 신용카드 결제창 직접 호출
       P_MID: mid,
       P_OID: oid,
       P_AMT: amtStr,
@@ -113,8 +114,7 @@ export async function POST(request: NextRequest) {
       P_NOTI: oid,
       P_NEXT_URL: `${appUrl}/api/inicis/mobile-return`,
       P_CHARSET: "utf8",
-      // amt_hash=Y 제거 — P_INI_PAYMENT 필드 충돌 방지, P_CHKFAKE로 금액 무결성 보장
-      P_RESERVED: "below1000=Y&vbank_receipt=Y&centerCd=Y",
+      P_RESERVED: "centerCd=Y",
       payUrl: "https://mobile.inicis.com/smart/payment/",
     });
   } catch (e) {
