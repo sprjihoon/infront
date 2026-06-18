@@ -182,7 +182,7 @@ export default function MyPage() {
       </div>
 
       {/* ── 프로필 헤더 (브랜드 배경) ── */}
-      <div className="bg-brand-600 px-5 pt-5 pb-5">
+      <div className="bg-brand-600 px-5 pt-5 pb-5 rounded-b-3xl">
         <div className="flex items-center gap-4">
           {/* 아바타 - 탭하면 사진 변경 */}
           <button
