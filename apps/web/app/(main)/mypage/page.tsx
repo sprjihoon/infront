@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Copy, LogOut, User, MapPin, ChevronRight,
-  SlidersHorizontal, Pencil, X, Check,
+  SlidersHorizontal, Pencil, X, Check, ArrowLeft,
   Package, Send, Archive, BookOpen,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -145,8 +145,16 @@ export default function MyPage() {
 
   return (
     <>
+      {/* ── 상단 헤더 (뒤로가기) ── */}
+      <div className="bg-brand-600 px-4 pt-4 pb-0 sticky top-0 z-10 flex items-center gap-2">
+        <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/20 text-white">
+          <ArrowLeft size={20} />
+        </button>
+        <h1 className="text-base font-bold text-white">마이페이지</h1>
+      </div>
+
       {/* ── 프로필 헤더 (빨간 배경) ── */}
-      <div className="bg-brand-600 px-5 pt-12 pb-10">
+      <div className="bg-brand-600 px-5 pt-5 pb-10">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
             <User size={28} className="text-white" />
