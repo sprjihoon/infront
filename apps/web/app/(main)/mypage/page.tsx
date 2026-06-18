@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, SlidersHorizontal, Globe, Truck, Pencil, X, Check } from "lucide-react";
+import { Copy, LogOut, User, MapPin, ChevronRight, BookOpen, SlidersHorizontal, Globe, Truck, Pencil, X, Check, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
 
@@ -98,8 +98,14 @@ export default function MyPage() {
 
   return (
     <>
+    {/* 헤더 */}
+    <div className="bg-white border-b border-gray-100 px-4 py-3.5 sticky top-0 z-10 flex items-center gap-3">
+      <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100">
+        <ArrowLeft size={20} className="text-gray-700" />
+      </button>
+      <h1 className="text-base font-bold text-gray-900">마이페이지</h1>
+    </div>
     <div className="px-4 py-6 space-y-5">
-      <h1 className="text-xl font-bold text-gray-900">마이페이지</h1>
 
       <div className="bg-white rounded-2xl p-5 shadow-sm">
         <div className="flex items-center gap-3 mb-4">
