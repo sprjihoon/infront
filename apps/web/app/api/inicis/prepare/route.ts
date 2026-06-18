@@ -50,6 +50,15 @@ export async function POST(request: NextRequest) {
     const signKey = process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY;
     const isTest = !process.env.INICIS_MID;
 
+    // MID는 설정됐는데 SIGN_KEY가 없으면 서명 불일치로 결제 실패
+    if (process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {
+      console.error("[inicis/prepare] INICIS_MID is set but INICIS_SIGN_KEY is missing!");
+      return NextResponse.json(
+        { error: "결제 설정 오류: INICIS_SIGN_KEY 환경 변수가 설정되지 않았습니다." },
+        { status: 500 }
+      );
+    }
+
     const timestamp = Date.now().toString();
     const oid = `SHOP-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
     const priceStr = String(price);
