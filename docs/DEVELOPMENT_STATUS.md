@@ -1,7 +1,7 @@
 ﻿# 인프론트 개발 현황
 
-> **최종 갱신:** 2026-06-09  
-> **DB 마이그레이션:** `001` ~ `044` (+ `999_mock_seed.sql`)
+> **최종 갱신:** 2026-06-18  
+> **DB 마이그레이션:** `001` ~ `060` (+ `999_mock_seed.sql`)
 
 이 문서는 [README.md](../README.md)의 로드맵·기능 표를 보완하는 **상세 개발 일지**입니다.  
 기능 단위로 완료/진행/예정을 추적하고, README는 온보딩·아키텍처 개요용으로 유지합니다.
@@ -161,7 +161,7 @@ supabase db query --linked --file apps/sql/044_pickup_box_fees.sql
 infront/
 ├── apps/web/       # 고객 웹 (infront.kr) — Next.js 16
 ├── apps/admin/     # 관리자 (admin.infront.kr) — Next.js 16
-├── apps/sql/       # Postgres DDL (001~044 + 999_mock_seed)
+├── apps/sql/       # Postgres DDL (001~060 + 999_mock_seed)
 ├── supabase/       # Supabase CLI 설정
 └── docs/           # 개발·설계 문서
 ```
@@ -303,6 +303,21 @@ IN_TRANSIT
 | `042_storage_recurring_profiles.sql` | 정기결제 프로파일 | ✅ |
 | `043_storage_status_pending_payment.sql` | PENDING_PAYMENT 상태 추가 | ✅ |
 | `044_pickup_box_fees.sql` | 수거 박스 크기별 요금 | ✅ |
+| `045_capacity_item_count.sql` | 용량 시스템 리팩터 — 최대 건수 기반 용량 점수 전환 | ✅ |
+| `046_parcel_storage_link.sql` | `parcels.customer_storage_id` FK, auto_link 트리거 | ✅ |
+| `047_mock_parcel_items.sql` + `047b` | MOCK 데이터 pre_invoice_items 채우기 | ✅ (개발용) |
+| `048_parcel_storage_link_shippable.sql` | SHIPPABLE 상태 소포 customer_storage_id 자동 연결 | ✅ |
+| `049_storage_card_color.sql` | `customer_storages.card_color` — 블록 색상 선택 | ✅ |
+| `050_storage_type_price_per_month.sql` | `storage_types.price_per_month` 장기보관 월정액 | ✅ |
+| `051_oversize_price_fix.sql` | OVERSIZE 29,900원/월 확정, price_max NULL 처리 | ✅ |
+| `053_storage_transfer_items.sql` | `target_storage_id` + `TRANSFER_ITEMS` 변경요청 타입 | ✅ |
+| `054_storage_merge_slots.sql` | `source_storage_ids UUID[]` + `MERGE_SLOTS` 타입 | ✅ |
+| `055_capacity_score_numeric.sql` | `capacity_score`/`used_score` INTEGER → NUMERIC(8,2) | ✅ |
+| `056_customer_storages_storage_type_id.sql` | `customer_storages.storage_type_id` FK 추가 | ✅ |
+| `057_storage_type_names.sql` | 블록 명칭 변경 (파인트/싱글/더블/패밀리/하프블록) | ✅ |
+| `058_inbound_putaway_flow.sql` | 입고 2단계: `planned_storage_location_id`, 적치 사진 | ✅ |
+| `059_putaway_photo_customer_rls.sql` | 고객 RLS: 본인 소포 `PUTAWAY_PHOTO` 조회 허용 | ✅ |
+| `060_claim_available_location.sql` | `claim_available_location()` — `SKIP LOCKED` 원자적 선점 | ✅ |
 | `999_mock_seed.sql` | 테스트 목업 데이터 | ✅ (개발용) |
 
 ---
@@ -398,3 +413,4 @@ IN_TRANSIT
 | 2026-05-28 | SEED128 SS1[109] 핵심 버그 수정. inqTelCn 매핑 수정 |
 | 2026-06-04 | Phase 1.6 스토리지 시스템, Phase 1.7 피킹·출고 워크플로우 완료 반영. 전체 마이그레이션 현황 갱신 (001~038) |
 | 2026-06-09 | Phase 3 고객 보관 서비스 완료 현황 반영 (040~044). 수거비 동적 계산, Admin 요금 설정 UI. Phase 4~8 로드맵 추가 및 번호 재정렬 (4=장기빌링, 5=단기→장기전환cron, 6=에스컬레이션, 7=오픈확인비, 8=글로벌결제). 웨어하우스+보관 서비스 통합 아키텍처 결정 사항 추가 |
+| 2026-06-18 | DB 마이그레이션 현황 갱신 (045~060). 성능 최적화 1단계 반영: `/api/storage/dashboard` 통합 엔드포인트, `storage_types` 1시간 캐시, 스토리지 페이지 API 요청 4개→1개 |

@@ -1224,6 +1224,25 @@ supabase db query --linked --file apps/sql/059_putaway_photo_customer_rls.sql
 
 ---
 
+### 2026-06-18 스토리지 페이지 성능 최적화 (1단계)
+
+**API 통합 — 4개 요청 → 1개**
+- `/api/storage/dashboard` 신규 엔드포인트 추가
+  - 기존 4개 API(`/storage`, `/all-items`, `/my-locations`, `/types`)를 단일 엔드포인트로 통합
+  - `getUser()` 인증 4회 → 1회, DB 연결 4개 → 3개 (types 캐시 포함)
+  - 스토리지 페이지 로딩 시 네트워크 요청 75% 감소
+
+**`storage_types` 서버사이드 캐시**
+- `lib/storage/cached-types.ts` 신규 파일 — `unstable_cache` 1시간 캐시
+- `/api/storage/types` 라우트: 매 요청 DB 조회 → 캐시 함수로 교체 (34줄 → 9줄)
+- 정적 데이터(타입·요금 설정)에 불필요한 DB 라운드트립 제거
+
+**영향 없음 확인**
+- 기존 4개 API 라우트 그대로 유지 (다른 페이지 호환성 보장)
+- `/storage/types`를 직접 호출하는 `/storage/[id]`, `/pickup`, `/storage/new` 정상 동작
+
+---
+
 ## ?? 라이선스
 
 Private ? ���� ���� �� ���� ����
