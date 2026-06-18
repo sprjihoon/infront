@@ -145,15 +145,25 @@ export default function MyPage() {
 
   return (
     <>
-      {/* ── 상단 헤더 (뒤로가기) ── */}
-      <div className="bg-brand-600 px-4 pt-4 pb-0 sticky top-0 z-10 flex items-center gap-2">
-        <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-white/20 text-white">
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="text-base font-bold text-white">마이페이지</h1>
+      {/* ── 상단 헤더 (흰색 배경) ── */}
+      <div className="bg-white px-4 py-3.5 sticky top-0 z-10 flex items-center justify-between border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100">
+            <ArrowLeft size={20} className="text-gray-700" />
+          </button>
+          <h1 className="text-base font-bold text-gray-900">마이페이지</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-brand-600">infront</span>
+          <button className="p-1.5 rounded-lg hover:bg-gray-100 relative">
+            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-gray-600">
+              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* ── 프로필 헤더 (빨간 배경) ── */}
+      {/* ── 프로필 헤더 (브랜드 배경) ── */}
       <div className="bg-brand-600 px-5 pt-5 pb-10">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
