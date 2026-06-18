@@ -411,6 +411,36 @@ export default function MyPage() {
               </button>
             </div>
             <div className="px-5 py-4 space-y-4">
+              {/* 프로필 이미지 변경 */}
+              <div className="flex flex-col items-center gap-2 pb-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
+                  className="relative w-20 h-20 rounded-full overflow-hidden ring-4 ring-brand-100 active:scale-95 transition-transform"
+                >
+                  {customer?.avatar_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={customer.avatar_url} alt="프로필" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-brand-50 flex items-center justify-center">
+                      <User size={32} className="text-brand-300" />
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    {avatarUploading ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <svg width="18" height="18" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
+                        <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+                <p className="text-xs text-gray-400">탭하여 사진 변경</p>
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-500 mb-1.5">
                   이름 <span className="text-red-400">*</span>
