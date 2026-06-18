@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowLeft, ChevronRight, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -27,11 +28,13 @@ export default function ShippingHubPage() {
           href="/domestic-shipping"
           className="flex items-center gap-4 bg-white rounded-2xl px-5 py-5 shadow-sm border border-gray-100 hover:border-blue-300 hover:shadow-md transition-all text-left"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/icons/shipping-domestic.png"
             alt="국내 배송"
-            className="w-[88px] h-[88px] object-contain shrink-0 drop-shadow-xl"
+            width={88}
+            height={88}
+            priority
+            className="object-contain shrink-0 drop-shadow-xl"
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1.5">
@@ -53,11 +56,13 @@ export default function ShippingHubPage() {
           href="/shipping-request"
           className="flex items-center gap-4 bg-white rounded-2xl px-5 py-5 shadow-sm border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all text-left"
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/icons/shipping-overseas.png"
             alt="해외 배송"
-            className="w-[88px] h-[88px] object-contain shrink-0 drop-shadow-xl"
+            width={88}
+            height={88}
+            priority
+            className="object-contain shrink-0 drop-shadow-xl"
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between mb-1.5">

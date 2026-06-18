@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight, Info } from "lucide-react";
 
@@ -28,11 +29,13 @@ export default function InboundPage() {
           className="w-full bg-white rounded-2xl border border-gray-100 hover:border-brand-300 active:scale-[0.98] transition-all shadow-sm text-left"
         >
           <div className="flex items-center gap-4 px-5 py-5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/icons/inbound-pickup.png"
               alt="수거 신청"
-              className="w-[88px] h-[88px] object-contain shrink-0 drop-shadow-xl"
+              width={88}
+              height={88}
+              priority
+              className="object-contain shrink-0 drop-shadow-xl"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1.5">
@@ -57,11 +60,13 @@ export default function InboundPage() {
           className="w-full bg-white rounded-2xl border border-gray-100 hover:border-gray-300 active:scale-[0.98] transition-all shadow-sm text-left"
         >
           <div className="flex items-center gap-4 px-5 py-5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/icons/inbound-direct.png"
               alt="직접 보내기"
-              className="w-[88px] h-[88px] object-contain shrink-0 drop-shadow-xl"
+              width={88}
+              height={88}
+              priority
+              className="object-contain shrink-0 drop-shadow-xl"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1.5">
