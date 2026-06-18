@@ -79,8 +79,7 @@ export default function ShippingHubPage() {
         <div className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4">
           <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 leading-relaxed">
-            <Link href="/storage" className="font-bold underline">내 블록 보관함</Link>에서
-            물품 상태가 <span className="font-bold">출고 가능</span>인지 확인 후 신청해주세요.
+            내 스토리지에서 출고 가능한 물품을 <span className="whitespace-nowrap">먼저 선택해 주세요.</span>
           </p>
         </div>
       </div>
