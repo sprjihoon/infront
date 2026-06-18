@@ -206,21 +206,15 @@ export default function StoragePage() {
     if (!quiet) setLoading(true);
     else setRefreshing(true);
     try {
-      const [storageRes, itemsRes, locRes, typesRes] = await Promise.all([
-        fetch("/api/storage"),
-        fetch("/api/storage/all-items"),
-        fetch("/api/storage/my-locations"),
-        fetch("/api/storage/types"),
-      ]);
-      if (storageRes.status === 401) { router.push("/login"); return; }
-      const storageJson = await storageRes.json();
-      const itemsJson = itemsRes.ok ? await itemsRes.json() : { items: [] };
-      const locJson = locRes.ok ? await locRes.json() : { summary: null };
-      const typesJson = typesRes.ok ? await typesRes.json() : { types: [] };
-      setStorages(storageJson.storages ?? []);
-      setItems(itemsJson.items ?? []);
-      setLocationSummary(locJson.summary ?? null);
-      setStorageTypes(typesJson.types ?? []);
+      const res = await fetch("/api/storage/dashboard");
+      if (res.status === 401) { router.push("/login"); return; }
+      if (res.ok) {
+        const json = await res.json();
+        setStorages(json.storages ?? []);
+        setItems(json.items ?? []);
+        setLocationSummary(json.locationSummary ?? null);
+        setStorageTypes(json.types ?? []);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);

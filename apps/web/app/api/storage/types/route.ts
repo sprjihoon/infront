@@ -1,33 +1,13 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { getCachedStorageTypes } from "@/lib/storage/cached-types";
 
-/** GET /api/storage/types — 관리자 로케이션에서 사용하는 스토리지 타입 목록 */
+/** GET /api/storage/types — 스토리지 타입 목록 (1시간 서버 캐시) */
 export async function GET() {
-  const cookieStore = await cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (list) =>
-          list.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          ),
-      },
-    }
-  );
-
-  const { data, error } = await supabase
-    .from("storage_types")
-    .select("id, code, name, price_per_week, price_max, price_per_month, max_parcels, volume_liter, dim_l_mm, dim_w_mm, dim_h_mm")
-    .eq("is_active", true)
-    .order("sort_order");
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const types = await getCachedStorageTypes();
+    return NextResponse.json({ types });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-
-  return NextResponse.json({ types: data ?? [] });
 }
