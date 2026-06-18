@@ -1243,6 +1243,35 @@ supabase db query --linked --file apps/sql/059_putaway_photo_customer_rls.sql
 
 ---
 
+### 2026-06-18 페이지 로딩 성능 개선 및 결제 버그 수정
+
+**스토리지 페이지 SSR 전환 — 진입 딜레이 제거**
+- `page.tsx` → async 서버 컴포넌트로 교체: 서버에서 미리 데이터 조회 후 HTML에 포함
+- `StorageClient.tsx` 분리: 기존 UI 로직 유지, `initialData` prop으로 즉시 렌더링
+- 결과: 스토리지 진입 시 로딩 스피너 제거 (서버 응답에 데이터 포함)
+
+**`loading.tsx` 스켈레톤 추가 — 내비게이션 즉시 피드백**
+- `/storage/loading.tsx`: SSR 데이터 조회 중 즉시 카드/물품 스켈레톤 표시
+- `/home/loading.tsx`: 홈 SSR 페이지 진입 시 즉시 스켈레톤 표시
+
+**네비게이션 진행 바 추가**
+- `nextjs-toploader` 설치, 루트 레이아웃에 브랜드 레드(`#de2910`) 3px 진행 바 추가
+- 모든 라우트 이동 시 즉각적인 시각 피드백 제공
+
+**KG이니시스 결제 버그 수정**
+- Vercel 환경 변수(`INICIS_MID`, `INICIS_SIGN_KEY`, `NEXT_PUBLIC_APP_URL` 등)에
+  포함된 `\r\n` 개행 문자가 원인 → INICIS가 잘못된 MID/URL 수신 → "잘못된 P_INI_PAYMENT" / 코드 01 오류
+- 수정: 모든 INICIS 라우트(`prepare`, `mobile-prepare`, `return`, `storage-return`, `billing/issue`)에
+  `.trim()` 적용
+- 모바일 결제 `P_RESERVED`에서 `amt_hash=Y` 제거 (미전송 `P_INI_PAYMENT` 필드 충돌 방지)
+
+**`INICIS_TEST_MODE` 환경 변수 추가**
+- `INICIS_TEST_MODE=true` 설정 시 실 MID가 있어도 `INIpayTest` 테스트키 강제 적용
+- 심사(계약) 기간 중 Vercel에 `INICIS_TEST_MODE=true` 설정 → 테스트 결제 정상 작동
+- 계약 완료 후 `INICIS_TEST_MODE` 제거 + `INICIS_SIGN_KEY` / `INICIS_MOBILE_HASH_KEY` 추가 → 실결제 전환
+
+---
+
 ## ?? 라이선스
 
 Private ? ���� ���� �� ���� ����
