@@ -155,11 +155,6 @@ export default function MyPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-brand-600">infront</span>
-          <button className="p-1.5 rounded-lg hover:bg-gray-100 relative">
-            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="text-gray-600">
-              <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0" />
-            </svg>
-          </button>
         </div>
       </div>
 
