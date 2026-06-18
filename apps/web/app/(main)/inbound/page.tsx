@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronRight, Info } from "lucide-react";
+import { ArrowLeft, ChevronRight, Info } from "lucide-react";
 
 export default function InboundPage() {
   const router = useRouter();
@@ -9,9 +9,14 @@ export default function InboundPage() {
   return (
     <div className="min-h-screen bg-gray-50 pb-[calc(60px+var(--sab,0px))]">
       {/* 헤더 */}
-      <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-10">
-        <h1 className="text-base font-bold text-gray-900">입고신청</h1>
-        <p className="text-xs text-gray-400 mt-0.5">보관할 물품을 어떻게 보내시겠어요?</p>
+      <div className="bg-white border-b border-gray-100 px-4 py-3.5 sticky top-0 z-10 flex items-center gap-3">
+        <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100">
+          <ArrowLeft size={20} className="text-gray-700" />
+        </button>
+        <div>
+          <h1 className="text-base font-bold text-gray-900">입고신청</h1>
+          <p className="text-xs text-gray-400 mt-0.5">보관할 물품을 어떻게 보내시겠어요?</p>
+        </div>
       </div>
 
       <div className="px-4 py-6 space-y-4 max-w-[600px] mx-auto">
@@ -77,10 +82,10 @@ export default function InboundPage() {
         {/* 하단 안내 */}
         <div className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4">
           <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-700 leading-relaxed">
-            <p className="font-bold mb-0.5">입고신청이란?</p>
-            <p>고객이 물건을 우리 센터에 맡기기 위한 첫 단계입니다.<br />수거 신청 또는 직접 보내기 중 편한 방법을 선택하세요.</p>
-          </div>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            <span className="font-bold">입고신청</span>이란? 고객이 물건을 우리 센터에 맡기기 위한 첫 단계입니다.
+            수거 신청 또는 직접 보내기 중 편한 방법을 선택하세요.
+          </p>
         </div>
       </div>
     </div>
