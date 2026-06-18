@@ -86,9 +86,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "이미 자동결제가 등록되어 있습니다." }, { status: 409 });
   }
 
-  const mid      = (process.env.INICIS_MID ?? "INIpayTest").trim();
-  const signKey  = (process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS").trim();
-  const isTest   = !process.env.INICIS_MID?.trim();
+  const forceTest = process.env.INICIS_TEST_MODE === "true";
+  const mid      = (forceTest ? "INIpayTest" : (process.env.INICIS_MID ?? "INIpayTest")).trim();
+  const signKey  = (forceTest ? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS" : (process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS")).trim();
+  const isTest   = forceTest || !process.env.INICIS_MID?.trim();
 
   const cleanTel  = buyertel.replace(/[^0-9\-]/g, "");
   const timestamp = Date.now().toString();

@@ -241,11 +241,12 @@ export async function POST(request: NextRequest) {
   }
 
   /* ── storage_payments 레코드 생성 ── */
-  const mid = (process.env.INICIS_MID ?? TEST_MID).trim();
-  const signKey = (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY).trim();
-  const isTest = !process.env.INICIS_MID?.trim();
+  const forceTest = process.env.INICIS_TEST_MODE === "true";
+  const mid = (forceTest ? TEST_MID : (process.env.INICIS_MID ?? TEST_MID)).trim();
+  const signKey = (forceTest ? TEST_SIGN_KEY : (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY)).trim();
+  const isTest = forceTest || !process.env.INICIS_MID?.trim();
 
-  if (process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {
+  if (!forceTest && process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {
     console.error("[storage/pay/prepare] INICIS_MID is set but INICIS_SIGN_KEY is missing!");
     return NextResponse.json(
       { error: "결제 설정 오류: 관리자에게 문의해 주세요." },

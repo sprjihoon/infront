@@ -46,9 +46,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
     }
 
-    const mid = (process.env.INICIS_MID ?? TEST_MID).trim();
-    const signKey = (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY).trim();
-    const isTest = !process.env.INICIS_MID?.trim();
+    // INICIS_TEST_MODE=true 이면 실 MID가 있어도 테스트 모드 강제 적용 (심사 기간 등)
+    const forceTest = process.env.INICIS_TEST_MODE === "true";
+    const mid = (forceTest ? TEST_MID : (process.env.INICIS_MID ?? TEST_MID)).trim();
+    const signKey = (forceTest ? TEST_SIGN_KEY : (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY)).trim();
+    const isTest = forceTest || !process.env.INICIS_MID?.trim();
 
     // MID는 설정됐는데 SIGN_KEY가 없으면 서명 불일치로 결제 실패
     if (process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {

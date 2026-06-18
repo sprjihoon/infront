@@ -42,11 +42,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
     }
 
-    const mid = (process.env.INICIS_MID ?? TEST_MID).trim();
-    const hashKey = (process.env.INICIS_MOBILE_HASH_KEY ?? TEST_HASH_KEY).trim();
+    const forceTest = process.env.INICIS_TEST_MODE === "true";
+    const mid = (forceTest ? TEST_MID : (process.env.INICIS_MID ?? TEST_MID)).trim();
+    const hashKey = (forceTest ? TEST_HASH_KEY : (process.env.INICIS_MOBILE_HASH_KEY ?? TEST_HASH_KEY)).trim();
 
     // MID는 설정됐는데 HASH_KEY가 없으면 서명 불일치로 결제 실패
-    if (process.env.INICIS_MID && !process.env.INICIS_MOBILE_HASH_KEY) {
+    if (!forceTest && process.env.INICIS_MID && !process.env.INICIS_MOBILE_HASH_KEY) {
       console.error("[inicis/mobile-prepare] INICIS_MID is set but INICIS_MOBILE_HASH_KEY is missing!");
       return NextResponse.json(
         { error: "결제 설정 오류: INICIS_MOBILE_HASH_KEY 환경 변수가 설정되지 않았습니다." },
