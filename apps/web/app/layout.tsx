@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import NextTopLoader from "nextjs-toploader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -35,7 +36,10 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/icons/shipping-domestic.png" />
         <link rel="preload" as="image" href="/icons/shipping-overseas.png" />
       </head>
-      <body className="h-full bg-gray-50 antialiased">{children}</body>
+      <body className="h-full bg-gray-50 antialiased">
+        <NextTopLoader color="#de2910" height={3} showSpinner={false} />
+        {children}
+      </body>
     </html>
   );
 }
