@@ -481,6 +481,7 @@ export default function StoragePage() {
                               locationSummary={locationSummary}
                               storageItems={items}
                               theme={theme}
+                              isActive={abs === 0}
                               onDetail={() => router.push(`/storage/${card.id}`)}
                               onRelease={parcelIds => setReleaseSheet(parcelIds)}
                               onCapacity={() => setCapacitySheet(card)}
@@ -774,6 +775,7 @@ function StorageCard({
   locationSummary,
   storageItems,
   theme,
+  isActive,
   onDetail,
   onRelease,
   onCapacity: _onCapacity,
@@ -784,6 +786,7 @@ function StorageCard({
   locationSummary: LocationSummary | null;
   storageItems: ProductItem[];
   theme: CardTheme;
+  isActive?: boolean;
   onDetail: () => void;
   onRelease: (ids: string[]) => void;
   onCapacity: () => void;
@@ -811,8 +814,16 @@ function StorageCard({
 
   return (
     <div
-      className="rounded-2xl overflow-hidden relative select-none h-full bg-white border border-gray-100"
-      style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)" }}
+      className="rounded-2xl overflow-hidden relative select-none h-full bg-white"
+      style={{
+        border: isActive
+          ? `2px solid ${accentColor}`
+          : "1px solid #f3f4f6",
+        boxShadow: isActive
+          ? `0 4px 20px ${accentColor}40, 0 0 0 1px ${accentColor}30`
+          : "0 2px 12px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04)",
+        transition: "border 0.35s, box-shadow 0.35s",
+      }}
     >
       <div className="flex flex-col h-full px-3 pt-3 pb-2">
 
