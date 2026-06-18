@@ -159,7 +159,7 @@ export default function MyPage() {
       </div>
 
       {/* ── 프로필 헤더 (브랜드 배경) ── */}
-      <div className="bg-brand-600 px-5 pt-5 pb-10">
+      <div className="bg-brand-600 px-5 pt-5 pb-5">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
             <User size={28} className="text-white" />
@@ -184,7 +184,7 @@ export default function MyPage() {
         </div>
       </div>
 
-      <div className="px-4 -mt-4 pb-8 space-y-3">
+      <div className="px-4 pt-4 pb-8 space-y-3">
 
         {/* ── 통계 그리드 2×2 ── */}
         <div className="grid grid-cols-2 gap-3">
