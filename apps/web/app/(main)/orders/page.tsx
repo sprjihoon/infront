@@ -314,7 +314,7 @@ function OrdersContent() {
         </div>
 
         {/* ── Row 2: 상태 필터 ── */}
-        {showIntl && mode !== "DOMESTIC" && (
+        {showIntl && (
           <div className="flex gap-2 px-4 pb-2.5 overflow-x-auto scrollbar-none">
             {INTL_FILTER_TABS.map(t => (
               <button
