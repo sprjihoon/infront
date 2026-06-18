@@ -241,9 +241,17 @@ export async function POST(request: NextRequest) {
   }
 
   /* ── storage_payments 레코드 생성 ── */
-  const mid = process.env.INICIS_MID ?? TEST_MID;
-  const signKey = process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY;
-  const isTest = !process.env.INICIS_MID;
+  const mid = (process.env.INICIS_MID ?? TEST_MID).trim();
+  const signKey = (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY).trim();
+  const isTest = !process.env.INICIS_MID?.trim();
+
+  if (process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {
+    console.error("[storage/pay/prepare] INICIS_MID is set but INICIS_SIGN_KEY is missing!");
+    return NextResponse.json(
+      { error: "결제 설정 오류: 관리자에게 문의해 주세요." },
+      { status: 500 }
+    );
+  }
 
   const timestamp = Date.now().toString();
   const shortId = storage_id.replace(/-/g, "").substring(0, 8);
@@ -278,7 +286,7 @@ export async function POST(request: NextRequest) {
   const verification = sha256hex(`oid=${oid}&price=${priceStr}&signKey=${signKey}&timestamp=${timestamp}`);
   const mKey = sha256hex(signKey);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr";
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
   return NextResponse.json({
     mid,

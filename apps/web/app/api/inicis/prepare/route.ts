@@ -46,9 +46,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
     }
 
-    const mid = process.env.INICIS_MID ?? TEST_MID;
-    const signKey = process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY;
-    const isTest = !process.env.INICIS_MID;
+    const mid = (process.env.INICIS_MID ?? TEST_MID).trim();
+    const signKey = (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY).trim();
+    const isTest = !process.env.INICIS_MID?.trim();
 
     // MID는 설정됐는데 SIGN_KEY가 없으면 서명 불일치로 결제 실패
     if (process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr";
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
     return NextResponse.json({
       mid,

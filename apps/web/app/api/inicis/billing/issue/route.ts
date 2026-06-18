@@ -86,9 +86,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "이미 자동결제가 등록되어 있습니다." }, { status: 409 });
   }
 
-  const mid      = process.env.INICIS_MID ?? "INIpayTest";
-  const signKey  = process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS";
-  const isTest   = !process.env.INICIS_MID;
+  const mid      = (process.env.INICIS_MID ?? "INIpayTest").trim();
+  const signKey  = (process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS").trim();
+  const isTest   = !process.env.INICIS_MID?.trim();
 
   const cleanTel  = buyertel.replace(/[^0-9\-]/g, "");
   const timestamp = Date.now().toString();
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
   const verification = sha256hex(`oid=${oid}&price=${price}&signKey=${signKey}&timestamp=${timestamp}`);
   const mKey         = sha256hex(signKey);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr";
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
   /* 발급 결과 콜백에서 storage_id, plan_type을 조회할 수 있도록 OID에 메타 저장 */
   /* DB에 발급 요청 미리 기록 (issue-return에서 업데이트) */
