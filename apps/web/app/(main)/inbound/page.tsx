@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Truck, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 export default function InboundPage() {
   const router = useRouter();
@@ -28,8 +28,9 @@ export default function InboundPage() {
         >
           <div className="p-5">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-brand-600 flex items-center justify-center shrink-0">
-                <Truck size={26} className="text-white" />
+              <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 drop-shadow-md">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/icons/inbound-pickup.png" alt="수거 신청" className="w-full h-full object-cover" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
@@ -65,7 +66,7 @@ export default function InboundPage() {
         >
           <div className="p-5">
             <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0">
+              <div className="w-14 h-14 rounded-2xl overflow-hidden shrink-0 drop-shadow-md">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/icons/inbound-direct.png" alt="직접 보내기" className="w-full h-full object-cover" />
               </div>
