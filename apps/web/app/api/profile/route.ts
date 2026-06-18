@@ -32,6 +32,9 @@ export async function PATCH(req: Request) {
   if (typeof body.phone === "string") {
     updates.phone = body.phone.trim();
   }
+  if (typeof body.avatar_url === "string") {
+    updates.avatar_url = body.avatar_url;
+  }
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No valid fields" }, { status: 400 });
   }

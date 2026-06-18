@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -31,6 +31,7 @@ interface Customer {
   name: string;
   email: string;
   phone: string | null;
+  avatar_url: string | null;
 }
 
 interface Stats {
@@ -46,6 +47,8 @@ export default function MyPage() {
   const router = useRouter();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [copied, setCopied] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stats, setStats] = useState<Stats>({
     inboundCount: 0,
     shippingCount: 0,
@@ -71,7 +74,7 @@ export default function MyPage() {
         { data: orders },
         { data: addrs },
       ] = await Promise.all([
-        supabase.from("customers").select("name, email, phone").eq("id", user.id).single(),
+        supabase.from("customers").select("name, email, phone, avatar_url").eq("id", user.id).single(),
         supabase
           .from("parcels")
           .select("status")
@@ -119,6 +122,26 @@ export default function MyPage() {
     router.push("/login");
   }
 
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/profile/avatar", { method: "POST", body: form });
+      const json = await res.json();
+      if (res.ok && json.avatar_url) {
+        setCustomer(c => c ? { ...c, avatar_url: json.avatar_url } : c);
+      } else {
+        alert(json.error ?? "업로드에 실패했습니다.");
+      }
+    } finally {
+      setAvatarUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   function openEditSheet() {
     setEditName(customer?.name ?? "");
     setEditPhone(customer?.phone ?? "");
@@ -161,9 +184,43 @@ export default function MyPage() {
       {/* ── 프로필 헤더 (브랜드 배경) ── */}
       <div className="bg-brand-600 px-5 pt-5 pb-5">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <User size={28} className="text-white" />
-          </div>
+          {/* 아바타 - 탭하면 사진 변경 */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={avatarUploading}
+            className="relative w-16 h-16 rounded-full flex-shrink-0 overflow-hidden"
+          >
+            {customer?.avatar_url ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img src={customer.avatar_url} alt="프로필" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-white/20 flex items-center justify-center">
+                <User size={28} className="text-white" />
+              </div>
+            )}
+            {/* 카메라 오버레이 */}
+            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 active:opacity-100 transition-opacity">
+              {avatarUploading ? (
+                <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
+                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              )}
+            </div>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
           <div className="min-w-0 flex-1">
             <p className="text-white font-bold text-lg leading-snug">
               {customer?.name ?? "—"}님
