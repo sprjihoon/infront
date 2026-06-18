@@ -77,10 +77,10 @@ export default function InboundPage() {
         {/* 하단 안내 */}
         <div className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4">
           <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 leading-relaxed">
-            <span className="font-bold">입고신청</span>이란? 고객이 물건을 우리 센터에 맡기기 위한 첫 단계입니다.
-            수거 신청 또는 직접 보내기 중 편한 방법을 선택하세요.
-          </p>
+          <div className="text-xs text-amber-700 leading-relaxed">
+            <p className="font-bold mb-0.5">입고신청이란?</p>
+            <p>고객이 물건을 우리 센터에 맡기기 위한 첫 단계입니다.<br />수거 신청 또는 직접 보내기 중 편한 방법을 선택하세요.</p>
+          </div>
         </div>
       </div>
     </div>
