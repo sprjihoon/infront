@@ -120,6 +120,16 @@ function AddressFields({
   );
 }
 
+const TEST_ADDRESS: AddressForm = {
+  name: "테스트",
+  phone: "01012345678",
+  zipcode: "41566",
+  address: "대구광역시 동구 안심로 188",
+  addressDetail: "2층",
+  addr1: "대구광역시",
+  addr2: "동구",
+};
+
 export default function ShopCheckoutPage() {
   const router = useRouter();
   const { lang, mounted } = useLanguage();
@@ -132,6 +142,11 @@ export default function ShopCheckoutPage() {
   const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
   const [sameAsSender, setSameAsSender] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
+  const [isTestMode, setIsTestMode] = useState(false);
+
+  useEffect(() => {
+    setIsTestMode(new URLSearchParams(window.location.search).get("testfill") === "1");
+  }, []);
 
   /* KG이니시스 INIStdPay 파라미터 (숨김 폼에 세팅) */
   const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
@@ -139,7 +154,11 @@ export default function ShopCheckoutPage() {
   const sdkScriptRef = useRef<HTMLScriptElement | null>(null);
 
   useEffect(() => {
-    const id = sessionStorage.getItem("shop_product_id");
+    const params = new URLSearchParams(window.location.search);
+    const isTest = params.get("testfill") === "1";
+    const id = isTest
+      ? (sessionStorage.getItem("shop_product_id") ?? "S")
+      : sessionStorage.getItem("shop_product_id");
     const found = SHOP_PRODUCTS.find((p) => p.id === id) ?? null;
     if (!found) { router.replace("/shop"); return; }
     setProduct(found);
@@ -486,6 +505,23 @@ export default function ShopCheckoutPage() {
             {lang === "ko" ? "에 동의합니다. (필수)" : " (Required)"}
           </span>
         </label>
+
+        {/* 테스트 자동입력 버튼 (testfill=1 쿼리 파라미터 있을 때만 노출) */}
+        {isTestMode && (
+          <button
+            type="button"
+            onClick={() => {
+              setSender(TEST_ADDRESS);
+              setRecipient(TEST_ADDRESS);
+              setSameAsSender(false);
+              setEmail("test@test.com");
+              setTermsAgreed(true);
+            }}
+            className="w-full bg-gray-700 text-white font-bold py-3 rounded-2xl text-sm"
+          >
+            🧪 테스트 데이터 자동입력
+          </button>
+        )}
 
         {/* 결제 버튼 */}
         <button
