@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
     const oid = `SHOP-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
     const amtStr = String(price);
 
+    // P_CHKFAKE: SHA512(P_AMT + P_OID + P_TIMESTAMP + hashKey) — 금액 위변조 방지
     const chkfake = crypto
       .createHash("sha512")
       .update(amtStr + oid + timestamp + hashKey, "utf8")
@@ -102,7 +103,8 @@ export async function POST(request: NextRequest) {
       P_NOTI: oid,
       P_NEXT_URL: `${appUrl}/api/inicis/mobile-return`,
       P_CHARSET: "utf8",
-      P_RESERVED: "below1000=Y&vbank_receipt=Y&centerCd=Y&amt_hash=Y",
+      // amt_hash=Y 제거 — P_INI_PAYMENT 필드 충돌 방지, P_CHKFAKE로 금액 무결성 보장
+      P_RESERVED: "below1000=Y&vbank_receipt=Y&centerCd=Y",
       payUrl: "https://mobile.inicis.com/smart/payment/",
     });
   } catch (e) {
