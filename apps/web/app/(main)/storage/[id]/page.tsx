@@ -1548,6 +1548,17 @@ function MergeSlotSheet({
 
   const anyFits = storages.some(s => getCapInfo(s).fits);
 
+  // 가장 용량 큰 블록 자동 선택
+  useEffect(() => {
+    if (!targetId) {
+      const best = storages
+        .filter(s => getCapInfo(s).fits)
+        .sort((a, b) => (b.capacity_score ?? 0) - (a.capacity_score ?? 0))[0];
+      if (best) setTargetId(best.id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!anyFits && totalUsed > 0) {
       fetch("/api/storage/types")
@@ -1559,6 +1570,14 @@ function MergeSlotSheet({
         });
     }
   }, [anyFits, totalUsed]);
+
+  const targetStorage = storages.find(s => s.id === targetId);
+  const mergedCapacity = targetStorage?.capacity_score ?? storages.reduce((a, s) => a + (s.capacity_score ?? 0), 0);
+  const usagePercent  = mergedCapacity > 0 ? Math.round((totalUsed / mergedCapacity) * 100) : 0;
+  const totalCurrentFee = storages.reduce((a, s) => a + (s.monthly_amount ?? 0), 0);
+  const mergedFee   = targetStorage?.monthly_amount ?? 0;
+  const savings     = totalCurrentFee > 0 && mergedFee > 0 ? totalCurrentFee - mergedFee : 0;
+  const BLOCK_COLORS = ["#f97316", "#6366f1", "#10b981", "#f59e0b", "#ef4444"];
 
   async function handleSubmit() {
     if (!targetId) return;
@@ -1585,12 +1604,14 @@ function MergeSlotSheet({
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full max-w-[480px] bg-white rounded-3xl max-h-[88vh] flex flex-col shadow-2xl">
-        <div className="px-4 pt-5 pb-3 flex items-center justify-between border-b border-gray-100">
+
+        {/* 헤더 */}
+        <div className="px-5 pt-5 pb-4 flex items-start justify-between border-b border-gray-100">
           <div>
-            <p className="text-base font-bold text-gray-900">블록 합치기</p>
-            <p className="text-xs text-gray-400 mt-0.5">남길 블록을 선택하면 나머지가 자동으로 합쳐집니다</p>
+            <p className="text-base font-bold text-gray-900">블록을 합치면 더 효율적이에요</p>
+            <p className="text-xs text-gray-400 mt-0.5">남는 공간을 줄이고 보관료를 최적화해 보세요.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400"><X size={18} /></button>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-100 text-gray-400 shrink-0"><X size={18} /></button>
         </div>
 
         {done ? (
@@ -1605,37 +1626,101 @@ function MergeSlotSheet({
         ) : (
           <>
             <div className="overflow-y-auto flex-1 px-4 py-4 space-y-2">
-              {storages.map(s => {
-                const { fits, overBy, count, srcUsed } = getCapInfo(s);
-                const isSel = targetId === s.id;
-                const tc = s.storage_types?.code ?? s.plan_type ?? "DEFAULT";
-                const col = isSel ? "#6366f1" : fits ? "#6b7280" : "#d1d5db";
-                return (
-                  <button key={s.id} onClick={() => fits && setTargetId(s.id)} disabled={!fits}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all text-left ${
-                      isSel ? "border-brand-500 bg-brand-50" :
-                      fits ? "border-gray-100 bg-white hover:border-gray-300" :
-                      "border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed"
-                    }`}
-                  >
-                    <div className="w-10 h-10 flex items-center justify-center shrink-0">
-                      <BrickSVG color={col} typeCode={tc} size={40} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold ${isSel ? "text-brand-700" : fits ? "text-gray-800" : "text-gray-400"}`}>{s.storage_name}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{s.storage_types?.name ?? tc} · {s.capacity_score ?? 0}L · 사용 {s.used_score ?? 0}L</p>
-                      {fits
-                        ? <p className="text-[10px] text-brand-500 mt-0.5">이 블록에 나머지 {count}개 블록({srcUsed}L)이 합쳐집니다</p>
-                        : <p className="text-[10px] text-red-500 font-semibold mt-0.5">용량 부족 ({overBy}L 초과)</p>
-                      }
-                    </div>
-                    {isSel && <Check size={15} className="text-brand-600 shrink-0" />}
-                  </button>
-                );
-              })}
 
-              {/* 모든 블록이 합치기 불가능할 때 추천 */}
-              {!anyFits && (
+              {anyFits ? (
+                <>
+                  {/* ── 합치기 미리보기 ──────────────────────── */}
+                  <div className="bg-gray-50 rounded-2xl p-4 flex items-center gap-3">
+                    <div className="flex-1 flex flex-col gap-1.5">
+                      {storages.map((s, i) => {
+                        const cap  = s.capacity_score ?? 0;
+                        const used = s.used_score ?? 0;
+                        const pct  = cap > 0 ? Math.round((used / cap) * 100) : 0;
+                        const tc   = s.storage_types?.code ?? s.plan_type ?? "DEFAULT";
+                        const col  = BLOCK_COLORS[i % BLOCK_COLORS.length];
+                        return (
+                          <div key={s.id}>
+                            <div className="flex items-center gap-2">
+                              <BrickSVG color={col} typeCode={tc} size={36} />
+                              <div>
+                                <p className="text-xs font-bold text-gray-800">{s.storage_name} · {cap}L</p>
+                                <p className="text-[11px] text-gray-500">사용률 {pct}%</p>
+                              </div>
+                            </div>
+                            {i < storages.length - 1 && (
+                              <p className="text-gray-300 text-sm text-center py-0.5 leading-none">·</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-col items-center shrink-0 px-1">
+                      <div className="w-8 h-8 rounded-full bg-white shadow flex items-center justify-center">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="2.5">
+                          <path d="M5 12h14M13 6l6 6-6 6" />
+                        </svg>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex flex-col items-center gap-1">
+                      <BrickSVG color="#334155" typeCode={targetStorage?.storage_types?.code ?? "DEFAULT"} size={64} />
+                      <p className="text-xs font-bold text-gray-700 mt-1">통합 블록 · {mergedCapacity}L</p>
+                      <span className="text-[11px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">
+                        예상 사용률 {usagePercent}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ── 비용 절감 섹션 ──────────────────────── */}
+                  {totalCurrentFee > 0 && mergedFee > 0 && (
+                    <div className="bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-2">
+                      <div className="flex-1 text-center">
+                        <p className="text-[10px] text-gray-400 mb-0.5">현재 월 보관료</p>
+                        <p className="text-sm font-bold text-gray-700">{totalCurrentFee.toLocaleString()}원</p>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2"><path d="M5 12h14" /></svg>
+                      <div className="flex-1 text-center">
+                        <p className="text-[10px] text-gray-400 mb-0.5">통합 후 예상</p>
+                        <p className="text-sm font-bold text-gray-700">{mergedFee.toLocaleString()}원</p>
+                      </div>
+                      {savings > 0 && (
+                        <>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2"><path d="M5 12h14" /></svg>
+                          <div className="flex-1 text-center bg-red-50 rounded-xl py-2">
+                            <p className="text-[10px] text-red-400 mb-0.5">예상 절감액</p>
+                            <p className="text-sm font-bold text-red-500">{savings.toLocaleString()}원</p>
+                            <p className="text-[10px] text-red-400">↓</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 남길 블록 선택 (2개 이상 fit될 때만) */}
+                  {storages.filter(s => getCapInfo(s).fits).length > 1 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide px-1">남길 블록 선택</p>
+                      {storages.filter(s => getCapInfo(s).fits).map(s => {
+                        const isSel = targetId === s.id;
+                        const tc = s.storage_types?.code ?? s.plan_type ?? "DEFAULT";
+                        return (
+                          <button key={s.id} onClick={() => setTargetId(s.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all text-left ${
+                              isSel ? "border-brand-500 bg-brand-50" : "border-gray-100 bg-white hover:border-gray-300"
+                            }`}
+                          >
+                            <BrickSVG color={isSel ? "#6366f1" : "#6b7280"} typeCode={tc} size={36} />
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-sm font-bold ${isSel ? "text-brand-700" : "text-gray-800"}`}>{s.storage_name}</p>
+                              <p className="text-[10px] text-gray-400">{s.capacity_score ?? 0}L</p>
+                            </div>
+                            {isSel && <Check size={15} className="text-brand-600 shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </>
+              ) : (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2">
                   <p className="text-sm font-bold text-amber-800">현재 블록들을 합칠 수 없어요</p>
                   <p className="text-xs text-amber-700">
@@ -1677,10 +1762,10 @@ function MergeSlotSheet({
             </div>
 
             <div className="px-4 pt-3 pb-5 border-t border-gray-100 bg-white shrink-0 rounded-b-3xl">
-              <button onClick={handleSubmit} disabled={!targetId || submitting}
+              <button onClick={handleSubmit} disabled={!targetId || submitting || !anyFits}
                 className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                {submitting ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</> : "이 블록에 합치기"}
+                {submitting ? <><Loader2 size={16} className="animate-spin" /> 처리 중...</> : "블록 합치기"}
               </button>
             </div>
           </>
