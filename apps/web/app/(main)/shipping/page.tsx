@@ -16,7 +16,7 @@ export default function ShippingHubPage() {
         </button>
         <div>
           <h1 className="text-base font-bold text-gray-900">출고 신청</h1>
-          <p className="text-xs text-gray-400 mt-0.5">어디로 출고하시겠어요?</p>
+          <p className="text-xs text-gray-400 mt-0.5">어떤 방식으로 출고할까요?</p>
         </div>
       </div>
 
@@ -39,7 +39,7 @@ export default function ShippingHubPage() {
               <ChevronRight size={18} className="text-gray-400 shrink-0" />
             </div>
             <p className="text-sm text-gray-500 leading-relaxed mb-3">
-              보관 중인 물품을<br />국내 주소로 발송합니다.
+              우체국 소포로<br />국내 주소에 발송합니다.
             </p>
             <div className="flex gap-2 flex-wrap">
               <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">우체국 소포</span>
@@ -51,7 +51,7 @@ export default function ShippingHubPage() {
         {/* 해외 배송 */}
         <Link
           href="/shipping-request"
-          className="flex items-center gap-4 bg-white rounded-2xl px-5 py-5 shadow-sm border border-gray-100 hover:border-purple-300 hover:shadow-md transition-all text-left"
+          className="flex items-center gap-4 bg-white rounded-2xl px-5 py-5 shadow-sm border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all text-left"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -65,12 +65,12 @@ export default function ShippingHubPage() {
               <ChevronRight size={18} className="text-gray-400 shrink-0" />
             </div>
             <p className="text-sm text-gray-500 leading-relaxed mb-3">
-              보관 중인 물품을<br />해외 주소로 발송합니다.
+              EMS · K-Packet으로<br />해외 주소에 발송합니다.
             </p>
             <div className="flex gap-2 flex-wrap">
-              <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-3 py-1 rounded-full">EMS</span>
-              <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-3 py-1 rounded-full">K-Packet</span>
-              <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-3 py-1 rounded-full">EMS Premium</span>
+              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">EMS</span>
+              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">K-Packet</span>
+              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">EMS Premium</span>
             </div>
           </div>
         </Link>
@@ -78,10 +78,10 @@ export default function ShippingHubPage() {
         {/* 안내 */}
         <div className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4">
           <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
-          <div className="text-xs text-amber-700 leading-relaxed">
-            <p className="font-bold mb-0.5">출고 전 확인사항</p>
-            <p>내 스토리지에서 출고 가능한 물품을<br />먼저 선택해 주세요.</p>
-          </div>
+          <p className="text-xs text-amber-700 leading-relaxed">
+            <Link href="/storage" className="font-bold underline">내 블록 보관함</Link>에서
+            물품 상태가 <span className="font-bold">출고 가능</span>인지 확인 후 신청해주세요.
+          </p>
         </div>
       </div>
     </div>
