@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { ArrowLeft, Globe, MapPin, ChevronRight, Package } from "lucide-react";
+import { ArrowLeft, Globe, ChevronRight, Info } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function ShippingHubPage() {
@@ -14,61 +14,71 @@ export default function ShippingHubPage() {
         <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100">
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
-        <h1 className="text-base font-bold text-gray-900">출고 신청</h1>
+        <div>
+          <h1 className="text-base font-bold text-gray-900">출고 신청</h1>
+          <p className="text-xs text-gray-400 mt-0.5">어떤 방식으로 출고할까요?</p>
+        </div>
       </div>
 
       <div className="px-4 py-6 max-w-[600px] mx-auto space-y-4">
-        <p className="text-sm text-gray-500">어떤 방식으로 출고할까요?</p>
 
         {/* 국내 배송 */}
         <Link
           href="/domestic-shipping"
-          className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-blue-300 hover:shadow-md transition-all group"
+          className="flex items-center gap-4 bg-white rounded-2xl px-5 py-5 shadow-sm border border-gray-100 hover:border-blue-300 hover:shadow-md transition-all text-left"
         >
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-blue-100 transition-colors">
-            <MapPin size={28} className="text-blue-600" />
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/icons/shipping-domestic.png"
+            alt="국내 배송"
+            className="w-[88px] h-[88px] object-contain shrink-0 drop-shadow-xl"
+          />
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 text-base">국내 배송</p>
-            <p className="text-sm text-gray-500 mt-0.5">우체국 소포로 국내 주소에 발송</p>
-            <div className="flex items-center gap-1.5 mt-2">
-              <span className="text-[11px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">우체국 소포</span>
-              <span className="text-[11px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">빠른 처리</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-lg font-bold text-gray-900">국내 배송</p>
+              <ChevronRight size={18} className="text-gray-400 shrink-0" />
+            </div>
+            <p className="text-sm text-gray-500 leading-relaxed mb-3">
+              우체국 소포로<br />국내 주소에 발송합니다.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">우체국 소포</span>
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1 rounded-full">빠른 처리</span>
             </div>
           </div>
-          <ChevronRight size={20} className="text-gray-300 group-hover:text-blue-400 transition-colors shrink-0" />
         </Link>
 
         {/* 해외 배송 */}
         <Link
           href="/shipping-request"
-          className="flex items-center gap-4 bg-white rounded-2xl p-5 shadow-sm border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all group"
+          className="flex items-center gap-4 bg-white rounded-2xl px-5 py-5 shadow-sm border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all text-left"
         >
-          <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition-colors">
-            <Globe size={28} className="text-indigo-600" />
+          <div className="w-[88px] h-[88px] rounded-2xl bg-indigo-50 flex items-center justify-center shrink-0">
+            <Globe size={42} className="text-indigo-500" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 text-base">해외 배송</p>
-            <p className="text-sm text-gray-500 mt-0.5">EMS · K-Packet으로 해외 주소에 발송</p>
-            <div className="flex items-center gap-1.5 mt-2">
-              <span className="text-[11px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">EMS</span>
-              <span className="text-[11px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">K-Packet</span>
-              <span className="text-[11px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-medium">EMS Premium</span>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-lg font-bold text-gray-900">해외 배송</p>
+              <ChevronRight size={18} className="text-gray-400 shrink-0" />
+            </div>
+            <p className="text-sm text-gray-500 leading-relaxed mb-3">
+              EMS · K-Packet으로<br />해외 주소에 발송합니다.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">EMS</span>
+              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">K-Packet</span>
+              <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">EMS Premium</span>
             </div>
           </div>
-          <ChevronRight size={20} className="text-gray-300 group-hover:text-indigo-400 transition-colors shrink-0" />
         </Link>
 
         {/* 안내 */}
-        <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100 flex items-start gap-3">
-          <Package size={18} className="text-amber-600 shrink-0 mt-0.5" />
-          <div className="text-sm text-amber-800 space-y-1">
-            <p className="font-semibold">출고 신청 전 확인사항</p>
-            <p>
-              <Link href="/storage" className="underline font-semibold">내 블록 보관함</Link>에서
-              물품 상태가 <span className="font-semibold">출고 가능</span>인지 확인해주세요.
-            </p>
-          </div>
+        <div className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4">
+          <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 leading-relaxed">
+            <Link href="/storage" className="font-bold underline">내 블록 보관함</Link>에서
+            물품 상태가 <span className="font-bold">출고 가능</span>인지 확인 후 신청해주세요.
+          </p>
         </div>
       </div>
     </div>
