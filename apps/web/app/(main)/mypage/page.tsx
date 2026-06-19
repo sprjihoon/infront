@@ -251,8 +251,8 @@ export default function MyPage() {
             className="bg-white rounded-2xl p-4 shadow-sm text-left active:bg-gray-50 transition-colors"
           >
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
-                <img src="/icon-pickup.png" alt="입고" className="w-8 h-8 object-contain" />
+              <div className="w-11 h-11 rounded-xl bg-brand-50 flex items-center justify-center">
+                <img src="/icon-pickup.png" alt="입고" className="w-10 h-10 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -270,8 +270,8 @@ export default function MyPage() {
             className="bg-white rounded-2xl p-4 shadow-sm text-left active:bg-gray-50 transition-colors"
           >
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center">
-                <img src="/icon-orders.png" alt="출고" className="w-8 h-8 object-contain" />
+              <div className="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center">
+                <img src="/icon-orders.png" alt="출고" className="w-10 h-10 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -289,8 +289,8 @@ export default function MyPage() {
             className="bg-white rounded-2xl p-4 shadow-sm text-left active:bg-gray-50 transition-colors"
           >
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
-                <img src="/icon-storage.png" alt="보관" className="w-8 h-8 object-contain" />
+              <div className="w-11 h-11 rounded-xl bg-violet-50 flex items-center justify-center">
+                <img src="/icon-storage.png" alt="보관" className="w-10 h-10 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -308,8 +308,8 @@ export default function MyPage() {
             className="bg-white rounded-2xl p-4 shadow-sm text-left active:bg-gray-50 transition-colors"
           >
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center">
-                <img src="/icon-addressbook.png" alt="주소록" className="w-8 h-8 object-contain" />
+              <div className="w-11 h-11 rounded-xl bg-teal-50 flex items-center justify-center">
+                <img src="/icon-addressbook.png" alt="주소록" className="w-10 h-10 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -327,7 +327,7 @@ export default function MyPage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <img src="/icon-address.png" alt="주소" className="w-6 h-6 object-contain" />
+              <img src="/icon-address.png" alt="주소" className="w-7 h-7 object-contain" />
               <p className="text-sm font-semibold text-gray-900">입고 주소</p>
             </div>
             <button
@@ -356,7 +356,7 @@ export default function MyPage() {
         {/* ── 입력 모드 ── */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <img src="/icon-settings.png" alt="설정" className="w-6 h-6 object-contain" />
+            <img src="/icon-settings.png" alt="설정" className="w-7 h-7 object-contain" />
             <p className="text-sm font-semibold text-gray-900">입력 모드</p>
           </div>
           <p className="text-xs text-gray-400 mb-4 leading-relaxed">
