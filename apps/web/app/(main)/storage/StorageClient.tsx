@@ -347,39 +347,25 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
               <p className="text-xs font-bold text-gray-500 mb-3">이번 달 요약</p>
               <div className="grid grid-cols-4 gap-1.5">
                 <SummaryTile
-                  icon={
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                      <rect x="3" y="3" width="7" height="7" rx="1.5" fill="#10B981" />
-                      <rect x="14" y="3" width="7" height="7" rx="1.5" fill="#10B981" opacity="0.45" />
-                      <rect x="3" y="14" width="7" height="7" rx="1.5" fill="#10B981" opacity="0.45" />
-                    </svg>
-                  }
+                  icon={<img src="/icon-blocks.png" alt="블록" className="w-7 h-7 object-contain" />}
                   label="사용 중인 블록"
                   value={`${active.length}개`}
                   color="green"
                 />
                 <SummaryTile
-                  icon={<Package size={18} className="text-blue-500" />}
+                  icon={<img src="/icon-box.png" alt="물품" className="w-7 h-7 object-contain" />}
                   label="보관 물품"
                   value={`${items.length}개`}
                   color="blue"
                 />
                 <SummaryTile
-                  icon={
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F97316" strokeWidth="2">
-                      <path d="M5 12h14M13 6l6 6-6 6" />
-                    </svg>
-                  }
+                  icon={<img src="/icon-ship.png" alt="출고" className="w-7 h-7 object-contain" />}
                   label="출고 가능"
                   value={shippableCount > 0 ? `${shippableCount}개` : "-"}
                   color="orange"
                 />
                 <SummaryTile
-                  icon={
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2">
-                      <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" />
-                    </svg>
-                  }
+                  icon={<img src="/icon-fee.png" alt="보관료" className="w-7 h-7 object-contain" />}
                   label="월 보관료"
                   value={totalMonthlyFee > 0 ? `${totalMonthlyFee.toLocaleString()}원` : "-"}
                   color="purple"
