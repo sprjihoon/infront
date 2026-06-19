@@ -327,7 +327,7 @@ export default function MyPage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <img src="/icon-address.png" alt="주소" className="w-7 h-7 object-contain" />
+              <img src="/icon-address.png" alt="주소" className="w-10 h-10 object-contain" />
               <p className="text-sm font-semibold text-gray-900">입고 주소</p>
             </div>
             <button
@@ -356,7 +356,7 @@ export default function MyPage() {
         {/* ── 입력 모드 ── */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <img src="/icon-settings.png" alt="설정" className="w-7 h-7 object-contain" />
+            <img src="/icon-settings.png" alt="설정" className="w-10 h-10 object-contain" />
             <p className="text-sm font-semibold text-gray-900">입력 모드</p>
           </div>
           <p className="text-xs text-gray-400 mb-4 leading-relaxed">
