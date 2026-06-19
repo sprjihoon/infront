@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Copy, LogOut, User, MapPin, ChevronRight,
+  Copy, LogOut, User, ChevronRight,
   SlidersHorizontal, Pencil, X, Check, ArrowLeft,
   Package, Send, Archive, BookOpen,
 } from "lucide-react";
@@ -328,7 +328,7 @@ export default function MyPage() {
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <MapPin size={15} className="text-brand-600" />
+              <img src="/icon-address.png" alt="주소" className="w-5 h-5 object-contain" />
               <p className="text-sm font-semibold text-gray-900">입고 주소</p>
             </div>
             <button
