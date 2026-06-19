@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Copy, LogOut, User, ChevronRight,
-  SlidersHorizontal, Pencil, X, Check, ArrowLeft,
-  Package, Send, Archive, BookOpen,
+  Pencil, X, Check, ArrowLeft,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
@@ -253,7 +252,7 @@ export default function MyPage() {
           >
             <div className="flex items-start justify-between mb-2">
               <div className="w-9 h-9 rounded-xl bg-brand-50 flex items-center justify-center">
-                <Package size={18} className="text-brand-600" />
+                <img src="/icon-pickup.png" alt="입고" className="w-7 h-7 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -272,7 +271,7 @@ export default function MyPage() {
           >
             <div className="flex items-start justify-between mb-2">
               <div className="w-9 h-9 rounded-xl bg-sky-50 flex items-center justify-center">
-                <Send size={17} className="text-sky-500" />
+                <img src="/icon-orders.png" alt="출고" className="w-7 h-7 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -291,7 +290,7 @@ export default function MyPage() {
           >
             <div className="flex items-start justify-between mb-2">
               <div className="w-9 h-9 rounded-xl bg-violet-50 flex items-center justify-center">
-                <Archive size={17} className="text-violet-500" />
+                <img src="/icon-storage.png" alt="보관" className="w-7 h-7 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -310,7 +309,7 @@ export default function MyPage() {
           >
             <div className="flex items-start justify-between mb-2">
               <div className="w-9 h-9 rounded-xl bg-teal-50 flex items-center justify-center">
-                <BookOpen size={17} className="text-teal-500" />
+                <img src="/icon-addressbook.png" alt="주소록" className="w-7 h-7 object-contain" />
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
@@ -357,7 +356,7 @@ export default function MyPage() {
         {/* ── 입력 모드 ── */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <div className="flex items-center gap-2 mb-1">
-            <SlidersHorizontal size={15} className="text-brand-600" />
+            <img src="/icon-settings.png" alt="설정" className="w-5 h-5 object-contain" />
             <p className="text-sm font-semibold text-gray-900">입력 모드</p>
           </div>
           <p className="text-xs text-gray-400 mb-4 leading-relaxed">
