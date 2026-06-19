@@ -1272,6 +1272,39 @@ supabase db query --linked --file apps/sql/059_putaway_photo_customer_rls.sql
 
 ---
 
+### 2026-06-19 커스텀 PNG 아이콘 교체 + UX 텍스트 수정
+
+**마이페이지 아이콘 전면 교체**
+- `MapPin` Lucide SVG → `/icon-address.png` (입고 주소 섹션 헤더)
+- `SlidersHorizontal` Lucide SVG → `/icon-settings.png` (입력 모드 섹션 헤더)
+- 2×2 그리드 버튼 4개 Lucide SVG → 커스텀 PNG
+  - Package → `/icon-pickup.png` (입고)
+  - Send → `/icon-orders.png` (출고)
+  - Archive → `/icon-storage.png` (보관)
+  - BookOpen → `/icon-addressbook.png` (주소록)
+- 아이콘 사이즈 조정: 그리드 아이콘 `w-7 h-7` → `w-10 h-10`, 컨테이너 `w-9 h-9` → `w-11 h-11`
+- 헤더 아이콘(`icon-address`, `icon-settings`) `w-6 h-6` → `w-10 h-10` (그리드 아이콘과 통일)
+
+**스토리지 대시보드 Summary 타일 아이콘 교체**
+- 인라인 SVG 및 Package Lucide → `/icon-blocks.png`, `/icon-box.png`, `/icon-ship.png`, `/icon-fee.png`
+- 아이콘 사이즈 단계적 조정: `w-7 h-7` → `w-12 h-12`, 컨테이너 `w-9 h-9` → `w-14 h-14`
+
+**입고/출고 페이지 아이콘 교체**
+- `/icons/inbound-pickup.png` — 파란색 트럭 PNG
+- `/icons/inbound-direct.png` — 보라색 박스 PNG
+- `/icons/shipping-domestic.png` — 핑크색 종이비행기 PNG
+- `/icons/shipping-overseas.png` — 파란색 지구본 PNG
+
+**이미지 초기 로딩 최적화 — 깜빡임 제거**
+- `apps/web/app/layout.tsx` `<head>`에 `<link rel="preload" as="image">` 태그 추가
+  - 대상: 모든 커스텀 PNG 아이콘 14개 (`/icon-*.png`, `/icons/*.png`)
+- `mypage/page.tsx`, `StorageClient.tsx` 커스텀 `<img>` 태그에 `fetchPriority="high"` 적용
+
+**출고 페이지 UX 텍스트 수정**
+- amber 안내문: "내 스토리지에서 출고 가능한 물품을 먼저 선택해 주세요." → "출고 가능한 물품을 확인해보세요."
+
+---
+
 ## ?? 라이선스
 
 Private ? ���� ���� �� ���� ����
