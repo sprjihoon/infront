@@ -31,10 +31,23 @@ export default function RootLayout({
     <html lang="ko" className="h-full">
       <head>
         {/* 아이콘 PNG 사전 로드 — 첫 진입 시 깜빡임 방지 */}
+        {/* /icons/ 페이지 진입 아이콘 */}
         <link rel="preload" as="image" href="/icons/inbound-pickup.png" />
         <link rel="preload" as="image" href="/icons/inbound-direct.png" />
         <link rel="preload" as="image" href="/icons/shipping-domestic.png" />
         <link rel="preload" as="image" href="/icons/shipping-overseas.png" />
+        {/* 마이페이지 그리드 아이콘 */}
+        <link rel="preload" as="image" href="/icon-pickup.png" />
+        <link rel="preload" as="image" href="/icon-orders.png" />
+        <link rel="preload" as="image" href="/icon-storage.png" />
+        <link rel="preload" as="image" href="/icon-addressbook.png" />
+        <link rel="preload" as="image" href="/icon-address.png" />
+        <link rel="preload" as="image" href="/icon-settings.png" />
+        {/* 스토리지 요약 타일 아이콘 */}
+        <link rel="preload" as="image" href="/icon-blocks.png" />
+        <link rel="preload" as="image" href="/icon-box.png" />
+        <link rel="preload" as="image" href="/icon-ship.png" />
+        <link rel="preload" as="image" href="/icon-fee.png" />
       </head>
       <body className="h-full bg-gray-50 antialiased">
         <NextTopLoader color="#de2910" height={3} showSpinner={false} />

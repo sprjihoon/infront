@@ -347,25 +347,25 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
               <p className="text-xs font-bold text-gray-500 mb-3">이번 달 요약</p>
               <div className="grid grid-cols-4 gap-1.5">
                 <SummaryTile
-                  icon={<img src="/icon-blocks.png" alt="블록" className="w-12 h-12 object-contain" />}
+                  icon={<img src="/icon-blocks.png" alt="블록" className="w-12 h-12 object-contain" fetchPriority="high" />}
                   label="사용 중인 블록"
                   value={`${active.length}개`}
                   color="green"
                 />
                 <SummaryTile
-                  icon={<img src="/icon-box.png" alt="물품" className="w-12 h-12 object-contain" />}
+                  icon={<img src="/icon-box.png" alt="물품" className="w-12 h-12 object-contain" fetchPriority="high" />}
                   label="보관 물품"
                   value={`${items.length}개`}
                   color="blue"
                 />
                 <SummaryTile
-                  icon={<img src="/icon-ship.png" alt="출고" className="w-12 h-12 object-contain" />}
+                  icon={<img src="/icon-ship.png" alt="출고" className="w-12 h-12 object-contain" fetchPriority="high" />}
                   label="출고 가능"
                   value={shippableCount > 0 ? `${shippableCount}개` : "-"}
                   color="orange"
                 />
                 <SummaryTile
-                  icon={<img src="/icon-fee.png" alt="보관료" className="w-12 h-12 object-contain" />}
+                  icon={<img src="/icon-fee.png" alt="보관료" className="w-12 h-12 object-contain" fetchPriority="high" />}
                   label="월 보관료"
                   value={totalMonthlyFee > 0 ? `${totalMonthlyFee.toLocaleString()}원` : "-"}
                   color="purple"
