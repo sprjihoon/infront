@@ -312,15 +312,6 @@ export default function PickupHistoryPage() {
         )}
       </div>
 
-      {/* ── 하단 버튼 ── */}
-      <div className="px-4 pb-8 pt-2">
-        <button
-          onClick={() => router.push("/pickup")}
-          className="w-full bg-brand-600 text-white font-bold py-4 rounded-2xl text-sm active:scale-[0.98] transition-transform"
-        >
-          새 수거 신청
-        </button>
-      </div>
     </div>
   );
 }

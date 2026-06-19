@@ -326,13 +326,6 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
           >
             <RefreshCw size={16} className={`text-gray-400 ${refreshing ? "animate-spin" : ""}`} />
           </button>
-          <Link
-            href="/inbound"
-            className="flex items-center gap-1 bg-brand-600 text-white text-xs font-semibold px-3 py-2 rounded-xl"
-          >
-            <Plus size={14} />
-            입고신청
-          </Link>
         </div>
       </div>
 
