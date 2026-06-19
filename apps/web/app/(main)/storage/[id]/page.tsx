@@ -141,24 +141,53 @@ function calcWeeksUsed(startedAt: string | null): number {
   );
 }
 
+const DETAIL_CACHE_TTL_MS = 3 * 60 * 1000; // 3분
+
+function readDetailCache(id: string): {
+  storage: Storage; parcels: StorageParcel[];
+  putawayPhotos: PutawayPhoto[]; putawayPhotosMock: boolean;
+  allStorages: Storage[];
+} | null {
+  try {
+    const raw = sessionStorage.getItem(`storage_detail_${id}`);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > DETAIL_CACHE_TTL_MS) return null;
+    return data;
+  } catch { return null; }
+}
+
+function writeDetailCache(id: string, data: {
+  storage: Storage; parcels: StorageParcel[];
+  putawayPhotos: PutawayPhoto[]; putawayPhotosMock: boolean;
+  allStorages: Storage[];
+}) {
+  try {
+    sessionStorage.setItem(`storage_detail_${id}`, JSON.stringify({ ts: Date.now(), data }));
+  } catch { /* ignore */ }
+}
+
 export default function StorageDetailPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const [storage, setStorage] = useState<Storage | null>(null);
-  const [parcels, setParcels] = useState<StorageParcel[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const cached = typeof window !== "undefined" ? readDetailCache(id) : null;
+
+  const [storage, setStorage] = useState<Storage | null>(cached?.storage ?? null);
+  const [parcels, setParcels] = useState<StorageParcel[]>(cached?.parcels ?? []);
+  const [loading, setLoading] = useState(!cached);
   const [refreshing, setRefreshing] = useState(false);
   const [editName, setEditName] = useState(false);
-  const [nameInput, setNameInput] = useState("");
+  const [nameInput, setNameInput] = useState(cached?.storage?.storage_name ?? "");
   const [saving, setSaving] = useState(false);
-  const [allStorages, setAllStorages] = useState<Storage[]>([]);
+  const [allStorages, setAllStorages] = useState<Storage[]>(cached?.allStorages ?? []);
   const [showReleaseSheet, setShowReleaseSheet] = useState(false);
   const [showCapacitySheet, setShowCapacitySheet] = useState(false);
   const [showConvertSheet, setShowConvertSheet] = useState(false);
   const [showMergeSheet, setShowMergeSheet] = useState(false);
   const [showColorSheet, setShowColorSheet] = useState(false);
-  const [putawayPhotos, setPutawayPhotos] = useState<PutawayPhoto[]>([]);
-  const [putawayPhotosMock, setPutawayPhotosMock] = useState(false);
+  const [putawayPhotos, setPutawayPhotos] = useState<PutawayPhoto[]>(cached?.putawayPhotos ?? []);
+  const [putawayPhotosMock, setPutawayPhotosMock] = useState(cached?.putawayPhotosMock ?? false);
   const [showPutawayPhoto, setShowPutawayPhoto] = useState(false);
   const [putawayPhotoIdx, setPutawayPhotoIdx] = useState(0);
 
@@ -173,22 +202,34 @@ export default function StorageDetailPage() {
       if (res.status === 401) { router.push("/login"); return; }
       if (res.status === 404) { router.push("/storage"); return; }
       const json = await res.json();
+      const allStoragesData = allRes.ok ? ((await allRes.json()).storages ?? []) : [];
       setStorage(json.storage);
       setParcels(json.parcels ?? []);
       setPutawayPhotos(json.putaway_photos ?? []);
       setPutawayPhotosMock(json.putaway_photos_mock === true);
       setNameInput(json.storage?.storage_name ?? "");
-      if (allRes.ok) {
-        const allJson = await allRes.json();
-        setAllStorages(allJson.storages ?? []);
-      }
+      setAllStorages(allStoragesData);
+      writeDetailCache(id, {
+        storage: json.storage,
+        parcels: json.parcels ?? [],
+        putawayPhotos: json.putaway_photos ?? [],
+        putawayPhotosMock: json.putaway_photos_mock === true,
+        allStorages: allStoragesData,
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [id, router]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (cached) {
+      load(true); // 캐시 표시 중 백그라운드 갱신
+    } else {
+      load(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 탭이 다시 활성화될 때 조용히 새로고침
   useEffect(() => {
