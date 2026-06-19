@@ -165,13 +165,60 @@ export interface DashboardData {
   types: StorageType[];
 }
 
+const CACHE_KEY = "storage_dashboard_cache";
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5분
+
+function readCache(): DashboardData | null {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw) as { ts: number; data: DashboardData };
+    if (Date.now() - ts > CACHE_TTL_MS) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(data: DashboardData) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data }));
+  } catch {
+    // sessionStorage 용량 초과 등 무시
+  }
+}
+
 export default function StorageClient({ initialData }: { initialData?: DashboardData }) {
   const router = useRouter();
-  const [storages, setStorages] = useState<Storage[]>(initialData?.storages ?? []);
-  const [items, setItems] = useState<ProductItem[]>(initialData?.items ?? []);
-  const [locationSummary, setLocationSummary] = useState<LocationSummary | null>(initialData?.locationSummary ?? null);
-  const [storageTypes, setStorageTypes] = useState<StorageType[]>(initialData?.types ?? []);
-  const [loading, setLoading] = useState(initialData === undefined);
+
+  // 초기 상태: SSR initialData → sessionStorage 캐시 → 빈 값 순서로 확인
+  const [storages, setStorages] = useState<Storage[]>(() => {
+    if (initialData) return initialData.storages;
+    if (typeof window !== "undefined") return readCache()?.storages ?? [];
+    return [];
+  });
+  const [items, setItems] = useState<ProductItem[]>(() => {
+    if (initialData) return initialData.items;
+    if (typeof window !== "undefined") return readCache()?.items ?? [];
+    return [];
+  });
+  const [locationSummary, setLocationSummary] = useState<LocationSummary | null>(() => {
+    if (initialData) return initialData.locationSummary;
+    if (typeof window !== "undefined") return readCache()?.locationSummary ?? null;
+    return null;
+  });
+  const [storageTypes, setStorageTypes] = useState<StorageType[]>(() => {
+    if (initialData) return initialData.types;
+    if (typeof window !== "undefined") return readCache()?.types ?? [];
+    return [];
+  });
+
+  // 캐시 또는 SSR 데이터가 있으면 로딩 없이 즉시 표시
+  const [loading, setLoading] = useState(() => {
+    if (initialData) return false;
+    if (typeof window !== "undefined" && readCache()) return false;
+    return true;
+  });
   const [refreshing, setRefreshing] = useState(false);
   const [itemFilter, setItemFilter] = useState<string>("전체");
   const [pageSize, setPageSize] = useState<number>(6);
@@ -217,10 +264,17 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
       if (res.status === 401) { router.push("/login"); return; }
       if (res.ok) {
         const json = await res.json();
-        setStorages(json.storages ?? []);
-        setItems(json.items ?? []);
-        setLocationSummary(json.locationSummary ?? null);
-        setStorageTypes(json.types ?? []);
+        const fresh: DashboardData = {
+          storages: json.storages ?? [],
+          items: json.items ?? [],
+          locationSummary: json.locationSummary ?? null,
+          types: json.types ?? [],
+        };
+        setStorages(fresh.storages);
+        setItems(fresh.items);
+        setLocationSummary(fresh.locationSummary);
+        setStorageTypes(fresh.types);
+        writeCache(fresh);
       }
     } finally {
       setLoading(false);
@@ -228,9 +282,15 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
     }
   }, [router]);
 
-  // initialData가 있으면 서버 SSR 데이터 사용 → 초기 fetch 불필요
+  // 마운트 시: 캐시/SSR 데이터가 없으면 full load, 있으면 백그라운드 조용히 갱신
   useEffect(() => {
-    if (initialData === undefined) load();
+    if (initialData !== undefined) return; // SSR 데이터 사용 중
+    const cached = readCache();
+    if (cached) {
+      load(true); // 캐시 데이터 표시 중 백그라운드 갱신
+    } else {
+      load(false); // 첫 방문 — 로딩 표시
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
