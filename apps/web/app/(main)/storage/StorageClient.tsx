@@ -148,7 +148,7 @@ function SummaryTile({
   const bg = { green: "bg-green-50", blue: "bg-blue-50", orange: "bg-orange-50", purple: "bg-purple-50" }[color];
   return (
     <div className="flex flex-col items-center text-center gap-1.5">
-      <div className={`w-11 h-11 rounded-xl ${bg} flex items-center justify-center`}>{icon}</div>
+      <div className={`w-12 h-12 rounded-xl ${bg} flex items-center justify-center`}>{icon}</div>
       <p className="text-sm font-black text-gray-900 leading-none">{value}</p>
       <p className="text-[9px] text-gray-400 leading-tight">{label}</p>
     </div>
@@ -347,25 +347,25 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
               <p className="text-xs font-bold text-gray-500 mb-3">이번 달 요약</p>
               <div className="grid grid-cols-4 gap-1.5">
                 <SummaryTile
-                  icon={<img src="/icon-blocks.png" alt="블록" className="w-9 h-9 object-contain" />}
+                  icon={<img src="/icon-blocks.png" alt="블록" className="w-10 h-10 object-contain" />}
                   label="사용 중인 블록"
                   value={`${active.length}개`}
                   color="green"
                 />
                 <SummaryTile
-                  icon={<img src="/icon-box.png" alt="물품" className="w-9 h-9 object-contain" />}
+                  icon={<img src="/icon-box.png" alt="물품" className="w-10 h-10 object-contain" />}
                   label="보관 물품"
                   value={`${items.length}개`}
                   color="blue"
                 />
                 <SummaryTile
-                  icon={<img src="/icon-ship.png" alt="출고" className="w-9 h-9 object-contain" />}
+                  icon={<img src="/icon-ship.png" alt="출고" className="w-10 h-10 object-contain" />}
                   label="출고 가능"
                   value={shippableCount > 0 ? `${shippableCount}개` : "-"}
                   color="orange"
                 />
                 <SummaryTile
-                  icon={<img src="/icon-fee.png" alt="보관료" className="w-9 h-9 object-contain" />}
+                  icon={<img src="/icon-fee.png" alt="보관료" className="w-10 h-10 object-contain" />}
                   label="월 보관료"
                   value={totalMonthlyFee > 0 ? `${totalMonthlyFee.toLocaleString()}원` : "-"}
                   color="purple"
