@@ -84,7 +84,7 @@ export default function ShippingHubPage() {
         <div className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4">
           <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 leading-relaxed">
-            출고 가능한 물품을 확인해보세요.
+            스토리지에서 출고가능한 물품을 확인해보세요.
           </p>
         </div>
       </div>
