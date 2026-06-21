@@ -1305,6 +1305,43 @@ supabase db query --linked --file apps/sql/059_putaway_photo_customer_rls.sql
 
 ---
 
+### 2026-06-21 소셜 로그인 구현 (카카오 / 네이버 / 구글 / 애플)
+
+**신규 파일**
+- `apps/web/lib/supabase/server.ts` — 서버 컴포넌트·Route Handler용 쿠키 기반 Supabase 클라이언트
+- `apps/web/app/auth/callback/route.ts` — 카카오·구글·애플 OAuth 콜백 처리 (PKCE code → session)
+- `apps/web/app/auth/naver/callback/page.tsx` — 네이버 OAuth 콜백 클라이언트 페이지 (code → `/api/auth/naver` → setSession)
+- `apps/web/app/api/auth/naver/route.ts` — 네이버 code → access_token 교환 + Edge Function 호출
+- `supabase/functions/naver-auth/index.ts` — 네이버 유저 Supabase auth 등록 및 JWT 세션 발급 (Deno Edge Function)
+- `apps/sql/066_social_login.sql` — DB 마이그레이션: `customers.email` NULL 허용, `login_provider` 컬럼 추가, `handle_new_user` 트리거 소셜 로그인 대응
+
+**수정 파일**
+- `apps/web/proxy.ts` — PUBLIC_PATHS에 `/auth` 추가 (콜백 경로 인증 차단 방지)
+- `apps/web/app/(auth)/login/page.tsx` — 카카오·네이버·구글·애플 소셜 로그인 버튼 추가
+
+**인증 흐름**
+- 카카오·구글·애플: `supabase.auth.signInWithOAuth` → Supabase OAuth → `/auth/callback` → `/home`
+- 네이버: 직접 OAuth redirect → `/auth/naver/callback` → `POST /api/auth/naver` → `naver-auth` Edge Function → `setSession` → `/home`
+
+**DB 마이그레이션 (배포 전 Supabase 적용 필수)**
+```bash
+supabase db query --linked --file apps/sql/066_social_login.sql
+```
+
+**Edge Function 배포**
+```bash
+supabase functions deploy naver-auth
+```
+
+**추가 필요 환경변수**
+```
+NEXT_PUBLIC_NAVER_CLIENT_ID=...
+NAVER_CLIENT_ID=...
+NAVER_CLIENT_SECRET=...
+```
+
+---
+
 ## ?? 라이선스
 
 Private ? ���� ���� �� ���� ����
