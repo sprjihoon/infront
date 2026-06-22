@@ -791,6 +791,9 @@ Next.js ����
 | `INFRONT_CENTER_PHONE` | ���� ����ó (modo `CENTER_PHONE`) ? **���ڸ�** `01027239490` (���顤�������� �ڵ忡�� ����, ���� ���� �� ERR-522) |
 
 > **��ü�� ����(reqType=2)**: `ord*` = ���뱸��ü�� ������(����), `rec*` = ��� ������. ȸ�� ������(�Ƚɷ�)�� ������� �ʽ��ϴ�. modo `shipments-book` �� �����մϴ�.
+| `NEXT_PUBLIC_NAVER_CLIENT_ID` | 네이버 로그인 Client ID (공개 키) |
+| `NAVER_CLIENT_ID` | 네이버 로그인 Client ID (서버 전용) |
+| `NAVER_CLIENT_SECRET` | 네이버 로그인 Client Secret |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare ���� ID |
 | `CLOUDFLARE_STREAM_API_TOKEN` | Cloudflare Stream API ��ū |
 | `ADMIN_EMAILS` | ������ �̸��� ��� (�޸� ����) |
@@ -1339,6 +1342,30 @@ NEXT_PUBLIC_NAVER_CLIENT_ID=...
 NAVER_CLIENT_ID=...
 NAVER_CLIENT_SECRET=...
 ```
+
+### 2026-06-22 네이버 OAuth 앱 등록 및 환경변수 설정 완료
+
+**네이버 개발자 센터 앱 등록**
+- 앱 이름: 인프론트
+- Client ID: `6LVBGz3HCK4Sjg9bHxHE`
+- 제공 정보: 회원이름(필수) / 연락처 이메일(필수) / 별명(필수)
+- 서비스 URL: `https://infront.kr`
+- Callback URL: `https://infront.kr/auth/naver/callback`
+- 현재 상태: **개발 중** (앱 등록자 계정만 로그인 가능 / 전체 공개는 검수 통과 후)
+
+**환경변수 설정 완료**
+- Vercel production / preview / development 3개 환경에 `NEXT_PUBLIC_NAVER_CLIENT_ID`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` 추가
+- Supabase Edge Function 시크릿(`NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`) 설정
+- `naver-auth` Edge Function 재배포
+
+**소셜 로그인 현황**
+
+| 제공자 | 앱 등록 | Supabase 설정 | 상태 |
+|--------|---------|--------------|------|
+| 카카오 | ✅ 완료 | ✅ 완료 | 개발 중 (비즈앱 전환 필요) |
+| 네이버 | ✅ 완료 | ✅ Edge Function | 개발 중 (검수 요청 후 전체 공개) |
+| 구글 | ✅ 완료 | ✅ 완료 | 테스트 모드 (앱 게시 후 전체 공개) |
+| 애플 | ⏳ 미등록 | ⏳ 미설정 | 준비 중 |
 
 ---
 
