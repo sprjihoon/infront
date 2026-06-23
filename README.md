@@ -1343,6 +1343,26 @@ NAVER_CLIENT_ID=...
 NAVER_CLIENT_SECRET=...
 ```
 
+### 2026-06-23 KG Inicis 심사 환경 구성 완료
+
+**KG Inicis MID 발급 및 실키 설정**
+- MID `infront227` 발급 완료
+- Vercel 환경변수 설정: `INICIS_MID`, `INICIS_SIGN_KEY`, `INICIS_MOBILE_HASH_KEY`, `INICIS_INIAPI_KEY`, `INICIS_INIAPI_IV`
+- `INICIS_TEST_MODE` 환경변수 제거 → 프로덕션 JS URL + 실 MID 사용
+
+**KG Inicis 결제 라우트 심사 대응 리팩터링**
+- `INIpayTest` 폴백 코드 전면 제거: 실 MID/SignKey 없으면 500 에러 반환
+- `INICIS_TEST_MODE=true` 시 스테이징 JS URL, 미설정 시 프로덕션 JS URL 고정
+- `signKey` 일관성 수정: `prepare`·`return`·`storage-return`·`mobile-prepare`·`storage/pay/prepare` 전 라우트 통일
+- 대상 파일: `api/inicis/prepare`, `api/inicis/return`, `api/inicis/mobile-prepare`, `api/inicis/storage-return`, `api/storage/pay/prepare`, `api/inicis/cancel`
+
+**현재 심사 상태**
+- 결제창 정상 오픈 확인 (KG Inicis 프로덕션 JS + 실 MID)
+- MID 미활성화 상태에서 `416400(미등록가맹점)` 오류는 심사 중 정상 동작
+- KG Inicis 심사 진행 중, 승인 완료 후 실결제 전환 예정
+
+---
+
 ### 2026-06-22 네이버 OAuth 앱 등록 및 환경변수 설정 완료
 
 **네이버 개발자 센터 앱 등록**

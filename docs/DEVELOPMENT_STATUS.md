@@ -1,7 +1,7 @@
 ﻿# 인프론트 개발 현황
 
-> **최종 갱신:** 2026-06-18  
-> **DB 마이그레이션:** `001` ~ `060` (+ `999_mock_seed.sql`)
+> **최종 갱신:** 2026-06-23  
+> **DB 마이그레이션:** `001` ~ `066` (+ `999_mock_seed.sql`)
 
 이 문서는 [README.md](../README.md)의 로드맵·기능 표를 보완하는 **상세 개발 일지**입니다.  
 기능 단위로 완료/진행/예정을 추적하고, README는 온보딩·아키텍처 개요용으로 유지합니다.
@@ -318,6 +318,12 @@ IN_TRANSIT
 | `058_inbound_putaway_flow.sql` | 입고 2단계: `planned_storage_location_id`, 적치 사진 | ✅ |
 | `059_putaway_photo_customer_rls.sql` | 고객 RLS: 본인 소포 `PUTAWAY_PHOTO` 조회 허용 | ✅ |
 | `060_claim_available_location.sql` | `claim_available_location()` — `SKIP LOCKED` 원자적 선점 | ✅ |
+| `061_shop_orders.sql` | `shop_orders` 테이블 — 비회원 포장대행 결제 주문 | ✅ |
+| `062_backfill_recipient_addr.sql` | `orders.recipient_addr1/2/3` 백필 (기존 주문 정규화) | ✅ |
+| `063_shop_orders_cancel_fields.sql` | `shop_orders` 취소(`cancelled_at`, `cancel_msg`) + `admin_memo` 컬럼 추가 | ✅ |
+| `064_payment_type_expand.sql` | `storage_payments` — `LONG_TERM_FIRST` 타입, `WAITING_VBANK` 상태, 가상계좌 컬럼 추가 | ✅ |
+| `065_customer_avatar.sql` | `customers.avatar_url` + `avatars` Storage 버킷 RLS | ✅ |
+| `066_social_login.sql` | 소셜 로그인 — `customers.email` NULL 허용, `login_provider` 컬럼, `handle_new_user` 트리거 업데이트 | ✅ |
 | `999_mock_seed.sql` | 테스트 목업 데이터 | ✅ (개발용) |
 
 ---
@@ -414,3 +420,5 @@ IN_TRANSIT
 | 2026-06-04 | Phase 1.6 스토리지 시스템, Phase 1.7 피킹·출고 워크플로우 완료 반영. 전체 마이그레이션 현황 갱신 (001~038) |
 | 2026-06-09 | Phase 3 고객 보관 서비스 완료 현황 반영 (040~044). 수거비 동적 계산, Admin 요금 설정 UI. Phase 4~8 로드맵 추가 및 번호 재정렬 (4=장기빌링, 5=단기→장기전환cron, 6=에스컬레이션, 7=오픈확인비, 8=글로벌결제). 웨어하우스+보관 서비스 통합 아키텍처 결정 사항 추가 |
 | 2026-06-18 | DB 마이그레이션 현황 갱신 (045~060). 성능 최적화 1단계 반영: `/api/storage/dashboard` 통합 엔드포인트, `storage_types` 1시간 캐시, 스토리지 페이지 API 요청 4개→1개 |
+| 2026-06-21 | 소셜 로그인 구현 (카카오/네이버/구글/애플). DB 마이그레이션 `066_social_login.sql`. Supabase Edge Function `naver-auth` 배포 |
+| 2026-06-23 | KG Inicis MID `infront227` 발급. 실결제 환경변수 설정. 심사용 결제 라우트 전면 정비 (INIpayTest 제거, signKey 일관성, 프로덕션 JS URL 고정). DB 마이그레이션 현황 갱신 (061~066) |
