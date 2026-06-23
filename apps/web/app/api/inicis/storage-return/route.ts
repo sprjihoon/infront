@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
   /* ── 4. 네트결제 승인 요청 ── */
   let tid = "";
   try {
-    const signKey = (process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS").trim();
+    const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
     const timestamp = Date.now().toString();
     const signature = sha256hex(`authToken=${authToken}&timestamp=${timestamp}`);
     const verification = sha256hex(`authToken=${authToken}&signKey=${signKey}&timestamp=${timestamp}`);
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     /* 망취소 시도 */
     if (netCancelUrl && authToken) {
       try {
-        const signKey = (process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS").trim();
+        const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
         const ts = Date.now().toString();
         const IDC_CANCEL: Record<string, string> = {
           fc: "https://fcstdpay.inicis.com/api/netCancel",

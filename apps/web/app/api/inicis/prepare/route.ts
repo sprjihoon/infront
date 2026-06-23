@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const TEST_MID = "INIpayTest";
-const TEST_SIGN_KEY = "SU5JTElURV9UUklQTEVERVNfS0VZU1RS";
-
 function sha256hex(str: string): string {
   return crypto.createHash("sha256").update(str, "utf8").digest("hex");
 }
@@ -46,17 +43,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
     }
 
-    // INICIS_TEST_MODE=true 이면 실 MID가 있어도 테스트 모드 강제 적용 (심사 기간 등)
-    const forceTest = process.env.INICIS_TEST_MODE?.trim() === "true";
-    const mid = (forceTest ? TEST_MID : (process.env.INICIS_MID ?? TEST_MID)).trim();
-    const signKey = (forceTest ? TEST_SIGN_KEY : (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY)).trim();
-    const isTest = forceTest || !process.env.INICIS_MID?.trim();
+    // INICIS_TEST_MODE=true → 실 MID/signKey + 스테이징 JS URL (심사용)
+    // 환경변수 미설정 → 실 MID/signKey + 프로덕션 JS URL
+    const useStaging = process.env.INICIS_TEST_MODE?.trim() === "true";
+    const mid = (process.env.INICIS_MID ?? "").trim();
+    const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
 
-    // MID는 설정됐는데 SIGN_KEY가 없으면 서명 불일치로 결제 실패
-    if (process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {
-      console.error("[inicis/prepare] INICIS_MID is set but INICIS_SIGN_KEY is missing!");
+    if (!mid || !signKey) {
+      console.error("[inicis/prepare] INICIS_MID 또는 INICIS_SIGN_KEY 환경 변수가 설정되지 않았습니다.");
       return NextResponse.json(
-        { error: "결제 설정 오류: INICIS_SIGN_KEY 환경 변수가 설정되지 않았습니다." },
+        { error: "결제 설정 오류: INICIS_MID / INICIS_SIGN_KEY 환경 변수가 필요합니다." },
         { status: 500 }
       );
     }
@@ -121,7 +117,7 @@ export async function POST(request: NextRequest) {
       buyeremail,
       returnUrl: `${appUrl}/api/inicis/return`,
       closeUrl: `${appUrl}/shop/payment/close`,
-      jsUrl: isTest
+      jsUrl: useStaging
         ? "https://stgstdpay.inicis.com/stdjs/INIStdPay.js"
         : "https://stdpay.inicis.com/stdjs/INIStdPay.js",
     });

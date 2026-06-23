@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
-const TEST_MID = "INIpayTest";
-const TEST_HASH_KEY = "3CB8183A4BE283555ACC8363C0360223";
+const TEST_HASH_KEY_FALLBACK = "3CB8183A4BE283555ACC8363C0360223";
 
 function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -42,15 +41,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
     }
 
-    const forceTest = process.env.INICIS_TEST_MODE?.trim() === "true";
-    const mid = (forceTest ? TEST_MID : (process.env.INICIS_MID ?? TEST_MID)).trim();
-    const hashKey = (forceTest ? TEST_HASH_KEY : (process.env.INICIS_MOBILE_HASH_KEY ?? TEST_HASH_KEY)).trim();
+    const mid = (process.env.INICIS_MID ?? "").trim();
+    const hashKey = (process.env.INICIS_MOBILE_HASH_KEY ?? TEST_HASH_KEY_FALLBACK).trim();
 
-    // MID는 설정됐는데 HASH_KEY가 없으면 서명 불일치로 결제 실패
-    if (!forceTest && process.env.INICIS_MID && !process.env.INICIS_MOBILE_HASH_KEY) {
-      console.error("[inicis/mobile-prepare] INICIS_MID is set but INICIS_MOBILE_HASH_KEY is missing!");
+    if (!mid) {
+      console.error("[inicis/mobile-prepare] INICIS_MID 환경 변수가 설정되지 않았습니다.");
       return NextResponse.json(
-        { error: "결제 설정 오류: INICIS_MOBILE_HASH_KEY 환경 변수가 설정되지 않았습니다." },
+        { error: "결제 설정 오류: INICIS_MID 환경 변수가 필요합니다." },
         { status: 500 }
       );
     }
@@ -115,7 +112,9 @@ export async function POST(request: NextRequest) {
       P_NEXT_URL: `${appUrl}/api/inicis/mobile-return`,
       P_CHARSET: "utf8",
       P_RESERVED: "centerCd=Y",
-      payUrl: "https://mobile.inicis.com/smart/payment/",
+      payUrl: process.env.INICIS_TEST_MODE?.trim() === "true"
+        ? "https://stgmobile.inicis.com/smart/payment/"
+        : "https://mobile.inicis.com/smart/payment/",
     });
   } catch (e) {
     console.error("[inicis/mobile-prepare]", e);

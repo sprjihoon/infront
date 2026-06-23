@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
 
   /* ── 네트결제 승인 요청 ── */
   try {
-    const signKey = (process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1RS").trim();
+    const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
     const timestamp = Date.now().toString();
 
     /*
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
     /* 망취소 시도 */
     if (netCancelUrl && authToken) {
       try {
-        const signKey = (process.env.INICIS_SIGN_KEY ?? "SU5JTElURV9UUklQTEVERVNfS0VZU1RS").trim();
+        const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
         const ts = Date.now().toString();
         const ncParams = new URLSearchParams({
           mid: (mid ?? (process.env.INICIS_MID ?? "INIpayTest")).trim(),

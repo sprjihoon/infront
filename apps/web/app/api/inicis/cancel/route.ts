@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "tid, price는 필수입니다." }, { status: 400 });
     }
 
-    const mid     = process.env.INICIS_MID;
+    const forceTest = process.env.INICIS_TEST_MODE?.trim() === "true";
+    const mid     = forceTest ? "INIpayTest" : process.env.INICIS_MID;
     const apiKey  = process.env.INICIS_INIAPI_KEY;
     const apiIv   = process.env.INICIS_INIAPI_IV;
 

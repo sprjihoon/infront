@@ -241,13 +241,12 @@ export async function POST(request: NextRequest) {
   }
 
   /* ── storage_payments 레코드 생성 ── */
-  const forceTest = process.env.INICIS_TEST_MODE?.trim() === "true";
-  const mid = (forceTest ? TEST_MID : (process.env.INICIS_MID ?? TEST_MID)).trim();
-  const signKey = (forceTest ? TEST_SIGN_KEY : (process.env.INICIS_SIGN_KEY ?? TEST_SIGN_KEY)).trim();
-  const isTest = forceTest || !process.env.INICIS_MID?.trim();
+  const useStaging = process.env.INICIS_TEST_MODE?.trim() === "true";
+  const mid = (process.env.INICIS_MID ?? "").trim();
+  const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
 
-  if (!forceTest && process.env.INICIS_MID && !process.env.INICIS_SIGN_KEY) {
-    console.error("[storage/pay/prepare] INICIS_MID is set but INICIS_SIGN_KEY is missing!");
+  if (!mid || !signKey) {
+    console.error("[storage/pay/prepare] INICIS_MID 또는 INICIS_SIGN_KEY 환경 변수가 설정되지 않았습니다.");
     return NextResponse.json(
       { error: "결제 설정 오류: 관리자에게 문의해 주세요." },
       { status: 500 }
@@ -303,7 +302,7 @@ export async function POST(request: NextRequest) {
     buyeremail,
     returnUrl: `${appUrl}/api/inicis/storage-return`,
     closeUrl: `${appUrl}/storage/payment/fail?reason=close`,
-    jsUrl: isTest
+    jsUrl: useStaging
       ? "https://stgstdpay.inicis.com/stdjs/INIStdPay.js"
       : "https://stdpay.inicis.com/stdjs/INIStdPay.js",
   });
