@@ -43,6 +43,14 @@ const nextConfig: NextConfig = {
         ],
       },
       {
+        // 샵 빌링 콜백 — KG이니시스 iframe에서 로드
+        source: "/api/shop/billing/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "" },
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
+        ],
+      },
+      {
         // 우편번호 검색 페이지 — Daum CDN 스크립트 허용
         source: "/postcode.html",
         headers: [
