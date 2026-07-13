@@ -73,10 +73,25 @@ function CompleteContent() {
             <span className="text-sm text-gray-600">월 구독료</span>
             <span className="text-sm font-bold text-[#de2910]">9,900원</span>
           </div>
-          <div className="flex justify-between items-center py-1.5">
+          <div className="flex justify-between items-center py-1.5 border-b border-gray-50">
             <span className="text-sm text-gray-600">결제일</span>
             <span className="text-sm text-gray-900">매월 1일</span>
           </div>
+          <div className="flex justify-between items-center py-1.5">
+            <span className="text-sm text-gray-600">해지 방법</span>
+            <span className="text-sm text-gray-900">고객센터 문의</span>
+          </div>
+        </div>
+
+        {/* 유의사항 */}
+        <div className="bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 space-y-1">
+          <p className="text-xs font-bold text-gray-600">구독 유의사항</p>
+          <ul className="text-xs text-gray-500 space-y-0.5 list-disc list-inside leading-relaxed">
+            <li>구독 해지는 고객센터(010-2723-9490) 또는 서비스 내 해지 메뉴에서 가능합니다.</li>
+            <li>결제일 기준 7일 이내 해지 시 전액 환불됩니다.</li>
+            <li>이후 해지 시 잔여 일수 비례 환불됩니다.</li>
+            <li>결제 실패 시 3일 이내 재청구되며, 반복 실패 시 구독이 일시 중단됩니다.</li>
+          </ul>
         </div>
 
         {/* 첫 결제 테스트 */}

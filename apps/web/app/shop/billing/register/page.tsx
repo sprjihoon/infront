@@ -23,6 +23,8 @@ export default function ShopBillingRegisterPage() {
   const [tel, setTel]     = useState("");
   const [email, setEmail] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [agreedPay, setAgreedPay] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [formParams, setFormParams] = useState<Record<string, string> | null>(null);
@@ -95,7 +97,7 @@ export default function ShopBillingRegisterPage() {
     }
   }
 
-  const isValid = name.trim() && tel.trim() && email.trim() && agreed;
+  const isValid = name.trim() && tel.trim() && email.trim() && agreed && agreedPay && agreedPrivacy;
 
   /* 로딩 중 */
   if (user === undefined) {
@@ -247,31 +249,127 @@ export default function ShopBillingRegisterPage() {
           </div>
         </div>
 
-        {/* 안내 */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-1">
-          <p className="text-xs font-bold text-amber-800">📋 자동결제 안내</p>
-          <ul className="text-xs text-amber-700 space-y-0.5 list-disc list-inside leading-relaxed">
-            <li>카드 등록 후 매월 1일에 자동으로 구독료가 청구됩니다.</li>
-            <li>등록한 카드는 언제든지 변경하거나 구독을 해지할 수 있습니다.</li>
-            <li>첫 달은 등록 즉시 결제됩니다.</li>
-          </ul>
+        {/* 자동결제 고지 */}
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2">
+          <p className="text-xs font-bold text-amber-800">📋 자동결제(정기결제) 고지사항</p>
+          <table className="w-full text-xs text-amber-800 border-collapse">
+            <tbody>
+              <tr className="border-b border-amber-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">상품명</td>
+                <td className="py-1">보관함 기본 구독 (STORAGE_BASIC)</td>
+              </tr>
+              <tr className="border-b border-amber-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">결제 금액</td>
+                <td className="py-1 font-bold">9,900원 / 월</td>
+              </tr>
+              <tr className="border-b border-amber-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">결제 주기</td>
+                <td className="py-1">매월 1일 자동 청구</td>
+              </tr>
+              <tr className="border-b border-amber-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">최초 결제</td>
+                <td className="py-1">카드 등록 즉시 9,900원 청구</td>
+              </tr>
+              <tr className="border-b border-amber-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">해지 방법</td>
+                <td className="py-1">서비스 내 해지 또는 고객센터(010-2723-9490) 문의</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">환불 정책</td>
+                <td className="py-1">결제일 기준 7일 이내 전액 환불, 이후 잔여일수 비례 환불</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="text-[10px] text-amber-700 leading-relaxed">
+            ※ 전자상거래법 제17조에 따라 서비스 이용 개시 전 청약 철회가 가능합니다.<br />
+            ※ 결제 실패 시 3일 이내 재청구되며, 반복 실패 시 구독이 일시 중단됩니다.
+          </p>
         </div>
 
-        {/* 약관 동의 */}
-        <label className="flex items-start gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={agreed}
-            onChange={(e) => setAgreed(e.target.checked)}
-            className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
-          />
-          <span className="text-xs text-gray-600 leading-relaxed">
-            <a href="/shop/terms" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">이용약관</a>
-            {" 및 "}
-            <a href="/shop/privacy" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">개인정보처리방침</a>
-            {"에 동의하며, 자동결제 서비스에 가입합니다. (필수)"}
-          </span>
-        </label>
+        {/* 개인정보 제3자 제공 동의 */}
+        <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-1.5">
+          <p className="text-xs font-bold text-gray-700">개인정보 제3자 제공 내용</p>
+          <table className="w-full text-xs text-gray-600 border-collapse">
+            <tbody>
+              <tr className="border-b border-gray-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">제공받는 자</td>
+                <td className="py-1">KG이니시스(주)</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">제공 항목</td>
+                <td className="py-1">이름, 연락처, 이메일, 카드 결제 정보</td>
+              </tr>
+              <tr className="border-b border-gray-200">
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">제공 목적</td>
+                <td className="py-1">자동결제(빌링) 서비스 처리</td>
+              </tr>
+              <tr>
+                <td className="py-1 pr-3 font-semibold whitespace-nowrap">보유 기간</td>
+                <td className="py-1">구독 해지 후 5년</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* 약관 동의 목록 */}
+        <div className="space-y-2.5">
+          {/* 전체 동의 */}
+          <label className="flex items-start gap-2.5 cursor-pointer bg-gray-50 rounded-xl px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={agreed && agreedPay && agreedPrivacy}
+              onChange={(e) => {
+                setAgreed(e.target.checked);
+                setAgreedPay(e.target.checked);
+                setAgreedPrivacy(e.target.checked);
+              }}
+              className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
+            />
+            <span className="text-xs font-bold text-gray-800">아래 약관에 모두 동의합니다</span>
+          </label>
+
+          {/* 이용약관 */}
+          <label className="flex items-start gap-2.5 cursor-pointer pl-2">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
+            />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              <span className="text-[#de2910] font-semibold">[필수]</span>{" "}
+              <a href="/shop/terms" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">서비스 이용약관</a> 동의
+            </span>
+          </label>
+
+          {/* 자동결제 약관 */}
+          <label className="flex items-start gap-2.5 cursor-pointer pl-2">
+            <input
+              type="checkbox"
+              checked={agreedPay}
+              onChange={(e) => setAgreedPay(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
+            />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              <span className="text-[#de2910] font-semibold">[필수]</span>{" "}
+              자동결제(정기결제) 서비스 약관 및 위 고지사항 확인·동의
+            </span>
+          </label>
+
+          {/* 개인정보 제3자 제공 */}
+          <label className="flex items-start gap-2.5 cursor-pointer pl-2">
+            <input
+              type="checkbox"
+              checked={agreedPrivacy}
+              onChange={(e) => setAgreedPrivacy(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
+            />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              <span className="text-[#de2910] font-semibold">[필수]</span>{" "}
+              개인정보 제3자 제공(KG이니시스) 동의
+            </span>
+          </label>
+        </div>
 
         {/* 카드 등록 버튼 */}
         <button

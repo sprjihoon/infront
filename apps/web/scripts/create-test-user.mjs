@@ -15,8 +15,11 @@
 const EMAIL    = "test@infront.kr";
 const PASSWORD = "Test1234!";
 
-const url     = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-const svcKey  = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+function cleanEnv(v) {
+  return (v ?? "").replace(/\\r\\n|\\r|\\n|\r|\n|"/g, "").trim();
+}
+const url    = cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const svcKey = cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 if (!url || !svcKey) {
   console.error("❌ 환경변수를 먼저 설정해주세요:");
