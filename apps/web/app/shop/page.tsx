@@ -88,8 +88,8 @@ export default function ShopPage() {
                 {tx.langLabel}
               </button>
             )}
-            {/* 로그인 버튼 (미로그인 시에만 표시) */}
-            {userEmail === null && (
+            {/* 로그인/로그아웃 버튼 */}
+            {userEmail === null ? (
               <button
                 onClick={() => router.push("/login?redirect=/shop")}
                 className="flex items-center gap-1 text-xs font-bold text-white bg-[#de2910] px-2.5 py-1.5 rounded-lg active:opacity-80 transition-opacity"
@@ -97,7 +97,23 @@ export default function ShopPage() {
                 <LogIn size={12} />
                 {lang === "ko" ? "로그인" : "Login"}
               </button>
-            )}
+            ) : userEmail ? (
+              <button
+                onClick={async () => {
+                  const { createBrowserClient } = await import("@supabase/ssr");
+                  const sb = createBrowserClient(
+                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                  );
+                  await sb.auth.signOut();
+                  setUserEmail(null);
+                }}
+                className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <LogIn size={12} className="rotate-180" />
+                {lang === "ko" ? "로그아웃" : "Logout"}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
