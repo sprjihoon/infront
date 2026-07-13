@@ -79,7 +79,9 @@ export async function POST(request: NextRequest) {
   const cleanTel  = buyertel.replace(/[^0-9\-]/g, "");
   const timestamp = Date.now().toString();
   const oid       = `SBBILL-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
-  const price     = "0"; // 빌링키 발급은 0원
+  // INIStdPay JS는 price=0을 거부하므로 실제 구독 금액으로 설정
+  // billtype=1(빌링키 발급 전용)이므로 실제 즉시 청구는 없음
+  const price     = String(plan.amount);
 
   const signature    = sha256hex(`oid=${oid}&price=${price}&timestamp=${timestamp}`);
   const verification = sha256hex(`oid=${oid}&price=${price}&signKey=${signKey}&timestamp=${timestamp}`);
