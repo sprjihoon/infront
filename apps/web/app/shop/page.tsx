@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Globe, Archive, LogIn, User } from "lucide-react";
+import { Package, Globe, Archive, LogIn } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import { useLanguage } from "./useLanguage";
 import { t } from "./translations";
@@ -88,16 +88,8 @@ export default function ShopPage() {
                 {tx.langLabel}
               </button>
             )}
-            {/* 로그인/프로필 버튼 */}
-            {userEmail ? (
-              <button
-                onClick={() => router.push("/home")}
-                className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <User size={12} />
-                {lang === "ko" ? "내 서비스" : "My Page"}
-              </button>
-            ) : (
+            {/* 로그인 버튼 (미로그인 시에만 표시) */}
+            {userEmail === null && (
               <button
                 onClick={() => router.push("/login?redirect=/shop")}
                 className="flex items-center gap-1 text-xs font-bold text-white bg-[#de2910] px-2.5 py-1.5 rounded-lg active:opacity-80 transition-opacity"
