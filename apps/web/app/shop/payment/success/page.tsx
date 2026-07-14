@@ -112,9 +112,25 @@ function SuccessContent() {
         <p className="text-xs text-gray-400">{tx.orderNo} {paymentId}</p>
       )}
       <p className="text-sm text-gray-500 text-center whitespace-pre-line">{tx.successMsg}</p>
+      {paymentId && (
+        <div className="flex flex-col gap-2 w-full max-w-xs">
+          <button
+            onClick={() => router.push(`/shop/tracking/${paymentId}`)}
+            className="w-full px-6 py-3 border border-[#de2910] text-[#de2910] text-sm font-bold rounded-xl"
+          >
+            {lang === "ko" ? "배송조회" : "Track shipment"}
+          </button>
+          <button
+            onClick={() => router.replace("/shop/orders")}
+            className="w-full px-6 py-3 bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl"
+          >
+            {lang === "ko" ? "내 주문 목록" : "My orders"}
+          </button>
+        </div>
+      )}
       <button
         onClick={() => router.replace("/shop")}
-        className="mt-2 px-6 py-3 bg-[#de2910] text-white text-sm font-bold rounded-xl"
+        className="mt-1 px-6 py-3 bg-[#de2910] text-white text-sm font-bold rounded-xl"
       >
         {tx.goBack}
       </button>

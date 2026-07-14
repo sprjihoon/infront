@@ -61,6 +61,14 @@ export async function validateShopOrderRequest(
         status: 403,
       };
     }
+    if (!user.emailConfirmed) {
+      return {
+        ok: false,
+        error:
+          "해외카드 결제는 이메일 인증이 완료된 회원만 이용 가능합니다. 가입 시 발송된 인증 메일을 확인해 주세요.",
+        status: 403,
+      };
+    }
     if (product.billingType !== "one_time") {
       return {
         ok: false,

@@ -68,7 +68,14 @@ export default function ShopPage() {
                 {lang === "ko" ? "로그인" : "Login"}
               </button>
             ) : userEmail ? (
-              <button
+              <>
+                <button
+                  onClick={() => router.push("/shop/orders")}
+                  className="text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50"
+                >
+                  {lang === "ko" ? "주문/배송조회" : "Orders"}
+                </button>
+                <button
                 onClick={async () => {
                   const sb = createBrowserClient(
                     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -81,7 +88,8 @@ export default function ShopPage() {
               >
                 <LogIn size={12} className="rotate-180" />
                 {lang === "ko" ? "로그아웃" : "Logout"}
-              </button>
+                </button>
+              </>
             ) : null}
           </div>
         </div>

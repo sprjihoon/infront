@@ -4,6 +4,7 @@ import type { CustomerType } from "./products";
 export interface ShopAuthUser {
   id: string;
   email: string | undefined;
+  emailConfirmed: boolean;
   customerType: CustomerType;
   name: string | null;
   phone: string | null;
@@ -31,6 +32,7 @@ export async function getShopAuthUser(): Promise<ShopAuthUser | null> {
   return {
     id: user.id,
     email: user.email ?? customer?.email ?? undefined,
+    emailConfirmed: Boolean(user.email_confirmed_at),
     customerType,
     name: customer?.name ?? meta.name ?? null,
     phone: customer?.phone ?? meta.phone ?? null,
