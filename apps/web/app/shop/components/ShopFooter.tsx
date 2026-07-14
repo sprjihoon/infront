@@ -1,27 +1,29 @@
 import Link from "next/link";
+import { BUSINESS_INFO } from "@/lib/shop/business-info";
 
 export function ShopFooter() {
+  const b = BUSINESS_INFO;
   return (
     <footer className="border-t border-gray-200 bg-white mt-auto px-4 py-6">
       <div className="max-w-2xl mx-auto space-y-3">
-        <p className="text-xs font-bold text-gray-700">틸리언</p>
+        <p className="text-xs font-bold text-gray-700">{b.companyName}</p>
         <div className="text-[11px] text-gray-500 leading-relaxed space-y-0.5">
           <p>
-            <span className="text-gray-400">상호명</span> 틸리언 &nbsp;|&nbsp;{" "}
-            <span className="text-gray-400">대표자</span> 장지훈
+            <span className="text-gray-400">상호명</span> {b.companyName} &nbsp;|&nbsp;{" "}
+            <span className="text-gray-400">대표자</span> {b.representative}
           </p>
           <p>
-            <span className="text-gray-400">사업자등록번호</span> 766-55-00323
+            <span className="text-gray-400">사업자등록번호</span> {b.businessRegistrationNumber}
           </p>
           <p>
-            <span className="text-gray-400">통신판매업신고</span> 제 2022-대구동구-1034 호
+            <span className="text-gray-400">통신판매업신고</span> {b.mailOrderReportNumber}
           </p>
           <p>
-            <span className="text-gray-400">사업장 주소</span> 대구시 동구 안심로188 2층, 3층
+            <span className="text-gray-400">사업장 주소</span> {b.address}
           </p>
           <p>
-            <span className="text-gray-400">고객센터</span> 010-2723-9490 &nbsp;|&nbsp;{" "}
-            <span className="text-gray-400">이메일</span> info@tillion.kr
+            <span className="text-gray-400">연락처</span> {b.phone} &nbsp;|&nbsp;{" "}
+            <span className="text-gray-400">이메일</span> {b.email}
           </p>
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-1 pt-1">

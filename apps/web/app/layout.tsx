@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import NextTopLoader from "nextjs-toploader";
+import { AuditCaptureUrlBar, AuditCaptureFooter } from "@/components/audit/AuditCaptureChrome";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -49,9 +50,11 @@ export default function RootLayout({
         <link rel="preload" as="image" href="/icon-ship.png" />
         <link rel="preload" as="image" href="/icon-fee.png" />
       </head>
-      <body className="h-full bg-gray-50 antialiased">
+      <body className="flex min-h-full flex-col bg-gray-50 antialiased">
         <NextTopLoader color="#de2910" height={3} showSpinner={false} />
-        {children}
+        <AuditCaptureUrlBar />
+        <div className="flex flex-1 flex-col">{children}</div>
+        <AuditCaptureFooter />
       </body>
     </html>
   );

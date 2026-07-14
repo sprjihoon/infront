@@ -631,6 +631,11 @@ function CheckoutContent() {
             <span className="text-sm font-bold text-gray-900">{tx.totalAmount}</span>
             <span className="text-lg font-bold text-[#de2910]">{formatKrw(total)}</span>
           </div>
+          <p className="mt-2 text-[10px] text-gray-500 leading-relaxed">
+            {lang === "ko"
+              ? `결제 통화: 원화(KRW) · KG이니시스 결제창에 ${total.toLocaleString("ko-KR")}원으로 동일 표시됩니다.`
+              : `Currency: KRW · The same amount (${total.toLocaleString("ko-KR")} KRW) will appear in the KG Inicis payment window.`}
+          </p>
         </section>
 
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
