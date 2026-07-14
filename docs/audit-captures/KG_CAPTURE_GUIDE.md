@@ -7,7 +7,7 @@
 ```
 https://infront.kr/signup?audit=1
 https://infront.kr/shop?audit=1
-https://infront.kr/shop/checkout?product=PICKUP_FEE&audit=1
+https://infront.kr/shop/checkout?product=INSPECTION_PACK_S&audit=1
 ```
 
 ### 캡처 대상 경로 (audit=1 필수)
@@ -18,8 +18,8 @@ https://infront.kr/shop/checkout?product=PICKUP_FEE&audit=1
 | 2 | `/login?audit=1` |
 | 3 | `/mypage?audit=1` |
 | 4 | `/shop?audit=1` |
-| 5 | `/shop/products/PICKUP_FEE?audit=1` |
-| 6 | `/shop/checkout?product=PICKUP_FEE&audit=1` |
+| 5 | `/shop/products/INSPECTION_PACK_S?audit=1` |
+| 6 | `/shop/checkout?product=INSPECTION_PACK_S&audit=1` |
 | 7 | `/shop/orders?audit=1` |
 | 8 | `/shop/refund-policy?audit=1` |
 | 9 | `/shop/shipping-policy?audit=1` |
@@ -48,10 +48,10 @@ https://infront.kr/shop/checkout?product=PICKUP_FEE&audit=1
 
 | 확인 위치 | 표시 |
 |-----------|------|
-| checkout **최종 결제금액** | `5,000원` (예: PICKUP_FEE) |
-| checkout 안내 문구 | `결제 통화: 원화(KRW) · KG이니시스 결제창에 5,000원으로 동일 표시` |
-| KG 결제창 | **5,000원** (달러 $ 표시 없음) |
-| API 전송 | `currency=WON`, `price=5000` |
+| checkout **최종 결제금액** | `6,000원` (예: INSPECTION_PACK_S) |
+| checkout 안내 문구 | `결제 통화: 원화(KRW) · KG이니시스 결제창에 6,000원으로 동일 표시` |
+| KG 결제창 | **6,000원** (달러 $ 표시 없음) |
+| API 전송 | `currency=WON`, `price=6000` |
 
 **캡처 방법:** checkout 화면(금액) + KG 결제창(금액)을 **한 PPT 슬라이드에 나란히** 배치.
 
@@ -64,7 +64,7 @@ https://infront.kr/shop/checkout?product=PICKUP_FEE&audit=1
 ### 준비
 
 - 계정: `audit-domestic@infront.kr` / `AuditDomestic2026!`
-- URL: `https://infront.kr/shop/checkout?product=PICKUP_FEE&audit=1`
+- URL: `https://infront.kr/shop/checkout?product=INSPECTION_PACK_S&audit=1`
 - 결제수단: **신용카드** 선택
 - 주소·약관 입력 후 **결제하기**
 

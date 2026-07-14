@@ -11,8 +11,8 @@ const PATHS = [
   "/login",
   "/mypage",
   "/shop",
-  "/shop/products/PICKUP_FEE",
-  "/shop/checkout?product=PICKUP_FEE",
+  "/shop/products/INSPECTION_PACK_S",
+  "/shop/checkout?product=INSPECTION_PACK_S",
   "/shop/orders",
   "/shop/refund-policy",
   "/shop/shipping-policy",
@@ -29,6 +29,6 @@ PATHS.forEach((p, i) => {
 });
 
 console.log("\n=== BC/하나 결제창 (내국인 계정) ===");
-console.log(withAudit("/shop/checkout?product=PICKUP_FEE"));
+console.log(withAudit("/shop/checkout?product=INSPECTION_PACK_S"));
 console.log("  → audit-domestic@infront.kr / AuditDomestic2026!");
 console.log("  → 신용카드 → BC카드·하나카드 각각 캡처\n");

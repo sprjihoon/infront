@@ -148,7 +148,7 @@ for (const spec of ACCOUNTS) {
 console.log("\n── 심사 캡처 URL ──");
 console.log("  가입:     https://infront.kr/signup");
 console.log("  마이페이지: https://infront.kr/mypage");
-console.log("  checkout(내국인): https://infront.kr/shop/checkout?product=PICKUP_FEE");
+console.log("  checkout(내국인): https://infront.kr/shop/checkout?product=INSPECTION_PACK_S");
 console.log("  checkout(외국인): audit-foreigner@infront.kr 로그인 후 동일 URL");
 console.log("  주문목록: https://infront.kr/shop/orders");
 console.log("  admin:    https://admin.infront.kr/shop-orders");

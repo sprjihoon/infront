@@ -8,7 +8,7 @@ production(https://infront.kr) 기준 브라우저 캡처 결과입니다.
 |------|------|------|-------------|
 | `01-signup-customer-type.png` | `/signup` | (비로그인) | 고객 구분 드롭다운, 이메일 인증 안내 |
 | `02-shop-main.png` | `/shop` | (비로그인) | 해외카드 안내, 결제수단 목록 |
-| `03-checkout-domestic-no-global.png` | `/shop/checkout?product=PICKUP_FEE` | audit-domestic@infront.kr | 고객 유형=내국인, **해외 결제 미노출** |
+| `03-checkout-domestic-no-global.png` | `/shop/checkout?product=INSPECTION_PACK_S` | audit-domestic@infront.kr | 고객 유형=내국인, **해외 결제 미노출** |
 | `04-mypage-domestic.png` | `/mypage` | audit-domestic@infront.kr | **고객 구분 (결제)** 카드 |
 | `05-checkout-foreigner-global-pay.png` | checkout | audit-foreigner@infront.kr | 고객 유형=외국인, **해외카드·Alipay 노출** |
 | `06-mypage-foreigner.png` | `/mypage` | audit-foreigner@infront.kr | 외국인/해외고객 배지·카드 |
@@ -34,7 +34,7 @@ production(https://infront.kr) 기준 브라우저 캡처 결과입니다.
 
 ## 수동 캡처 필요 (BC카드 / 하나카드 결제창, 4장)
 
-audit-domestic 계정으로 `/shop/checkout?product=PICKUP_FEE&audit=1` 진입 → **신용카드(국내)** 선택 → 결제 진행.
+audit-domestic 계정으로 `/shop/checkout?product=INSPECTION_PACK_S&audit=1` 진입 → **신용카드(국내)** 선택 → 결제 진행.
 해외카드·Alipay 등 다른 결제창은 캡처하지 않음. 상세 절차: `docs/audit-captures/KG_CAPTURE_GUIDE.md` 4장.
 
 | # | 항목 | 방법 |
