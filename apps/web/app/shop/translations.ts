@@ -7,11 +7,11 @@ export const t = {
     langLabel: "EN",
 
     /* shop/page */
-    headerTitle: "인프론트 물류대행",
-    headerSub: "박스 사이즈별 포장 서비스",
-    serviceTitle: "📦 인프론트 물류대행 서비스",
+    headerTitle: "인프론트 서비스",
+    headerSub: "수거 · 보관 · 배송대행",
+    serviceTitle: "📦 인프론트 서비스 안내",
     serviceDesc:
-      "고객이 국내에서 구매하거나 보유한 물품을 센터에서 수령한 후, 고객 요청에 따라 검품·포장·재포장 및 국내·해외 배송 준비를 제공하는 물류대행 서비스입니다. 유학생 짐 발송도 지원합니다.",
+      "인프론트는 고객이 온라인으로 물품 수거를 신청하고, 물류센터에서 보관한 뒤, 요청에 따라 포장·검품 후 국내배송 또는 해외배송을 진행하는 수거·보관·배송대행 플랫폼입니다.",
     serviceNote:
       "※ 본 서비스는 상품 판매 또는 구매대행이 아닙니다. 고객이 소유한 물품의 포장 및 배송 준비만을 대행하며, 제3자 간 거래를 중개하지 않습니다.",
     prohibitedTitle: "🚫 취급 금지 물품",
@@ -23,7 +23,7 @@ export const t = {
       "위조품·지적재산권 침해 물품",
       "동식물, 의약품 (처방전 필요 품목)",
     ],
-    formatPrice: (n: number) => `${n.toLocaleString()}원`,
+    formatPrice: (n: number) => `${n.toLocaleString("ko-KR")}원`,
     buyBtn: "구매하기",
     includesTitle: "서비스 포함 내용",
     includesItems: [
@@ -103,11 +103,11 @@ export const t = {
     langLabel: "KO",
 
     /* shop/page */
-    headerTitle: "Infront Logistics",
-    headerSub: "Packaging service by box size",
-    serviceTitle: "📦 Infront Logistics Service",
+    headerTitle: "Infront Services",
+    headerSub: "Pickup · Storage · Shipping",
+    serviceTitle: "📦 About Infront",
     serviceDesc:
-      "We receive your items purchased or owned in Korea at our center, then provide inspection, packaging, repackaging, and domestic/international shipping preparation on your behalf. International student luggage shipping is also supported.",
+      "Infront is a pickup, storage, and shipping agency platform. Customers request online pickup, items are stored at our logistics center, and we inspect, pack, and ship domestically or internationally upon request.",
     serviceNote:
       "※ This service is not a product sales or purchasing agency. We only handle packing and shipping preparation for items you already own. We do not broker transactions between third parties.",
     prohibitedTitle: "🚫 Prohibited Items",
@@ -119,7 +119,7 @@ export const t = {
       "Counterfeit goods or items infringing intellectual property rights",
       "Live animals/plants, prescription medications",
     ],
-    formatPrice: (n: number) => `₩${n.toLocaleString()}`,
+    formatPrice: (n: number) => `${n.toLocaleString("ko-KR")}원`,
     buyBtn: "Order Now",
     includesTitle: "Service Includes",
     includesItems: [

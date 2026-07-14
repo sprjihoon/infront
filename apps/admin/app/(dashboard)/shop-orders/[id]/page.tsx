@@ -38,6 +38,14 @@ interface ShopOrder {
   recipient_addr2: string | null;
   recipient_addr3: string | null;
   recipient_email: string | null;
+  customer_type: string | null;
+  payment_method: string | null;
+  payment_method_code: string | null;
+  is_foreign_card: boolean | null;
+  payment_item_type: string | null;
+  payment_item_key: string | null;
+  shipping_type: string | null;
+  tracking_available: boolean | null;
   inicis_tid: string | null;
   paid_at: string | null;
   cancelled_at: string | null;
@@ -205,6 +213,60 @@ export default function ShopOrderDetailPage() {
         </h2>
         <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
           <Field label="주문금액" value={`${order.amount.toLocaleString()}원`} />
+          <Field
+            label="고객 유형"
+            value={
+              order.customer_type === "foreigner"
+                ? "외국인/해외고객"
+                : order.customer_type === "domestic"
+                  ? "내국인"
+                  : undefined
+            }
+          />
+          <Field label="결제수단" value={order.payment_method ?? undefined} />
+          <Field
+            label="해외카드 사용"
+            value={
+              order.is_foreign_card === true
+                ? "예"
+                : order.is_foreign_card === false
+                  ? "아니오"
+                  : undefined
+            }
+          />
+          <Field
+            label="결제항목"
+            value={
+              order.payment_item_type === "one_time"
+                ? "단건결제"
+                : order.payment_item_type === "recurring"
+                  ? "정기결제"
+                  : undefined
+            }
+          />
+          <Field label="결제항목 키" value={order.payment_item_key ?? undefined} />
+          <Field
+            label="배송유형"
+            value={
+              order.shipping_type === "domestic"
+                ? "국내배송"
+                : order.shipping_type === "intl"
+                  ? "해외배송"
+                  : order.shipping_type === "none"
+                    ? "해당없음"
+                    : undefined
+            }
+          />
+          <Field
+            label="배송추적 가능"
+            value={
+              order.tracking_available === true
+                ? "가능"
+                : order.tracking_available === false
+                  ? "불가/해당없음"
+                  : undefined
+            }
+          />
           <Field label="결제 TID" value={order.inicis_tid ?? undefined} />
           <Field label="결제 완료" value={order.paid_at ? new Date(order.paid_at).toLocaleString("ko-KR") : undefined} />
           <Field label="결제대기 시작" value={new Date(order.created_at).toLocaleString("ko-KR")} />
@@ -257,7 +319,7 @@ export default function ShopOrderDetailPage() {
             <Hash className="h-4 w-4" /> EMS 접수 정보
           </h2>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
-            <Field label="등기번호" value={order.ems_regino} />
+            <Field label="등기번호 (운송장)" value={order.ems_regino} />
             <Field label="접수번호" value={order.ems_receive_seq ?? undefined} />
             <Field label="우편요금" value={order.ems_fee ? `${order.ems_fee.toLocaleString()}원` : undefined} />
             <Field label="접수 일시" value={order.ems_applied_at ? new Date(order.ems_applied_at).toLocaleString("ko-KR") : undefined} />

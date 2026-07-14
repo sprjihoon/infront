@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { validateShopOrderRequest } from "@/lib/shop/prepare-order";
 
 const TEST_HASH_KEY_FALLBACK = "3CB8183A4BE283555ACC8363C0360223";
 
@@ -25,21 +26,41 @@ interface AddressPayload {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as {
-      price: number;
-      goodname: string;
       buyername: string;
       buyertel: string;
       buyeremail: string;
       productId?: string;
+      paymentMethod?: string;
       sender?: AddressPayload;
       recipient?: AddressPayload;
     };
 
-    const { price, goodname, buyername, buyertel, buyeremail, productId, sender, recipient } = body;
+    const { buyername, buyertel, buyeremail, productId, paymentMethod, sender, recipient } = body;
 
-    if (!price || !goodname || !buyername || !buyertel || !buyeremail) {
-      return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
+    const validated = await validateShopOrderRequest(
+      productId,
+      buyername,
+      buyertel,
+      buyeremail,
+      paymentMethod
+    );
+    if (!validated.ok) {
+      return NextResponse.json({ error: validated.error }, { status: validated.status });
     }
+
+    const {
+      user,
+      product,
+      price,
+      goodname,
+      paymentMethod: payMethodLabel,
+      paymentMethodCode,
+      isForeignCard,
+      paymentItemType,
+      paymentItemKey,
+      shippingType,
+      trackingAvailable,
+    } = validated.data;
 
     const mid = (process.env.INICIS_MID ?? "").trim();
     const hashKey = (process.env.INICIS_MOBILE_HASH_KEY ?? TEST_HASH_KEY_FALLBACK).trim();
@@ -56,7 +77,6 @@ export async function POST(request: NextRequest) {
     const oid = `SHOP-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
     const amtStr = String(price);
 
-    // P_CHKFAKE: SHA512(P_AMT + P_OID + P_TIMESTAMP + hashKey) — 금액 위변조 방지
     const chkfake = crypto
       .createHash("sha512")
       .update(amtStr + oid + timestamp + hashKey, "utf8")
@@ -67,28 +87,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "연락처를 올바르게 입력해 주세요." }, { status: 400 });
     }
 
-    /* ── pending shop_order DB 저장 ── */
     const admin = createAdminClient();
     if (admin) {
       const { error: dbErr } = await admin.from("shop_orders").insert({
         oid,
-        product_id: productId ?? "UNKNOWN",
+        product_id: product.id,
         amount: price,
         status: "PENDING_PAYMENT",
-        sender_name:    sender?.name    ?? buyername,
-        sender_phone:   sender?.phone   ?? cleanTel,
+        user_id: user.id,
+        customer_type: user.customerType,
+        sender_name: sender?.name ?? buyername,
+        sender_phone: sender?.phone ?? cleanTel,
         sender_zipcode: sender?.zipcode ?? null,
         sender_address: sender?.address ?? null,
-        sender_detail:  sender?.addressDetail ?? null,
-        sender_email:   buyeremail,
-        recipient_name:    recipient?.name    ?? buyername,
-        recipient_phone:   recipient?.phone   ?? null,
+        sender_detail: sender?.addressDetail ?? null,
+        sender_email: buyeremail,
+        recipient_name: recipient?.name ?? buyername,
+        recipient_phone: recipient?.phone ?? null,
         recipient_zipcode: recipient?.zipcode ?? null,
         recipient_address: recipient?.address ?? null,
-        recipient_detail:  recipient?.addressDetail ?? null,
-        recipient_addr1:   recipient?.addr1 ?? null,
-        recipient_addr2:   recipient?.addr2 ?? null,
-        recipient_addr3:   recipient?.addr3 ?? null,
+        recipient_detail: recipient?.addressDetail ?? null,
+        recipient_addr1: recipient?.addr1 ?? null,
+        recipient_addr2: recipient?.addr2 ?? null,
+        recipient_addr3: recipient?.addr3 ?? null,
+        payment_method: payMethodLabel,
+        payment_method_code: paymentMethodCode,
+        is_foreign_card: isForeignCard,
+        payment_item_type: paymentItemType,
+        payment_item_key: paymentItemKey,
+        shipping_type: shippingType,
+        tracking_available: trackingAvailable,
       });
       if (dbErr) {
         console.error("[inicis/mobile-prepare] shop_order insert error:", dbErr.message);
@@ -98,7 +126,7 @@ export async function POST(request: NextRequest) {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
     return NextResponse.json({
-      P_INI_PAYMENT: "Card",   // 필수 파라미터: 신용카드 결제창 직접 호출
+      P_INI_PAYMENT: "Card",
       P_MID: mid,
       P_OID: oid,
       P_AMT: amtStr,

@@ -121,6 +121,9 @@ function LoginForm() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900">인프론트</h1>
         <p className="text-gray-500 text-sm mt-1">해외배송 대행 서비스</p>
+        <p className="text-gray-400 text-xs mt-2 px-4 leading-relaxed">
+          회원가입 시 이메일 인증을 통해 계정 확인 후 결제 서비스를 이용할 수 있습니다.
+        </p>
       </div>
 
       <form onSubmit={handleLogin} className="space-y-4">

@@ -1,16 +1,19 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { CustomerType } from "@/lib/shop/products";
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
+  const [customerType, setCustomerType] = useState<CustomerType>("domestic");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -20,18 +23,25 @@ export default function SignupPage() {
     setError("");
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { name, phone },
+        data: { name, phone, customer_type: customerType },
       },
     });
 
-    if (error) {
-      setError(error.message);
+    if (signUpError) {
+      setError(signUpError.message);
       setLoading(false);
       return;
+    }
+
+    if (data.user) {
+      await supabase
+        .from("customers")
+        .update({ customer_type: customerType, name, phone })
+        .eq("id", data.user.id);
     }
 
     router.push("/home");
@@ -46,6 +56,9 @@ export default function SignupPage() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900">회원가입</h1>
         <p className="text-gray-500 text-sm mt-1">가입 즉시 고객번호가 발급됩니다</p>
+        <p className="text-gray-400 text-xs mt-2 px-4 leading-relaxed">
+          회원가입 시 이메일 인증을 통해 계정 확인 후 결제 서비스를 이용할 수 있습니다.
+        </p>
       </div>
 
       <form onSubmit={handleSignup} className="space-y-4">
@@ -59,6 +72,17 @@ export default function SignupPage() {
             required
             className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">고객 구분</label>
+          <select
+            value={customerType}
+            onChange={(e) => setCustomerType(e.target.value as CustomerType)}
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent bg-white"
+          >
+            <option value="domestic">내국인</option>
+            <option value="foreigner">외국인/해외고객</option>
+          </select>
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">이메일</label>
@@ -114,5 +138,19 @@ export default function SignupPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 flex justify-center">
+          <Loader2 className="animate-spin text-gray-300" size={28} />
+        </div>
+      }
+    >
+      <SignupForm />
+    </Suspense>
   );
 }

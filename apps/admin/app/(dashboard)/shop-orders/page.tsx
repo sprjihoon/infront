@@ -23,12 +23,18 @@ interface ShopOrder {
   sender_phone: string;
   recipient_name: string;
   recipient_address: string | null;
+  customer_type: string | null;
   inicis_tid: string | null;
   paid_at: string | null;
   cancelled_at: string | null;
   ems_regino: string | null;
   created_at: string;
 }
+
+const CUSTOMER_TYPE_LABEL: Record<string, string> = {
+  domestic: "내국인",
+  foreigner: "외국인/해외고객",
+};
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   PENDING_PAYMENT: { label: "결제대기", cls: "bg-yellow-100 text-yellow-800" },
@@ -154,6 +160,7 @@ export default function ShopOrdersPage() {
                 <th className="px-4 py-3 text-left">주문번호</th>
                 <th className="px-4 py-3 text-left">주문일시</th>
                 <th className="px-4 py-3 text-left">주문자</th>
+                <th className="px-4 py-3 text-center">고객구분</th>
                 <th className="px-4 py-3 text-left">수취인</th>
                 <th className="px-4 py-3 text-right">금액</th>
                 <th className="px-4 py-3 text-center">상태</th>
@@ -164,7 +171,7 @@ export default function ShopOrdersPage() {
             <tbody className="divide-y divide-gray-100">
               {orders.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
                     <Package className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                     주문이 없습니다.
                   </td>
@@ -187,6 +194,11 @@ export default function ShopOrdersPage() {
                   <td className="px-4 py-3">
                     <p className="font-medium text-gray-900">{o.sender_name}</p>
                     <p className="text-xs text-gray-400">{o.sender_email}</p>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-xs text-gray-600">
+                      {CUSTOMER_TYPE_LABEL[o.customer_type ?? ""] ?? "-"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-gray-900">{o.recipient_name}</p>

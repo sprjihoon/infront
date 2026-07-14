@@ -1,17 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Package, CreditCard, Loader2, Check } from "lucide-react";
-import { SHOP_PRODUCTS } from "../page";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { ArrowLeft, CreditCard, Loader2, LogIn, Package, Check } from "lucide-react";
+import { createBrowserClient } from "@supabase/ssr";
+import {
+  getOneTimeProduct,
+  getOrderTotal,
+  formatKrw,
+  INTL_TRACKING_NOTE_KO,
+  INTL_TRACKING_NOTE_EN,
+  CUSTOMER_TYPE_LABEL,
+  type PaymentMethodId,
+  type CustomerType,
+} from "@/lib/shop/products";
+import { PaymentMethodSelector, sanitizePaymentMethod } from "../components/PaymentMethodSelector";
 import { useLanguage } from "../useLanguage";
 import { t, type Lang } from "../translations";
 import { AddressSearchButton } from "@/components/ui/AddressSearchButton";
 
-type Product = (typeof SHOP_PRODUCTS)[number];
 type TxType = (typeof t)[Lang];
-
-const SHIPPING_FEE = 3_000; // 기본 배송비
 
 interface AddressForm {
   name: string;
@@ -19,8 +27,8 @@ interface AddressForm {
   zipcode: string;
   address: string;
   addressDetail: string;
-  addr1: string;   // 주/도 (sido) — EMS addr1
-  addr2: string;   // 시/군구 (sigungu) — EMS addr2
+  addr1: string;
+  addr2: string;
 }
 
 const EMPTY_ADDRESS: AddressForm = {
@@ -120,51 +128,129 @@ function AddressFields({
   );
 }
 
-const TEST_ADDRESS: AddressForm = {
-  name: "테스트",
-  phone: "01012345678",
-  zipcode: "41566",
-  address: "대구광역시 동구 안심로 188",
-  addressDetail: "2층",
-  addr1: "대구광역시",
-  addr2: "동구",
-};
+function LoginGate({ lang, redirectPath }: { lang: Lang; redirectPath: string }) {
+  const router = useRouter();
+  return (
+    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6">
+      <div className="w-16 h-16 bg-[#de2910]/10 rounded-full flex items-center justify-center mb-4">
+        <LogIn size={32} className="text-[#de2910]" />
+      </div>
+      <h1 className="text-lg font-bold text-gray-900 mb-2">
+        {lang === "ko" ? "로그인이 필요합니다" : "Login Required"}
+      </h1>
+      <p className="text-sm text-gray-600 text-center leading-relaxed mb-2">
+        {lang === "ko"
+          ? "해외카드 결제는 회원 주문에서만 이용 가능합니다. 로그인 또는 회원가입 후 이용해주세요."
+          : "International card payments are available for member orders only. Please log in or sign up."}
+      </p>
+      <p className="text-xs text-gray-500 text-center leading-relaxed mb-6">
+        {lang === "ko"
+          ? "회원가입 시 이메일 인증을 통해 계정 확인 후 결제 서비스를 이용할 수 있습니다."
+          : "After email verification at signup, you can use payment services."}
+      </p>
+      <button
+        onClick={() => router.push(`/login?redirect=${encodeURIComponent(redirectPath)}`)}
+        className="bg-[#de2910] text-white font-bold px-8 py-3 rounded-xl text-sm"
+      >
+        {lang === "ko" ? "로그인하기" : "Log in"}
+      </button>
+      <button
+        onClick={() => router.push("/shop")}
+        className="mt-3 text-sm text-gray-500 underline"
+      >
+        {lang === "ko" ? "서비스 목록으로" : "Back to shop"}
+      </button>
+    </div>
+  );
+}
 
 export default function ShopCheckoutPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 size={28} className="animate-spin text-gray-300" />
+        </div>
+      }
+    >
+      <CheckoutContent />
+    </Suspense>
+  );
+}
+
+function CheckoutContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { lang, mounted } = useLanguage();
   const tx = t[lang];
 
-  const [product, setProduct] = useState<Product | null>(null);
+  const [authState, setAuthState] = useState<"loading" | "guest" | "logged_in">("loading");
+  const [customerType, setCustomerType] = useState<CustomerType>("domestic");
+  const [productId, setProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [sender, setSender] = useState<AddressForm>(EMPTY_ADDRESS);
   const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
   const [sameAsSender, setSameAsSender] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
-  const [isTestMode, setIsTestMode] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>("card");
+  const quantity = 1;
 
-  useEffect(() => {
-    setIsTestMode(new URLSearchParams(window.location.search).get("testfill") === "1");
-  }, []);
-
-  /* KG이니시스 INIStdPay 파라미터 (숨김 폼에 세팅) */
   const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const sdkScriptRef = useRef<HTMLScriptElement | null>(null);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const isTest = params.get("testfill") === "1";
-    const id = isTest
-      ? (sessionStorage.getItem("shop_product_id") ?? "S")
-      : sessionStorage.getItem("shop_product_id");
-    const found = SHOP_PRODUCTS.find((p) => p.id === id) ?? null;
-    if (!found) { router.replace("/shop"); return; }
-    setProduct(found);
-  }, [router]);
+  const product = productId ? getOneTimeProduct(productId) : undefined;
 
-  /* KG이니시스 광고 팝업 제거 */
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) {
+        setAuthState("guest");
+        return;
+      }
+      setAuthState("logged_in");
+      if (user.email) setEmail(user.email);
+      const meta = user.user_metadata as {
+        name?: string;
+        phone?: string;
+        customer_type?: string;
+      };
+      if (meta.name || meta.phone) {
+        setSender((prev) => ({
+          ...prev,
+          name: meta.name ?? prev.name,
+          phone: meta.phone ?? prev.phone,
+        }));
+      }
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("customer_type")
+        .eq("id", user.id)
+        .maybeSingle();
+      const ctype: CustomerType =
+        customer?.customer_type === "foreigner" || meta.customer_type === "foreigner"
+          ? "foreigner"
+          : "domestic";
+      setCustomerType(ctype);
+      setPaymentMethod((prev) => sanitizePaymentMethod(prev, ctype));
+    });
+
+    const fromQuery = searchParams.get("product");
+    const fromSession = sessionStorage.getItem("shop_product_id");
+    const id = fromQuery ?? fromSession;
+    if (!id || !getOneTimeProduct(id)) {
+      router.replace("/shop");
+      return;
+    }
+    sessionStorage.setItem("shop_product_id", id);
+    setProductId(id);
+  }, [router, searchParams]);
+
   useEffect(() => {
     const observer = new MutationObserver(() => {
       document.querySelectorAll('img[src*="ds-cdn.inicis.com"]').forEach((img) => {
@@ -193,12 +279,9 @@ export default function ShopCheckoutPage() {
     if (checked) setRecipient(sender);
   }
 
-  /** sido/sigungu를 addr1/addr2로, 나머지 도로명 주소를 addr3 기반으로 파생 */
   function deriveAddrParts(address: string, sido: string, sigungu: string) {
     const prefix = [sido, sigungu].filter(Boolean).join(" ");
-    const street = prefix && address.startsWith(prefix)
-      ? address.slice(prefix.length).trim()
-      : address;
+    const street = prefix && address.startsWith(prefix) ? address.slice(prefix.length).trim() : address;
     return { addr1: sido, addr2: sigungu, street };
   }
 
@@ -218,13 +301,10 @@ export default function ShopCheckoutPage() {
 
   const effectiveRecipient = sameAsSender ? sender : recipient;
 
-  /** addr3 = 도로명(addr2 이후 부분) + 상세주소 */
   function buildAddr3(form: AddressForm): string {
     const { addr1, addr2, address, addressDetail } = form;
     const prefix = [addr1, addr2].filter(Boolean).join(" ");
-    const street = prefix && address.startsWith(prefix)
-      ? address.slice(prefix.length).trim()
-      : address;
+    const street = prefix && address.startsWith(prefix) ? address.slice(prefix.length).trim() : address;
     return [street, addressDetail].filter(Boolean).join(" ");
   }
 
@@ -241,7 +321,6 @@ export default function ShopCheckoutPage() {
     );
   }
 
-  /** KG이니시스 SDK를 동적으로 로드한 후 콜백 실행 */
   function loadSdk(jsUrl: string, callback: () => void) {
     if (typeof window !== "undefined" && window.INIStdPay) {
       callback();
@@ -266,32 +345,37 @@ export default function ShopCheckoutPage() {
     if (!product || !isFormValid()) return;
     setLoading(true);
 
+    const total = getOrderTotal(product) * quantity;
+    const productName = lang === "ko" ? product.name : product.nameEn;
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
     try {
+      const payload = {
+        productId: product.id,
+        goodname: productName,
+        buyername: sender.name,
+        buyertel: sender.phone.replace(/-/g, ""),
+        buyeremail: email,
+        paymentMethod,
+        sender: { ...sender },
+        recipient: {
+          ...effectiveRecipient,
+          addr3: buildAddr3(effectiveRecipient),
+        },
+      };
+
       if (isMobile) {
-        /* ── 모바일 결제 플로우 ── */
         const res = await fetch("/api/inicis/mobile-prepare", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            price: product.price + SHIPPING_FEE,
-            goodname: product.name[lang],
-            buyername: sender.name,
-            buyertel: sender.phone.replace(/-/g, ""),
-            buyeremail: email,
-            productId: product.id,
-            sender: { ...sender },
-            recipient: {
-              ...effectiveRecipient,
-              addr3: buildAddr3(effectiveRecipient),
-            },
-          }),
+          body: JSON.stringify(payload),
         });
-        const data = await res.json() as Record<string, string>;
-        if (!res.ok || data.error) { alert(data.error ?? tx.payError); setLoading(false); return; }
-
-        /* 모바일: 폼 직접 POST to mobile.inicis.com */
+        const data = (await res.json()) as Record<string, string>;
+        if (!res.ok || data.error) {
+          alert(data.error ?? tx.payError);
+          setLoading(false);
+          return;
+        }
         const form = document.createElement("form");
         form.method = "POST";
         form.action = data.payUrl;
@@ -300,7 +384,9 @@ export default function ShopCheckoutPage() {
         delete fields.payUrl;
         Object.entries(fields).forEach(([k, v]) => {
           const input = document.createElement("input");
-          input.type = "hidden"; input.name = k; input.value = v;
+          input.type = "hidden";
+          input.name = k;
+          input.value = v;
           form.appendChild(input);
         });
         document.body.appendChild(form);
@@ -308,35 +394,20 @@ export default function ShopCheckoutPage() {
         return;
       }
 
-      /* ── PC 결제 플로우 ── */
       const res = await fetch("/api/inicis/prepare", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          price: product.price + SHIPPING_FEE,
-          goodname: product.name[lang],
-          buyername: sender.name,
-          buyertel: sender.phone.replace(/-/g, ""),
-          buyeremail: email,
-          productId: product.id,
-          sender: { ...sender },
-          recipient: {
-            ...effectiveRecipient,
-            addr3: buildAddr3(effectiveRecipient),
-          },
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const data = await res.json() as Record<string, string>;
+      const data = (await res.json()) as Record<string, string>;
       if (!res.ok || data.error) {
         alert(data.error ?? tx.payError);
+        setLoading(false);
         return;
       }
 
-      /* 2. 폼 파라미터 세팅 → 렌더 후 SDK 호출 */
       setPayParams(data);
-
-      /* 3. SDK 로드 후 결제창 호출 (setPayParams 렌더 이후 실행) */
       requestAnimationFrame(() => {
         loadSdk(data.jsUrl, () => {
           if (typeof window !== "undefined" && window.INIStdPay && formRef.current) {
@@ -354,7 +425,7 @@ export default function ShopCheckoutPage() {
     }
   }
 
-  if (!product || !mounted) {
+  if (authState === "loading" || !product || !mounted) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 size={28} className="animate-spin text-gray-300" />
@@ -362,11 +433,30 @@ export default function ShopCheckoutPage() {
     );
   }
 
-  const productName = product.name[lang];
+  if (authState === "guest") {
+    const redirectPath = productId ? `/shop/checkout?product=${productId}` : "/shop/checkout";
+    return <LoginGate lang={lang} redirectPath={redirectPath} />;
+  }
+
+  const productName = lang === "ko" ? product.name : product.nameEn;
+  const unitPrice = product.price;
+  const subtotal = unitPrice * quantity;
+  const serviceFeeLabel =
+    product.category === "pickup"
+      ? lang === "ko"
+        ? "수거 서비스비"
+        : "Pickup fee"
+      : product.category === "inspection"
+        ? lang === "ko"
+          ? "검품/포장 서비스비"
+          : "Inspection fee"
+        : lang === "ko"
+          ? "서비스비"
+          : "Service fee";
+  const total = subtotal;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      {/* KG이니시스 숨김 결제 폼 */}
       {payParams && (
         <form
           id="frmPayment"
@@ -398,7 +488,6 @@ export default function ShopCheckoutPage() {
         </form>
       )}
 
-      {/* 헤더 */}
       <div className="bg-white border-b border-gray-100 px-4 py-4">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <button onClick={() => router.back()} className="p-1 -ml-1">
@@ -409,7 +498,16 @@ export default function ShopCheckoutPage() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
-        {/* 주문 상품 */}
+        {/* 회원 구분 표시 */}
+        <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center justify-between">
+          <span className="text-xs text-gray-500">
+            {lang === "ko" ? "고객 유형" : "Customer type"}
+          </span>
+          <span className="text-xs font-semibold text-gray-800">
+            {CUSTOMER_TYPE_LABEL[customerType]}
+          </span>
+        </div>
+
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-3">{tx.orderProduct}</p>
           <div className="flex items-center gap-3">
@@ -418,16 +516,31 @@ export default function ShopCheckoutPage() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-bold text-gray-900">{productName}</p>
-              <p className="text-xs text-gray-400">{product.desc[lang]}</p>
+              <p className="text-xs text-gray-400">
+                {lang === "ko" ? product.description : product.descriptionEn}
+              </p>
             </div>
-            <p className="text-sm font-bold text-gray-900">{tx.formatPrice(product.price)}</p>
           </div>
         </section>
 
-        {/* 보내는 분 */}
+        {(product.category === "intl" || product.intlTrackingNote) && (
+          <div className="bg-purple-50 border border-purple-100 rounded-xl px-4 py-3">
+            <p className="text-xs text-purple-800 leading-relaxed">
+              {lang === "ko"
+                ? product.intlTrackingNote ?? INTL_TRACKING_NOTE_KO
+                : product.intlTrackingNoteEn ?? INTL_TRACKING_NOTE_EN}
+            </p>
+          </div>
+        )}
+
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-4">{tx.senderSection}</p>
-          <AddressFields values={sender} onChange={handleSender} onAddressSelect={handleSenderAddressSelect} tx={tx} />
+          <AddressFields
+            values={sender}
+            onChange={handleSender}
+            onAddressSelect={handleSenderAddressSelect}
+            tx={tx}
+          />
           <div className="mt-3 pt-3 border-t border-gray-50">
             <label className="block text-xs font-medium text-gray-600 mb-1">
               {tx.labelEmail} <span className="text-red-500">*</span>
@@ -442,7 +555,6 @@ export default function ShopCheckoutPage() {
           </div>
         </section>
 
-        {/* 받는 분 */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <div className="flex items-center justify-between mb-4">
             <p className="text-xs font-bold text-gray-500">{tx.recipientSection}</p>
@@ -467,26 +579,37 @@ export default function ShopCheckoutPage() {
           />
         </section>
 
-        {/* 결제 금액 요약 */}
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-3">{tx.paymentSummary}</p>
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">{productName}</span>
-            <span className="text-sm text-gray-900">{tx.formatPrice(product.price)}</span>
+            <span className="text-sm text-gray-600">
+              {productName} × {quantity}
+            </span>
+            <span className="text-sm text-gray-900">{formatKrw(subtotal)}</span>
           </div>
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">{tx.shippingFeeLabel}</span>
-            <span className="text-sm text-gray-900">{tx.formatPrice(SHIPPING_FEE)}</span>
+            <span className="text-sm text-gray-600">{lang === "ko" ? "상품금액" : "Subtotal"}</span>
+            <span className="text-sm text-gray-900">{formatKrw(subtotal)}</span>
+          </div>
+          <div className="flex justify-between items-center py-2 border-b border-gray-100">
+            <span className="text-sm text-gray-600">{serviceFeeLabel}</span>
+            <span className="text-sm text-gray-900">{formatKrw(0)}</span>
           </div>
           <div className="flex justify-between items-center pt-3">
             <span className="text-sm font-bold text-gray-900">{tx.totalAmount}</span>
-            <span className="text-lg font-bold text-[#de2910]">
-              {tx.formatPrice(product.price + SHIPPING_FEE)}
-            </span>
+            <span className="text-lg font-bold text-[#de2910]">{formatKrw(total)}</span>
           </div>
         </section>
 
-        {/* 약관 동의 */}
+        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+          <PaymentMethodSelector
+            lang={lang}
+            value={paymentMethod}
+            onChange={setPaymentMethod}
+            customerType={customerType}
+          />
+        </section>
+
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
             type="checkbox"
@@ -496,59 +619,30 @@ export default function ShopCheckoutPage() {
           />
           <span className="text-xs text-gray-600 leading-relaxed">
             <a href="/shop/terms" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
-              {lang === "ko" ? "이용약관" : "Terms of Service"}
+              {lang === "ko" ? "이용약관" : "Terms"}
             </a>
-            {lang === "ko" ? " 및 " : " and "}
+            {lang === "ko" ? ", " : ", "}
             <a href="/shop/privacy" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
-              {lang === "ko" ? "개인정보처리방침" : "Privacy Policy"}
+              {lang === "ko" ? "개인정보처리방침" : "Privacy"}
+            </a>
+            {lang === "ko" ? ", " : ", "}
+            <a href="/shop/refund-policy" target="_blank" className="underline text-gray-700 hover:text-[#de2910]">
+              {lang === "ko" ? "취소/환불 정책" : "Refund Policy"}
             </a>
             {lang === "ko" ? "에 동의합니다. (필수)" : " (Required)"}
           </span>
         </label>
 
-        {/* 테스트 자동입력 버튼 (testfill=1 쿼리 파라미터 있을 때만 노출) */}
-        {isTestMode && (
-          <button
-            type="button"
-            onClick={() => {
-              setSender(TEST_ADDRESS);
-              setRecipient(TEST_ADDRESS);
-              setSameAsSender(false);
-              setEmail("test@test.com");
-              setTermsAgreed(true);
-            }}
-            className="w-full bg-gray-700 text-white font-bold py-3 rounded-2xl text-sm"
-          >
-            🧪 테스트 데이터 자동입력
-          </button>
-        )}
-
-        {/* 결제 버튼 */}
         <button
           onClick={handlePayment}
           disabled={loading || !isFormValid()}
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 active:opacity-80 transition-opacity"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
-          {tx.payBtn((product.price + SHIPPING_FEE).toLocaleString())}
+          {formatKrw(total)} {lang === "ko" ? "결제하기" : "Pay"}
         </button>
 
         <p className="text-center text-[10px] text-gray-400">{tx.paymentNotice}</p>
-
-        {/* 사업자 정보 */}
-        <div className="border-t border-gray-200 pt-4 space-y-1.5">
-          <p className="text-[10px] font-bold text-gray-500">인프론트 · 틸리언</p>
-          <div className="text-[10px] text-gray-400 leading-relaxed space-y-0.5">
-            <p>대표자 장지훈 &nbsp;|&nbsp; 사업자등록번호 766-55-00323</p>
-            <p>통신판매업 제 2022-대구동구-1034 호</p>
-            <p>대구시 동구 안심로188 2층, 3층</p>
-            <p>고객센터 010-2723-9490 &nbsp;|&nbsp; info@tillion.kr</p>
-          </div>
-          <div className="flex gap-3 pt-0.5">
-            <a href="/shop/terms" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">이용약관</a>
-            <a href="/shop/privacy" target="_blank" rel="noopener noreferrer" className="text-[10px] text-gray-400 underline">개인정보처리방침</a>
-          </div>
-        </div>
       </div>
     </div>
   );

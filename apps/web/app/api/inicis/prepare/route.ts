@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { validateShopOrderRequest } from "@/lib/shop/prepare-order";
 
 function sha256hex(str: string): string {
   return crypto.createHash("sha256").update(str, "utf8").digest("hex");
@@ -27,24 +28,43 @@ interface AddressPayload {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as {
-      price: number;
-      goodname: string;
+      goodname?: string;
       buyername: string;
       buyertel: string;
       buyeremail: string;
       productId?: string;
+      paymentMethod?: string;
       sender?: AddressPayload;
       recipient?: AddressPayload;
     };
 
-    const { price, goodname, buyername, buyertel, buyeremail, productId, sender, recipient } = body;
+    const { buyername, buyertel, buyeremail, productId, paymentMethod, sender, recipient } = body;
 
-    if (!price || !goodname || !buyername || !buyertel || !buyeremail) {
-      return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
+    const validated = await validateShopOrderRequest(
+      productId,
+      buyername,
+      buyertel,
+      buyeremail,
+      paymentMethod
+    );
+    if (!validated.ok) {
+      return NextResponse.json({ error: validated.error }, { status: validated.status });
     }
 
-    // INICIS_TEST_MODE=true → 실 MID/signKey + 스테이징 JS URL (심사용)
-    // 환경변수 미설정 → 실 MID/signKey + 프로덕션 JS URL
+    const {
+      user,
+      product,
+      price,
+      goodname,
+      paymentMethod: payMethodLabel,
+      paymentMethodCode,
+      isForeignCard,
+      paymentItemType,
+      paymentItemKey,
+      shippingType,
+      trackingAvailable,
+    } = validated.data;
+
     const useStaging = process.env.INICIS_TEST_MODE?.trim() === "true";
     const mid = (process.env.INICIS_MID ?? "").trim();
     const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
@@ -72,29 +92,37 @@ export async function POST(request: NextRequest) {
     );
     const mKey = sha256hex(signKey);
 
-    /* ── pending shop_order DB 저장 ── */
     const admin = createAdminClient();
     if (admin) {
       const { error: dbErr } = await admin.from("shop_orders").insert({
         oid,
-        product_id: productId ?? "UNKNOWN",
+        product_id: product.id,
         amount: price,
         status: "PENDING_PAYMENT",
-        sender_name:    sender?.name    ?? buyername,
-        sender_phone:   sender?.phone   ?? cleanTel,
+        user_id: user.id,
+        customer_type: user.customerType,
+        sender_name: sender?.name ?? buyername,
+        sender_phone: sender?.phone ?? cleanTel,
         sender_zipcode: sender?.zipcode ?? null,
         sender_address: sender?.address ?? null,
-        sender_detail:  sender?.addressDetail ?? null,
-        sender_email:   buyeremail,
-        recipient_name:    recipient?.name    ?? buyername,
-        recipient_phone:   recipient?.phone   ?? null,
+        sender_detail: sender?.addressDetail ?? null,
+        sender_email: buyeremail,
+        recipient_name: recipient?.name ?? buyername,
+        recipient_phone: recipient?.phone ?? null,
         recipient_zipcode: recipient?.zipcode ?? null,
         recipient_address: recipient?.address ?? null,
-        recipient_detail:  recipient?.addressDetail ?? null,
-        recipient_addr1:   recipient?.addr1 ?? null,
-        recipient_addr2:   recipient?.addr2 ?? null,
-        recipient_addr3:   recipient?.addr3 ?? null,
-        recipient_email:   null,
+        recipient_detail: recipient?.addressDetail ?? null,
+        recipient_addr1: recipient?.addr1 ?? null,
+        recipient_addr2: recipient?.addr2 ?? null,
+        recipient_addr3: recipient?.addr3 ?? null,
+        recipient_email: null,
+        payment_method: payMethodLabel,
+        payment_method_code: paymentMethodCode,
+        is_foreign_card: isForeignCard,
+        payment_item_type: paymentItemType,
+        payment_item_key: paymentItemKey,
+        shipping_type: shippingType,
+        tracking_available: trackingAvailable,
       });
       if (dbErr) {
         console.error("[inicis/prepare] shop_order insert error:", dbErr.message);

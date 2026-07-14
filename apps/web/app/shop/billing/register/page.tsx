@@ -252,6 +252,9 @@ export default function ShopBillingRegisterPage() {
         {/* 자동결제 고지 */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2">
           <p className="text-xs font-bold text-amber-800">📋 자동결제(정기결제) 고지사항</p>
+          <p className="text-[11px] text-amber-700 leading-relaxed">
+            정기결제는 신용카드 자동결제(빌링)만 지원합니다. 해외카드·Alipay·WeChat Pay는 장기보관 월 이용료 결제에 사용할 수 없습니다.
+          </p>
           <table className="w-full text-xs text-amber-800 border-collapse">
             <tbody>
               <tr className="border-b border-amber-200">
