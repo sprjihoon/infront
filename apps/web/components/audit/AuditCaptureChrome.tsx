@@ -10,7 +10,8 @@ function useAuditCapture() {
   const isAudit = searchParams.get("audit") === "1";
   const qs = searchParams.toString();
   const displayUrl = `${BUSINESS_SITE_ORIGIN}${pathname}${qs ? `?${qs}` : ""}`;
-  const showBusinessFooter = isAudit && !pathname.startsWith("/shop");
+  const hasOwnFooter = pathname.startsWith("/shop") || pathname.startsWith("/signup") || pathname.startsWith("/login");
+  const showBusinessFooter = isAudit && !hasOwnFooter;
   return { isAudit, displayUrl, showBusinessFooter };
 }
 
