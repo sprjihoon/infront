@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Globe, LogIn, Package } from "lucide-react";
+import { ChevronDown, Globe, LogIn, Package } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   ONE_TIME_PRODUCTS,
@@ -22,6 +22,8 @@ export default function ShopPage() {
   const tx = t[lang];
 
   const [userEmail, setUserEmail] = useState<string | null | undefined>(undefined);
+  const [oneTimeOpen, setOneTimeOpen] = useState(true);
+  const [recurringOpen, setRecurringOpen] = useState(true);
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -137,38 +139,68 @@ export default function ShopPage() {
 
         {/* 일회성 서비스 */}
         <section>
-          <h2 className="text-sm font-bold text-gray-900 mb-3">
-            {lang === "ko" ? "일회성 서비스" : "One-time Services"}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {ONE_TIME_PRODUCTS.map((product) => (
-              <ShopProductCard
-                key={product.id}
-                product={product}
-                lang={lang}
-                actionLabel={lang === "ko" ? "상세보기" : "Details"}
-                onAction={() => router.push(`/shop/products/${product.id}`)}
-              />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setOneTimeOpen((v) => !v)}
+            className="w-full flex items-center justify-between mb-3"
+            aria-expanded={oneTimeOpen}
+          >
+            <h2 className="text-sm font-bold text-gray-900">
+              {lang === "ko" ? "일회성 서비스" : "One-time Services"}
+            </h2>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-200 ${
+                oneTimeOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {oneTimeOpen && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {ONE_TIME_PRODUCTS.map((product) => (
+                <ShopProductCard
+                  key={product.id}
+                  product={product}
+                  lang={lang}
+                  actionLabel={lang === "ko" ? "상세보기" : "Details"}
+                  onAction={() => router.push(`/shop/products/${product.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* 정기 구독 (스토리지) */}
         <section>
-          <h2 className="text-sm font-bold text-gray-900 mb-3">
-            {lang === "ko" ? "스토리지 보관 (월 정기결제)" : "Storage (Monthly Billing)"}
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {RECURRING_PRODUCTS.map((product) => (
-              <ShopProductCard
-                key={product.id}
-                product={product}
-                lang={lang}
-                actionLabel={lang === "ko" ? "구독 상세" : "Subscribe"}
-                onAction={() => router.push(`/shop/products/${product.id}`)}
-              />
-            ))}
-          </div>
+          <button
+            type="button"
+            onClick={() => setRecurringOpen((v) => !v)}
+            className="w-full flex items-center justify-between mb-3"
+            aria-expanded={recurringOpen}
+          >
+            <h2 className="text-sm font-bold text-gray-900">
+              {lang === "ko" ? "스토리지 보관 (월 정기결제)" : "Storage (Monthly Billing)"}
+            </h2>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-200 ${
+                recurringOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {recurringOpen && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {RECURRING_PRODUCTS.map((product) => (
+                <ShopProductCard
+                  key={product.id}
+                  product={product}
+                  lang={lang}
+                  actionLabel={lang === "ko" ? "구독 상세" : "Subscribe"}
+                  onAction={() => router.push(`/shop/products/${product.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </section>
 
         {/* 로그인 안내 */}

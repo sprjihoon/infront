@@ -387,15 +387,6 @@ export default function ShopBillingRegisterPage() {
         <p className="text-center text-[10px] text-gray-400">
           결제는 KG이니시스를 통해 안전하게 처리됩니다
         </p>
-
-        {/* 사업자 정보 */}
-        <div className="border-t border-gray-200 pt-4 space-y-1">
-          <p className="text-[10px] font-bold text-gray-500">인프론트 · 틸리언</p>
-          <div className="text-[10px] text-gray-400 leading-relaxed space-y-0.5">
-            <p>대표자 장지훈 &nbsp;|&nbsp; 사업자등록번호 766-55-00323</p>
-            <p>통신판매업 제 2022-대구동구-1034 호</p>
-          </div>
-        </div>
       </div>
     </div>
   );
