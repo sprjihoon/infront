@@ -54,10 +54,10 @@ export const INTL_TRACKING_NOTE_EN =
   "International shipping uses trackable carriers such as EMS, EMS Premium, and K-Packet. A waybill number is provided after dispatch, and customers can check status on our tracking page. Local delivery tracking after customs may vary by country and local carrier.";
 
 export const FOREIGN_CARD_SCOPE_NOTICE_KO =
-  "해외카드는 검품/포장 서비스 이용요금 등 단건 서비스 결제에 사용할 수 있습니다. 장기보관 월 이용료는 별도 자동결제 빌링 구조로 운영됩니다.";
+  "해외카드는 검품/포장, 왕복배송비 등 단건 서비스 이용요금 결제에 사용할 수 있습니다. 장기보관 월 이용료는 별도 자동결제 빌링 구조로 운영됩니다.";
 
 export const FOREIGN_CARD_SCOPE_NOTICE_EN =
-  "International cards may be used for one-time service fees such as inspection/packing. Monthly long-term storage fees are billed separately via card auto-payment.";
+  "International cards may be used for one-time service fees such as inspection/packing and round-trip shipping. Monthly long-term storage fees are billed separately via card auto-payment.";
 
 export const SERVICE_INTRO_KO =
   "인프론트는 고객이 온라인으로 물품 수거를 신청하고, 물류센터에서 보관한 뒤, 요청에 따라 포장·검품 후 국내배송 또는 해외배송을 진행하는 수거·보관·배송대행 플랫폼입니다.";
@@ -131,6 +131,27 @@ export const SHOP_PRODUCTS: ShopProduct[] = [
     badge: "대형",
     badgeEn: "Large",
     badgeColor: "bg-orange-100 text-orange-700",
+  },
+  {
+    id: "ROUNDTRIP_SHIPPING",
+    category: "domestic",
+    paymentItemKey: "domestic_shipping_fee",
+    name: "왕복배송비",
+    nameEn: "Round-trip Shipping Fee",
+    price: 7000,
+    billingType: "one_time",
+    description: "고객 지정 주소에서의 수거와 물류센터에서의 반송을 모두 포함하는 왕복 국내 배송비입니다.",
+    descriptionEn: "Domestic shipping fee covering both pickup from you and return delivery.",
+    deliveryMethod: "국내 택배/우편 (왕복)",
+    deliveryMethodEn: "Domestic courier/post (round-trip)",
+    servicePeriod: "수거 결제 완료 후 1~2영업일 내 수거, 출고 요청 후 1~3영업일 내 반송",
+    servicePeriodEn: "Pickup within 1–2 business days after payment; return within 1–3 business days after dispatch request",
+    refundNote: "수거가 시작된 이후 왕복배송비 환불 제한",
+    refundNoteEn: "Round-trip shipping fee non-refundable after pickup begins",
+    icon: "box",
+    badge: "왕복",
+    badgeEn: "Round-trip",
+    badgeColor: "bg-purple-100 text-purple-700",
   },
   {
     id: "INSPECTION_PACK_S",

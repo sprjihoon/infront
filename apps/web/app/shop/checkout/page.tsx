@@ -453,9 +453,13 @@ function CheckoutContent() {
         ? lang === "ko"
           ? "검품/포장 서비스비"
           : "Inspection fee"
-        : lang === "ko"
-          ? "서비스비"
-          : "Service fee";
+        : product.category === "domestic" || product.category === "intl"
+          ? lang === "ko"
+            ? "배송비"
+            : "Shipping fee"
+          : lang === "ko"
+            ? "서비스비"
+            : "Service fee";
   const total = subtotal;
 
   return (
