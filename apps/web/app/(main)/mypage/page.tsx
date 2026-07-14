@@ -9,6 +9,10 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FlowModeToggle from "@/components/ui/FlowModeToggle";
+import {
+  CUSTOMER_TYPE_LABEL,
+  type CustomerType,
+} from "@/lib/shop/products";
 
 const INFRONT_ADDRESS = "대구광역시 동구 동촌로 1 (동대구우체국 소포실) 인프론트";
 const INFRONT_ZIPCODE = "41068";
@@ -31,6 +35,7 @@ interface Customer {
   email: string;
   phone: string | null;
   avatar_url: string | null;
+  customer_type: CustomerType;
 }
 
 interface Stats {
@@ -60,6 +65,7 @@ export default function MyPage() {
   const [editSheet, setEditSheet] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
+  const [editCustomerType, setEditCustomerType] = useState<CustomerType>("domestic");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -73,7 +79,11 @@ export default function MyPage() {
         { data: orders },
         { data: addrs },
       ] = await Promise.all([
-        supabase.from("customers").select("name, email, phone, avatar_url").eq("id", user.id).single(),
+        supabase
+          .from("customers")
+          .select("name, email, phone, avatar_url, customer_type")
+          .eq("id", user.id)
+          .single(),
         supabase
           .from("parcels")
           .select("status")
@@ -90,7 +100,18 @@ export default function MyPage() {
           .eq("customer_id", user.id),
       ]);
 
-      setCustomer(cust);
+      const meta = user.user_metadata as { customer_type?: string };
+      setCustomer(
+        cust
+          ? {
+              ...cust,
+              customer_type:
+                cust.customer_type === "foreigner" || meta.customer_type === "foreigner"
+                  ? "foreigner"
+                  : "domestic",
+            }
+          : null
+      );
 
       const parcelList = parcels ?? [];
       const orderList = orders ?? [];
@@ -144,6 +165,7 @@ export default function MyPage() {
   function openEditSheet() {
     setEditName(customer?.name ?? "");
     setEditPhone(customer?.phone ?? "");
+    setEditCustomerType(customer?.customer_type ?? "domestic");
     setEditSheet(true);
   }
 
@@ -154,10 +176,23 @@ export default function MyPage() {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName, phone: editPhone }),
+        body: JSON.stringify({
+          name: editName,
+          phone: editPhone,
+          customer_type: editCustomerType,
+        }),
       });
       if (res.ok) {
-        setCustomer(c => c ? { ...c, name: editName, phone: editPhone || null } : c);
+        setCustomer(c =>
+          c
+            ? {
+                ...c,
+                name: editName,
+                phone: editPhone || null,
+                customer_type: editCustomerType,
+              }
+            : c
+        );
         setEditSheet(false);
       }
     } finally {
@@ -227,6 +262,11 @@ export default function MyPage() {
             <p className="text-white/80 text-sm truncate">{customer?.email ?? "—"}</p>
             {customer?.phone && (
               <p className="text-white/70 text-xs mt-0.5">{customer.phone}</p>
+            )}
+            {customer?.customer_type && (
+              <p className="inline-flex mt-1.5 text-[11px] font-medium text-white bg-white/20 px-2 py-0.5 rounded-md">
+                {CUSTOMER_TYPE_LABEL[customer.customer_type]}
+              </p>
             )}
           </div>
           <button
@@ -321,6 +361,28 @@ export default function MyPage() {
               {stats.addressCount}
             </p>
           </button>
+        </div>
+
+        {/* ── 고객 구분 (결제) ── */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-semibold text-gray-900">고객 구분 (결제)</p>
+            <button
+              type="button"
+              onClick={openEditSheet}
+              className="text-xs text-brand-600 font-medium"
+            >
+              변경
+            </button>
+          </div>
+          <p className="text-base font-bold text-gray-900">
+            {CUSTOMER_TYPE_LABEL[customer?.customer_type ?? "domestic"]}
+          </p>
+          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+            해외카드·글로벌 결제수단은 외국인/해외고객 회원만 이용할 수 있습니다. 가입 시
+            선택하거나 여기서 변경할 수 있으며, 결제 화면에서는 회원 정보에 저장된 구분이
+            적용됩니다.
+          </p>
         </div>
 
         {/* ── 입고 주소 ── */}
@@ -461,6 +523,22 @@ export default function MyPage() {
                   placeholder="010-0000-0000"
                   className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
                 />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  고객 구분
+                </label>
+                <select
+                  value={editCustomerType}
+                  onChange={e => setEditCustomerType(e.target.value as CustomerType)}
+                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand-200"
+                >
+                  <option value="domestic">내국인</option>
+                  <option value="foreigner">외국인/해외고객</option>
+                </select>
+                <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
+                  결제 시 이용 가능한 결제수단(국내/해외카드)에 반영됩니다.
+                </p>
               </div>
             </div>
             <div className="px-5 pb-6 pt-2">

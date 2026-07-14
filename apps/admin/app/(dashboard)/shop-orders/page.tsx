@@ -24,6 +24,8 @@ interface ShopOrder {
   recipient_name: string;
   recipient_address: string | null;
   customer_type: string | null;
+  payment_method: string | null;
+  is_foreign_card: boolean | null;
   inicis_tid: string | null;
   paid_at: string | null;
   cancelled_at: string | null;
@@ -161,6 +163,8 @@ export default function ShopOrdersPage() {
                 <th className="px-4 py-3 text-left">주문일시</th>
                 <th className="px-4 py-3 text-left">주문자</th>
                 <th className="px-4 py-3 text-center">고객구분</th>
+                <th className="px-4 py-3 text-center">해외카드</th>
+                <th className="px-4 py-3 text-left">결제수단</th>
                 <th className="px-4 py-3 text-left">수취인</th>
                 <th className="px-4 py-3 text-right">금액</th>
                 <th className="px-4 py-3 text-center">상태</th>
@@ -171,7 +175,7 @@ export default function ShopOrdersPage() {
             <tbody className="divide-y divide-gray-100">
               {orders.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
+                  <td colSpan={11} className="px-4 py-12 text-center text-gray-400">
                     <Package className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                     주문이 없습니다.
                   </td>
@@ -199,6 +203,20 @@ export default function ShopOrdersPage() {
                     <span className="text-xs text-gray-600">
                       {CUSTOMER_TYPE_LABEL[o.customer_type ?? ""] ?? "-"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {o.is_foreign_card === true ? (
+                      <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+                        예
+                      </span>
+                    ) : o.is_foreign_card === false ? (
+                      <span className="text-xs text-gray-400">아니오</span>
+                    ) : (
+                      <span className="text-gray-300 text-xs">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-600 max-w-[7rem] truncate">
+                    {o.payment_method ?? "—"}
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-gray-900">{o.recipient_name}</p>
