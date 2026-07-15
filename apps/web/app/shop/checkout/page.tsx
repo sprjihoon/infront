@@ -8,6 +8,7 @@ import { createBrowserClient } from "@supabase/ssr";
 import {
   getOneTimeProduct,
   getOrderTotal,
+  getBundledShippingFee,
   formatKrw,
   INTL_TRACKING_NOTE_KO,
   INTL_TRACKING_NOTE_EN,
@@ -444,7 +445,8 @@ function CheckoutContent() {
   const productName = lang === "ko" ? product.name : product.nameEn;
   const unitPrice = product.price;
   const subtotal = unitPrice * quantity;
-  const total = subtotal;
+  const shippingFee = getBundledShippingFee(product) * quantity;
+  const total = subtotal + shippingFee;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -607,10 +609,14 @@ function CheckoutContent() {
             </span>
             <span className="text-sm text-gray-900">{formatKrw(subtotal)}</span>
           </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">{lang === "ko" ? "상품금액" : "Subtotal"}</span>
-            <span className="text-sm text-gray-900">{formatKrw(subtotal)}</span>
-          </div>
+          {shippingFee > 0 && (
+            <div className="flex justify-between items-center py-2 border-b border-gray-100">
+              <span className="text-sm text-gray-600">
+                {lang === "ko" ? "왕복배송비" : "Round-trip shipping fee"}
+              </span>
+              <span className="text-sm text-gray-900">{formatKrw(shippingFee)}</span>
+            </div>
+          )}
           <div className="flex justify-between items-center pt-3">
             <span className="text-sm font-bold text-gray-900">{tx.totalAmount}</span>
             <span className="text-lg font-bold text-[#de2910]">{formatKrw(total)}</span>

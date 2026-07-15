@@ -2,7 +2,7 @@
 
 import { Archive, Box, Globe, Package, Truck } from "lucide-react";
 import type { ShopProduct } from "@/lib/shop/products";
-import { formatKrw } from "@/lib/shop/products";
+import { formatKrw, getBundledShippingFee } from "@/lib/shop/products";
 import type { Lang } from "../translations";
 
 const ICONS = {
@@ -32,6 +32,7 @@ export function ShopProductCard({ product, lang, onAction, actionLabel }: ShopPr
     product.billingType === "recurring"
       ? `${formatKrw(product.price)}/${product.unit ?? "월"}`
       : formatKrw(product.price);
+  const shippingFee = getBundledShippingFee(product);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
@@ -49,6 +50,13 @@ export function ShopProductCard({ product, lang, onAction, actionLabel }: ShopPr
         <div>
           <h2 className="text-sm font-bold text-gray-900">{name}</h2>
           <p className="text-lg font-bold text-[#de2910] mt-1">{priceLabel}</p>
+          {shippingFee > 0 && (
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              {lang === "ko"
+                ? `+ 왕복배송비 ${formatKrw(shippingFee)} 별도 청구`
+                : `+ Round-trip shipping fee ${formatKrw(shippingFee)} charged separately`}
+            </p>
+          )}
         </div>
         <p className="text-xs text-gray-600 leading-relaxed">{desc}</p>
         <dl className="text-[11px] text-gray-500 space-y-1.5 border-t border-gray-50 pt-3">

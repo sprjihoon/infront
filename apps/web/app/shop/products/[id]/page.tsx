@@ -7,6 +7,8 @@ import { Archive, Box, Globe, Package, Truck } from "lucide-react";
 import {
   getShopProduct,
   formatKrw,
+  getBundledShippingFee,
+  getOrderTotal,
   INTL_TRACKING_NOTE_KO,
   INTL_TRACKING_NOTE_EN,
   FOREIGN_CARD_SCOPE_NOTICE_KO,
@@ -56,6 +58,8 @@ export default function ShopProductDetailPage() {
     product.billingType === "recurring"
       ? `${formatKrw(product.price)}/${product.unit ?? "월"}`
       : formatKrw(product.price);
+  const shippingFee = getBundledShippingFee(product);
+  const orderTotal = getOrderTotal(product);
 
   function handleOrder() {
     if (!product) return;
@@ -91,6 +95,13 @@ export default function ShopProductDetailPage() {
             <div>
               <h2 className="text-lg font-bold text-gray-900">{name}</h2>
               <p className="text-2xl font-bold text-[#de2910] mt-2">{priceLabel}</p>
+              {shippingFee > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {lang === "ko"
+                    ? `+ 왕복배송비 ${formatKrw(shippingFee)} 별도 청구 (결제 시 합산 ${formatKrw(orderTotal)})`
+                    : `+ Round-trip shipping fee ${formatKrw(shippingFee)} (total at checkout: ${formatKrw(orderTotal)})`}
+                </p>
+              )}
             </div>
             <p className="text-sm text-gray-600 leading-relaxed">{desc}</p>
 

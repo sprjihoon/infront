@@ -230,8 +230,20 @@ export function getOneTimeProduct(id: string): ShopProduct | undefined {
   return p?.billingType === "one_time" ? p : undefined;
 }
 
+/**
+ * 검품/포장 등 왕복 배송이 필요한 단건 서비스는 왕복배송비(ROUNDTRIP_SHIPPING)를
+ * 결제 시 자동으로 함께 청구합니다. 왕복배송비 상품 자체와 월 정기결제(보관) 상품은 제외합니다.
+ */
+export function getBundledShippingFee(product: ShopProduct): number {
+  if (product.id === "ROUNDTRIP_SHIPPING") return 0;
+  if (product.category === "inspection") {
+    return SHOP_PRODUCTS.find((p) => p.id === "ROUNDTRIP_SHIPPING")?.price ?? 0;
+  }
+  return 0;
+}
+
 export function getOrderTotal(product: ShopProduct): number {
-  return product.price;
+  return product.price + getBundledShippingFee(product);
 }
 
 export function getShippingType(product: ShopProduct): ShippingType {

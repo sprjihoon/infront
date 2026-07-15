@@ -48,10 +48,10 @@ https://infront.kr/shop/checkout?product=INSPECTION_PACK_S&audit=1
 
 | 확인 위치 | 표시 |
 |-----------|------|
-| checkout **최종 결제금액** | `6,000원` (예: INSPECTION_PACK_S) |
-| checkout 안내 문구 | `결제 통화: 원화(KRW) · KG이니시스 결제창에 6,000원으로 동일 표시` |
-| KG 결제창 | **6,000원** (달러 $ 표시 없음) |
-| API 전송 | `currency=WON`, `price=6000` |
+| checkout **최종 결제금액** | `13,000원` (예: INSPECTION_PACK_S 검품/포장 6,000원 + 왕복배송비 7,000원) |
+| checkout 안내 문구 | `결제 통화: 원화(KRW) · KG이니시스 결제창에 13,000원으로 동일 표시` |
+| KG 결제창 | **13,000원** (달러 $ 표시 없음) |
+| API 전송 | `currency=WON`, `price=13000` |
 
 **캡처 방법:** checkout 화면(금액) + KG 결제창(금액)을 **한 PPT 슬라이드에 나란히** 배치.
 
