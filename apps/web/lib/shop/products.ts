@@ -65,6 +65,9 @@ export const SERVICE_INTRO_KO =
 export const SERVICE_INTRO_EN =
   "Infront is a pickup, storage, and shipping agency platform. Customers request online pickup, items are stored at our logistics center, and we inspect, pack, and ship domestically or internationally upon request.";
 
+/** 단건 서비스 결제 시 자동으로 합산 청구되는 왕복배송비 */
+export const ROUNDTRIP_SHIPPING_FEE = 7000;
+
 export const SHOP_PRODUCTS: ShopProduct[] = [
   {
     id: "STORAGE_S",
@@ -131,27 +134,6 @@ export const SHOP_PRODUCTS: ShopProduct[] = [
     badge: "대형",
     badgeEn: "Large",
     badgeColor: "bg-orange-100 text-orange-700",
-  },
-  {
-    id: "ROUNDTRIP_SHIPPING",
-    category: "domestic",
-    paymentItemKey: "domestic_shipping_fee",
-    name: "왕복배송비",
-    nameEn: "Round-trip Shipping Fee",
-    price: 7000,
-    billingType: "one_time",
-    description: "고객 지정 주소에서의 수거와 물류센터에서의 반송을 모두 포함하는 왕복 국내 배송비입니다.",
-    descriptionEn: "Domestic shipping fee covering both pickup from you and return delivery.",
-    deliveryMethod: "국내 택배/우편 (왕복)",
-    deliveryMethodEn: "Domestic courier/post (round-trip)",
-    servicePeriod: "수거 결제 완료 후 1~2영업일 내 수거, 출고 요청 후 1~3영업일 내 반송",
-    servicePeriodEn: "Pickup within 1–2 business days after payment; return within 1–3 business days after dispatch request",
-    refundNote: "수거가 시작된 이후 왕복배송비 환불 제한",
-    refundNoteEn: "Round-trip shipping fee non-refundable after pickup begins",
-    icon: "box",
-    badge: "왕복",
-    badgeEn: "Round-trip",
-    badgeColor: "bg-purple-100 text-purple-700",
   },
   {
     id: "INSPECTION_PACK_S",
@@ -231,15 +213,12 @@ export function getOneTimeProduct(id: string): ShopProduct | undefined {
 }
 
 /**
- * 검품/포장 등 왕복 배송이 필요한 단건 서비스는 왕복배송비(ROUNDTRIP_SHIPPING)를
- * 결제 시 자동으로 함께 청구합니다. 왕복배송비 상품 자체와 월 정기결제(보관) 상품은 제외합니다.
+ * 보관(정기결제)을 제외한 모든 단건 서비스는 왕복배송비(ROUNDTRIP_SHIPPING_FEE)를
+ * 결제 시 자동으로 합산 청구합니다.
  */
 export function getBundledShippingFee(product: ShopProduct): number {
-  if (product.id === "ROUNDTRIP_SHIPPING") return 0;
-  if (product.category === "inspection") {
-    return SHOP_PRODUCTS.find((p) => p.id === "ROUNDTRIP_SHIPPING")?.price ?? 0;
-  }
-  return 0;
+  if (product.billingType !== "one_time") return 0;
+  return ROUNDTRIP_SHIPPING_FEE;
 }
 
 export function getOrderTotal(product: ShopProduct): number {
