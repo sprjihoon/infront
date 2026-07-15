@@ -444,22 +444,6 @@ function CheckoutContent() {
   const productName = lang === "ko" ? product.name : product.nameEn;
   const unitPrice = product.price;
   const subtotal = unitPrice * quantity;
-  const serviceFeeLabel =
-    product.category === "pickup"
-      ? lang === "ko"
-        ? "수거 서비스비"
-        : "Pickup fee"
-      : product.category === "inspection"
-        ? lang === "ko"
-          ? "검품/포장 서비스비"
-          : "Inspection fee"
-        : product.category === "domestic" || product.category === "intl"
-          ? lang === "ko"
-            ? "배송비"
-            : "Shipping fee"
-          : lang === "ko"
-            ? "서비스비"
-            : "Service fee";
   const total = subtotal;
 
   return (
@@ -626,10 +610,6 @@ function CheckoutContent() {
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">{lang === "ko" ? "상품금액" : "Subtotal"}</span>
             <span className="text-sm text-gray-900">{formatKrw(subtotal)}</span>
-          </div>
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-sm text-gray-600">{serviceFeeLabel}</span>
-            <span className="text-sm text-gray-900">{formatKrw(0)}</span>
           </div>
           <div className="flex justify-between items-center pt-3">
             <span className="text-sm font-bold text-gray-900">{tx.totalAmount}</span>
