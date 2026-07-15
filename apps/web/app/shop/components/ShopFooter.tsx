@@ -40,6 +40,13 @@ export function ShopFooter() {
             배송/서비스 제공 정책
           </Link>
         </div>
+        <div className="border-t border-gray-100 pt-3 space-y-0.5 text-[11px] text-gray-500 leading-relaxed">
+          <p>
+            <span className="font-semibold text-gray-700">{b.companyName}</span>에서 운영하는 사이트에서 판매되는 모든 상품은{" "}
+            <span className="font-semibold text-gray-700">{b.companyName}</span>에서 책임지고 있습니다.
+          </p>
+          <p>* 민원 담당자 {b.representative} &nbsp;/&nbsp; 연락처 {b.phone}</p>
+        </div>
         <p className="text-[10px] text-gray-400">© 2026 틸리언. All rights reserved.</p>
       </div>
     </footer>

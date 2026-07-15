@@ -69,6 +69,13 @@ export function BusinessInfoBlock() {
           <span className="text-gray-400">이메일</span> {b.email}
         </p>
       </div>
+      <div className="pt-1 text-[11px] text-gray-500 leading-relaxed space-y-0.5">
+        <p>
+          <span className="font-semibold text-gray-700">{b.companyName}</span>에서 운영하는 사이트에서 판매되는 모든 상품은{" "}
+          <span className="font-semibold text-gray-700">{b.companyName}</span>에서 책임지고 있습니다.
+        </p>
+        <p>* 민원 담당자 {b.representative} &nbsp;/&nbsp; 연락처 {b.phone}</p>
+      </div>
     </div>
   );
 }
