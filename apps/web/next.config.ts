@@ -25,6 +25,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/warehouse", destination: "/storage", permanent: true },
       { source: "/warehouse/:id", destination: "/storage", permanent: true },
+      // 주문번호 없이 접근 시 주문 목록(배송조회 진입점)으로 안내
+      { source: "/shop/tracking", destination: "/shop/orders", permanent: false },
     ];
   },
   async headers() {
