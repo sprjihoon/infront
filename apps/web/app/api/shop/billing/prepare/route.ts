@@ -3,6 +3,11 @@ import crypto from "crypto";
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import {
+  buildStdPaySignatures,
+  getBillingCredentials,
+  nextBillingDateFirstOfMonth,
+} from "@/lib/inicis/billing";
 
 /* ────────────────────────────────────────────────────────────────
    KG이니시스 빌링키 발급 준비 (샵 구독용)
@@ -11,17 +16,15 @@ import { cookies } from "next/headers";
    Body: { buyername, buyertel, buyeremail, planId? }
    Returns: INIStdPay.pay() 호출에 필요한 폼 파라미터
 
-   - 별도 빌링 MID(INICIS_BILLING_MID) 사용
-   - 미설정 시 테스트 MID(INIpayTest) + 스테이징 URL 사용
+   - 빌링 MID(INICIS_BILLING_MID, 예: infrontbil) 필수
+   - INICIS_TEST_MODE=true 시에만 INIpayTest 스테이징
 ──────────────────────────────────────────────────────────────── */
 
 const PLANS: Record<string, { name: string; amount: number }> = {
-  STORAGE_BASIC: { name: "인프론트 보관함 기본 구독", amount: 9900 },
+  MEMBERSHIP_BASIC: { name: "인프론트 베이직 멤버십", amount: 9900 },
+  /** @deprecated 심사용 구 플랜 ID — MEMBERSHIP_BASIC과 동일 */
+  STORAGE_BASIC: { name: "인프론트 베이직 멤버십", amount: 9900 },
 };
-
-function sha256hex(str: string): string {
-  return crypto.createHash("sha256").update(str, "utf8").digest("hex");
-}
 
 function adminDb() {
   return createClient(
@@ -59,7 +62,7 @@ export async function POST(request: NextRequest) {
     planId?: string;
   };
 
-  const { buyername, buyertel, buyeremail, planId = "STORAGE_BASIC" } = body;
+  const { buyername, buyertel, buyeremail, planId = "MEMBERSHIP_BASIC" } = body;
   if (!buyername || !buyertel || !buyeremail) {
     return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
   }
@@ -69,12 +72,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "유효하지 않은 플랜입니다." }, { status: 400 });
   }
 
-  /* 빌링 MID 설정 — INICIS_BILLING_MID 미설정 시 테스트 MID */
-  const forceTest = !process.env.INICIS_BILLING_MID?.trim();
-  const mid     = forceTest ? "INIpayTest" : process.env.INICIS_BILLING_MID!.trim();
-  const signKey = forceTest
-    ? "SU5JTElURV9UUklQTEVERVNfS0VZU1JS"
-    : (process.env.INICIS_BILLING_SIGN_KEY ?? "").trim();
+  const creds = getBillingCredentials();
+  if (!creds) {
+    console.error("[shop/billing/prepare] INICIS_BILLING_MID / SIGN_KEY 미설정");
+    return NextResponse.json(
+      { error: "결제 설정 오류: INICIS_BILLING_MID / INICIS_BILLING_SIGN_KEY가 필요합니다." },
+      { status: 500 },
+    );
+  }
 
   const cleanTel  = buyertel.replace(/[^0-9\-]/g, "");
   const timestamp = Date.now().toString();
@@ -83,28 +88,28 @@ export async function POST(request: NextRequest) {
   // billtype=1(빌링키 발급 전용)이므로 실제 즉시 청구는 없음
   const price     = String(plan.amount);
 
-  const signature    = sha256hex(`oid=${oid}&price=${price}&timestamp=${timestamp}`);
-  const verification = sha256hex(`oid=${oid}&price=${price}&signKey=${signKey}&timestamp=${timestamp}`);
-  const mKey         = sha256hex(signKey);
+  const { signature, verification, mKey } = buildStdPaySignatures(
+    oid, price, timestamp, creds.signKey,
+  );
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
-  /* 구독 레코드 생성 (PENDING 상태) */
   const db = adminDb();
   const { data: sub } = await db.from("shop_subscriptions").insert({
-    user_id:        user.id,
-    plan_id:        planId,
-    plan_name:      plan.name,
-    monthly_amount: plan.amount,
-    pg_oid:         oid,
-    pg_provider:    "kg_inicis",
-    status:         "PENDING",
+    user_id:           user.id,
+    plan_id:           planId,
+    plan_name:         plan.name,
+    monthly_amount:    plan.amount,
+    pg_oid:            oid,
+    pg_provider:       "kg_inicis",
+    status:            "PENDING",
+    next_billing_date: nextBillingDateFirstOfMonth(),
   }).select("id").single();
 
   const subId = sub?.id ?? "";
 
   return NextResponse.json({
-    mid,
+    mid: creds.mid,
     oid,
     price,
     timestamp,
@@ -120,8 +125,6 @@ export async function POST(request: NextRequest) {
     returnUrl:  `${appUrl}/api/shop/billing/callback`,
     closeUrl:   `${appUrl}/shop/billing/fail?reason=close`,
     custom_data: JSON.stringify({ sub_id: subId, user_id: user.id }),
-    jsUrl: forceTest
-      ? "https://stgstdpay.inicis.com/stdjs/INIStdPay.js"
-      : "https://stdpay.inicis.com/stdjs/INIStdPay.js",
+    jsUrl: creds.jsUrl,
   });
 }

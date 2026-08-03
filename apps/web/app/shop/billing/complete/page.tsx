@@ -67,7 +67,7 @@ function CompleteContent() {
           <p className="text-xs font-bold text-gray-500 mb-3">구독 정보</p>
           <div className="flex justify-between items-center py-1.5 border-b border-gray-50">
             <span className="text-sm text-gray-600">플랜</span>
-            <span className="text-sm font-semibold text-gray-900">보관함 기본 구독</span>
+            <span className="text-sm font-semibold text-gray-900">베이직 멤버십</span>
           </div>
           <div className="flex justify-between items-center py-1.5 border-b border-gray-50">
             <span className="text-sm text-gray-600">월 구독료</span>

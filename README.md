@@ -306,9 +306,12 @@ infront/
 | ��������Ʈ | �޼��� | ���� |
 |-----------|--------|------|
 | `/api/shop/confirm` | POST | KG Inicis ������� ���� ���� ó�� |
-| `/api/shop/billing/prepare` | POST | KG Inicis 빌링키 발급 준비 (구독용 MID, INIpayTest 폴백) |
+| `/api/shop/billing/prepare` | POST | KG Inicis 빌링키 발급 준비 (MID `infrontbil`, TEST_MODE 시에만 스테이징) |
 | `/api/shop/billing/callback` | POST | KG Inicis 빌링키 발급 콜백 처리 → shop_subscriptions 업데이트 |
-| `/api/shop/billing/charge` | POST | 빌링키 Rebill 청구 (INICIS_BILLING_MID 필요) |
+| `/api/shop/billing/charge` | POST | 빌링키 Rebill 청구 (INICIS_BILLING_* 필요) |
+| `/api/shop/billing/cancel` | POST | 샵 구독 빌링키 해지 |
+| `/api/cron/shop-billing` | GET | 샵 구독 월정액 자동청구 (CRON_SECRET) |
+| `/api/cron/storage-billing` | GET | 장기보관 월정액 자동청구 (CRON_SECRET) |
 
 ---
 
@@ -455,6 +458,7 @@ infront/
 | `066_social_login.sql` | customers.email NULL 허용, login_provider 컬럼, handle_new_user 소셜 로그인 대응 |
 | `067_shop_orders_rls.sql` | shop_orders 테이블 RLS 정책 |
 | `068_shop_subscriptions.sql` | shop_subscriptions 테이블 — 샵 구독(빌링) 관리, RLS 포함 |
+| `071_shop_subscriptions_billing.sql` | shop_subscriptions next_billing_date·fail_count (월정액 cron) |
 
 > �� ���� ��Ȳ: [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md)
 
@@ -670,15 +674,18 @@ Next.js ����
 - [x] ��ޱ�����ǰ��ȯ����å���̿����� �ȳ�
 - [x] API ���� ��� + rate limiting
 - [x] /shop 헤더 로그인/내 서비스 버튼 (심사관 로그인 진입점)
-- [x] 월정액 구독 섹션 — 보관함 기본 구독 9,900원/월 (KG Inicis 빌링 심사용)
+- [x] 월정액 구독 섹션 — 베이직 멤버십 9,900원/월 (KG Inicis 빌링, MID `infrontbil`)
 - [x] `/shop/billing/register` — 카드 등록 페이지 (INIStdPay 빌링키 발급)
 - [x] `/shop/billing/complete` — 구독 완료 페이지 + 첫 달 즉시 결제
 - [x] `/shop/billing/fail` — 등록 실패·취소 페이지
-- [x] `/api/shop/billing/prepare` — 빌링키 발급 준비 (INIpayTest 폴백)
+- [x] `/api/shop/billing/prepare` — 빌링키 발급 준비 (`infrontbil`, TEST_MODE만 스테이징)
 - [x] `/api/shop/billing/callback` — 빌링키 콜백 처리 + shop_subscriptions 갱신
 - [x] `/api/shop/billing/charge` — Rebill 청구 API
+- [x] `/api/shop/billing/cancel` — 구독 해지
+- [x] `/api/cron/shop-billing` · `/api/cron/storage-billing` — 월정액 자동청구
 - [x] `068_shop_subscriptions.sql` — 구독 테이블 + RLS
-- [x] `proxy.ts` `/api/shop` 공개 경로 추가, `next.config.ts` iframe 헤더 수정
+- [x] `071_shop_subscriptions_billing.sql` — next_billing_date / fail 추적
+- [x] `proxy.ts` `/api/shop`·`/api/cron` 공개 경로, `next.config.ts` iframe 헤더 수정
 
 ### Phase 3 ? ��� ���� ���� ?? ���� ��
 
@@ -816,8 +823,8 @@ Next.js ����
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare ���� ID |
 | `CLOUDFLARE_STREAM_API_TOKEN` | Cloudflare Stream API ��ū |
 | `ADMIN_EMAILS` | ������ �̸��� ��� (�޸� ����) |
-| `INICIS_BILLING_MID` | KG Inicis 구독(빌링) 전용 MID — 미설정 시 INIpayTest 스테이징 사용 |
-| `INICIS_BILLING_SIGN_KEY` | 빌링 MID Sign Key |
+| `INICIS_BILLING_MID` | KG Inicis 구독(빌링) 전용 MID — 승인값 `infrontbil` (미설정 시 500, `INICIS_TEST_MODE=true`만 스테이징) |
+| `INICIS_BILLING_SIGN_KEY` | 빌링 MID Sign Key (iniweb `infrontbil`에서 조회) |
 | `INICIS_BILLING_INIAPI_KEY` | 빌링 MID INIAPI Key (Rebill 서명 암호화) |
 | `INICIS_BILLING_INIAPI_IV` | 빌링 MID INIAPI IV |
 
@@ -1366,6 +1373,37 @@ NAVER_CLIENT_ID=...
 NAVER_CLIENT_SECRET=...
 ```
 
+### 2026-08-03 KG Inicis 빌링 MID `infrontbil` 실연동
+
+**배경**
+- 자동결제(빌링) 승인 완료, 빌링 MID `infrontbil` 발급
+- 일반 결제 MID(`infront227`)와 분리된 빌링 전용 자격증명 사용
+
+**구현**
+- `apps/web/lib/inicis/billing.ts` — 빌링 자격증명·INIStdPay 서명·INIAPI Rebill 공용 헬퍼
+- 샵/보관 빌링 API 전부 `INICIS_BILLING_*` 사용 (일반 `INICIS_MID` 혼용 제거)
+- `INICIS_TEST_MODE=true` 시에만 INIpayTest 스테이징, 그 외 MID/SignKey 미설정 시 500
+- `/api/shop/billing/cancel` — 샵 구독 해지
+- `/api/cron/shop-billing`, `/api/cron/storage-billing` — 매일 자동청구 (`vercel.json`)
+- `071_shop_subscriptions_billing.sql` — `next_billing_date`, fail 추적 컬럼
+- `proxy.ts` — `/api/cron` 공개(라우트 내부 CRON_SECRET 인증)
+- 샵 구독 상품을 `MEMBERSHIP_BASIC`(베이직 멤버십)으로 정렬, `/shop/billing/register?plan=` 연동
+
+**배포 전 필수**
+```bash
+supabase db query --linked --file apps/sql/071_shop_subscriptions_billing.sql
+```
+Vercel 환경변수:
+```
+INICIS_BILLING_MID=infrontbil
+INICIS_BILLING_SIGN_KEY=...   # iniweb에서 조회
+INICIS_BILLING_INIAPI_KEY=...
+INICIS_BILLING_INIAPI_IV=...
+```
+PEM 키파일(`mcert.pem` 등)은 INIStdPay/INIAPI 연동에 사용하지 않음 — 보관만.
+
+---
+
 ### 2026-07-13 KG Inicis 빌링(자동결제) 심사 준비 — 샵 구독 플로우 구현
 
 **배경**
@@ -1382,7 +1420,6 @@ NAVER_CLIENT_SECRET=...
   - 카드 등록 성공 안내, 첫 달 즉시 결제 버튼
 - `apps/web/app/shop/billing/fail/page.tsx` — 등록 실패·취소 페이지
 - `apps/web/app/api/shop/billing/prepare/route.ts` — 빌링키 발급 준비 API
-  - `INICIS_BILLING_MID` 미설정 시 `INIpayTest` + 스테이징 URL 자동 폴백
 - `apps/web/app/api/shop/billing/callback/route.ts` — 빌링키 발급 콜백
   - KG Inicis 서버 POST → shop_subscriptions ACTIVE 갱신 → iframe 리다이렉트
 - `apps/web/app/api/shop/billing/charge/route.ts` — Rebill 청구 API
@@ -1401,13 +1438,8 @@ NAVER_CLIENT_SECRET=...
 supabase db query --linked --file apps/sql/068_shop_subscriptions.sql
 ```
 
-**빌링 MID 발급 후 추가 환경변수 (Vercel)**
-```
-INICIS_BILLING_MID=발급된_빌링MID
-INICIS_BILLING_SIGN_KEY=빌링_사인키
-INICIS_BILLING_INIAPI_KEY=빌링_INIAPI키
-INICIS_BILLING_INIAPI_IV=빌링_IV
-```
+> **실연동 현황 (2026-08-03):** 빌링 MID `infrontbil` 승인 완료.  
+> 폴백/키 설정은 위 `2026-08-03` 섹션 및 `INICIS_BILLING_*` 환경변수를 따름.
 
 ---
 

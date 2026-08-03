@@ -1,23 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CreditCard, Loader2, LogIn } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
+import { SHOP_PRODUCTS } from "@/lib/shop/products";
 
 declare global {
   /* eslint-disable no-var */
   var INIStdPay: { pay: (formId: string) => void } | undefined;
 }
 
-const PLAN = {
-  id:     "STORAGE_BASIC",
-  name:   "보관함 기본 구독",
+const DEFAULT_PLAN = {
+  id: "MEMBERSHIP_BASIC",
+  name: "베이직 멤버십",
   amount: 9900,
 };
 
-export default function ShopBillingRegisterPage() {
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const planParam = searchParams.get("plan") ?? DEFAULT_PLAN.id;
+  const plan = useMemo(() => {
+    const product = SHOP_PRODUCTS.find(
+      (p) => p.id === planParam && p.billingType === "recurring",
+    );
+    if (product) {
+      return { id: product.id, name: product.name, amount: product.price };
+    }
+    return DEFAULT_PLAN;
+  }, [planParam]);
+
   const [user, setUser] = useState<{ email?: string } | null | undefined>(undefined);
   const [name, setName]   = useState("");
   const [tel, setTel]     = useState("");
@@ -69,7 +82,7 @@ export default function ShopBillingRegisterPage() {
           buyername:  name.trim(),
           buyertel:   tel.replace(/-/g, ""),
           buyeremail: email.trim(),
-          planId:     PLAN.id,
+          planId:     plan.id,
         }),
       });
       const data = await res.json() as Record<string, string>;
@@ -129,7 +142,11 @@ export default function ShopBillingRegisterPage() {
             구독 서비스를 이용하려면 먼저 로그인해 주세요.
           </p>
           <button
-            onClick={() => router.push(`/login?redirect=/shop/billing/register`)}
+            onClick={() =>
+              router.push(
+                `/login?redirect=${encodeURIComponent(`/shop/billing/register?plan=${plan.id}`)}`,
+              )
+            }
             className="bg-[#de2910] text-white font-bold px-8 py-3 rounded-2xl text-sm"
           >
             로그인하기
@@ -199,11 +216,11 @@ export default function ShopBillingRegisterPage() {
               <CreditCard size={20} className="text-[#de2910]" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-bold text-gray-900">{PLAN.name}</p>
+              <p className="text-sm font-bold text-gray-900">{plan.name}</p>
               <p className="text-xs text-gray-400">매월 자동 결제</p>
             </div>
             <p className="text-base font-bold text-[#de2910]">
-              {PLAN.amount.toLocaleString()}원<span className="text-xs font-normal text-gray-400">/월</span>
+              {plan.amount.toLocaleString()}원<span className="text-xs font-normal text-gray-400">/월</span>
             </p>
           </div>
         </div>
@@ -259,11 +276,11 @@ export default function ShopBillingRegisterPage() {
             <tbody>
               <tr className="border-b border-amber-200">
                 <td className="py-1 pr-3 font-semibold whitespace-nowrap">상품명</td>
-                <td className="py-1">보관함 기본 구독 (STORAGE_BASIC)</td>
+                <td className="py-1">{plan.name} ({plan.id})</td>
               </tr>
               <tr className="border-b border-amber-200">
                 <td className="py-1 pr-3 font-semibold whitespace-nowrap">결제 금액</td>
-                <td className="py-1 font-bold">9,900원 / 월</td>
+                <td className="py-1 font-bold">{plan.amount.toLocaleString()}원 / 월</td>
               </tr>
               <tr className="border-b border-amber-200">
                 <td className="py-1 pr-3 font-semibold whitespace-nowrap">결제 주기</td>
@@ -271,7 +288,7 @@ export default function ShopBillingRegisterPage() {
               </tr>
               <tr className="border-b border-amber-200">
                 <td className="py-1 pr-3 font-semibold whitespace-nowrap">최초 결제</td>
-                <td className="py-1">카드 등록 즉시 9,900원 청구</td>
+                <td className="py-1">카드 등록 즉시 {plan.amount.toLocaleString()}원 청구</td>
               </tr>
               <tr className="border-b border-amber-200">
                 <td className="py-1 pr-3 font-semibold whitespace-nowrap">해지 방법</td>
@@ -389,5 +406,19 @@ export default function ShopBillingRegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ShopBillingRegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 size={28} className="animate-spin text-gray-300" />
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }

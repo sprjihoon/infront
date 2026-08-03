@@ -3,7 +3,8 @@ export type ShopProductCategory =
   | "pickup"
   | "domestic"
   | "intl"
-  | "inspection";
+  | "inspection"
+  | "membership";
 
 export type BillingType = "one_time" | "recurring";
 
@@ -16,7 +17,8 @@ export type PaymentItemKey =
   | "packing_fee"
   | "domestic_shipping_fee"
   | "international_shipping_fee"
-  | "long_term_monthly_storage_fee";
+  | "long_term_monthly_storage_fee"
+  | "monthly_membership_fee";
 
 export type PaymentItemType = "one_time" | "recurring";
 
@@ -69,72 +71,32 @@ export const SERVICE_INTRO_EN =
 export const ROUNDTRIP_SHIPPING_FEE = 7000;
 
 export const SHOP_PRODUCTS: ShopProduct[] = [
+  // ── 멤버십 구독 (정기결제 빌링 심사용) ──────────────────────────────────
   {
-    id: "STORAGE_S",
-    category: "storage",
-    paymentItemKey: "long_term_monthly_storage_fee",
-    name: "소형 스토리지 보관 서비스",
-    nameEn: "Small Storage Service",
+    id: "MEMBERSHIP_BASIC",
+    category: "membership",
+    paymentItemKey: "monthly_membership_fee",
+    name: "베이직 멤버십",
+    nameEn: "Basic Membership",
     price: 9900,
     billingType: "recurring",
     unit: "월",
-    description: "소형 물품(30×25×20cm 이하) 전용 보관 공간을 제공합니다.",
-    descriptionEn: "Dedicated storage for small items (up to 30×25×20cm).",
-    deliveryMethod: "물류센터 보관",
-    deliveryMethodEn: "Warehouse storage",
-    servicePeriod: "월 단위 선불 (자동결제 빌링)",
-    servicePeriodEn: "Monthly prepaid (card billing)",
-    refundNote: "월 단위 선불이며, 중도 해지 시 남은 기간 환불 불가",
-    refundNoteEn: "Monthly prepaid; no refund for remaining period upon mid-term cancellation",
-    icon: "archive",
-    badge: "소형",
-    badgeEn: "Small",
-    badgeColor: "bg-emerald-100 text-emerald-700",
+    description:
+      "월 5건 검품·포장 처리 무료 + 무료 방문 픽업 1회 포함. 국내·해외 발송 서비스 이용 시 우선 처리 혜택을 드립니다.",
+    descriptionEn:
+      "Includes 5 free inspection/packaging per month + 1 free pickup visit. Priority processing for domestic and international shipments.",
+    deliveryMethod: "물류센터 내 서비스 (비실물)",
+    deliveryMethodEn: "In-warehouse service (non-physical)",
+    servicePeriod: "월 단위 자동결제 (언제든 해지 가능)",
+    servicePeriodEn: "Monthly auto-billing (cancel anytime)",
+    refundNote: "해지 신청 익월부터 청구 중단. 이미 결제된 당월 요금 환불 불가",
+    refundNoteEn: "Billing stops from the month after cancellation. Current month fee non-refundable",
+    icon: "box",
+    badge: "멤버십",
+    badgeEn: "Membership",
+    badgeColor: "bg-violet-100 text-violet-700",
   },
-  {
-    id: "STORAGE_M",
-    category: "storage",
-    paymentItemKey: "long_term_monthly_storage_fee",
-    name: "중형 스토리지 보관 서비스",
-    nameEn: "Medium Storage Service",
-    price: 14900,
-    billingType: "recurring",
-    unit: "월",
-    description: "중형 물품(40×35×25cm 이하) 전용 보관 공간을 제공합니다.",
-    descriptionEn: "Dedicated storage for medium items (up to 40×35×25cm).",
-    deliveryMethod: "물류센터 보관",
-    deliveryMethodEn: "Warehouse storage",
-    servicePeriod: "월 단위 선불 (자동결제 빌링)",
-    servicePeriodEn: "Monthly prepaid (card billing)",
-    refundNote: "월 단위 선불이며, 중도 해지 시 남은 기간 환불 불가",
-    refundNoteEn: "Monthly prepaid; no refund for remaining period upon mid-term cancellation",
-    icon: "archive",
-    badge: "중형",
-    badgeEn: "Medium",
-    badgeColor: "bg-blue-100 text-blue-700",
-  },
-  {
-    id: "STORAGE_L",
-    category: "storage",
-    paymentItemKey: "long_term_monthly_storage_fee",
-    name: "대형 스토리지 보관 서비스",
-    nameEn: "Large Storage Service",
-    price: 19900,
-    billingType: "recurring",
-    unit: "월",
-    description: "대형 물품(50×45×35cm 이하) 전용 보관 공간을 제공합니다.",
-    descriptionEn: "Dedicated storage for large items (up to 50×45×35cm).",
-    deliveryMethod: "물류센터 보관",
-    deliveryMethodEn: "Warehouse storage",
-    servicePeriod: "월 단위 선불 (자동결제 빌링)",
-    servicePeriodEn: "Monthly prepaid (card billing)",
-    refundNote: "월 단위 선불이며, 중도 해지 시 남은 기간 환불 불가",
-    refundNoteEn: "Monthly prepaid; no refund for remaining period upon mid-term cancellation",
-    icon: "archive",
-    badge: "대형",
-    badgeEn: "Large",
-    badgeColor: "bg-orange-100 text-orange-700",
-  },
+  // ── 단건 서비스 ──────────────────────────────────────────────────────────
   {
     id: "INSPECTION_PACK_S",
     category: "inspection",

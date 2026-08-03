@@ -126,8 +126,8 @@ export default function ShopPage() {
                 {lang === "ko" ? "[정기결제]" : "[Recurring]"}
               </span>{" "}
               {lang === "ko"
-                ? "신용카드 자동결제(빌링) — 스토리지 보관 서비스 전용"
-                : "Card auto-billing — storage subscription only"}
+                ? "신용카드 자동결제(빌링) — 멤버십 구독 전용"
+                : "Card auto-billing — membership subscription only"}
             </p>
             <p className="text-gray-500">
               {lang === "ko"
@@ -170,7 +170,7 @@ export default function ShopPage() {
           )}
         </section>
 
-        {/* 정기 구독 (스토리지) */}
+        {/* 멤버십 구독 (월 정기결제) */}
         <section>
           <button
             type="button"
@@ -179,7 +179,7 @@ export default function ShopPage() {
             aria-expanded={recurringOpen}
           >
             <h2 className="text-sm font-bold text-gray-900">
-              {lang === "ko" ? "스토리지 보관 (월 정기결제)" : "Storage (Monthly Billing)"}
+              {lang === "ko" ? "멤버십 구독 (월 정기결제)" : "Membership (Monthly Billing)"}
             </h2>
             <ChevronDown
               size={18}
@@ -195,8 +195,8 @@ export default function ShopPage() {
                   key={product.id}
                   product={product}
                   lang={lang}
-                  actionLabel={lang === "ko" ? "구독 상세" : "Subscribe"}
-                  onAction={() => router.push(`/shop/products/${product.id}`)}
+                  actionLabel={lang === "ko" ? "구독 신청" : "Subscribe"}
+                  onAction={() => router.push(`/shop/billing/register?plan=${product.id}`)}
                 />
               ))}
             </div>

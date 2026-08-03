@@ -28,6 +28,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/portone",
   "/api/inicis",
   "/api/shop",
+  "/api/cron", // CRON_SECRET으로 라우트 내부 인증
 ];
 
 /** IP별 요청 카운터 (서버리스 인스턴스 내 기본 방어) */

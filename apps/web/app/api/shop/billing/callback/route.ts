@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { nextBillingDateFirstOfMonth } from "@/lib/inicis/billing";
 
 /* ────────────────────────────────────────────────────────────────
    KG이니시스 빌링키 발급 결과 처리 (샵 구독용)
@@ -76,9 +77,10 @@ export async function POST(request: NextRequest) {
   const { error: updErr } = await db
     .from("shop_subscriptions")
     .update({
-      pg_bill_key: BILL_KEY,
-      status:      "ACTIVE",
-      updated_at:  new Date().toISOString(),
+      pg_bill_key:       BILL_KEY,
+      status:            "ACTIVE",
+      next_billing_date: nextBillingDateFirstOfMonth(),
+      updated_at:        new Date().toISOString(),
     })
     .eq("id", subId)
     .eq("status", "PENDING");
