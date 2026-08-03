@@ -79,10 +79,11 @@ supabase db query --linked --file apps/sql/044_pickup_box_fees.sql
 | 빌링 로직 설계 | ✅ | 매월 1일 cron Rebill, 실패 시 PAUSED + fail_count |
 | BillKey 발급·저장 흐름 | ✅ | `/api/inicis/billing/issue` → `INICIS_BILLING_*` (infrontbil) |
 | 월정액 Cron | ✅ | `/api/cron/storage-billing` (매일 01:10 UTC) |
-| 샵 구독 Cron | ✅ | `/api/cron/shop-billing` + `071_shop_subscriptions_billing.sql` |
+| 샵 구독 Cron | ✅ | `/api/cron/shop-billing` + `071` (백엔드 유지) |
+| 샵 멤버십/정기결제 UI | ✅ 비노출 | 해외카드 심사 집중 — `/shop/billing/*` → `/shop` |
 | 고객 UI (`/storage/billing/*`) | 🔲 | success/fail 페이지·등록 UX 미완 |
 | 관리자 빌링 현황 | 🔲 | 자동결제 성공/실패 목록 |
-| **실연동 조건** | ✅ | 빌링 MID 승인 완료 — Vercel `INICIS_BILLING_*` 설정 필요 |
+| **실연동 조건** | ✅ | 빌링 MID·env·DB·배포 완료. 남은 심사는 해외카드 단건 |
 
 ---
 
@@ -425,3 +426,4 @@ IN_TRANSIT
 | 2026-06-21 | 소셜 로그인 구현 (카카오/네이버/구글/애플). DB 마이그레이션 `066_social_login.sql`. Supabase Edge Function `naver-auth` 배포 |
 | 2026-06-23 | KG Inicis MID `infront227` 발급. 실결제 환경변수 설정. 심사용 결제 라우트 전면 정비 (INIpayTest 제거, signKey 일관성, 프로덕션 JS URL 고정). DB 마이그레이션 현황 갱신 (061~066) |
 | 2026-08-03 | 빌링 MID `infrontbil` 승인·실연동. `INICIS_BILLING_*` 공용 헬퍼, 샵/보관 Rebill cron, `071_shop_subscriptions_billing.sql`. Phase 4 API·cron ✅, 고객 UI·Admin 🔲 |
+| 2026-08-03 | 해외카드 심사 집중: 샵 멤버십/정기결제 UI 비노출, `/shop/billing/*` 리다이렉트. 빌링 백엔드 유지 |

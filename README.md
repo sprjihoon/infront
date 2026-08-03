@@ -1394,18 +1394,11 @@ NAVER_CLIENT_SECRET=...
 - `071_shop_subscriptions_billing.sql` — `next_billing_date`, fail 추적 컬럼
 - `proxy.ts` — `/api/cron` 공개(라우트 내부 CRON_SECRET 인증)
 
-**배포 전 필수**
-```bash
-supabase db query --linked --file apps/sql/071_shop_subscriptions_billing.sql
-```
-Vercel 환경변수:
-```
-INICIS_BILLING_MID=infrontbil
-INICIS_BILLING_SIGN_KEY=...   # iniweb에서 조회
-INICIS_BILLING_INIAPI_KEY=...
-INICIS_BILLING_INIAPI_IV=...
-```
-PEM 키파일(`mcert.pem` 등)은 INIStdPay/INIAPI 연동에 사용하지 않음 — 보관만.
+**운영 반영 상태 (2026-08-03)**
+- DB `071_shop_subscriptions_billing.sql` 적용 완료
+- Vercel `INICIS_BILLING_*` (MID `infrontbil`) Production/Preview/Development 설정 완료
+- 프로덕션 배포 완료 — 샵 UI는 단건·해외카드 심사 중심
+- PEM 키파일(`mcert.pem` 등)은 INIStdPay/INIAPI 연동에 사용하지 않음 — 보관만
 
 ---
 
@@ -1415,36 +1408,13 @@ PEM 키파일(`mcert.pem` 등)은 INIStdPay/INIAPI 연동에 사용하지 않음
 - KG Inicis 빌링 결제창 연동을 위한 별도 빌링 MID 신청 완료
 - 샘플 사이트(`/shop`) 기준으로 심사관이 빌링 플로우를 확인할 수 있도록 구현
 
-**신규 파일**
+**당시 구현 (요약)**
+- `068_shop_subscriptions.sql`, `/api/shop/billing/{prepare,callback,charge}`
+- 샵 구독 UI·월정액 섹션 (심사용)
 
-- `apps/sql/068_shop_subscriptions.sql` — `shop_subscriptions` 테이블 + RLS
-  - 컬럼: id, user_id, plan_id, plan_name, monthly_amount, pg_bill_key, pg_oid, pg_provider, status(PENDING/ACTIVE/CANCELLED), last_paid_at
-- `apps/web/app/shop/billing/register/page.tsx` — 구독 카드 등록 페이지
-  - KG Inicis INIStdPay 빌링키 발급 팝업, 미로그인 시 로그인 유도
-- `apps/web/app/shop/billing/complete/page.tsx` — 구독 완료 페이지
-  - 카드 등록 성공 안내, 첫 달 즉시 결제 버튼
-- `apps/web/app/shop/billing/fail/page.tsx` — 등록 실패·취소 페이지
-- `apps/web/app/api/shop/billing/prepare/route.ts` — 빌링키 발급 준비 API
-- `apps/web/app/api/shop/billing/callback/route.ts` — 빌링키 발급 콜백
-  - KG Inicis 서버 POST → shop_subscriptions ACTIVE 갱신 → iframe 리다이렉트
-- `apps/web/app/api/shop/billing/charge/route.ts` — Rebill 청구 API
-  - INIAPI AES-128-CBC signData, iniapi.inicis.com/api/v1/bill 호출
-
-**수정 파일**
-
-- `apps/web/app/shop/page.tsx`
-  - 헤더 우상단: 로그인/내 서비스 버튼 추가 (심사관 진입점)
-  - 하단: 📦 월정액 구독 서비스 섹션 추가 (보관함 기본 구독 9,900원/월)
-- `apps/web/proxy.ts` — `PUBLIC_API_PREFIXES`에 `/api/shop` 추가 (KG Inicis 콜백 인증 우회)
-- `apps/web/next.config.ts` — `/api/shop/billing/:path*` X-Frame-Options 해제 + `frame-ancestors *`
-
-**DB 마이그레이션 (Supabase 적용 필수)**
-```bash
-supabase db query --linked --file apps/sql/068_shop_subscriptions.sql
-```
-
-> **실연동 현황 (2026-08-03):** 빌링 MID `infrontbil` 승인 완료.  
-> 폴백/키 설정은 위 `2026-08-03` 섹션 및 `INICIS_BILLING_*` 환경변수를 따름.
+> **현황 (2026-08-03):** 빌링 MID `infrontbil` 승인·실연동 완료.  
+> 해외카드 심사 집중을 위해 **샵 멤버십/정기결제 UI는 비노출** (`/shop/billing/*` → `/shop`).  
+> API·cron·`INICIS_BILLING_*`는 유지.
 
 ---
 
