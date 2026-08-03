@@ -37,7 +37,7 @@ export async function validateShopOrderRequest(
   if (!user) {
     return {
       ok: false,
-      error: "해외카드 결제는 회원 주문에서만 이용 가능합니다. 로그인 또는 회원가입 후 이용해주세요.",
+      error: "결제는 회원 주문에서만 이용 가능합니다. 로그인 또는 회원가입 후 이용해주세요.",
       status: 401,
     };
   }
@@ -54,28 +54,12 @@ export async function validateShopOrderRequest(
   const methodId = paymentMethodId ?? "card";
 
   if (isGlobalPaymentMethod(methodId)) {
-    if (user.customerType !== "foreigner") {
-      return {
-        ok: false,
-        error: "해외카드 및 글로벌 결제수단은 외국인/해외고객 회원만 이용 가능합니다.",
-        status: 403,
-      };
-    }
-    if (!user.emailConfirmed) {
-      return {
-        ok: false,
-        error:
-          "해외카드 결제는 이메일 인증이 완료된 회원만 이용 가능합니다. 가입 시 발송된 인증 메일을 확인해 주세요.",
-        status: 403,
-      };
-    }
-    if (product.billingType !== "one_time") {
-      return {
-        ok: false,
-        error: "해외카드는 단건 서비스 이용요금 결제에만 사용할 수 있습니다.",
-        status: 403,
-      };
-    }
+    return {
+      ok: false,
+      error:
+        "해외카드·Alipay·WeChat Pay는 현재 이용할 수 없습니다. 국내 결제수단을 선택해 주세요.",
+      status: 403,
+    };
   }
 
   const price = getOrderTotal(product);

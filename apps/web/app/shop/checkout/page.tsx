@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { ArrowLeft, CreditCard, Loader2, LogIn, Package, Check } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
@@ -12,9 +11,7 @@ import {
   formatKrw,
   INTL_TRACKING_NOTE_KO,
   INTL_TRACKING_NOTE_EN,
-  CUSTOMER_TYPE_LABEL,
   type PaymentMethodId,
-  type CustomerType,
 } from "@/lib/shop/products";
 import { PaymentMethodSelector, sanitizePaymentMethod } from "../components/PaymentMethodSelector";
 import { useLanguage } from "../useLanguage";
@@ -142,8 +139,8 @@ function LoginGate({ lang, redirectPath }: { lang: Lang; redirectPath: string })
       </h1>
       <p className="text-sm text-gray-600 text-center leading-relaxed mb-2">
         {lang === "ko"
-          ? "해외카드 결제는 회원 주문에서만 이용 가능합니다. 로그인 또는 회원가입 후 이용해주세요."
-          : "International card payments are available for member orders only. Please log in or sign up."}
+          ? "결제는 회원 주문에서만 이용 가능합니다. 로그인 또는 회원가입 후 이용해주세요."
+          : "Payments are available for member orders only. Please log in or sign up."}
       </p>
       <p className="text-xs text-gray-500 text-center leading-relaxed mb-6">
         {lang === "ko"
@@ -187,8 +184,6 @@ function CheckoutContent() {
   const tx = t[lang];
 
   const [authState, setAuthState] = useState<"loading" | "guest" | "logged_in">("loading");
-  const [customerType, setCustomerType] = useState<CustomerType>("domestic");
-  const [emailConfirmed, setEmailConfirmed] = useState(false);
   const [productId, setProductId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -217,12 +212,10 @@ function CheckoutContent() {
         return;
       }
       setAuthState("logged_in");
-      setEmailConfirmed(Boolean(user.email_confirmed_at));
       if (user.email) setEmail(user.email);
       const meta = user.user_metadata as {
         name?: string;
         phone?: string;
-        customer_type?: string;
       };
       if (meta.name || meta.phone) {
         setSender((prev) => ({
@@ -231,17 +224,7 @@ function CheckoutContent() {
           phone: meta.phone ?? prev.phone,
         }));
       }
-      const { data: customer } = await supabase
-        .from("customers")
-        .select("customer_type")
-        .eq("id", user.id)
-        .maybeSingle();
-      const ctype: CustomerType =
-        customer?.customer_type === "foreigner" || meta.customer_type === "foreigner"
-          ? "foreigner"
-          : "domestic";
-      setCustomerType(ctype);
-      setPaymentMethod((prev) => sanitizePaymentMethod(prev, ctype));
+      setPaymentMethod((prev) => sanitizePaymentMethod(prev));
     });
 
     const fromQuery = searchParams.get("product");
@@ -491,45 +474,6 @@ function CheckoutContent() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
-        {/* 회원 구분 표시 (결제 화면에서는 변경 불가) */}
-        <section className="bg-white rounded-xl border border-gray-100 px-4 py-3.5 space-y-2.5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-xs text-gray-500">
-                {lang === "ko" ? "고객 유형" : "Customer type"}
-              </p>
-              <p className="text-sm font-semibold text-gray-900 mt-0.5">
-                {CUSTOMER_TYPE_LABEL[customerType]}
-              </p>
-            </div>
-            <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-md shrink-0">
-              {lang === "ko" ? "회원 정보 기준" : "From profile"}
-            </span>
-          </div>
-          <p className="text-[11px] text-gray-500 leading-relaxed">
-            {lang === "ko"
-              ? customerType === "foreigner"
-                ? "외국인/해외고객 회원만 해외카드·글로벌 결제수단을 이용할 수 있습니다. 결제 화면에서는 변경할 수 없습니다."
-                : "내국인 회원은 국내 결제수단만 이용 가능합니다. 해외카드 이용 시 마이페이지에서 고객 구분을 변경해 주세요."
-              : customerType === "foreigner"
-                ? "Global payment methods are available for foreign/overseas members only. You cannot change this on the checkout page."
-                : "Domestic members can use domestic payment methods only. Change your customer type in My Page to use international cards."}
-          </p>
-          <Link
-            href="/mypage"
-            className="inline-block text-[11px] text-[#de2910] font-medium underline"
-          >
-            {lang === "ko" ? "마이페이지에서 고객 구분 변경" : "Change customer type in My Page"}
-          </Link>
-          {customerType === "foreigner" && !emailConfirmed && (
-            <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2 leading-relaxed">
-              {lang === "ko"
-                ? "해외카드 결제는 이메일 인증이 완료된 회원만 이용 가능합니다. 가입 시 발송된 인증 메일을 확인해 주세요."
-                : "International card payments require a verified email address."}
-            </p>
-          )}
-        </section>
-
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-3">{tx.orderProduct}</p>
           <div className="flex items-center gap-3">
@@ -633,7 +577,6 @@ function CheckoutContent() {
             lang={lang}
             value={paymentMethod}
             onChange={setPaymentMethod}
-            customerType={customerType}
           />
         </section>
 

@@ -11,8 +11,6 @@ import {
   getOrderTotal,
   INTL_TRACKING_NOTE_KO,
   INTL_TRACKING_NOTE_EN,
-  FOREIGN_CARD_SCOPE_NOTICE_KO,
-  FOREIGN_CARD_SCOPE_NOTICE_EN,
 } from "@/lib/shop/products";
 import { useLanguage } from "../../useLanguage";
 
@@ -129,9 +127,6 @@ export default function ShopProductDetailPage() {
               </div>
             )}
 
-            <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
-              {lang === "ko" ? FOREIGN_CARD_SCOPE_NOTICE_KO : FOREIGN_CARD_SCOPE_NOTICE_EN}
-            </p>
           </div>
         </div>
 

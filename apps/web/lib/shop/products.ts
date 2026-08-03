@@ -55,11 +55,13 @@ export const INTL_TRACKING_NOTE_KO =
 export const INTL_TRACKING_NOTE_EN =
   "International shipping uses trackable carriers such as EMS, EMS Premium, and K-Packet. A waybill number is provided after dispatch, and customers can check status on our tracking page. Local delivery tracking after customs may vary by country and local carrier.";
 
+/** @deprecated KG이니시스 해외카드 오픈 불가(개인사업자/비실물) — UI 미사용 */
 export const FOREIGN_CARD_SCOPE_NOTICE_KO =
-  "해외카드·Alipay·WeChat Pay는 검품/포장, 왕복배송비 등 단건 서비스 이용요금 결제에 사용할 수 있습니다.";
+  "현재 해외카드·Alipay·WeChat Pay는 이용할 수 없습니다. 국내 결제수단만 지원합니다.";
 
+/** @deprecated KG이니시스 해외카드 오픈 불가(개인사업자/비실물) — UI 미사용 */
 export const FOREIGN_CARD_SCOPE_NOTICE_EN =
-  "International cards, Alipay, and WeChat Pay may be used for one-time service fees such as inspection/packing and round-trip shipping.";
+  "International cards, Alipay, and WeChat Pay are not available. Domestic payment methods only.";
 
 export const SERVICE_INTRO_KO =
   "인프론트는 고객이 온라인으로 물품 수거를 신청하고, 물류센터에서 보관한 뒤, 요청에 따라 포장·검품 후 국내배송 또는 해외배송을 진행하는 수거·보관·배송대행 플랫폼입니다.";
@@ -184,7 +186,10 @@ export const DOMESTIC_PAYMENT_METHODS = [
   { id: "easy", label: "간편결제", labelEn: "Easy Pay", code: "EASY_PAY" },
 ] as const;
 
-/** 해외/글로벌 결제수단 — 외국인 회원 + 단건결제에서만 노출 */
+/**
+ * 해외/글로벌 결제수단 — KG이니시스 RISK: 개인과세사업자·비실물 사이트로 오픈 불가.
+ * UI 미노출. API에서도 거부.
+ */
 export const GLOBAL_PAYMENT_METHODS = [
   { id: "intl_card", label: "해외카드", labelEn: "International Card", code: "FOREIGN_CARD" },
   { id: "alipay", label: "Alipay", labelEn: "Alipay", code: "ALIPAY" },
@@ -201,8 +206,9 @@ export function isGlobalPaymentMethod(id: string): boolean {
   return GLOBAL_IDS.has(id);
 }
 
-export function canShowGlobalPaymentMethods(customerType: CustomerType): boolean {
-  return customerType === "foreigner";
+/** 해외결제 UI 노출 — 이니시스 오픈 불가로 항상 false */
+export function canShowGlobalPaymentMethods(_customerType?: CustomerType): boolean {
+  return false;
 }
 
 export function getPaymentMethodLabel(id: string, lang: "ko" | "en" = "ko"): string {

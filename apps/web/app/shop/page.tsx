@@ -8,8 +8,6 @@ import {
   ONE_TIME_PRODUCTS,
   SERVICE_INTRO_KO,
   SERVICE_INTRO_EN,
-  FOREIGN_CARD_SCOPE_NOTICE_KO,
-  FOREIGN_CARD_SCOPE_NOTICE_EN,
 } from "@/lib/shop/products";
 import { ShopProductCard } from "./components/ShopProductCard";
 import { useLanguage } from "./useLanguage";
@@ -105,23 +103,16 @@ export default function ShopPage() {
           </p>
         </div>
 
-        {/* 결제수단 안내 — 단건/해외카드 중심 */}
+        {/* 결제수단 안내 — 국내 결제만 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
           <p className="text-xs font-bold text-gray-700">
             {lang === "ko" ? "결제수단 안내" : "Payment Methods"}
           </p>
-          <div className="text-[11px] text-gray-600 space-y-2">
-            <p>
-              {lang === "ko"
-                ? "신용카드 · 계좌이체 · 가상계좌 · 간편결제 · 해외카드 · Alipay · WeChat Pay"
-                : "Credit card · Bank transfer · Virtual account · Easy pay · Intl card · Alipay · WeChat Pay"}
-            </p>
-            <p className="text-gray-500">
-              {lang === "ko"
-                ? FOREIGN_CARD_SCOPE_NOTICE_KO
-                : FOREIGN_CARD_SCOPE_NOTICE_EN}
-            </p>
-          </div>
+          <p className="text-[11px] text-gray-600">
+            {lang === "ko"
+              ? "신용카드 · 계좌이체 · 가상계좌 · 간편결제"
+              : "Credit card · Bank transfer · Virtual account · Easy pay"}
+          </p>
         </div>
 
         {/* 일회성 서비스 */}
@@ -164,8 +155,8 @@ export default function ShopPage() {
           </p>
           <p className="text-xs text-amber-700 leading-relaxed">
             {lang === "ko"
-              ? "해외카드 결제는 회원 주문에서만 이용 가능합니다. 로그인 또는 회원가입 후 이용해주세요. 회원가입 시 이메일 인증을 통해 계정 확인 후 결제 서비스를 이용할 수 있습니다."
-              : "International card payments require member login. Please sign up with email verification to use payment services."}
+              ? "결제는 회원 주문에서만 이용 가능합니다. 로그인 또는 회원가입 후 이용해주세요."
+              : "Payments require member login. Please log in or sign up to continue."}
           </p>
         </div>
       </main>

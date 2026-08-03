@@ -379,9 +379,8 @@ export default function MyPage() {
             {CUSTOMER_TYPE_LABEL[customer?.customer_type ?? "domestic"]}
           </p>
           <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-            해외카드·글로벌 결제수단은 외국인/해외고객 회원만 이용할 수 있습니다. 가입 시
-            선택하거나 여기서 변경할 수 있으며, 결제 화면에서는 회원 정보에 저장된 구분이
-            적용됩니다.
+            서비스·안내 언어 및 배송 관련 안내에 참고됩니다. 현재 결제는 국내 결제수단만
+            지원합니다.
           </p>
         </div>
 
@@ -537,7 +536,7 @@ export default function MyPage() {
                   <option value="foreigner">외국인/해외고객</option>
                 </select>
                 <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
-                  결제 시 이용 가능한 결제수단(국내/해외카드)에 반영됩니다.
+                  서비스 안내·배송 관련 안내에 참고됩니다.
                 </p>
               </div>
             </div>
