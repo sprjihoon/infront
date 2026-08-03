@@ -244,14 +244,12 @@ infront/
 
 | ��� | ������ | ���� |
 |------|--------|------|
-| `/shop` | ��ǰ ��� | S/M/L/XL �ڽ� �������, KO/EN ���̸�����, KG Inicis ����, 로그인 버튼, 월정액 구독 섹션 |
+| `/shop` | 서비스 카탈로그 | 단건 서비스·해외카드 결제 심사 중심, KO/EN, 로그인 |
 | `/shop/checkout` | ���� �� | �ֹ����� �Է�, ���� �����ȣ �ּ� �˻�, �̿��� ���� |
 | `/shop/payment/success` | ���� ���� | KG Inicis ���� �Ϸ� ó�� |
 | `/shop/payment/fail` | ���� ���� | ���� ���С���� ó�� |
 | `/shop/payment/close` | ���� â �ݱ� | INIpay �˾� ���� ó�� |
-| `/shop/billing/register` | 구독 카드 등록 | KG Inicis 빌링키 발급 팝업 호출, 미로그인 시 로그인 유도 |
-| `/shop/billing/complete` | 구독 등록 완료 | 카드 등록 성공 안내, 첫 달 즉시 결제 버튼 |
-| `/shop/billing/fail` | 구독 등록 실패 | 등록 실패·취소 안내, 재시도 링크 |
+| `/shop/billing/*` | (비노출) | 빌링 심사용 UI — `/shop` 리다이렉트 (API·cron 유지) |
 | `/shop/terms` | �̿��� | ������� ���� �̿��� (���� ������) |
 | `/shop/privacy` | ��������ó����ħ | ������� ���� ��������ó����ħ (���� ������) |
 
@@ -674,10 +672,8 @@ Next.js ����
 - [x] ��ޱ�����ǰ��ȯ����å���̿����� �ȳ�
 - [x] API ���� ��� + rate limiting
 - [x] /shop 헤더 로그인/내 서비스 버튼 (심사관 로그인 진입점)
-- [x] 월정액 구독 섹션 — 베이직 멤버십 9,900원/월 (KG Inicis 빌링, MID `infrontbil`)
-- [x] `/shop/billing/register` — 카드 등록 페이지 (INIStdPay 빌링키 발급)
-- [x] `/shop/billing/complete` — 구독 완료 페이지 + 첫 달 즉시 결제
-- [x] `/shop/billing/fail` — 등록 실패·취소 페이지
+- [x] 샵 UI는 단건·해외카드 심사 중심으로 정리 (멤버십/정기결제 섹션 비노출)
+- [x] `/shop/billing/*` — `/shop` 리다이렉트 (빌링 API·cron·env는 유지)
 - [x] `/api/shop/billing/prepare` — 빌링키 발급 준비 (`infrontbil`, TEST_MODE만 스테이징)
 - [x] `/api/shop/billing/callback` — 빌링키 콜백 처리 + shop_subscriptions 갱신
 - [x] `/api/shop/billing/charge` — Rebill 청구 API
@@ -1373,6 +1369,16 @@ NAVER_CLIENT_ID=...
 NAVER_CLIENT_SECRET=...
 ```
 
+### 2026-08-03 샵 UI — 멤버십/정기결제 비노출 (해외카드 심사 집중)
+
+- `/shop` 멤버십 구독 섹션·`[정기결제]` 안내 제거
+- `MEMBERSHIP_BASIC` 카탈로그 상품 제거
+- `/shop/billing/*` → `/shop` 리다이렉트
+- 환불/배송 정책의 스토리지 구독 조항 정리
+- 빌링 API·cron·`INICIS_BILLING_*` 백엔드는 유지 (Phase 4용)
+
+---
+
 ### 2026-08-03 KG Inicis 빌링 MID `infrontbil` 실연동
 
 **배경**
@@ -1387,7 +1393,6 @@ NAVER_CLIENT_SECRET=...
 - `/api/cron/shop-billing`, `/api/cron/storage-billing` — 매일 자동청구 (`vercel.json`)
 - `071_shop_subscriptions_billing.sql` — `next_billing_date`, fail 추적 컬럼
 - `proxy.ts` — `/api/cron` 공개(라우트 내부 CRON_SECRET 인증)
-- 샵 구독 상품을 `MEMBERSHIP_BASIC`(베이직 멤버십)으로 정렬, `/shop/billing/register?plan=` 연동
 
 **배포 전 필수**
 ```bash

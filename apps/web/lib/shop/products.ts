@@ -56,10 +56,10 @@ export const INTL_TRACKING_NOTE_EN =
   "International shipping uses trackable carriers such as EMS, EMS Premium, and K-Packet. A waybill number is provided after dispatch, and customers can check status on our tracking page. Local delivery tracking after customs may vary by country and local carrier.";
 
 export const FOREIGN_CARD_SCOPE_NOTICE_KO =
-  "해외카드는 검품/포장, 왕복배송비 등 단건 서비스 이용요금 결제에 사용할 수 있습니다. 장기보관 월 이용료는 별도 자동결제 빌링 구조로 운영됩니다.";
+  "해외카드·Alipay·WeChat Pay는 검품/포장, 왕복배송비 등 단건 서비스 이용요금 결제에 사용할 수 있습니다.";
 
 export const FOREIGN_CARD_SCOPE_NOTICE_EN =
-  "International cards may be used for one-time service fees such as inspection/packing and round-trip shipping. Monthly long-term storage fees are billed separately via card auto-payment.";
+  "International cards, Alipay, and WeChat Pay may be used for one-time service fees such as inspection/packing and round-trip shipping.";
 
 export const SERVICE_INTRO_KO =
   "인프론트는 고객이 온라인으로 물품 수거를 신청하고, 물류센터에서 보관한 뒤, 요청에 따라 포장·검품 후 국내배송 또는 해외배송을 진행하는 수거·보관·배송대행 플랫폼입니다.";
@@ -71,32 +71,7 @@ export const SERVICE_INTRO_EN =
 export const ROUNDTRIP_SHIPPING_FEE = 7000;
 
 export const SHOP_PRODUCTS: ShopProduct[] = [
-  // ── 멤버십 구독 (정기결제 빌링 심사용) ──────────────────────────────────
-  {
-    id: "MEMBERSHIP_BASIC",
-    category: "membership",
-    paymentItemKey: "monthly_membership_fee",
-    name: "베이직 멤버십",
-    nameEn: "Basic Membership",
-    price: 9900,
-    billingType: "recurring",
-    unit: "월",
-    description:
-      "월 5건 검품·포장 처리 무료 + 무료 방문 픽업 1회 포함. 국내·해외 발송 서비스 이용 시 우선 처리 혜택을 드립니다.",
-    descriptionEn:
-      "Includes 5 free inspection/packaging per month + 1 free pickup visit. Priority processing for domestic and international shipments.",
-    deliveryMethod: "물류센터 내 서비스 (비실물)",
-    deliveryMethodEn: "In-warehouse service (non-physical)",
-    servicePeriod: "월 단위 자동결제 (언제든 해지 가능)",
-    servicePeriodEn: "Monthly auto-billing (cancel anytime)",
-    refundNote: "해지 신청 익월부터 청구 중단. 이미 결제된 당월 요금 환불 불가",
-    refundNoteEn: "Billing stops from the month after cancellation. Current month fee non-refundable",
-    icon: "box",
-    badge: "멤버십",
-    badgeEn: "Membership",
-    badgeColor: "bg-violet-100 text-violet-700",
-  },
-  // ── 단건 서비스 ──────────────────────────────────────────────────────────
+  // ── 단건 서비스 (해외카드 심사용 카탈로그) ───────────────────────────────
   {
     id: "INSPECTION_PACK_S",
     category: "inspection",

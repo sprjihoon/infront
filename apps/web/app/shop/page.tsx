@@ -6,7 +6,6 @@ import { ChevronDown, Globe, LogIn, Package } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   ONE_TIME_PRODUCTS,
-  RECURRING_PRODUCTS,
   SERVICE_INTRO_KO,
   SERVICE_INTRO_EN,
   FOREIGN_CARD_SCOPE_NOTICE_KO,
@@ -23,7 +22,6 @@ export default function ShopPage() {
 
   const [userEmail, setUserEmail] = useState<string | null | undefined>(undefined);
   const [oneTimeOpen, setOneTimeOpen] = useState(true);
-  const [recurringOpen, setRecurringOpen] = useState(true);
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -78,18 +76,18 @@ export default function ShopPage() {
                   {lang === "ko" ? "주문/배송조회" : "Orders"}
                 </button>
                 <button
-                onClick={async () => {
-                  const sb = createBrowserClient(
-                    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-                  );
-                  await sb.auth.signOut();
-                  setUserEmail(null);
-                }}
-                className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <LogIn size={12} className="rotate-180" />
-                {lang === "ko" ? "로그아웃" : "Logout"}
+                  onClick={async () => {
+                    const sb = createBrowserClient(
+                      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+                    );
+                    await sb.auth.signOut();
+                    setUserEmail(null);
+                  }}
+                  className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <LogIn size={12} className="rotate-180" />
+                  {lang === "ko" ? "로그아웃" : "Logout"}
                 </button>
               </>
             ) : null}
@@ -107,27 +105,16 @@ export default function ShopPage() {
           </p>
         </div>
 
-        {/* 결제수단 구조 안내 */}
+        {/* 결제수단 안내 — 단건/해외카드 중심 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
           <p className="text-xs font-bold text-gray-700">
             {lang === "ko" ? "결제수단 안내" : "Payment Methods"}
           </p>
           <div className="text-[11px] text-gray-600 space-y-2">
             <p>
-              <span className="font-semibold text-gray-800">
-                {lang === "ko" ? "[일회성 결제]" : "[One-time]"}
-              </span>{" "}
               {lang === "ko"
                 ? "신용카드 · 계좌이체 · 가상계좌 · 간편결제 · 해외카드 · Alipay · WeChat Pay"
                 : "Credit card · Bank transfer · Virtual account · Easy pay · Intl card · Alipay · WeChat Pay"}
-            </p>
-            <p>
-              <span className="font-semibold text-gray-800">
-                {lang === "ko" ? "[정기결제]" : "[Recurring]"}
-              </span>{" "}
-              {lang === "ko"
-                ? "신용카드 자동결제(빌링) — 멤버십 구독 전용"
-                : "Card auto-billing — membership subscription only"}
             </p>
             <p className="text-gray-500">
               {lang === "ko"
@@ -146,7 +133,7 @@ export default function ShopPage() {
             aria-expanded={oneTimeOpen}
           >
             <h2 className="text-sm font-bold text-gray-900">
-              {lang === "ko" ? "일회성 서비스" : "One-time Services"}
+              {lang === "ko" ? "서비스" : "Services"}
             </h2>
             <ChevronDown
               size={18}
@@ -164,39 +151,6 @@ export default function ShopPage() {
                   lang={lang}
                   actionLabel={lang === "ko" ? "상세보기" : "Details"}
                   onAction={() => router.push(`/shop/products/${product.id}`)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* 멤버십 구독 (월 정기결제) */}
-        <section>
-          <button
-            type="button"
-            onClick={() => setRecurringOpen((v) => !v)}
-            className="w-full flex items-center justify-between mb-3"
-            aria-expanded={recurringOpen}
-          >
-            <h2 className="text-sm font-bold text-gray-900">
-              {lang === "ko" ? "멤버십 구독 (월 정기결제)" : "Membership (Monthly Billing)"}
-            </h2>
-            <ChevronDown
-              size={18}
-              className={`text-gray-400 transition-transform duration-200 ${
-                recurringOpen ? "rotate-180" : ""
-              }`}
-            />
-          </button>
-          {recurringOpen && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {RECURRING_PRODUCTS.map((product) => (
-                <ShopProductCard
-                  key={product.id}
-                  product={product}
-                  lang={lang}
-                  actionLabel={lang === "ko" ? "구독 신청" : "Subscribe"}
-                  onAction={() => router.push(`/shop/billing/register?plan=${product.id}`)}
                 />
               ))}
             </div>

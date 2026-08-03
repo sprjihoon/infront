@@ -33,7 +33,7 @@ export default function ShopProductDetailPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!product) {
+    if (!product || product.billingType === "recurring") {
       router.replace("/shop");
       return;
     }
@@ -54,19 +54,12 @@ export default function ShopProductDetailPage() {
   const delivery = lang === "ko" ? product.deliveryMethod : product.deliveryMethodEn;
   const period = lang === "ko" ? product.servicePeriod : product.servicePeriodEn;
   const refund = lang === "ko" ? product.refundNote : product.refundNoteEn;
-  const priceLabel =
-    product.billingType === "recurring"
-      ? `${formatKrw(product.price)}/${product.unit ?? "월"}`
-      : formatKrw(product.price);
+  const priceLabel = formatKrw(product.price);
   const shippingFee = getBundledShippingFee(product);
   const orderTotal = getOrderTotal(product);
 
   function handleOrder() {
     if (!product) return;
-    if (product.billingType === "recurring") {
-      router.push(`/shop/billing/register?plan=${product.id}`);
-      return;
-    }
     sessionStorage.setItem("shop_product_id", product.id);
     router.push(`/shop/checkout?product=${product.id}`);
   }
@@ -136,19 +129,9 @@ export default function ShopProductDetailPage() {
               </div>
             )}
 
-            {product.billingType === "one_time" && (
-              <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
-                {lang === "ko" ? FOREIGN_CARD_SCOPE_NOTICE_KO : FOREIGN_CARD_SCOPE_NOTICE_EN}
-              </p>
-            )}
-
-            {product.billingType === "recurring" && (
-              <p className="text-xs text-gray-500 bg-gray-50 rounded-lg px-3 py-2">
-                {lang === "ko"
-                  ? "장기보관 월 이용료는 신용카드 자동결제(빌링)로 결제됩니다. 해외카드 결제 대상이 아닙니다."
-                  : "Monthly storage fees use card auto-billing. International cards are not accepted."}
-              </p>
-            )}
+            <p className="text-xs text-gray-600 bg-gray-50 rounded-lg px-3 py-2 leading-relaxed">
+              {lang === "ko" ? FOREIGN_CARD_SCOPE_NOTICE_KO : FOREIGN_CARD_SCOPE_NOTICE_EN}
+            </p>
           </div>
         </div>
 
@@ -156,13 +139,7 @@ export default function ShopProductDetailPage() {
           onClick={handleOrder}
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm active:opacity-80 transition-opacity"
         >
-          {product.billingType === "recurring"
-            ? lang === "ko"
-              ? "구독 신청하기"
-              : "Subscribe"
-            : lang === "ko"
-              ? "주문하기"
-              : "Order"}
+          {lang === "ko" ? "주문하기" : "Order"}
         </button>
       </div>
     </div>
