@@ -1,0 +1,24 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/sync-intl-tracking",
+      "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-inbound",
+      "schedule": "0 8-20 * * *"
+    },
+    {
+      "path": "/api/cron/sync-usd-krw-rate",
+      "schedule": "0 16 * * 6"
+    },
+    {
+      "path": "/api/cron/shop-billing",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/storage-billing",
+      "schedule": "10 1 * * *"
+    }
+  ]
+}
