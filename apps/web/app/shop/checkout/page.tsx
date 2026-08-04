@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, CreditCard, Loader2, LogIn, Package, Check } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
-  getOneTimeProduct,
-  getOrderTotal,
+  getShopProduct,
   getBundledShippingFee,
   formatKrw,
   INTL_TRACKING_NOTE_KO,
@@ -191,6 +190,7 @@ function CheckoutContent() {
   const [recipient, setRecipient] = useState<AddressForm>(EMPTY_ADDRESS);
   const [sameAsSender, setSameAsSender] = useState(false);
   const [termsAgreed, setTermsAgreed] = useState(false);
+  const [billingAgreed, setBillingAgreed] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodId>("card");
   const quantity = 1;
 
@@ -198,7 +198,8 @@ function CheckoutContent() {
   const formRef = useRef<HTMLFormElement>(null);
   const sdkScriptRef = useRef<HTMLScriptElement | null>(null);
 
-  const product = productId ? getOneTimeProduct(productId) : undefined;
+  const product = productId ? getShopProduct(productId) : undefined;
+  const isRecurring = product?.billingType === "recurring";
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -212,16 +213,24 @@ function CheckoutContent() {
         return;
       }
       setAuthState("logged_in");
-      if (user.email) setEmail(user.email);
-      const meta = user.user_metadata as {
-        name?: string;
-        phone?: string;
-      };
-      if (meta.name || meta.phone) {
+
+      const meta = user.user_metadata as { name?: string; phone?: string };
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("name, phone, email")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const filledName = customer?.name ?? meta.name ?? "";
+      const filledPhone = (customer?.phone ?? meta.phone ?? "").replace(/[^0-9\-]/g, "");
+      const filledEmail = customer?.email ?? user.email ?? "";
+
+      if (filledEmail) setEmail(filledEmail);
+      if (filledName || filledPhone) {
         setSender((prev) => ({
           ...prev,
-          name: meta.name ?? prev.name,
-          phone: meta.phone ?? prev.phone,
+          name: filledName || prev.name,
+          phone: filledPhone || prev.phone,
         }));
       }
       setPaymentMethod((prev) => sanitizePaymentMethod(prev));
@@ -230,7 +239,7 @@ function CheckoutContent() {
     const fromQuery = searchParams.get("product");
     const fromSession = sessionStorage.getItem("shop_product_id");
     const id = fromQuery ?? fromSession;
-    if (!id || !getOneTimeProduct(id)) {
+    if (!id || !getShopProduct(id)) {
       router.replace("/shop");
       return;
     }
@@ -248,6 +257,10 @@ function CheckoutContent() {
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (isRecurring) setPaymentMethod("card");
+  }, [isRecurring]);
 
   function handleSender(field: keyof AddressForm, value: string) {
     setSender((prev) => {
@@ -296,15 +309,15 @@ function CheckoutContent() {
   }
 
   function isFormValid() {
+    if (!sender.name.trim() || !sender.phone.trim() || !email.trim() || !termsAgreed) {
+      return false;
+    }
+    if (isRecurring) return billingAgreed;
     return (
-      sender.name.trim() &&
-      sender.phone.trim() &&
-      sender.address.trim() &&
-      email.trim() &&
-      effectiveRecipient.name.trim() &&
-      effectiveRecipient.phone.trim() &&
-      effectiveRecipient.address.trim() &&
-      termsAgreed
+      Boolean(sender.address.trim()) &&
+      Boolean(effectiveRecipient.name.trim()) &&
+      Boolean(effectiveRecipient.phone.trim()) &&
+      Boolean(effectiveRecipient.address.trim())
     );
   }
 
@@ -332,11 +345,41 @@ function CheckoutContent() {
     if (!product || !isFormValid()) return;
     setLoading(true);
 
-    const total = getOrderTotal(product) * quantity;
     const productName = lang === "ko" ? product.name : product.nameEn;
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
     try {
+      if (isRecurring) {
+        const res = await fetch("/api/shop/billing/prepare", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            buyername: sender.name.trim(),
+            buyertel: sender.phone.replace(/-/g, ""),
+            buyeremail: email.trim(),
+            planId: product.id,
+          }),
+        });
+        const data = (await res.json()) as Record<string, string>;
+        if (!res.ok || data.error) {
+          alert(data.error ?? tx.payError);
+          setLoading(false);
+          return;
+        }
+        setPayParams(data);
+        requestAnimationFrame(() => {
+          loadSdk(data.jsUrl, () => {
+            if (typeof window !== "undefined" && window.INIStdPay && formRef.current) {
+              window.INIStdPay.pay(formRef.current.id);
+            } else {
+              alert(tx.payError);
+              setLoading(false);
+            }
+          });
+        });
+        return;
+      }
+
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
       const payload = {
         productId: product.id,
         goodname: productName,
@@ -429,7 +472,8 @@ function CheckoutContent() {
   const unitPrice = product.price;
   const subtotal = unitPrice * quantity;
   const shippingFee = getBundledShippingFee(product) * quantity;
-  const total = subtotal + shippingFee;
+  const total = isRecurring ? subtotal : subtotal + shippingFee;
+  const isBillingForm = Boolean(payParams?.billtype);
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
@@ -442,7 +486,7 @@ function CheckoutContent() {
           style={{ display: "none" }}
         >
           <input type="hidden" name="version" value="1.0" />
-          <input type="hidden" name="gopaymethod" value="" />
+          <input type="hidden" name="gopaymethod" value={payParams.gopaymethod ?? ""} />
           <input type="hidden" name="mid" value={payParams.mid} />
           <input type="hidden" name="oid" value={payParams.oid} />
           <input type="hidden" name="price" value={payParams.price} />
@@ -459,8 +503,22 @@ function CheckoutContent() {
           <input type="hidden" name="returnUrl" value={payParams.returnUrl} />
           <input type="hidden" name="closeUrl" value={payParams.closeUrl} />
           <input type="hidden" name="payViewType" value="overlay" />
-          <input type="hidden" name="acceptmethod" value="centerCd(Y):HPP(2)" />
           <input type="hidden" name="charset" value="UTF-8" />
+          {isBillingForm ? (
+            <>
+              <input type="hidden" name="billtype" value={payParams.billtype ?? "1"} />
+              <input type="hidden" name="offerPeriod" value={payParams.offerPeriod ?? "M2"} />
+              <input
+                type="hidden"
+                name="acceptmethod"
+                value={payParams.acceptmethod ?? "centerCd(Y):BILLAUTH(Card)"}
+              />
+              <input type="hidden" name="custom_data" value={payParams.custom_data ?? ""} />
+              <input type="hidden" name="merchantData" value={payParams.merchantData ?? ""} />
+            </>
+          ) : (
+            <input type="hidden" name="acceptmethod" value="centerCd(Y):HPP(2)" />
+          )}
         </form>
       )}
 
@@ -475,18 +533,75 @@ function CheckoutContent() {
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <p className="text-xs font-bold text-gray-500 mb-3">{tx.orderProduct}</p>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-[#de2910]/10 rounded-xl flex items-center justify-center shrink-0">
-              <Package size={20} className="text-[#de2910]" />
+          <p className="text-xs font-bold text-gray-500 mb-3">
+            {lang === "ko" ? "주문정보" : tx.orderProduct}
+          </p>
+          {isRecurring ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 pb-3 border-b border-gray-100">
+                <div className="w-10 h-10 bg-[#de2910]/10 rounded-xl flex items-center justify-center shrink-0">
+                  <Package size={20} className="text-[#de2910]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-gray-400 mb-0.5">
+                    {lang === "ko" ? "상품정보" : "Product"}
+                  </p>
+                  <p className="text-sm font-bold text-gray-900">
+                    [구독상품] {productName}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">{formatKrw(unitPrice)}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <p className="text-[11px] text-gray-400 mb-2">
+                    {lang === "ko" ? "주문정보" : "Order details"}
+                  </p>
+                  <dl className="space-y-1.5 text-gray-800">
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-gray-500">구독주기</dt>
+                      <dd className="font-medium">1회</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-gray-500">정기결제일</dt>
+                      <dd className="font-medium">1일</dd>
+                    </div>
+                    <div className="flex justify-between gap-2">
+                      <dt className="text-gray-500">수량</dt>
+                      <dd className="font-medium">{quantity}개</dd>
+                    </div>
+                  </dl>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-400 mb-2">
+                    {lang === "ko" ? "결제금액" : "Amount"}
+                  </p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {formatKrw(unitPrice)}
+                    <span className="text-[11px] font-normal text-gray-500 ml-1">(1회차)</span>
+                  </p>
+                  <p className="mt-2 text-[11px] text-gray-500 leading-relaxed">
+                    다음 회차 정기 결제예정액 : {formatKrw(unitPrice)}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-gray-900">{productName}</p>
-              <p className="text-xs text-gray-400">
-                {lang === "ko" ? product.description : product.descriptionEn}
-              </p>
+          ) : (
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-[#de2910]/10 rounded-xl flex items-center justify-center shrink-0">
+                <Package size={20} className="text-[#de2910]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-gray-900">{productName}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {lang === "ko" ? product.description : product.descriptionEn}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm font-bold text-gray-900">{formatKrw(unitPrice)}</p>
+              </div>
             </div>
-          </div>
+          )}
         </section>
 
         {(product.category === "intl" || product.intlTrackingNote) && (
@@ -500,60 +615,118 @@ function CheckoutContent() {
         )}
 
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <p className="text-xs font-bold text-gray-500 mb-4">{tx.senderSection}</p>
-          <AddressFields
-            values={sender}
-            onChange={handleSender}
-            onAddressSelect={handleSenderAddressSelect}
-            tx={tx}
-          />
-          <div className="mt-3 pt-3 border-t border-gray-50">
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              {tx.labelEmail} <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder={tx.placeholderEmail}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-            />
-          </div>
+          <p className="text-xs font-bold text-gray-500 mb-4">
+            {isRecurring
+              ? lang === "ko"
+                ? "주문자 정보"
+                : "Buyer info"
+              : tx.senderSection}
+          </p>
+          {isRecurring ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {tx.labelName} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={sender.name}
+                    onChange={(e) => handleSender("name", e.target.value)}
+                    placeholder={tx.placeholderName}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    {tx.labelPhone} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={sender.phone}
+                    onChange={(e) => handleSender("phone", e.target.value.replace(/[^0-9\-]/g, ""))}
+                    placeholder={tx.placeholderPhone}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {tx.labelEmail} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={tx.placeholderEmail}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
+                />
+              </div>
+            </div>
+          ) : (
+            <>
+              <AddressFields
+                values={sender}
+                onChange={handleSender}
+                onAddressSelect={handleSenderAddressSelect}
+                tx={tx}
+              />
+              <div className="mt-3 pt-3 border-t border-gray-50">
+                <label className="block text-xs font-medium text-gray-600 mb-1">
+                  {tx.labelEmail} <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={tx.placeholderEmail}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
+                />
+              </div>
+            </>
+          )}
         </section>
 
-        <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-xs font-bold text-gray-500">{tx.recipientSection}</p>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <div
-                onClick={() => toggleSameAsSender(!sameAsSender)}
-                className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                  sameAsSender ? "bg-[#de2910] border-[#de2910]" : "border-gray-300"
-                }`}
-              >
-                {sameAsSender && <Check size={11} className="text-white" strokeWidth={3} />}
-              </div>
-              <span className="text-xs text-gray-600">{tx.sameAsSender}</span>
-            </label>
-          </div>
-          <AddressFields
-            values={sameAsSender ? sender : recipient}
-            onChange={handleRecipient}
-            onAddressSelect={handleRecipientAddressSelect}
-            disabled={sameAsSender}
-            tx={tx}
-          />
-        </section>
+        {!isRecurring && (
+          <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-bold text-gray-500">{tx.recipientSection}</p>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <div
+                  onClick={() => toggleSameAsSender(!sameAsSender)}
+                  className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                    sameAsSender ? "bg-[#de2910] border-[#de2910]" : "border-gray-300"
+                  }`}
+                >
+                  {sameAsSender && <Check size={11} className="text-white" strokeWidth={3} />}
+                </div>
+                <span className="text-xs text-gray-600">{tx.sameAsSender}</span>
+              </label>
+            </div>
+            <AddressFields
+              values={sameAsSender ? sender : recipient}
+              onChange={handleRecipient}
+              onAddressSelect={handleRecipientAddressSelect}
+              disabled={sameAsSender}
+              tx={tx}
+            />
+          </section>
+        )}
 
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <p className="text-xs font-bold text-gray-500 mb-3">{tx.paymentSummary}</p>
           <div className="flex justify-between items-center py-2 border-b border-gray-100">
             <span className="text-sm text-gray-600">
               {productName} × {quantity}
+              {isRecurring && (
+                <span className="text-gray-400 ml-1">
+                  {lang === "ko" ? "(1회차)" : "(1st cycle)"}
+                </span>
+              )}
             </span>
             <span className="text-sm text-gray-900">{formatKrw(subtotal)}</span>
           </div>
-          {shippingFee > 0 && (
+          {!isRecurring && shippingFee > 0 && (
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-sm text-gray-600">
                 {lang === "ko" ? "왕복배송비" : "Round-trip shipping fee"}
@@ -566,19 +739,70 @@ function CheckoutContent() {
             <span className="text-lg font-bold text-[#de2910]">{formatKrw(total)}</span>
           </div>
           <p className="mt-2 text-[10px] text-gray-500 leading-relaxed">
-            {lang === "ko"
-              ? `결제 통화: 원화(KRW) · KG이니시스 결제창에 ${total.toLocaleString("ko-KR")}원으로 동일 표시됩니다.`
-              : `Currency: KRW · The same amount (${total.toLocaleString("ko-KR")} KRW) will appear in the KG Inicis payment window.`}
+            {isRecurring
+              ? lang === "ko"
+                ? `결제 통화: 원화(KRW) · 매월 1일 ${formatKrw(unitPrice)} 자동 청구`
+                : `Currency: KRW · Auto-billed ${formatKrw(unitPrice)} on the 1st each month`
+              : lang === "ko"
+                ? `결제 통화: 원화(KRW) · KG이니시스 결제창에 ${total.toLocaleString("ko-KR")}원으로 동일 표시됩니다.`
+                : `Currency: KRW · The same amount (${total.toLocaleString("ko-KR")} KRW) will appear in the KG Inicis payment window.`}
           </p>
         </section>
 
         <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <PaymentMethodSelector
-            lang={lang}
-            value={paymentMethod}
-            onChange={setPaymentMethod}
-          />
+          {isRecurring ? (
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-gray-500">
+                {lang === "ko" ? "결제수단" : "Payment method"}
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={total.toLocaleString("ko-KR")}
+                  className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 text-gray-900 font-semibold"
+                />
+                <span className="text-xs text-gray-500 shrink-0">원</span>
+              </div>
+              <select
+                disabled
+                className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white text-gray-900"
+                value="card"
+              >
+                <option value="card">
+                  {lang === "ko" ? "신용카드" : "Credit Card"}
+                </option>
+              </select>
+              <p className="text-[10px] text-gray-400 leading-relaxed">
+                {lang === "ko"
+                  ? "주문하기를 누르면 KG이니시스 결제창에서 카드를 등록합니다. (월 자동결제)"
+                  : "Card registration opens in the KG Inicis window (monthly auto-billing)."}
+              </p>
+            </div>
+          ) : (
+            <PaymentMethodSelector
+              lang={lang}
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+            />
+          )}
         </section>
+
+        {isRecurring && (
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={billingAgreed}
+              onChange={(e) => setBillingAgreed(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-[#de2910] shrink-0"
+            />
+            <span className="text-xs text-gray-600 leading-relaxed">
+              {lang === "ko"
+                ? "매월 1일 자동결제(정기결제)에 동의하며, 해지 전까지 동일 금액이 청구됨을 확인합니다. (필수)"
+                : "I agree to monthly auto-billing on the 1st until cancellation. (Required)"}
+            </span>
+          </label>
+        )}
 
         <label className="flex items-start gap-2.5 cursor-pointer">
           <input
@@ -609,7 +833,7 @@ function CheckoutContent() {
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 disabled:opacity-40 active:opacity-80 transition-opacity"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
-          {formatKrw(total)} {lang === "ko" ? "결제하기" : "Pay"}
+          {formatKrw(total)} {lang === "ko" ? "주문하기" : "Place order"}
         </button>
 
         <p className="text-center text-[10px] text-gray-400">{tx.paymentNotice}</p>

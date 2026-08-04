@@ -108,6 +108,8 @@ export async function POST(request: NextRequest) {
 
   const subId = sub?.id ?? "";
 
+  const merchantData = JSON.stringify({ sub_id: subId, user_id: user.id });
+
   return NextResponse.json({
     mid: creds.mid,
     oid,
@@ -116,15 +118,19 @@ export async function POST(request: NextRequest) {
     signature,
     verification,
     mKey,
-    goodname:    plan.name,
+    goodname: plan.name,
     buyername,
-    buyertel:   cleanTel,
+    buyertel: cleanTel,
     buyeremail,
-    billtype:   "1",
-    gopaymethod: "Card",
-    returnUrl:  `${appUrl}/api/shop/billing/callback`,
-    closeUrl:   `${appUrl}/shop/billing/fail?reason=close`,
-    custom_data: JSON.stringify({ sub_id: subId, user_id: user.id }),
+    /** 이니시스 PC 빌링키발급: gopaymethod는 빈값, BILLAUTH(Card)로 카드 등록창 호출 */
+    gopaymethod: "",
+    billtype: "1",
+    offerPeriod: "M2",
+    acceptmethod: "centerCd(Y):BILLAUTH(Card)",
+    returnUrl: `${appUrl}/api/shop/billing/callback`,
+    closeUrl: `${appUrl}/shop/billing/fail?reason=close`,
+    custom_data: merchantData,
+    merchantData,
     jsUrl: creds.jsUrl,
   });
 }

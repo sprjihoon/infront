@@ -51,20 +51,26 @@ export async function POST(request: NextRequest) {
     return redirectHtml("/shop/billing/fail?reason=parse_error");
   }
 
-  const { resultCode, resultMsg, BILL_KEY, custom_data } = fields;
+  const { resultCode, resultMsg } = fields;
+  const billKey =
+    fields.BILL_KEY ??
+    fields.CARD_BillKey ??
+    fields.CARD_Billkey ??
+    "";
 
   if (resultCode !== "0000") {
     console.error("[shop/billing/callback] failed:", resultCode, resultMsg);
     return redirectHtml(`/shop/billing/fail?reason=${encodeURIComponent(resultMsg ?? "발급 실패")}`);
   }
 
-  if (!BILL_KEY) {
+  if (!billKey) {
     return redirectHtml("/shop/billing/fail?reason=no_bill_key");
   }
 
   let subId = "";
   try {
-    const parsed = JSON.parse(custom_data ?? "{}");
+    const raw = fields.custom_data || fields.merchantData || "{}";
+    const parsed = JSON.parse(raw);
     subId = parsed.sub_id ?? "";
   } catch { /* ignore */ }
 
@@ -77,7 +83,7 @@ export async function POST(request: NextRequest) {
   const { error: updErr } = await db
     .from("shop_subscriptions")
     .update({
-      pg_bill_key:       BILL_KEY,
+      pg_bill_key:       billKey,
       status:            "ACTIVE",
       next_billing_date: nextBillingDateFirstOfMonth(),
       updated_at:        new Date().toISOString(),

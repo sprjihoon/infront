@@ -155,10 +155,8 @@ export default function ShopPage() {
                   key={product.id}
                   product={product}
                   lang={lang}
-                  actionLabel={lang === "ko" ? "구독 신청" : "Subscribe"}
-                  onAction={() =>
-                    router.push(`/shop/billing/register?plan=${product.id}`)
-                  }
+                  actionLabel={lang === "ko" ? "상세보기" : "Details"}
+                  onAction={() => router.push(`/shop/products/${product.id}`)}
                 />
               ))}
             </div>

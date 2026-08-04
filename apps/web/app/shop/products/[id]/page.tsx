@@ -61,10 +61,6 @@ export default function ShopProductDetailPage() {
 
   function handleOrder() {
     if (!product) return;
-    if (product.billingType === "recurring") {
-      router.push(`/shop/billing/register?plan=${product.id}`);
-      return;
-    }
     sessionStorage.setItem("shop_product_id", product.id);
     router.push(`/shop/checkout?product=${product.id}`);
   }
@@ -141,13 +137,7 @@ export default function ShopProductDetailPage() {
           onClick={handleOrder}
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm active:opacity-80 transition-opacity"
         >
-          {isRecurring
-            ? lang === "ko"
-              ? "구독 신청하기"
-              : "Subscribe"
-            : lang === "ko"
-              ? "주문하기"
-              : "Order"}
+          {lang === "ko" ? "주문하기" : "Order"}
         </button>
       </div>
     </div>

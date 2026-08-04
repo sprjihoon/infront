@@ -32,12 +32,12 @@ TEST_ACCOUNT = {
 }
 
 PATHS = [
-    ("1. 샵 메인 (멤버십 노출)", "https://infront.kr/shop?audit=1"),
-    ("2. 멤버십 상품 상세", "https://infront.kr/shop/products/MEMBERSHIP_BASIC?audit=1"),
-    ("3. 구독 카드 등록 (정기결제)", "https://infront.kr/shop/billing/register?plan=MEMBERSHIP_BASIC&audit=1"),
-    ("4. 구독 완료 / 첫 달 결제", "https://infront.kr/shop/billing/complete?id={subscription_id}&audit=1"),
-    ("5. 취소·환불 정책", "https://infront.kr/shop/refund-policy?audit=1"),
-    ("6. 이용약관", "https://infront.kr/shop/terms?audit=1"),
+    ("1. 샵 메인 (멤버십 노출)", "https://infront.kr/shop"),
+    ("2. 멤버십 상품 상세", "https://infront.kr/shop/products/MEMBERSHIP_BASIC"),
+    ("3. 주문/결제 (구독주기·정기결제일)", "https://infront.kr/shop/checkout?product=MEMBERSHIP_BASIC"),
+    ("4. 주문 완료 / 1회차 결제", "https://infront.kr/shop/billing/complete?id={subscription_id}"),
+    ("5. 취소·환불 정책", "https://infront.kr/shop/refund-policy"),
+    ("6. 이용약관", "https://infront.kr/shop/terms"),
 ]
 
 
@@ -126,18 +126,17 @@ def main():
     add_body(
         s,
         [
-            "1. 사이트 상단에 URL 주소 보이게 화면 캡처",
-            "   - 모든 경로 페이지에 ?audit=1 (또는 &audit=1) 붙여 URL 바 표시",
+            "1. 브라우저 주소창이 보이게 전체 창 캡처",
             "",
             "2. 사이트 하단정보",
             "   - 사업자정보 5가지 + 통신판매신고번호 보이게 스크롤 후 캡처",
             "",
             "3. 최종 결제 금액 = 결제창 금액 동일 (원화 O / 달러 X)",
-            "   - 등록·청구 금액: 9,900원 (KRW)",
+            "   - 주문·청구 금액: 9,900원 (KRW)",
             "",
-            "4. 결제창 캡처",
-            "   - 정기결제(빌링키 발급) 결제창",
-            "   - 카드번호 / 유효기간 / 주민번호(또는 생년월일) 입력창",
+            "4. 결제창 캡처 (카드 등록은 KG이니시스 창에서)",
+            "   - 주문하기 → 이니시스 빌링 결제창",
+            "   - 제공기간: 월 자동결제 / 카드번호·유효기간·주민번호(생년월일)",
             "",
             f"■ 심사용 계정: {TEST_ACCOUNT['이메일']} / {TEST_ACCOUNT['비밀번호']}",
             f"■ 서비스 URL: {BIZ['사이트']}",
@@ -163,7 +162,7 @@ def main():
             "  - 상품명: 베이직 멤버십 (MEMBERSHIP_BASIC)",
             "  - 가격: 9,900원 / 월",
             "  - 결제주기: 매월 1일 자동청구",
-            "  - 최초결제: 카드 등록 후 첫 달 즉시 청구 가능",
+            "  - 최초결제: 주문 완료 후 1회차 즉시 청구",
             "  - 제공내용: 월 5건 검품·포장 무료 + 무료 방문 픽업 1회",
             "  - 이용기간: 월 단위 (해지 시 익월부터 청구 중단)",
             "  - 해지: 서비스 내 해지 또는 고객센터 010-2723-9490",
@@ -184,14 +183,14 @@ def main():
             "캡처: 비실물 서비스 설명·월 이용기간·환불/해지 안내 포함",
         ),
         (
-            "결제경로 ③ — 구독 신청 · 자동결제 고지 · 동의",
+            "결제경로 ③ — 주문정보 (구독주기·정기결제일·1회차 금액)",
             PATHS[2][1],
-            "캡처: 금액 9,900원·매월 1일·해지방법·필수 동의 체크",
+            "캡처: [구독상품] · 구독주기 1회 · 정기결제일 1일 · 9,900원(1회차) · 주문하기",
         ),
         (
-            "결제경로 ④ — 금액 일치 + KG 빌링 결제창",
-            PATHS[2][1] + " → 카드 등록하기",
-            "캡처: 화면 금액 9,900원 = 결제창 9,900원 (KRW)\n결제창: 카드번호/유효기간/주민번호(생년월일) 입력창",
+            "결제경로 ④ — 금액 일치 + KG이니시스 빌링 결제창",
+            PATHS[2][1] + " → 주문하기",
+            "캡처: 화면 금액 9,900원 = 결제창 9,900원 (KRW)\n결제창: 제공기간 월 자동결제 / 카드번호·유효기간·주민번호 입력",
         ),
     ]
     for title, url, note in capture_slides:
@@ -202,16 +201,16 @@ def main():
 
     # --- Slide: 완료/해지 ---
     s = prs.slides.add_slide(blank)
-    add_title(s, "결제경로 ⑤ — 등록 완료 · 첫 달 결제 · 해지 안내")
+    add_title(s, "결제경로 ⑤ — 주문 완료 · 1회차 결제 · 해지 안내")
     add_body(
         s,
         [
             f"URL: {PATHS[3][1]}",
             "",
             "캡처 포인트",
-            "  - 카드 등록 완료 안내",
+            "  - 주문 완료 안내",
             "  - 매월 1일 자동청구 안내",
-            "  - 첫 달 즉시 결제 버튼 (9,900원)",
+            "  - 1회차 결제 완료 (9,900원)",
             "  - 해지 방법 안내",
             "",
             "(아래에 실제 화면 캡처를 붙여 넣어 주세요)",

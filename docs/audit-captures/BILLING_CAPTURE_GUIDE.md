@@ -26,12 +26,12 @@
 
 | # | 화면 | URL |
 |---|------|-----|
-| 1 | 샵 메인 · 멤버십 섹션 | https://infront.kr/shop?audit=1 |
-| 2 | 상품 상세 (이용기간·환불) | https://infront.kr/shop/products/MEMBERSHIP_BASIC?audit=1 |
-| 3 | 구독 카드 등록 · 자동결제 고지 | https://infront.kr/shop/billing/register?plan=MEMBERSHIP_BASIC&audit=1 |
-| 4 | KG 빌링 결제창 | 3번에서「카드 등록하기」 |
-| 5 | 등록 완료 · 첫 달 결제 | `/shop/billing/complete?id=...&audit=1` |
-| 6 | 취소/환불 정책 | https://infront.kr/shop/refund-policy?audit=1 |
+| 1 | 샵 메인 · 멤버십 섹션 | https://infront.kr/shop |
+| 2 | 상품 상세 (이용기간·환불) | https://infront.kr/shop/products/MEMBERSHIP_BASIC |
+| 3 | 주문/결제 (구독주기·정기결제일 표시) | https://infront.kr/shop/checkout?product=MEMBERSHIP_BASIC |
+| 4 | KG 빌링 결제창 | 3번에서「주문하기」 |
+| 5 | 주문 완료 · 1회차 결제 | `/shop/billing/complete?id=...` |
+| 6 | 취소/환불 정책 | https://infront.kr/shop/refund-policy |
 
 ## PPT에 붙이는 방법
 
@@ -56,4 +56,4 @@
 정기결제 UI가 production에 있어야 심사가 가능합니다.
 
 - `/shop` → **멤버십 구독 (월 정기결제)** 섹션 보임
-- `/shop/billing/register?plan=MEMBERSHIP_BASIC` → 리다이렉트 없이 등록 화면
+- `/shop/checkout?product=MEMBERSHIP_BASIC` → 주문정보에 구독주기·정기결제일 표시 후「주문하기」
