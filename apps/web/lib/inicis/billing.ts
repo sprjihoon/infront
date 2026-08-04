@@ -22,29 +22,47 @@ export function sha256hex(str: string): string {
   return crypto.createHash("sha256").update(str, "utf8").digest("hex");
 }
 
+/** Vercel/PowerShell 주입 시 붙는 `\r\n` 리터럴·개행 제거 */
+export function cleanEnv(value: string | undefined | null): string {
+  return (value ?? "")
+    .replace(/\\r\\n/g, "")
+    .replace(/\\n/g, "")
+    .replace(/\\r/g, "")
+    .replace(/[\r\n]/g, "")
+    .trim();
+}
+
 /**
  * 빌링 전용 자격증명.
  * - INICIS_TEST_MODE=true → INIpayTest 스테이징
  * - 그 외 → INICIS_BILLING_* 필수 (미설정 시 null)
  */
 export function getBillingCredentials(): BillingCredentials | null {
-  const forceTest = process.env.INICIS_TEST_MODE?.trim() === "true";
+  const forceTest = cleanEnv(process.env.INICIS_TEST_MODE) === "true";
 
   if (forceTest) {
     return {
       mid: TEST_MID,
       signKey: TEST_SIGN_KEY,
-      iniapiKey: (process.env.INICIS_BILLING_INIAPI_KEY ?? process.env.INICIS_INIAPI_KEY ?? "").trim(),
-      iniapiIv: (process.env.INICIS_BILLING_INIAPI_IV ?? process.env.INICIS_INIAPI_IV ?? "").trim(),
+      iniapiKey: cleanEnv(
+        process.env.INICIS_BILLING_INIAPI_KEY ?? process.env.INICIS_INIAPI_KEY,
+      ),
+      iniapiIv: cleanEnv(
+        process.env.INICIS_BILLING_INIAPI_IV ?? process.env.INICIS_INIAPI_IV,
+      ),
       isTest: true,
       jsUrl: "https://stgstdpay.inicis.com/stdjs/INIStdPay.js",
     };
   }
 
-  const mid = (process.env.INICIS_BILLING_MID ?? "").trim();
-  const signKey = (process.env.INICIS_BILLING_SIGN_KEY ?? "").trim();
-  const iniapiKey = (process.env.INICIS_BILLING_INIAPI_KEY ?? process.env.INICIS_INIAPI_KEY ?? "").trim();
-  const iniapiIv = (process.env.INICIS_BILLING_INIAPI_IV ?? process.env.INICIS_INIAPI_IV ?? "").trim();
+  const mid = cleanEnv(process.env.INICIS_BILLING_MID);
+  const signKey = cleanEnv(process.env.INICIS_BILLING_SIGN_KEY);
+  const iniapiKey = cleanEnv(
+    process.env.INICIS_BILLING_INIAPI_KEY ?? process.env.INICIS_INIAPI_KEY,
+  );
+  const iniapiIv = cleanEnv(
+    process.env.INICIS_BILLING_INIAPI_IV ?? process.env.INICIS_INIAPI_IV,
+  );
 
   if (!mid || !signKey) return null;
 

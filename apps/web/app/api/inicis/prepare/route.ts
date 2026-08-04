@@ -65,9 +65,16 @@ export async function POST(request: NextRequest) {
       trackingAvailable,
     } = validated.data;
 
-    const useStaging = process.env.INICIS_TEST_MODE?.trim() === "true";
-    const mid = (process.env.INICIS_MID ?? "").trim();
-    const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
+    const cleanEnv = (v?: string) =>
+      (v ?? "")
+        .replace(/\\r\\n/g, "")
+        .replace(/\\n/g, "")
+        .replace(/\\r/g, "")
+        .replace(/[\r\n]/g, "")
+        .trim();
+    const useStaging = cleanEnv(process.env.INICIS_TEST_MODE) === "true";
+    const mid = cleanEnv(process.env.INICIS_MID);
+    const signKey = cleanEnv(process.env.INICIS_SIGN_KEY);
 
     if (!mid || !signKey) {
       console.error("[inicis/prepare] INICIS_MID 또는 INICIS_SIGN_KEY 환경 변수가 설정되지 않았습니다.");
