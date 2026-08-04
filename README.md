@@ -244,12 +244,15 @@ infront/
 
 | ��� | ������ | ���� |
 |------|--------|------|
-| `/shop` | 서비스 카탈로그 | 단건 서비스·해외카드 결제 심사 중심, KO/EN, 로그인 |
+| `/shop` | 서비스 카탈로그 | 단건 서비스 + 멤버십(월 정기결제), KO/EN, 로그인 |
 | `/shop/checkout` | ���� �� | �ֹ����� �Է�, ���� �����ȣ �ּ� �˻�, �̿��� ���� |
 | `/shop/payment/success` | ���� ���� | KG Inicis ���� �Ϸ� ó�� |
 | `/shop/payment/fail` | ���� ���� | ���� ���С���� ó�� |
 | `/shop/payment/close` | ���� â �ݱ� | INIpay �˾� ���� ó�� |
-| `/shop/billing/*` | (비노출) | 빌링 심사용 UI — `/shop` 리다이렉트 (API·cron 유지) |
+| `/shop/products/[id]` | 상품 상세 | 이용기간·환불. 멤버십은 해지·환불 규정 + 주문하기 |
+| `/shop/billing/register` | (리다이렉트) | → `/shop/checkout?product=MEMBERSHIP_BASIC` |
+| `/shop/billing/complete` | 멤버십 주문 완료 | 빌링키 발급 후 1회차 Rebill |
+| `/shop/billing/fail` | 멤버십 결제 실패 | 다시 주문하기 → checkout |
 | `/shop/terms` | �̿��� | ������� ���� �̿��� (���� ������) |
 | `/shop/privacy` | ��������ó����ħ | ������� ���� ��������ó����ħ (���� ������) |
 
@@ -304,7 +307,7 @@ infront/
 | ��������Ʈ | �޼��� | ���� |
 |-----------|--------|------|
 | `/api/shop/confirm` | POST | KG Inicis ������� ���� ���� ó�� |
-| `/api/shop/billing/prepare` | POST | KG Inicis 빌링키 발급 준비 (MID `infrontbil`, TEST_MODE 시에만 스테이징) |
+| `/api/shop/billing/prepare` | POST | 멤버십 빌링키 발급 준비 (`infrontbil`, `BILLAUTH(Card)`, 회원 프로필로 결제자 세팅) |
 | `/api/shop/billing/callback` | POST | KG Inicis 빌링키 발급 콜백 처리 → shop_subscriptions 업데이트 |
 | `/api/shop/billing/charge` | POST | 빌링키 Rebill 청구 (INICIS_BILLING_* 필요) |
 | `/api/shop/billing/cancel` | POST | 샵 구독 빌링키 해지 |
@@ -672,16 +675,16 @@ Next.js ����
 - [x] ��ޱ�����ǰ��ȯ����å���̿����� �ȳ�
 - [x] API ���� ��� + rate limiting
 - [x] /shop 헤더 로그인/내 서비스 버튼 (심사관 로그인 진입점)
-- [x] 샵 UI는 단건·해외카드 심사 중심으로 정리 (멤버십/정기결제 섹션 비노출)
-- [x] `/shop/billing/*` — `/shop` 리다이렉트 (빌링 API·cron·env는 유지)
-- [x] `/api/shop/billing/prepare` — 빌링키 발급 준비 (`infrontbil`, TEST_MODE만 스테이징)
-- [x] `/api/shop/billing/callback` — 빌링키 콜백 처리 + shop_subscriptions 갱신
-- [x] `/api/shop/billing/charge` — Rebill 청구 API
-- [x] `/api/shop/billing/cancel` — 구독 해지
-- [x] `/api/cron/shop-billing` · `/api/cron/storage-billing` — 월정액 자동청구
-- [x] `068_shop_subscriptions.sql` — 구독 테이블 + RLS
-- [x] `071_shop_subscriptions_billing.sql` — next_billing_date / fail 추적
-- [x] `proxy.ts` `/api/shop`·`/api/cron` 공개 경로, `next.config.ts` iframe 헤더 수정
+- [x] 멤버십을 일반 checkout 주문 UX로 통합 (별도「카드 등록」페이지 없음)
+- [x] 단건 → `/api/inicis/prepare` (MID `infront227`, 일반 결제창)
+- [x] 멤버십 → `/api/shop/billing/prepare` (MID `infrontbil`, `BILLAUTH(Card)`·`offerPeriod=M2` 비인증 빌링창)
+- [x] 로그인 회원 결제자 정보는 프로필/계정에서 자동 세팅 (멤버십 checkout 입력란 없음)
+- [x] 주문하기 하단·상품상세에 멤버십 해지·환불 규정 표시
+- [x] `/shop/billing/register` → checkout 리다이렉트 (구 링크 호환)
+- [x] `/api/shop/billing/callback` · `charge` · `cancel` + cron 월정액 자동청구
+- [x] `068`/`071` shop_subscriptions SQL, `lib/inicis/billing.ts` (`cleanEnv`로 env `\r\n` 오염 방지)
+- [x] 해외카드·Alipay·WeChat Pay UI 미노출 (개인사업자/비실물 RISK)
+- [x] 카드사 심사용 PPT·가이드: `docs/audit-captures/card-billing-audit-infrontbil.pptx`
 
 ### Phase 3 ? ��� ���� ���� ?? ���� ��
 
@@ -819,10 +822,10 @@ Next.js ����
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare ���� ID |
 | `CLOUDFLARE_STREAM_API_TOKEN` | Cloudflare Stream API ��ū |
 | `ADMIN_EMAILS` | ������ �̸��� ��� (�޸� ����) |
-| `INICIS_BILLING_MID` | KG Inicis 구독(빌링) 전용 MID — 승인값 `infrontbil` (미설정 시 500, `INICIS_TEST_MODE=true`만 스테이징) |
-| `INICIS_BILLING_SIGN_KEY` | 빌링 MID Sign Key (iniweb `infrontbil`에서 조회) |
-| `INICIS_BILLING_INIAPI_KEY` | 빌링 MID INIAPI Key (Rebill 서명 암호화) |
-| `INICIS_BILLING_INIAPI_IV` | 빌링 MID INIAPI IV |
+| `INICIS_BILLING_MID` | 빌링 전용 MID `infrontbil` (**일반 `INICIS_MID`/`infront227`과 분리**, 미설정 시 500) |
+| `INICIS_BILLING_SIGN_KEY` | **infrontbil 전용** 웹결제 Sign Key (iniweb KEY 정보 → 웹결제 Sign Key). `infront227` 키와 혼용 금지 |
+| `INICIS_BILLING_INIAPI_KEY` | infrontbil INIAPI Key (Rebill) |
+| `INICIS_BILLING_INIAPI_IV` | infrontbil INIAPI IV |
 
 ---
 
@@ -1369,17 +1372,29 @@ NAVER_CLIENT_ID=...
 NAVER_CLIENT_SECRET=...
 ```
 
-### 2026-08-04 정기결제 카드사 심사용 자료·결제경로 복구 (MID `infrontbil`)
+### 2026-08-04 멤버십 정기결제 — checkout 통합 + 카드사 심사 경로 (MID `infrontbil`)
 
-- 샘플 PPT 형식의 제출용 자료: `docs/audit-captures/card-billing-audit-infrontbil.pptx`
+**결제 UX (이니시스 샘플과 동일)**
+- 단건: checkout → 일반 카드 결제창 (`infront227`)
+- 멤버십: checkout 주문정보(구독주기·정기결제일·1회차 금액) → 「주문하기」 → 이니시스 **비인증 빌링창** (카드번호/유효기간/주민번호, `BILLAUTH(Card)` + `offerPeriod=M2`)
+- 별도 가맹점「카드 등록」페이지 없음. `/shop/billing/register`는 checkout으로 리다이렉트
+- 로그인 회원: 결제자 정보는 DB/계정에서 서버 세팅. 비회원은 로그인 후 구매
+
+**심사·운영**
+- 제출용 PPT: `docs/audit-captures/card-billing-audit-infrontbil.pptx`
 - 캡처 가이드: `docs/audit-captures/BILLING_CAPTURE_GUIDE.md`
-- `/shop` 멤버십 구독·`/shop/billing/*` 등록 경로 재노출 (카드사 심사 결제경로)
-- 환불정책 제3조에 멤버십 정기결제 해지·환불 조항 복구
+- 환불정책 제3조·주문하기 하단에 멤버십 해지·환불 규정 표시
+- 해외카드·Alipay·WeChat Pay는 계속 미노출 (개인사업자/비실물 RISK)
 
-### 2026-08-03 해외카드 오픈 불가 — 국내 단건 결제만 유지
+**키·장애 대응**
+- `INICIS_BILLING_SIGN_KEY`는 **iniweb `infrontbil` → KEY 정보 → 웹결제 Sign Key** (일반 MID 키와 다름)
+- env에 `\r\n` 리터럴이 붙으면 `signkey가 존재하지 않습니다` 발생 → `cleanEnv()`로 제거
+- PEM(`mcert.pem` 등)은 INIStdPay/INIAPI 경로에서 미사용
+
+### 2026-08-03 해외카드 오픈 불가 — 국내 결제만 유지
 
 - KG이니시스 RISK: 개인과세사업자·비실물 → 해외카드 최종 오픈 불가
-- 단건 checkout에서 해외카드·Alipay·WeChat Pay 미노출 (정기결제 빌링과 별개)
+- 단건 checkout에서 해외카드·Alipay·WeChat Pay 미노출
 
 ---
 
@@ -1391,18 +1406,13 @@ NAVER_CLIENT_SECRET=...
 
 **구현**
 - `apps/web/lib/inicis/billing.ts` — 빌링 자격증명·INIStdPay 서명·INIAPI Rebill 공용 헬퍼
-- 샵/보관 빌링 API 전부 `INICIS_BILLING_*` 사용 (일반 `INICIS_MID` 혼용 제거)
-- `INICIS_TEST_MODE=true` 시에만 INIpayTest 스테이징, 그 외 MID/SignKey 미설정 시 500
-- `/api/shop/billing/cancel` — 샵 구독 해지
-- `/api/cron/shop-billing`, `/api/cron/storage-billing` — 매일 자동청구 (`vercel.json`)
-- `071_shop_subscriptions_billing.sql` — `next_billing_date`, fail 추적 컬럼
-- `proxy.ts` — `/api/cron` 공개(라우트 내부 CRON_SECRET 인증)
+- 샵/보관 빌링 API 전부 `INICIS_BILLING_*` 사용
+- `/api/shop/billing/{prepare,callback,charge,cancel}` + cron 월정액 자동청구
+- `071_shop_subscriptions_billing.sql` — `next_billing_date`, fail 추적
 
-**운영 반영 상태 (2026-08-03)**
-- DB `071_shop_subscriptions_billing.sql` 적용 완료
-- Vercel `INICIS_BILLING_*` (MID `infrontbil`) Production/Preview/Development 설정 완료
-- 프로덕션 배포 완료 — 샵 UI는 단건·해외카드 심사 중심
-- PEM 키파일(`mcert.pem` 등)은 INIStdPay/INIAPI 연동에 사용하지 않음 — 보관만
+**운영**
+- Vercel `INICIS_BILLING_*` Production/Preview/Development 설정
+- DB `068`/`071` 적용 완료
 
 ---
 
@@ -1410,15 +1420,11 @@ NAVER_CLIENT_SECRET=...
 
 **배경**
 - KG Inicis 빌링 결제창 연동을 위한 별도 빌링 MID 신청 완료
-- 샘플 사이트(`/shop`) 기준으로 심사관이 빌링 플로우를 확인할 수 있도록 구현
 
 **당시 구현 (요약)**
 - `068_shop_subscriptions.sql`, `/api/shop/billing/{prepare,callback,charge}`
-- 샵 구독 UI·월정액 섹션 (심사용)
 
-> **현황 (2026-08-03):** 빌링 MID `infrontbil` 승인·실연동 완료.  
-> 해외카드 심사 집중을 위해 **샵 멤버십/정기결제 UI는 비노출** (`/shop/billing/*` → `/shop`).  
-> API·cron·`INICIS_BILLING_*`는 유지.
+> **현황 (2026-08-04):** 멤버십 UI 복구·checkout 통합 완료. 카드사 정기결제 심사 경로 운영 중.
 
 ---
 
