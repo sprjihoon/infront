@@ -56,16 +56,13 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json() as {
-    buyername: string;
-    buyertel: string;
-    buyeremail: string;
+    buyername?: string;
+    buyertel?: string;
+    buyeremail?: string;
     planId?: string;
   };
 
-  const { buyername, buyertel, buyeremail, planId = "MEMBERSHIP_BASIC" } = body;
-  if (!buyername || !buyertel || !buyeremail) {
-    return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
-  }
+  const { planId = "MEMBERSHIP_BASIC" } = body;
 
   const plan = PLANS[planId];
   if (!plan) {
@@ -81,7 +78,26 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const cleanTel  = buyertel.replace(/[^0-9\-]/g, "");
+  /* 로그인 회원 프로필로 결제자 채움 — 프론트 결제자 입력란 없음 */
+  const meta = user.user_metadata as { name?: string; phone?: string };
+  const { data: customer } = await supabase
+    .from("customers")
+    .select("name, phone, email")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const buyeremail =
+    (body.buyeremail ?? customer?.email ?? user.email ?? "").trim();
+  const buyername =
+    (body.buyername ?? customer?.name ?? meta.name ?? buyeremail.split("@")[0] ?? "회원").trim();
+  const buyertel =
+    (body.buyertel ?? customer?.phone ?? meta.phone ?? "01000000000").trim();
+
+  if (!buyeremail) {
+    return NextResponse.json({ error: "계정 이메일이 필요합니다." }, { status: 400 });
+  }
+
+  const cleanTel = buyertel.replace(/[^0-9\-]/g, "") || "01000000000";
   const timestamp = Date.now().toString();
   const oid       = `SBBILL-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
   // INIStdPay JS는 price=0을 거부하므로 실제 구독 금액으로 설정

@@ -228,20 +228,23 @@ function CheckoutContent() {
         .eq("id", user.id)
         .maybeSingle();
 
-      const filledName = (customer?.name ?? meta.name ?? "").trim();
-      const filledPhone = (customer?.phone ?? meta.phone ?? "").replace(/[^0-9\-]/g, "");
       const filledEmail = (customer?.email ?? user.email ?? "").trim();
+      const filledName = (
+        customer?.name ??
+        meta.name ??
+        filledEmail.split("@")[0] ??
+        "회원"
+      ).trim();
+      const filledPhone = (customer?.phone ?? meta.phone ?? "").replace(/[^0-9\-]/g, "");
 
-      if (filledEmail) setEmail(filledEmail);
-      if (filledName || filledPhone) {
-        setSender((prev) => ({
-          ...prev,
-          name: filledName || prev.name,
-          phone: filledPhone || prev.phone,
-        }));
-      }
-      // 이름·전화·이메일이 모두 있으면 결제자 입력란 생략
-      setPayerFromProfile(Boolean(filledName && filledPhone && filledEmail));
+      setEmail(filledEmail);
+      setSender((prev) => ({
+        ...prev,
+        name: filledName || prev.name,
+        phone: filledPhone || prev.phone,
+      }));
+      // 로그인 회원: 이름·이메일은 프로필/계정에서 — 결제자 입력란 불필요
+      setPayerFromProfile(Boolean(filledEmail));
       setPaymentMethod((prev) => sanitizePaymentMethod(prev));
     });
 
@@ -317,12 +320,24 @@ function CheckoutContent() {
     return [street, addressDetail].filter(Boolean).join(" ");
   }
 
+  function resolveBuyer() {
+    const buyeremail = email.trim();
+    const buyername =
+      sender.name.trim() || buyeremail.split("@")[0] || "회원";
+    const buyertel = sender.phone.replace(/-/g, "").replace(/\D/g, "") || "01000000000";
+    return { buyername, buyertel, buyeremail };
+  }
+
   function isFormValid() {
-    if (!sender.name.trim() || !sender.phone.trim() || !email.trim() || !termsAgreed) {
-      return false;
+    if (!termsAgreed) return false;
+    if (isRecurring) {
+      // 멤버십: 로그인 필수 · 결제자는 회원정보로 처리 (입력란 없음)
+      return billingAgreed && Boolean(email.trim());
     }
-    if (isRecurring) return billingAgreed;
     return (
+      Boolean(sender.name.trim()) &&
+      Boolean(sender.phone.trim()) &&
+      Boolean(email.trim()) &&
       Boolean(sender.address.trim()) &&
       Boolean(effectiveRecipient.name.trim()) &&
       Boolean(effectiveRecipient.phone.trim()) &&
@@ -358,13 +373,12 @@ function CheckoutContent() {
 
     try {
       if (isRecurring) {
+        const buyer = resolveBuyer();
         const res = await fetch("/api/shop/billing/prepare", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            buyername: sender.name.trim(),
-            buyertel: sender.phone.replace(/-/g, ""),
-            buyeremail: email.trim(),
+            ...buyer,
             planId: product.id,
           }),
         });
@@ -623,79 +637,15 @@ function CheckoutContent() {
           </div>
         )}
 
-        {/* 로그인 회원 + 프로필 완비: 결제자 입력 생략 / 비회원·정보부족만 입력 */}
-        {isRecurring ? (
-          payerFromProfile ? (
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3">
-              <p className="text-xs text-gray-500">
-                {lang === "ko" ? "결제자" : "Payer"}{" "}
-                <span className="font-semibold text-gray-800">
-                  {sender.name} · {sender.phone} · {email}
-                </span>
-              </p>
-            </section>
-          ) : (
-            <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-              <p className="text-xs font-bold text-gray-500 mb-4">
-                {lang === "ko" ? "결제자 정보" : "Payer info"}
-              </p>
-              <p className="text-[11px] text-amber-700 mb-3 leading-relaxed">
-                {lang === "ko"
-                  ? "회원정보에 이름·연락처가 없어 입력해 주세요. (비회원·정보 미등록)"
-                  : "Name/phone missing from your profile — please enter them."}
-              </p>
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      {tx.labelName} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={sender.name}
-                      onChange={(e) => handleSender("name", e.target.value)}
-                      placeholder={tx.placeholderName}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
-                      {tx.labelPhone} <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      value={sender.phone}
-                      onChange={(e) =>
-                        handleSender("phone", e.target.value.replace(/[^0-9\-]/g, ""))
-                      }
-                      placeholder={tx.placeholderPhone}
-                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    {tx.labelEmail} <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder={tx.placeholderEmail}
-                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:border-[#de2910] transition-colors"
-                  />
-                </div>
-              </div>
-            </section>
-          )
-        ) : (
+        {/* 멤버십: 로그인 회원만 구매 · 결제자는 회원정보로 처리 (입력란 없음) */}
+        {!isRecurring && (
           <section className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
             <p className="text-xs font-bold text-gray-500 mb-4">{tx.senderSection}</p>
             {payerFromProfile && (
               <p className="text-xs text-gray-500 mb-3">
                 {lang === "ko" ? "보내는 분" : "Sender"}{" "}
                 <span className="font-semibold text-gray-800">
-                  {sender.name} · {sender.phone} · {email}
+                  {sender.name} · {sender.phone || "-"} · {email}
                 </span>
               </p>
             )}
