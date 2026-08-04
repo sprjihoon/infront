@@ -2,36 +2,18 @@
 
 import { Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { BUSINESS_INFO, BUSINESS_SITE_ORIGIN } from "@/lib/shop/business-info";
+import { BUSINESS_INFO } from "@/lib/shop/business-info";
 
 function useAuditCapture() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const isAudit = searchParams.get("audit") === "1";
-  const qs = searchParams.toString();
-  const displayUrl = `${BUSINESS_SITE_ORIGIN}${pathname}${qs ? `?${qs}` : ""}`;
-  const hasOwnFooter = pathname.startsWith("/shop") || pathname.startsWith("/signup") || pathname.startsWith("/login");
+  const hasOwnFooter =
+    pathname.startsWith("/shop") ||
+    pathname.startsWith("/signup") ||
+    pathname.startsWith("/login");
   const showBusinessFooter = isAudit && !hasOwnFooter;
-  return { isAudit, displayUrl, showBusinessFooter };
-}
-
-function AuditCaptureUrlBarInner() {
-  const { isAudit, displayUrl } = useAuditCapture();
-  if (!isAudit) return null;
-
-  return (
-    <div
-      className="sticky top-0 z-[9999] border-b border-gray-300 bg-[#f1f3f4] px-3 py-2 shadow-sm"
-      aria-label="캡처용 URL 표시"
-    >
-      <div className="mx-auto flex max-w-3xl items-center gap-2">
-        <span className="shrink-0 rounded border border-gray-200 bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500">
-          URL
-        </span>
-        <p className="truncate font-mono text-[11px] text-gray-800">{displayUrl}</p>
-      </div>
-    </div>
-  );
+  return { showBusinessFooter };
 }
 
 function AuditCaptureFooterInner() {
@@ -80,23 +62,10 @@ export function BusinessInfoBlock() {
   );
 }
 
-export function AuditCaptureUrlBar() {
-  return (
-    <Suspense fallback={null}>
-      <AuditCaptureUrlBarInner />
-    </Suspense>
-  );
-}
-
 export function AuditCaptureFooter() {
   return (
     <Suspense fallback={null}>
       <AuditCaptureFooterInner />
     </Suspense>
   );
-}
-
-/** @deprecated use AuditCaptureUrlBar */
-export function AuditCaptureChrome() {
-  return <AuditCaptureUrlBar />;
 }

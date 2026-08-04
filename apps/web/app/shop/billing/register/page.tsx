@@ -44,15 +44,33 @@ function RegisterContent() {
   const formRef      = useRef<HTMLFormElement>(null);
   const sdkScriptRef = useRef<HTMLScriptElement | null>(null);
 
-  /* 로그인 상태 확인 */
+  /* 로그인 + 회원정보로 결제자 정보 자동 입력 */
   useEffect(() => {
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user ? { email: user.email } : null);
-      if (user?.email) setEmail(user.email);
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) {
+        setUser(null);
+        return;
+      }
+      setUser({ email: user.email });
+
+      const meta = user.user_metadata as { name?: string; phone?: string };
+      const { data: customer } = await supabase
+        .from("customers")
+        .select("name, phone, email")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      const filledName = customer?.name ?? meta.name ?? "";
+      const filledPhone = customer?.phone ?? meta.phone ?? "";
+      const filledEmail = customer?.email ?? user.email ?? "";
+
+      if (filledName) setName(filledName);
+      if (filledPhone) setTel(filledPhone.replace(/[^0-9\-]/g, ""));
+      if (filledEmail) setEmail(filledEmail);
     });
   }, []);
 
@@ -270,7 +288,7 @@ function RegisterContent() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 space-y-2">
           <p className="text-xs font-bold text-amber-800">📋 자동결제(정기결제) 고지사항</p>
           <p className="text-[11px] text-amber-700 leading-relaxed">
-            정기결제는 신용카드 자동결제(빌링)만 지원합니다. 해외카드·Alipay·WeChat Pay는 장기보관 월 이용료 결제에 사용할 수 없습니다.
+            정기결제는 국내 신용카드 자동결제(빌링)만 지원합니다.
           </p>
           <table className="w-full text-xs text-amber-800 border-collapse">
             <tbody>

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import NextTopLoader from "nextjs-toploader";
-import { AuditCaptureUrlBar, AuditCaptureFooter } from "@/components/audit/AuditCaptureChrome";
+import { AuditCaptureFooter } from "@/components/audit/AuditCaptureChrome";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -52,7 +52,6 @@ export default function RootLayout({
       </head>
       <body className="flex min-h-full flex-col bg-gray-50 antialiased">
         <NextTopLoader color="#de2910" height={3} showSpinner={false} />
-        <AuditCaptureUrlBar />
         <div className="flex flex-1 flex-col">{children}</div>
         <AuditCaptureFooter />
       </body>

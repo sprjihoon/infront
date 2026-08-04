@@ -2,7 +2,7 @@
 
 ## 1. URL 주소 표시 캡처
 
-모든 캡처 URL 끝에 **`&audit=1`** (또는 `?audit=1`)을 붙이면 화면 **상단에 URL 바**가 표시됩니다.
+캡처 시 **브라우저 주소창**이 보이도록 전체 창을 찍으면 됩니다. (`audit=1`은 signup/mypage 등에서 하단 사업자정보용이며, 가짜 URL 바는 없습니다.)
 
 ```
 https://infront.kr/signup?audit=1
