@@ -139,6 +139,55 @@ export default function ShopProductDetailPage() {
         >
           {lang === "ko" ? "주문하기" : "Order"}
         </button>
+
+        {isRecurring && (
+          <section className="bg-white rounded-2xl border border-gray-100 px-4 py-4 space-y-2">
+            <p className="text-sm font-bold text-gray-900">
+              {lang === "ko" ? "멤버십 해지 및 환불" : "Membership cancel & refund"}
+            </p>
+            <ul className="text-[11px] text-gray-600 leading-relaxed space-y-1.5 list-disc list-inside">
+              <li>
+                {lang === "ko"
+                  ? "월 단위 선불 자동결제이며, 매월 1일 9,900원이 청구됩니다."
+                  : "Monthly prepaid auto-billing; ₩9,900 charged on the 1st."}
+              </li>
+              <li>
+                {lang === "ko"
+                  ? "해지 신청 익월부터 청구가 중단됩니다."
+                  : "Billing stops from the month after you cancel."}
+              </li>
+              <li>
+                {lang === "ko"
+                  ? "이미 결제된 당월 요금은 환불되지 않습니다."
+                  : "The current month fee already paid is non-refundable."}
+              </li>
+              <li>
+                {lang === "ko"
+                  ? "해지: 고객센터(010-2723-9490) 또는 서비스 내 해지"
+                  : "Cancel via customer center (010-2723-9490) or in-app."}
+              </li>
+            </ul>
+            <p className="text-[10px] text-gray-400 leading-relaxed pt-1">
+              {lang === "ko" ? (
+                <>
+                  ※ 상세 규정은{" "}
+                  <a href="/shop/refund-policy" target="_blank" className="underline hover:text-[#de2910]">
+                    취소/환불 정책
+                  </a>
+                  을 확인해 주세요.
+                </>
+              ) : (
+                <>
+                  ※ See full{" "}
+                  <a href="/shop/refund-policy" target="_blank" className="underline hover:text-[#de2910]">
+                    refund policy
+                  </a>
+                  .
+                </>
+              )}
+            </p>
+          </section>
+        )}
       </div>
     </div>
   );
