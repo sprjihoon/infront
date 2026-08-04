@@ -6,6 +6,7 @@ import { ChevronDown, Globe, LogIn, Package } from "lucide-react";
 import { createBrowserClient } from "@supabase/ssr";
 import {
   ONE_TIME_PRODUCTS,
+  RECURRING_PRODUCTS,
   SERVICE_INTRO_KO,
   SERVICE_INTRO_EN,
 } from "@/lib/shop/products";
@@ -20,6 +21,7 @@ export default function ShopPage() {
 
   const [userEmail, setUserEmail] = useState<string | null | undefined>(undefined);
   const [oneTimeOpen, setOneTimeOpen] = useState(true);
+  const [recurringOpen, setRecurringOpen] = useState(true);
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -103,17 +105,65 @@ export default function ShopPage() {
           </p>
         </div>
 
-        {/* 결제수단 안내 — 국내 결제만 */}
+        {/* 결제수단 안내 */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
           <p className="text-xs font-bold text-gray-700">
             {lang === "ko" ? "결제수단 안내" : "Payment Methods"}
           </p>
-          <p className="text-[11px] text-gray-600">
-            {lang === "ko"
-              ? "신용카드 · 계좌이체 · 가상계좌 · 간편결제"
-              : "Credit card · Bank transfer · Virtual account · Easy pay"}
-          </p>
+          <div className="text-[11px] text-gray-600 space-y-2">
+            <p>
+              <span className="font-semibold text-gray-800">
+                {lang === "ko" ? "[일회성]" : "[One-time]"}
+              </span>{" "}
+              {lang === "ko"
+                ? "신용카드 · 계좌이체 · 가상계좌 · 간편결제"
+                : "Credit card · Bank transfer · Virtual account · Easy pay"}
+            </p>
+            <p>
+              <span className="font-semibold text-gray-800">
+                {lang === "ko" ? "[정기결제]" : "[Recurring]"}
+              </span>{" "}
+              {lang === "ko"
+                ? "신용카드 자동결제(빌링) — 멤버십 구독 전용 (MID: infrontbil)"
+                : "Card auto-billing — membership only (MID: infrontbil)"}
+            </p>
+          </div>
         </div>
+
+        {/* 정기결제 멤버십 — 카드사 심사용 */}
+        <section>
+          <button
+            type="button"
+            onClick={() => setRecurringOpen((v) => !v)}
+            className="w-full flex items-center justify-between mb-3"
+            aria-expanded={recurringOpen}
+          >
+            <h2 className="text-sm font-bold text-gray-900">
+              {lang === "ko" ? "멤버십 구독 (월 정기결제)" : "Membership (Monthly Billing)"}
+            </h2>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-200 ${
+                recurringOpen ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+          {recurringOpen && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {RECURRING_PRODUCTS.map((product) => (
+                <ShopProductCard
+                  key={product.id}
+                  product={product}
+                  lang={lang}
+                  actionLabel={lang === "ko" ? "구독 신청" : "Subscribe"}
+                  onAction={() =>
+                    router.push(`/shop/billing/register?plan=${product.id}`)
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </section>
 
         {/* 일회성 서비스 */}
         <section>
@@ -124,7 +174,7 @@ export default function ShopPage() {
             aria-expanded={oneTimeOpen}
           >
             <h2 className="text-sm font-bold text-gray-900">
-              {lang === "ko" ? "서비스" : "Services"}
+              {lang === "ko" ? "단건 서비스" : "One-time Services"}
             </h2>
             <ChevronDown
               size={18}

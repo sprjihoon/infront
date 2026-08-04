@@ -73,7 +73,32 @@ export const SERVICE_INTRO_EN =
 export const ROUNDTRIP_SHIPPING_FEE = 7000;
 
 export const SHOP_PRODUCTS: ShopProduct[] = [
-  // ── 단건 서비스 (해외카드 심사용 카탈로그) ───────────────────────────────
+  // ── 정기결제 (카드사 심사 MID: infrontbil) ───────────────────────────────
+  {
+    id: "MEMBERSHIP_BASIC",
+    category: "membership",
+    paymentItemKey: "monthly_membership_fee",
+    name: "베이직 멤버십",
+    nameEn: "Basic Membership",
+    price: 9900,
+    billingType: "recurring",
+    unit: "월",
+    description:
+      "월 5건 검품·포장 처리 무료 + 무료 방문 픽업 1회 포함. 국내·해외 발송 서비스 이용 시 우선 처리 혜택을 드립니다.",
+    descriptionEn:
+      "Includes 5 free inspection/packaging per month + 1 free pickup visit. Priority processing for domestic and international shipments.",
+    deliveryMethod: "물류센터 내 서비스 (비실물)",
+    deliveryMethodEn: "In-warehouse service (non-physical)",
+    servicePeriod: "월 단위 자동결제 (언제든 해지 가능)",
+    servicePeriodEn: "Monthly auto-billing (cancel anytime)",
+    refundNote: "해지 신청 익월부터 청구 중단. 이미 결제된 당월 요금 환불 불가",
+    refundNoteEn: "Billing stops from the month after cancellation. Current month fee non-refundable",
+    icon: "box",
+    badge: "멤버십",
+    badgeEn: "Membership",
+    badgeColor: "bg-violet-100 text-violet-700",
+  },
+  // ── 단건 서비스 ──────────────────────────────────────────────────────────
   {
     id: "INSPECTION_PACK_S",
     category: "inspection",

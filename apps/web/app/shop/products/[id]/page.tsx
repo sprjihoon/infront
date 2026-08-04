@@ -31,7 +31,7 @@ export default function ShopProductDetailPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!product || product.billingType === "recurring") {
+    if (!product) {
       router.replace("/shop");
       return;
     }
@@ -52,12 +52,19 @@ export default function ShopProductDetailPage() {
   const delivery = lang === "ko" ? product.deliveryMethod : product.deliveryMethodEn;
   const period = lang === "ko" ? product.servicePeriod : product.servicePeriodEn;
   const refund = lang === "ko" ? product.refundNote : product.refundNoteEn;
-  const priceLabel = formatKrw(product.price);
+  const isRecurring = product.billingType === "recurring";
+  const priceLabel = isRecurring
+    ? `${formatKrw(product.price)}/${product.unit ?? "월"}`
+    : formatKrw(product.price);
   const shippingFee = getBundledShippingFee(product);
   const orderTotal = getOrderTotal(product);
 
   function handleOrder() {
     if (!product) return;
+    if (product.billingType === "recurring") {
+      router.push(`/shop/billing/register?plan=${product.id}`);
+      return;
+    }
     sessionStorage.setItem("shop_product_id", product.id);
     router.push(`/shop/checkout?product=${product.id}`);
   }
@@ -134,7 +141,13 @@ export default function ShopProductDetailPage() {
           onClick={handleOrder}
           className="w-full bg-[#de2910] text-white font-bold py-4 rounded-2xl text-sm active:opacity-80 transition-opacity"
         >
-          {lang === "ko" ? "주문하기" : "Order"}
+          {isRecurring
+            ? lang === "ko"
+              ? "구독 신청하기"
+              : "Subscribe"
+            : lang === "ko"
+              ? "주문하기"
+              : "Order"}
         </button>
       </div>
     </div>

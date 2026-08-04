@@ -1369,19 +1369,17 @@ NAVER_CLIENT_ID=...
 NAVER_CLIENT_SECRET=...
 ```
 
-### 2026-08-03 해외카드 오픈 불가 — 국내 결제만 유지
+### 2026-08-04 정기결제 카드사 심사용 자료·결제경로 복구 (MID `infrontbil`)
 
-- KG이니시스 RISK: 개인과세사업자·비실물(검품/포장·택배비) 사이트 → 해외카드 최종 오픈 불가
-- 샵 UI에서 해외카드·Alipay·WeChat Pay 노출 제거, 국내 결제수단만 유지
-- API에서도 글로벌 결제수단 요청 거부
+- 샘플 PPT 형식의 제출용 자료: `docs/audit-captures/card-billing-audit-infrontbil.pptx`
+- 캡처 가이드: `docs/audit-captures/BILLING_CAPTURE_GUIDE.md`
+- `/shop` 멤버십 구독·`/shop/billing/*` 등록 경로 재노출 (카드사 심사 결제경로)
+- 환불정책 제3조에 멤버십 정기결제 해지·환불 조항 복구
 
-### 2026-08-03 샵 UI — 멤버십/정기결제 비노출
+### 2026-08-03 해외카드 오픈 불가 — 국내 단건 결제만 유지
 
-- `/shop` 멤버십 구독 섹션·`[정기결제]` 안내 제거
-- `MEMBERSHIP_BASIC` 카탈로그 상품 제거
-- `/shop/billing/*` → `/shop` 리다이렉트
-- 환불/배송 정책의 스토리지 구독 조항 정리
-- 빌링 API·cron·`INICIS_BILLING_*` 백엔드는 유지 (Phase 4용)
+- KG이니시스 RISK: 개인과세사업자·비실물 → 해외카드 최종 오픈 불가
+- 단건 checkout에서 해외카드·Alipay·WeChat Pay 미노출 (정기결제 빌링과 별개)
 
 ---
 

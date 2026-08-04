@@ -1,4 +1,19 @@
-# KG이니시스 심사 PPT 캡처 (2026-07-14)
+# KG이니시스 심사 PPT 캡처
+
+## 정기결제(카드사) 심사 — MID `infrontbil`
+
+| 자료 | 경로 |
+|------|------|
+| **제출용 PPT** | [`card-billing-audit-infrontbil.pptx`](./card-billing-audit-infrontbil.pptx) |
+| 캡처 가이드 | [`BILLING_CAPTURE_GUIDE.md`](./BILLING_CAPTURE_GUIDE.md) |
+| 재생성 | `python scripts/generate-billing-audit-ppt.py` |
+
+심사용 계정: `audit-domestic@infront.kr` / `AuditDomestic2026!`  
+경로: `/shop` → 멤버십 → `/shop/billing/register?plan=MEMBERSHIP_BASIC&audit=1`
+
+---
+
+## 해외카드/단건 심사 캡처 (2026-07-14)
 
 production(https://infront.kr) 기준 브라우저 캡처 결과입니다.
 
