@@ -75,7 +75,10 @@ export async function POST(request: NextRequest) {
   } catch { /* ignore */ }
 
   if (!subId) {
-    console.error("[shop/billing/callback] missing sub_id in custom_data:", custom_data);
+    console.error(
+      "[shop/billing/callback] missing sub_id in custom_data:",
+      fields.custom_data || fields.merchantData,
+    );
     return redirectHtml("/shop/billing/fail?reason=missing_data");
   }
 
