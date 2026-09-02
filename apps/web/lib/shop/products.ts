@@ -55,13 +55,11 @@ export const INTL_TRACKING_NOTE_KO =
 export const INTL_TRACKING_NOTE_EN =
   "International shipping uses trackable carriers such as EMS, EMS Premium, and K-Packet. A waybill number is provided after dispatch, and customers can check status on our tracking page. Local delivery tracking after customs may vary by country and local carrier.";
 
-/** @deprecated KG이니시스 해외카드 오픈 불가(개인사업자/비실물) — UI 미사용 */
 export const FOREIGN_CARD_SCOPE_NOTICE_KO =
-  "현재 해외카드·Alipay·WeChat Pay는 이용할 수 없습니다. 국내 결제수단만 지원합니다.";
+  "PayPal(USD, 해외카드·PayPal 지갑)과 Alipay·WeChat Pay(KRW)는 외국인/해외고객 회원이 이용할 수 있습니다. 멤버십 정기결제도 PayPal 구독으로 청구됩니다.";
 
-/** @deprecated KG이니시스 해외카드 오픈 불가(개인사업자/비실물) — UI 미사용 */
 export const FOREIGN_CARD_SCOPE_NOTICE_EN =
-  "International cards, Alipay, and WeChat Pay are not available. Domestic payment methods only.";
+  "PayPal (USD, cards or PayPal balance) plus Alipay/WeChat Pay (KRW) are available for foreign members. Membership auto-billing also uses a PayPal subscription.";
 
 export const SERVICE_INTRO_KO =
   "인프론트는 고객이 온라인으로 물품 수거를 신청하고, 물류센터에서 보관한 뒤, 요청에 따라 포장·검품 후 국내배송 또는 해외배송을 진행하는 수거·보관·배송대행 플랫폼입니다.";
@@ -212,28 +210,43 @@ export const DOMESTIC_PAYMENT_METHODS = [
 ] as const;
 
 /**
- * 해외/글로벌 결제수단 — KG이니시스 RISK: 개인과세사업자·비실물 사이트로 오픈 불가.
- * UI 미노출. API에서도 거부.
+ * 계약 승인된 글로벌 간편결제 (KG이니시스 Alipay / WeChat).
+ * 해외카드(intl_card)는 미오픈 — 타입·이력 호환용으로만 유지.
  */
-export const GLOBAL_PAYMENT_METHODS = [
-  { id: "intl_card", label: "해외카드", labelEn: "International Card", code: "FOREIGN_CARD" },
+export const OPEN_GLOBAL_PAYMENT_METHODS = [
+  { id: "paypal", label: "PayPal", labelEn: "PayPal", code: "PAYPAL" },
   { id: "alipay", label: "Alipay", labelEn: "Alipay", code: "ALIPAY" },
   { id: "wechat", label: "WeChat Pay", labelEn: "WeChat Pay", code: "WECHAT_PAY" },
 ] as const;
 
+export const GLOBAL_PAYMENT_METHODS = [
+  { id: "intl_card", label: "해외카드", labelEn: "International Card", code: "FOREIGN_CARD" },
+  ...OPEN_GLOBAL_PAYMENT_METHODS,
+] as const;
+
 export type DomesticPaymentMethodId = (typeof DOMESTIC_PAYMENT_METHODS)[number]["id"];
 export type GlobalPaymentMethodId = (typeof GLOBAL_PAYMENT_METHODS)[number]["id"];
+export type OpenGlobalPaymentMethodId = (typeof OPEN_GLOBAL_PAYMENT_METHODS)[number]["id"];
 export type PaymentMethodId = DomesticPaymentMethodId | GlobalPaymentMethodId;
 
 const GLOBAL_IDS = new Set<string>(GLOBAL_PAYMENT_METHODS.map((m) => m.id));
+const OPEN_GLOBAL_IDS = new Set<string>(OPEN_GLOBAL_PAYMENT_METHODS.map((m) => m.id));
 
 export function isGlobalPaymentMethod(id: string): boolean {
   return GLOBAL_IDS.has(id);
 }
 
-/** 해외결제 UI 노출 — 이니시스 오픈 불가로 항상 false */
-export function canShowGlobalPaymentMethods(_customerType?: CustomerType): boolean {
-  return false;
+export function isOpenGlobalPaymentMethod(id: string): id is OpenGlobalPaymentMethodId {
+  return OPEN_GLOBAL_IDS.has(id);
+}
+
+/** PayPal·Alipay·WeChat — 외국인/해외고객에게 노출 */
+export function canShowGlobalPaymentMethods(customerType?: CustomerType): boolean {
+  return customerType === "foreigner";
+}
+
+export function isPaypalMethod(id: string): boolean {
+  return id === "paypal";
 }
 
 export function getPaymentMethodLabel(id: string, lang: "ko" | "en" = "ko"): string {

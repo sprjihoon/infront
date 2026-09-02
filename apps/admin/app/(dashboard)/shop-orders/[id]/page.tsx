@@ -47,6 +47,8 @@ interface ShopOrder {
   shipping_type: string | null;
   tracking_available: boolean | null;
   inicis_tid: string | null;
+  pg_provider: string | null;
+  paypal_capture_id: string | null;
   paid_at: string | null;
   cancelled_at: string | null;
   cancel_msg: string | null;
@@ -176,7 +178,9 @@ export default function ShopOrderDetailPage() {
     );
   }
 
-  const canCancel = order.status === "PAID" && !!order.inicis_tid;
+  const canCancel =
+    order.status === "PAID" &&
+    (!!order.inicis_tid || (order.pg_provider === "paypal" && !!order.paypal_capture_id));
 
   return (
     <div className="space-y-5 max-w-3xl mx-auto">

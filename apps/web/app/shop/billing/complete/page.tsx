@@ -9,6 +9,7 @@ function CompleteContent() {
   const router = useRouter();
   const params = useSearchParams();
   const subId = params.get("id") ?? "";
+  const provider = params.get("provider") ?? "";
   const autoStarted = useRef(false);
 
   const [charging, setCharging] = useState(false);
@@ -42,11 +43,16 @@ function CompleteContent() {
   }
 
   useEffect(() => {
+    if (provider === "paypal") {
+      setChargeResult("success");
+      setChargeMsg("PayPal 월 구독이 활성화되었습니다. 이후 결제는 PayPal에서 자동 청구됩니다.");
+      return;
+    }
     if (!subId || autoStarted.current) return;
     autoStarted.current = true;
     void handleCharge();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subId]);
+  }, [subId, provider]);
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

@@ -116,16 +116,16 @@ export default function ShopPage() {
                 {lang === "ko" ? "[일회성]" : "[One-time]"}
               </span>{" "}
               {lang === "ko"
-                ? "신용카드 · 계좌이체 · 가상계좌 · 간편결제"
-                : "Credit card · Bank transfer · Virtual account · Easy pay"}
+                ? "신용카드 · 계좌이체 · 가상계좌 · 간편결제 · PayPal(USD) · Alipay · WeChat Pay(외국인/해외고객)"
+                : "Credit card · Bank transfer · Virtual account · Easy pay · PayPal (USD) · Alipay · WeChat Pay (foreign members)"}
             </p>
             <p>
               <span className="font-semibold text-gray-800">
                 {lang === "ko" ? "[정기결제]" : "[Recurring]"}
               </span>{" "}
               {lang === "ko"
-                ? "신용카드 자동결제(빌링) — 멤버십 구독 전용 (MID: infrontbil)"
-                : "Card auto-billing — membership only (MID: infrontbil)"}
+                ? "내국인: 신용카드 빌링(infrontbil) · 외국인: PayPal 월 구독(USD)"
+                : "Domestic: card billing (infrontbil) · Foreign: PayPal monthly (USD)"}
             </p>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { getInicisGopaymethod } from "@/lib/inicis/pay-method";
 import { validateShopOrderRequest } from "@/lib/shop/prepare-order";
 
 function sha256hex(str: string): string {
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
       product,
       price,
       goodname,
+      paymentMethodId,
       paymentMethod: payMethodLabel,
       paymentMethodCode,
       isForeignCard,
@@ -146,6 +148,7 @@ export async function POST(request: NextRequest) {
       signature,
       verification,
       mKey,
+      gopaymethod: getInicisGopaymethod(paymentMethodId),
       goodname,
       buyername,
       buyertel: cleanTel,

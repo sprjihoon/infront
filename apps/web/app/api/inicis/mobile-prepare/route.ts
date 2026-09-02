@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { getInicisMobilePayment } from "@/lib/inicis/pay-method";
 import { validateShopOrderRequest } from "@/lib/shop/prepare-order";
 
 const TEST_HASH_KEY_FALLBACK = "3CB8183A4BE283555ACC8363C0360223";
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
       product,
       price,
       goodname,
+      paymentMethodId,
       paymentMethod: payMethodLabel,
       paymentMethodCode,
       isForeignCard,
@@ -126,7 +128,7 @@ export async function POST(request: NextRequest) {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
     return NextResponse.json({
-      P_INI_PAYMENT: "Card",
+      P_INI_PAYMENT: getInicisMobilePayment(paymentMethodId),
       P_MID: mid,
       P_OID: oid,
       P_AMT: amtStr,

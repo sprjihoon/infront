@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { adminDb } from "@/lib/supabase/admin";
 import { requireAdmin } from "@/lib/supabase/server";
+import { refundPaypalCapture } from "@/lib/paypal";
 
 /* ────────────────────────────────────────────────────────────────
    POST /api/admin/shop-orders/[id]/cancel
@@ -38,7 +39,7 @@ export async function POST(
   /* 1. shop_order 조회 */
   const { data: order, error: fetchErr } = await adminDb
     .from("shop_orders")
-    .select("id, oid, inicis_tid, amount, status")
+    .select("id, oid, inicis_tid, amount, status, pg_provider, paypal_capture_id")
     .eq("id", id)
     .single();
 
@@ -48,6 +49,36 @@ export async function POST(
 
   if (order.status === "CANCELLED") {
     return NextResponse.json({ error: "이미 취소된 주문입니다." }, { status: 400 });
+  }
+
+  const body = await req.json().catch(() => ({})) as { msg?: string };
+  const msg = body.msg?.trim() || "관리자 취소";
+
+  if (order.pg_provider === "paypal") {
+    if (order.status !== "PAID" || !order.paypal_capture_id) {
+      return NextResponse.json({ error: "결제 완료된 PayPal 주문만 취소할 수 있습니다." }, { status: 400 });
+    }
+    try {
+      await refundPaypalCapture(order.paypal_capture_id, msg);
+    } catch (e) {
+      console.error("[shop-orders/cancel] paypal refund:", e);
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : "PayPal 환불 실패" },
+        { status: 400 },
+      );
+    }
+    const { error: updErr } = await adminDb
+      .from("shop_orders")
+      .update({
+        status: "CANCELLED",
+        cancelled_at: new Date().toISOString(),
+        cancel_msg: msg,
+      })
+      .eq("id", id);
+    if (updErr) {
+      return NextResponse.json({ error: "DB 업데이트 오류 (환불은 처리됨)" }, { status: 500 });
+    }
+    return NextResponse.json({ ok: true, provider: "paypal" });
   }
 
   if (order.status !== "PAID" || !order.inicis_tid) {
@@ -62,8 +93,6 @@ export async function POST(
     return NextResponse.json({ error: "결제 설정 오류" }, { status: 500 });
   }
 
-  const body = await req.json().catch(() => ({})) as { msg?: string };
-  const msg       = body.msg?.trim() || "관리자 취소";
   const type      = "Refund";
   const tid       = order.inicis_tid;
   const price     = String(order.amount);

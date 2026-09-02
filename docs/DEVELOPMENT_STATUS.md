@@ -136,12 +136,12 @@ supabase db query --linked --file apps/sql/044_pickup_box_fees.sql
 
 | 항목 | 상태 | 비고 |
 |------|------|------|
-| 글로벌 PG 벤더 선정·계약 | ⏸ | PayPal / Stripe / Alipay 등 검토 |
-| 해외 카드 결제 흐름 | ⏸ | 계약 후 착수 |
+| 글로벌 PG 벤더 선정·계약 | ✅ | PayPal 단건+구독 (외국인). Alipay/WeChat는 이니시스 |
+| 해외 카드 결제 흐름 | ✅ | PayPal 게스트 결제 (이니시스 해외카드 미오픈) |
 | 다국어 결제 UI (KO/EN) | ⏸ | 계약 후 착수 |
-| 다중 통화 (USD, CNY, EUR) | ⏸ | 계약 후 착수 |
-| 위챗페이·알리페이 | ⏸ | 계약 후 착수 |
-| 환율 기반 결제 금액 | ⏸ | USD/KRW 실시간 환율 적용 |
+| 다중 통화 (USD, CNY, EUR) | ⏸ | 1차 USD만. EUR/JPY는 스키마만 여유 |
+| 위챗페이·알리페이 | ✅ | KG이니시스 계약 승인. 외국인 단건만 (`onlyalipay`/`onlywechat`) |
+| 환율 기반 결제 금액 | ✅ | EMS USD/KRW, 주문 시점 고정 |
 
 > 현재 KG Inicis(국내) 기반 서비스 안정화 및 Phase 3~7 완료를 우선합니다.
 
@@ -428,3 +428,5 @@ IN_TRANSIT
 | 2026-08-03 | 빌링 MID `infrontbil` 승인·실연동. `INICIS_BILLING_*` 공용 헬퍼, 샵/보관 Rebill cron, `071_shop_subscriptions_billing.sql`. Phase 4 API·cron ✅, 고객 UI·Admin 🔲 |
 | 2026-08-03 | 해외카드 심사 집중: 샵 멤버십/정기결제 UI 비노출, `/shop/billing/*` 리다이렉트. 빌링 백엔드 유지 |
 | 2026-08-03 | KG이니시스 해외카드 최종 오픈 불가(개인사업자·비실물). 샵 해외카드/Alipay/WeChat UI 제거, 국내 결제만 |
+| 2026-09-01 | KG이니시스 Alipay·WeChat 계약 승인 반영. 외국인/해외고객 단건 checkout 재노출, `gopaymethod=onlyalipay|onlywechat`. 해외카드는 계속 미오픈 |
+| 2026-09-02 | 해외고객 PayPal USD 단건+멤버십/보관 구독. `072_paypal_payments.sql`. 이니시스 빌링은 내국인만 |

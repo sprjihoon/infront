@@ -20,9 +20,10 @@ function SuccessContent() {
   const [amount, setAmount] = useState<string | null>(null);
 
   useEffect(() => {
-    const pId = searchParams.get("paymentId");  // KG이니시스: oid
+    const pId = searchParams.get("paymentId");  // KG이니시스: oid / PayPal oid
     const amt = searchParams.get("amount");
     const verified = searchParams.get("verified"); // KG이니시스 return route가 1로 세팅
+    const provider = searchParams.get("provider");
     const code = searchParams.get("code");         // PortOne 실패 코드 (레거시 호환)
     const message = searchParams.get("message");
 
@@ -42,8 +43,8 @@ function SuccessContent() {
     setPaymentId(pId);
     setAmount(amt);
 
-    /* KG이니시스: returnUrl에서 이미 검증 완료 */
-    if (verified === "1") {
+    /* KG이니시스 / PayPal: 서버에서 이미 검증 완료 */
+    if (verified === "1" || provider === "paypal") {
       setStatus("done");
       return;
     }

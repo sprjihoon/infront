@@ -27,6 +27,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/eximbay",
   "/api/portone",
   "/api/inicis",
+  "/api/paypal",
   "/api/shop",
   "/api/cron", // CRON_SECRET으로 라우트 내부 인증
 ];

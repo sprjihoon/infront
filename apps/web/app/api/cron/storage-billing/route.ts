@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
     .from("storage_recurring_profiles")
     .select("id")
     .eq("status", "ACTIVE")
+    .eq("pg_provider", "kg_inicis")
     .lte("next_billing_date", today)
     .not("pg_bill_key", "like", "PENDING:%")
     .limit(100);

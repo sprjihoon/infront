@@ -9,6 +9,8 @@ import {
   CreditCard, Loader2, TruckIcon, Camera,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PayPalCheckoutButtons } from "@/app/shop/components/PayPalCheckoutButtons";
+import { formatUsd } from "@/lib/paypal/fx";
 import type { PutawayPhotoDto } from "@/lib/storage/mock-putaway-photo";
 import { isPutawayMockPhotos } from "@/lib/storage/putaway-photos";
 import PutawayPhotoModal from "../PutawayPhotoModal";
@@ -829,6 +831,8 @@ function ReleasePaymentSheet({
   const [loading, setLoading] = useState(false);
   const [payParams, setPayParams] = useState<Record<string, string> | null>(null);
   const [jsUrl, setJsUrl] = useState("");
+  const [usePaypal, setUsePaypal] = useState(false);
+  const [fxQuote, setFxQuote] = useState<{ amountUsd: number; fxRate: number } | null>(null);
 
   const weeksUsed = calcWeeksUsed(storage.short_term_started_at);
   const weeklyRate = storage.storage_plan_config?.weekly_rate ?? 0;
@@ -836,6 +840,35 @@ function ReleasePaymentSheet({
   const storageFee = weeksUsed * weeklyRate;
   const releaseFee = 1000;
   const totalAmount = storageFee + releaseFee;
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from("customers")
+        .select("customer_type")
+        .eq("id", user.id)
+        .maybeSingle();
+      const foreigner =
+        profile?.customer_type === "foreigner" ||
+        (user.user_metadata as { customer_type?: string })?.customer_type === "foreigner";
+      setUsePaypal(Boolean(foreigner && user.email_confirmed_at));
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!usePaypal || totalAmount <= 0) {
+      setFxQuote(null);
+      return;
+    }
+    fetch(`/api/paypal/quote?amount=${storageFee}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.amountUsd && d.fxRate) setFxQuote({ amountUsd: d.amountUsd, fxRate: d.fxRate });
+      })
+      .catch(() => setFxQuote(null));
+  }, [usePaypal, totalAmount]);
 
   useEffect(() => {
     if (!payParams || !jsUrl) return;
@@ -930,17 +963,43 @@ function ReleasePaymentSheet({
             결제 완료 후 출고 처리가 진행됩니다. 배송 정보는 별도 안내됩니다.
           </p>
 
-          <button
-            onClick={handlePay}
-            disabled={loading || weeksUsed <= 0}
-            className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {loading ? (
-              <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
-            ) : (
-              <><CreditCard size={16} /> {totalAmount.toLocaleString()}원 결제하기</>
-            )}
-          </button>
+          {fxQuote && (
+            <p className="text-xs text-gray-600">
+              PayPal ≈ {formatUsd(fxQuote.amountUsd)} (USD/KRW {fxQuote.fxRate.toLocaleString("ko-KR")})
+            </p>
+          )}
+
+          {usePaypal ? (
+            <PayPalCheckoutButtons
+              mode="order"
+              disabled={weeksUsed <= 0}
+              createPayload={{
+                kind: "storage",
+                storage_id: storage.id,
+                payment_type: "SHORT_TERM_STORAGE",
+                billing_weeks: weeksUsed,
+                billing_plan_type: maxPlan,
+              }}
+              onPaid={(result) => {
+                router.replace(
+                  `/storage/payment/success?paymentId=${encodeURIComponent(result.oid)}&amount=${result.amountKrw}&verified=1&provider=paypal`
+                );
+              }}
+              onError={(msg) => alert(msg)}
+            />
+          ) : (
+            <button
+              onClick={handlePay}
+              disabled={loading || weeksUsed <= 0}
+              className="w-full bg-brand-600 text-white text-sm font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {loading ? (
+                <><Loader2 size={16} className="animate-spin" /> 처리 중...</>
+              ) : (
+                <><CreditCard size={16} /> {totalAmount.toLocaleString()}원 결제하기</>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

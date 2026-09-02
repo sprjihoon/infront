@@ -7,6 +7,7 @@ import {
   getPaymentItemType,
   getShippingType,
   isGlobalPaymentMethod,
+  isOpenGlobalPaymentMethod,
   isTrackingAvailable,
   type ShopProduct,
 } from "./products";
@@ -17,6 +18,7 @@ export interface ValidatedShopOrder {
   product: ShopProduct;
   price: number;
   goodname: string;
+  paymentMethodId: string;
   paymentMethod: string;
   paymentMethodCode: string;
   isForeignCard: boolean;
@@ -53,13 +55,37 @@ export async function validateShopOrderRequest(
 
   const methodId = paymentMethodId ?? "card";
 
-  if (isGlobalPaymentMethod(methodId)) {
+  if (isGlobalPaymentMethod(methodId) && !isOpenGlobalPaymentMethod(methodId)) {
     return {
       ok: false,
-      error:
-        "해외카드·Alipay·WeChat Pay는 현재 이용할 수 없습니다. 국내 결제수단을 선택해 주세요.",
+      error: "해외카드는 PayPal로 결제해 주세요. Alipay·WeChat Pay 또는 국내 결제수단도 이용할 수 있습니다.",
       status: 403,
     };
+  }
+
+  if (isOpenGlobalPaymentMethod(methodId)) {
+    if (user.customerType !== "foreigner") {
+      return {
+        ok: false,
+        error: "PayPal·Alipay·WeChat Pay는 외국인/해외고객 회원만 이용 가능합니다.",
+        status: 403,
+      };
+    }
+    if (!user.emailConfirmed) {
+      return {
+        ok: false,
+        error:
+          "글로벌 결제는 이메일 인증이 완료된 회원만 이용 가능합니다. 가입 시 발송된 인증 메일을 확인해 주세요.",
+        status: 403,
+      };
+    }
+    if (product.billingType !== "one_time" && methodId !== "paypal") {
+      return {
+        ok: false,
+        error: "Alipay·WeChat Pay는 단건 서비스에만 사용할 수 있습니다. 정기결제는 PayPal을 이용해 주세요.",
+        status: 403,
+      };
+    }
   }
 
   const price = getOrderTotal(product);
@@ -76,6 +102,7 @@ export async function validateShopOrderRequest(
       product,
       price,
       goodname: product.name,
+      paymentMethodId: methodId,
       paymentMethod: getPaymentMethodLabel(methodId, "ko"),
       paymentMethodCode,
       isForeignCard: methodId === "intl_card",

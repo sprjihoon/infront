@@ -9,6 +9,7 @@ import {
   isIniapiSuccess,
   parseIniapiResponse,
 } from "@/lib/inicis/billing";
+import { cancelPaypalSubscription } from "@/lib/paypal/client";
 
 /* ────────────────────────────────────────────────────────────────
    샵 구독 빌링키 해지
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
   const db = adminDb();
   const { data: sub, error: subErr } = await db
     .from("shop_subscriptions")
-    .select("id, pg_bill_key, status")
+    .select("id, pg_bill_key, status, pg_provider, paypal_subscription_id")
     .eq("id", sub_id)
     .eq("user_id", user.id)
     .in("status", ["ACTIVE", "PENDING"])
@@ -61,6 +62,25 @@ export async function POST(request: NextRequest) {
 
   if (subErr || !sub) {
     return NextResponse.json({ error: "구독 정보를 찾을 수 없습니다." }, { status: 404 });
+  }
+
+  if (sub.pg_provider === "paypal") {
+    if (sub.paypal_subscription_id) {
+      try {
+        await cancelPaypalSubscription(sub.paypal_subscription_id, "샵 구독 해지");
+      } catch (e) {
+        console.error("[shop/billing/cancel] paypal:", e);
+        return NextResponse.json(
+          { error: e instanceof Error ? e.message : "PayPal 구독 해지 실패" },
+          { status: 400 },
+        );
+      }
+    }
+    await db.from("shop_subscriptions").update({
+      status: "CANCELLED",
+      updated_at: new Date().toISOString(),
+    }).eq("id", sub_id);
+    return NextResponse.json({ ok: true, provider: "paypal" });
   }
 
   const billKey = sub.pg_bill_key as string | null;
