@@ -40,8 +40,8 @@ export default function SamplePageToggle({ initialEnabled }: Props) {
           <div>
             <p className="text-sm font-semibold text-gray-900">결제 서비스 공개 모드</p>
             <p className="text-xs text-gray-500 mt-0.5">
-              ON 시 <span className="font-mono text-gray-700">infront.kr/home</span> 접속하면 <span className="font-mono text-gray-700">/shop</span> 결제 서비스 페이지로 이동합니다.
-              KG이니시스 심사 완료 후 반드시 OFF 해주세요.
+              ON 시 홈을 <span className="font-mono text-gray-700">/shop</span> 심사용 샘플로 보냅니다.
+              지금은 고객 웹에서 샵을 숨겨 두었습니다. 심사 때 <span className="font-mono">SHOP_UI_ENABLED</span>를 켠 뒤에만 동작합니다.
             </p>
           </div>
           <button

@@ -31,6 +31,9 @@ export default async function SettingsPage() {
 
       <section className="space-y-3">
         <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">결제 / 심사</h2>
+        <p className="text-xs text-gray-500">
+          고객 웹 <span className="font-mono">/shop</span>은 숨김 상태입니다. 토글은 심사 재개 시에만 사용하세요.
+        </p>
         <SamplePageToggle initialEnabled={samplePageEnabled} />
       </section>
     </div>

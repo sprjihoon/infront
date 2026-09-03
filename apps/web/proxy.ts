@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { SHOP_UI_ENABLED } from "@/lib/shop/visible";
 
 /** 로그인 없이 접근 가능한 페이지 */
 const PUBLIC_PATHS = [
@@ -67,6 +68,10 @@ function isPublicPath(pathname: string): boolean {
 export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const ip = getClientIp(request);
+
+  if (!SHOP_UI_ENABLED && pathname.startsWith("/shop")) {
+    return NextResponse.redirect(new URL("/home", request.url));
+  }
 
   // API 경로에 Rate Limiting 적용
   if (pathname.startsWith("/api/")) {

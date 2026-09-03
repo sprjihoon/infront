@@ -1,28 +1,21 @@
-import { createClient } from "@supabase/supabase-js";
-import { redirect } from "next/navigation";
 import HomeClient from "./HomeClient";
 
 export const dynamic = "force-dynamic";
 
-async function isSamplePageEnabled(): Promise<boolean> {
-  try {
-    const db = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
-    const { data } = await db
-      .from("admin_config")
-      .select("value")
-      .eq("key", "sample_page_mode")
-      .maybeSingle();
-    return (data?.value as { enabled?: boolean })?.enabled === true;
-  } catch {
-    return false;
-  }
-}
+/*
+ * 샵 UI 숨김 (SHOP_UI_ENABLED = false).
+ * 심사 때 lib/shop/visible.ts 를 true 로 되돌린 뒤 아래 리다이렉트를 살린다.
+ *
+ * import { createClient } from "@supabase/supabase-js";
+ * import { redirect } from "next/navigation";
+ * import { SHOP_UI_ENABLED } from "@/lib/shop/visible";
+ *
+ * async function isSamplePageEnabled(): Promise<boolean> {
+ *   ...
+ * }
+ * if (SHOP_UI_ENABLED && (await isSamplePageEnabled())) redirect("/shop");
+ */
 
 export default async function HomePage() {
-  const sampleMode = await isSamplePageEnabled();
-  if (sampleMode) redirect("/shop");
   return <HomeClient />;
 }
