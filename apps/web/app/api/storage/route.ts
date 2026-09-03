@@ -61,13 +61,17 @@ export async function POST(request: NextRequest) {
   const body = await request.json() as {
     storage_name?: string;
     storage_mode: "short_term" | "long_term";
+    /** 레거시 청구 플랜 S/M/L/XL, 또는 storage_types.code (MINI/STANDARD/…) */
     plan_type?: string;
+    storage_type_id?: string;
     status?: string;
   };
 
   if (!body.storage_mode) {
     return NextResponse.json({ error: "storage_mode 는 필수입니다." }, { status: 400 });
   }
+
+  const BILLING_PLAN_TYPES = new Set(["S", "M", "L", "XL"]);
 
   // 장기보관 고객은 단기보관함 별도 생성 불가
   if (body.storage_mode === "short_term") {
@@ -86,15 +90,40 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // 플랜 정보 조회
-  let planConfig = null;
-  if (body.plan_type) {
+  // plan_type FK → storage_plan_config (S/M/L/XL)
+  // 화면에서 고르는 값은 storage_types.code (MINI/STANDARD/…) → storage_type_id
+  let billingPlanType: string | null = null;
+  let storageTypeId: string | null = body.storage_type_id ?? null;
+  let capacityScore: number | null = null;
+  let monthlyAmount: number | null = null;
+
+  if (body.plan_type && BILLING_PLAN_TYPES.has(body.plan_type)) {
     const { data } = await supabase
       .from("storage_plan_config")
       .select("capacity_score, monthly_amount")
       .eq("plan_type", body.plan_type)
-      .single();
-    planConfig = data;
+      .maybeSingle();
+    if (!data) {
+      return NextResponse.json({ error: "유효하지 않은 플랜입니다." }, { status: 400 });
+    }
+    billingPlanType = body.plan_type;
+    capacityScore = data.capacity_score;
+    monthlyAmount = data.monthly_amount != null ? Number(data.monthly_amount) : null;
+  } else if (body.plan_type || storageTypeId) {
+    let typeQuery = supabase
+      .from("storage_types")
+      .select("id, code, volume_liter, price_per_month")
+      .eq("is_active", true);
+    typeQuery = storageTypeId
+      ? typeQuery.eq("id", storageTypeId)
+      : typeQuery.eq("code", body.plan_type!);
+    const { data: storageType } = await typeQuery.maybeSingle();
+    if (!storageType) {
+      return NextResponse.json({ error: "유효하지 않은 보관 사이즈입니다." }, { status: 400 });
+    }
+    storageTypeId = storageType.id;
+    capacityScore = storageType.volume_liter != null ? Number(storageType.volume_liter) : null;
+    monthlyAmount = storageType.price_per_month != null ? Number(storageType.price_per_month) : null;
   }
 
   // 허용된 상태값 (클라이언트에서 PENDING_PAYMENT 가능)
@@ -121,9 +150,10 @@ export async function POST(request: NextRequest) {
       user_id: user.id,
       storage_name: body.storage_name || defaultName,
       storage_mode: body.storage_mode,
-      plan_type: body.plan_type ?? null,
-      capacity_score: planConfig?.capacity_score ?? null,
-      monthly_amount: planConfig?.monthly_amount ?? null,
+      plan_type: billingPlanType,
+      storage_type_id: storageTypeId,
+      capacity_score: capacityScore,
+      monthly_amount: monthlyAmount,
       status: initStatus,
       short_term_started_at:
         body.storage_mode === "short_term" ? new Date().toISOString() : null,
