@@ -1,8 +1,11 @@
+import { isParcelShippable } from "./parcel-shippable";
+
 export interface DashboardParcel {
   id: string;
   status: string;
   pickup_date: string | null;
   epost_pickup_date: string | null;
+  is_shippable?: boolean | null;
 }
 
 export interface DashboardOrder {
@@ -66,14 +69,14 @@ export function buildActionCards(
     });
   }
 
-  const inbound = parcels.filter((p) => p.status === "INBOUND");
-  if (inbound.length > 0) {
+  const shippable = parcels.filter((p) => isParcelShippable(p));
+  if (shippable.length > 0) {
     cards.push({
       id: "inbound",
       priority: 2,
       emoji: "📦",
-      message: `창고에 ${inbound.length}개 보관 중 — 지금 출고신청 가능`,
-      button: { label: "출고신청하기", href: "/shipping-request" },
+      message: `창고에 ${shippable.length}개 보관 중 — 지금 출고신청 가능`,
+      button: { label: "출고신청하기", href: "/shipping" },
     });
   }
 

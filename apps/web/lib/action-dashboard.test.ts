@@ -6,7 +6,8 @@ const parcel = (
   status: string,
   pickup_date: string | null = null,
   epost_pickup_date: string | null = null,
-) => ({ id, status, pickup_date, epost_pickup_date });
+  is_shippable: boolean | null = null,
+) => ({ id, status, pickup_date, epost_pickup_date, is_shippable });
 
 const order = (
   id: string,
@@ -37,7 +38,7 @@ describe("buildActionCards", () => {
 
   it("prioritizes payment over inbound", () => {
     const cards = buildActionCards(
-      [parcel("p1", "INBOUND"), parcel("p2", "INBOUND")],
+      [parcel("p1", "INBOUND", null, null, true), parcel("p2", "INBOUND", null, null, true)],
       [order("o1", "PENDING_PAYMENT", 12500)],
     );
     expect(cards).toHaveLength(2);
@@ -70,7 +71,7 @@ describe("buildActionCards", () => {
   it("limits to top 3 cards by priority", () => {
     const cards = buildActionCards(
       [
-        parcel("p1", "INBOUND"),
+        parcel("p1", "INBOUND", null, null, true),
         parcel("p2", "PENDING_PICKUP", "2026-05-20"),
       ],
       [
@@ -87,6 +88,11 @@ describe("buildActionCards", () => {
     const cards = buildActionCards([], [order("o1", "QUOTE_SENT", 9800)]);
     expect(cards[0].id).toBe("payment");
     expect(cards[0].message).toContain("9,800원");
+  });
+
+  it("does not treat inbound-only parcels as shippable", () => {
+    const cards = buildActionCards([parcel("p1", "INBOUND")], []);
+    expect(cards).toHaveLength(0);
   });
 
   it("does not show card for inspection-only activity", () => {
