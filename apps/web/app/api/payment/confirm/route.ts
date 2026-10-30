@@ -230,6 +230,8 @@ export async function POST(req: NextRequest) {
             ems_req_no:       result.reqno,
             ems_fee:          emsFeeParsed,
             ems_premium_cd:   method.premiumcd,
+            ems_post_office:  result.treatporegipoengnm,
+            ems_post_office_code: result.treatporegipocd,
             ems_applied_at:   new Date().toISOString(),
             intl_tracking_no: result.regino,
             status:           'CUSTOMS_FILING',
@@ -240,7 +242,7 @@ export async function POST(req: NextRequest) {
           if (boxes && boxes.length > 0) {
             await supabase.from('shipping_boxes').update({
               intl_tracking_no: result.regino,
-              carrier: order.shipping_method === 'KPACKET' ? 'K_PACKET' : 'EMS',
+              carrier: (order.shipping_method as string) || 'EMS',
               status: 'PACKED',
               updated_at: new Date().toISOString(),
             }).eq('order_id', order.id).eq('box_seq', 1);

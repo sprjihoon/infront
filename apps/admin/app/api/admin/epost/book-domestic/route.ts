@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/supabase/admin';
 import { requireAdmin } from '@/lib/supabase/server';
 import { insertOrder, formatEpostOrderNo } from '@/lib/epost/client';
+import { domesticVolumeCm } from '@/lib/ems/apply-fields';
 
 export const preferredRegion = 'icn1';
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
         id, status, customer_id, epost_regi_no,
         recipient_name, recipient_phone, recipient_zip,
         recipient_addr1, recipient_addr2,
-        items_desc, delivery_msg, total_quantity:parcel_ids
+        items_desc, delivery_msg, parcel_ids
       `)
       .eq('id', domestic_order_id)
       .single();
@@ -79,12 +80,8 @@ export async function POST(req: NextRequest) {
 
     const orderNo = formatEpostOrderNo('DOM', 1);
 
-    // 부피 (cm → cm³ 용적환산: L×W×H / 5000 * 1000 = cm³ 기준이 아닌 우체국 규격 cm)
-    let volume = 60;
-    if (vol_length && vol_width && vol_height) {
-      volume = Math.floor((vol_length * vol_width * vol_height) / 5000);
-      volume = Math.max(60, volume);
-    }
+    const volume = domesticVolumeCm(vol_length, vol_width, vol_height);
+    const qty = Math.min(99, Math.max(1, Array.isArray(order.parcel_ids) ? order.parcel_ids.length : 1));
 
     const result = await insertOrder({
       custNo: '',           // 환경변수에서 자동 사용
@@ -95,7 +92,8 @@ export async function POST(req: NextRequest) {
       recNm:    order.recipient_name,
       recZip:   order.recipient_zip,
       recAddr1: order.recipient_addr1,
-      recAddr2: order.recipient_addr2 || '없음',
+      recAddr2: order.recipient_addr2 || '-',
+      recTel:   order.recipient_phone,
       recMob:   order.recipient_phone,
       contCd:   DEFAULT_CONT_CD,
       goodsNm:  order.items_desc || '의류',
@@ -106,8 +104,11 @@ export async function POST(req: NextRequest) {
       ordAddr2: SENDER.addr2,
       ordTel:   SENDER.tel,
       ordMob:   SENDER.mob,
+      inqTelCn: SENDER.mob,
       weight:   Math.max(1, Math.floor(weight_g / 1000)),
       volume,
+      qty,
+      microYn:  volume <= 45 ? 'Y' : 'N',
       delivMsg: order.delivery_msg || '',
       testYn:   test_yn ?? 'N',
       printYn:  'Y',
@@ -124,6 +125,8 @@ export async function POST(req: NextRequest) {
         epost_req_no:     result.reqNo,
         epost_res_no:     result.resNo,
         epost_regi_po:    result.regiPoNm,
+        epost_res_date:   result.resDate || null,
+        epost_v_tel_no:   result.vTelNo || null,
         epost_price:      price,
         epost_applied_at: new Date().toISOString(),
         weight_g,

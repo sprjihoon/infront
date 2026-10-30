@@ -2,10 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import { Printer, ArrowLeft, Loader2, Download, ExternalLink } from "lucide-react";
+import { Printer, ArrowLeft, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import type { EmsLabelData } from "@/lib/ems/label";
-import EmsLabelDocument from "@/components/ems/EmsLabelDocument";
 
 export default function LabelPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,12 +26,14 @@ export default function LabelPage() {
   }, [id]);
 
   const handlePrint = useCallback(() => {
-    window.print();
+    const frame = document.getElementById("label-pdf") as HTMLIFrameElement | null;
+    frame?.contentWindow?.focus();
+    frame?.contentWindow?.print();
   }, []);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-[50vh]">
         <Loader2 size={32} className="animate-spin text-blue-500" />
       </div>
     );
@@ -40,41 +41,39 @@ export default function LabelPage() {
 
   if (error || !label) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
         <p className="text-red-600">{error || "주문 없음"}</p>
         <Link href={`/orders/${id}`} className="text-blue-600 text-sm">← 돌아가기</Link>
       </div>
     );
   }
 
-  const htmlUrl = `/api/admin/ems/label?order_id=${id}&format=html`;
+  const pdfUrl = `/api/admin/ems/label?order_id=${id}&format=pdf`;
 
   return (
-    <>
-      <div className="no-print bg-gray-900 text-white px-6 py-3 flex items-center gap-4 sticky top-0 z-50 flex-wrap">
+    <div className="flex flex-col gap-3" style={{ height: "calc(100vh - 8rem)" }}>
+      <div className="bg-gray-900 text-white px-4 py-3 flex items-center gap-4 rounded-xl flex-wrap">
         <Link href={`/orders/${id}`} className="flex items-center gap-1.5 text-gray-300 hover:text-white text-sm">
           <ArrowLeft size={15} /> 주문 상세
         </Link>
-        <span className="flex-1 text-sm font-semibold min-w-[140px]">{label.order_no} · EMS 라벨</span>
+        <span className="flex-1 text-sm font-semibold min-w-[180px]">
+          {label.order_no} · {label.service_label} · {label.sheet_note}
+        </span>
+        {label.status === "CANCELLED" && (
+          <span className="text-xs text-red-300 bg-red-900/40 px-2 py-1 rounded-full">취소된 접수</span>
+        )}
         {!label.ems_applied && (
           <span className="text-xs text-amber-400 bg-amber-900/30 px-2 py-1 rounded-full">
-            ⚠ EMS 미접수 — 임시 출력
+            우체국 미접수 — 임시 출력
           </span>
         )}
         <a
-          href={htmlUrl}
+          href={pdfUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-1.5 text-gray-300 hover:text-white text-sm"
         >
-          <ExternalLink size={14} /> HTML 새 창
-        </a>
-        <a
-          href={htmlUrl}
-          download
-          className="flex items-center gap-1.5 bg-gray-700 hover:bg-gray-600 text-white text-sm font-semibold px-3 py-2 rounded-lg"
-        >
-          <Download size={14} /> HTML 저장
+          <ExternalLink size={14} /> PDF 열기
         </a>
         <button
           type="button"
@@ -84,19 +83,12 @@ export default function LabelPage() {
           <Printer size={15} /> 인쇄
         </button>
       </div>
-
-      <div className="bg-gray-100 min-h-screen p-6 no-print-bg">
-        <EmsLabelDocument data={label} />
-      </div>
-
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          .no-print-bg { background: none !important; padding: 0 !important; }
-          body { margin: 0; }
-          @page { size: A4; margin: 8mm; }
-        }
-      `}</style>
-    </>
+      <iframe
+        id="label-pdf"
+        title="해외배송 송장"
+        src={pdfUrl}
+        className="flex-1 w-full rounded-xl border border-gray-200 bg-white"
+      />
+    </div>
   );
 }

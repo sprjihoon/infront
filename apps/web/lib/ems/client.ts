@@ -9,6 +9,13 @@
 import { seed128Encrypt, buildEpostParams } from '../epost/seed128';
 import { getEmsPremiumMaxWeightG } from './premium-config';
 import { validateShippingDimensions } from './dimension-limits';
+import {
+  chargeableWeightG,
+  formatRecipientTel,
+  hsCodeForEpost,
+  senderMobileParts,
+  splitRecipientTel,
+} from './apply-fields';
 
 const BASE = 'https://eship.epost.go.kr';
 
@@ -367,12 +374,26 @@ export async function applyEms(p: EmsApplyParams): Promise<EmsApplyResult> {
     if (dimErr) throw new EmsApiError(dimErr);
   }
 
+  const recipientTel = splitRecipientTel(p.receivetelno ?? '', p.countrycd);
+  const senderMobile = senderMobileParts(
+    p.sendertelno1,
+    p.sendertelno2,
+    p.sendertelno3,
+    p.sendertelno4,
+  );
   const params: Record<string, unknown> = {
     custno, apprno,
     premiumcd: p.premiumcd,
     em_ee:     p.em_ee,
     countrycd: p.countrycd,
-    totweight: p.totweight,
+    totweight: chargeableWeightG(
+      p.premiumcd,
+      p.em_ee,
+      p.totweight,
+      p.boxlength,
+      p.boxwidth,
+      p.boxheight,
+    ),
     boxlength: p.boxlength,
     boxwidth:  p.boxwidth,
     boxheight: p.boxheight,
@@ -388,19 +409,21 @@ export async function applyEms(p: EmsApplyParams): Promise<EmsApplyResult> {
     sendertelno2:   p.sendertelno2,
     sendertelno3:   p.sendertelno3,
     sendertelno4:   p.sendertelno4,
+    ...senderMobile,
     receivename:    p.receivename,
     receivezipcode: p.receivezipcode ?? '',
     receiveaddr1:   p.receiveaddr1,
     receiveaddr2:   p.receiveaddr2,
     receiveaddr3:   p.receiveaddr3,
-    receivetelno:   p.receivetelno ?? '',
+    ...recipientTel,
+    receivetelno:   formatRecipientTel(p.receivetelno ?? '', p.countrycd),
     receivemail:    p.receivemail ?? '',
     EM_gubun:  p.EM_gubun,
     contents:  p.contents,
     number:    p.number,
     weight:    p.weight,
     value:     p.value,
-    hs_code:   p.hs_code,
+    hs_code:   hsCodeForEpost(p.hs_code, p.em_ee === 'ee'),
     origin:    p.origin,
     currunitcd: p.currunitcd,
     snd_message: p.snd_message ?? '',

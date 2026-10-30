@@ -22,8 +22,12 @@ interface DomesticOrder {
   vol_height: number | null;
   epost_regi_no: string | null;
   epost_req_no: string | null;
+  epost_res_no: string | null;
   epost_price: number | null;
   epost_regi_po: string | null;
+  epost_res_date: string | null;
+  epost_v_tel_no: string | null;
+  epost_order_no: string | null;
   delivery_msg: string | null;
   created_at: string;
   customers: { name: string; customer_code: string; email: string } | null;
@@ -219,7 +223,12 @@ export default function DomesticOrderDetailPage() {
           </h2>
           <div className="space-y-1 text-sm">
             <p><span className="text-blue-400 w-24 inline-block">운송장번호</span><span className="font-mono font-bold">{order.epost_regi_no}</span></p>
+            {order.epost_order_no && <p><span className="text-blue-400 w-24 inline-block">주문번호</span><span className="font-mono">{order.epost_order_no}</span></p>}
+            {order.epost_req_no && <p><span className="text-blue-400 w-24 inline-block">접수번호</span><span className="font-mono">{order.epost_req_no}</span></p>}
+            {order.epost_res_no && <p><span className="text-blue-400 w-24 inline-block">배달증번호</span><span className="font-mono">{order.epost_res_no}</span></p>}
             {order.epost_regi_po && <p><span className="text-blue-400 w-24 inline-block">접수우체국</span>{order.epost_regi_po}</p>}
+            {order.epost_v_tel_no && <p><span className="text-blue-400 w-24 inline-block">안심번호</span><span className="font-mono">{order.epost_v_tel_no}</span></p>}
+            {order.epost_res_date && <p><span className="text-blue-400 w-24 inline-block">접수일시</span>{order.epost_res_date}</p>}
             {order.epost_price != null && <p><span className="text-blue-400 w-24 inline-block">요금</span>{order.epost_price.toLocaleString()}원</p>}
           </div>
         </div>

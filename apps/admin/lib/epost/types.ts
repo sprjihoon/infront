@@ -13,6 +13,7 @@ export interface InsertOrderParams {
   recMob?: string;
   contCd: string;
   goodsNm: string;
+  qty?: number;
   weight?: number;
   volume?: number;
   microYn?: 'Y' | 'N';

@@ -50,6 +50,60 @@ export interface EmsLabelData {
   insurance_enabled: boolean;
   insurance_amount_usd: number | null;
   barcode_url: string;
+  sheet_note: string;
+  status: string;
+}
+
+export interface OfficialLabelItem {
+  name_en: string;
+  quantity: number;
+  unit_price_usd: number;
+  print_hs: string;
+  net_weight_g: string;
+  origin_country: string;
+}
+
+export interface OfficialLabelData {
+  order_no: string;
+  shipping_method: string;
+  regino: string;
+  status: string;
+  ems_fee: number | null;
+  totweight: number;
+  volume_weight: number | null;
+  boxlength: number;
+  boxwidth: number;
+  boxheight: number;
+  contents_type: string;
+  posted_year: string;
+  posted_month: string;
+  posted_day: string;
+  posted_hour: string;
+  posted_min: string;
+  post_office: string;
+  post_office_code: string;
+  sender: { name: string; tel: string; address: string; zip: string };
+  recipient: {
+    name: string;
+    phone: string;
+    email: string;
+    addr1: string;
+    addr2: string;
+    addr3: string;
+    zip: string;
+    country: string;
+    country_name: string;
+  };
+  items: OfficialLabelItem[];
+}
+
+export interface LabelBoxRow {
+  box_seq?: number | null;
+  weight_kg?: number | null;
+  length_cm?: number | null;
+  width_cm?: number | null;
+  height_cm?: number | null;
+  intl_tracking_no?: string | null;
 }
 
 const SERVICE_LABEL: Record<string, string> = {
@@ -57,6 +111,45 @@ const SERVICE_LABEL: Record<string, string> = {
   EMS_PREMIUM: 'EMS PREMIUM',
   KPACKET: 'K-PACKET',
 };
+
+const METHOD_BY_PREMIUM: Record<string, string> = {
+  '31': 'EMS',
+  '32': 'EMS_PREMIUM',
+  '14': 'KPACKET',
+};
+
+const SENDER_NAME_EN: Record<string, string> = {
+  틸리언: 'Tillion',
+  스프링풀필먼트: 'Spring Fulfillment',
+};
+
+const NATION_FN: Record<string, string> = {
+  JP: 'JAPAN', US: 'UNITED STATES', CN: 'CHINA', HK: 'HONG KONG', TW: 'TAIWAN',
+  SG: 'SINGAPORE', TH: 'THAILAND', VN: 'VIETNAM', MY: 'MALAYSIA', PH: 'PHILIPPINES',
+  AU: 'AUSTRALIA', GB: 'UNITED KINGDOM', DE: 'GERMANY', FR: 'FRANCE', CA: 'CANADA',
+  NZ: 'NEW ZEALAND', ID: 'INDONESIA', IT: 'ITALY', ES: 'SPAIN', NL: 'NETHERLANDS',
+  MO: 'MACAO', MN: 'MONGOLIA', IN: 'INDIA', AE: 'UNITED ARAB EMIRATES',
+  SA: 'SAUDI ARABIA', SE: 'SWEDEN', CH: 'SWITZERLAND', BR: 'BRAZIL', MX: 'MEXICO',
+  GR: 'GREECE', NG: 'NIGERIA', NP: 'NEPAL', NO: 'NORWAY', DK: 'DENMARK', LA: 'LAOS',
+  RO: 'ROMANIA', LU: 'LUXEMBOURG', LT: 'LITHUANIA', MM: 'MYANMAR', BD: 'BANGLADESH',
+  BE: 'BELGIUM', BG: 'BULGARIA', BN: 'BRUNEI', LK: 'SRI LANKA', SK: 'SLOVAKIA',
+  SI: 'SLOVENIA', AR: 'ARGENTINA', IE: 'IRELAND', EE: 'ESTONIA', AT: 'AUSTRIA',
+  UZ: 'UZBEKISTAN', EG: 'EGYPT', CZ: 'CZECH REPUBLIC', CL: 'CHILE', KZ: 'KAZAKHSTAN',
+  KH: 'CAMBODIA', TR: 'TURKEY', PK: 'PAKISTAN', PE: 'PERU', PT: 'PORTUGAL',
+  PL: 'POLAND', FI: 'FINLAND', HU: 'HUNGARY',
+};
+
+export function labelSheetNote(method: string): string {
+  if (method === 'KPACKET') return 'K-Packet 송장 1장';
+  if (method === 'EMS_PREMIUM') return '1장 주소기표지 · 2장 세관신고서';
+  return '1장 주소기표지 · 2·3장 세관신고서';
+}
+
+export function resolveShippingMethod(method: string | null | undefined, premiumCd?: string | null): string {
+  const code = (method ?? '').trim().toUpperCase();
+  if (code === 'EMS' || code === 'EMS_PREMIUM' || code === 'KPACKET') return code;
+  return METHOD_BY_PREMIUM[(premiumCd ?? '').trim()] ?? 'EMS';
+}
 
 export function barcodeUrl(text: string): string {
   return `https://quickchart.io/barcode?type=code128&text=${encodeURIComponent(text)}&height=60&width=300&includetext=true&textxalign=center`;
@@ -108,6 +201,12 @@ type OrderRow = {
   insurance_enabled: boolean | null;
   insurance_amount: number | null;
   created_at: string;
+  status?: string | null;
+  ems_premium_cd?: string | null;
+  ems_applied_at?: string | null;
+  ems_post_office?: string | null;
+  ems_post_office_code?: string | null;
+  actual_weight?: number | null;
 };
 
 export function buildOrderLabelData(order: OrderRow): EmsLabelData {
@@ -119,13 +218,16 @@ export function buildOrderLabelData(order: OrderRow): EmsLabelData {
     0,
   );
   const regino = order.ems_regino ?? order.order_no;
+  const shippingMethod = resolveShippingMethod(order.shipping_method, order.ems_premium_cd);
 
   return {
     source: 'internal',
     order_id: order.id,
     order_no: order.order_no,
-    shipping_method: order.shipping_method ?? 'EMS',
-    service_label: SERVICE_LABEL[order.shipping_method ?? ''] ?? order.shipping_method ?? 'EMS',
+    shipping_method: shippingMethod,
+    service_label: SERVICE_LABEL[shippingMethod] ?? shippingMethod,
+    sheet_note: labelSheetNote(shippingMethod),
+    status: order.status ?? '',
     regino,
     ems_applied: Boolean(order.ems_regino),
     ems_fee: order.ems_fee,
@@ -150,6 +252,159 @@ export function buildOrderLabelData(order: OrderRow): EmsLabelData {
       ? Number(order.insurance_amount ?? order.customs_value ?? customsFromItems)
       : null,
     barcode_url: barcodeUrl(regino),
+  };
+}
+
+function envText(value: string | undefined) {
+  return (value ?? '').replace(/[\r\n]/g, '').trim();
+}
+
+function kgToG(value: unknown) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n * 1000);
+}
+
+function cmOf(value: unknown) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n);
+}
+
+function printHs(code: string) {
+  const digits = code.replace(/\D/g, '');
+  if (digits.length >= 10) return digits.slice(0, 10);
+  if (!digits) return '';
+  return digits.padEnd(10, '0');
+}
+
+function postedParts(iso: string | null | undefined) {
+  if (!iso) return { year: '', month: '', day: '', hour: '', minute: '' };
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return { year: '', month: '', day: '', hour: '', minute: '' };
+  const bag: Record<string, string> = {};
+  for (const part of new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date)) {
+    bag[part.type] = part.value;
+  }
+  return {
+    year: bag.year ?? '',
+    month: bag.month ?? '',
+    day: bag.day ?? '',
+    hour: bag.hour ?? '',
+    minute: bag.minute ?? '',
+  };
+}
+
+function officialSender() {
+  const base = getLabelSender();
+  const parts = [
+    envText(process.env.INFRONT_SENDER_ADDR1),
+    envText(process.env.INFRONT_SENDER_ADDR2),
+    envText(process.env.INFRONT_SENDER_ADDR3),
+  ].filter(Boolean);
+  return {
+    name: SENDER_NAME_EN[base.name.trim()] ?? base.name.trim(),
+    address: parts.length > 0 ? parts.join(', ') : base.address,
+    zip: base.zip,
+    tel: base.tel,
+  };
+}
+
+function labelItems(raw: unknown, totweight: number): OfficialLabelItem[] {
+  if (!Array.isArray(raw)) return [];
+  const items = raw.flatMap((row) => {
+    if (!row || typeof row !== 'object') return [];
+    const item = row as Record<string, unknown>;
+    const name = String(item.name_en || item.name || '').trim();
+    if (!name) return [];
+    const quantity = Number(item.quantity ?? item.qty ?? 1) || 1;
+    const unit = Number(item.unit_price_usd ?? item.price ?? 0) || 0;
+    return [{
+      name_en: name,
+      quantity,
+      unit_price_usd: unit,
+      print_hs: printHs(String(item.hs_code ?? '')),
+      net_weight_g: '',
+      origin_country: String(item.origin_country || item.origin || 'KR').trim() || 'KR',
+    }];
+  });
+  if (totweight > 0 && items.length === 1) {
+    items[0].net_weight_g = String(totweight);
+  } else if (totweight > 0 && items.length > 1) {
+    const each = Math.floor(totweight / items.length);
+    items.forEach((item, index) => {
+      item.net_weight_g = String(
+        index < items.length - 1 ? each : totweight - each * (items.length - 1),
+      );
+    });
+  }
+  return items;
+}
+
+function pickBox(boxes: LabelBoxRow[], regino: string | null) {
+  const rows = [...boxes].sort((a, b) => Number(a.box_seq ?? 0) - Number(b.box_seq ?? 0));
+  if (regino) {
+    const matched = rows.find((box) => (box.intl_tracking_no ?? '').trim() === regino);
+    if (matched) return matched;
+  }
+  return rows[0];
+}
+
+/** 우체국 양식 PDF에 넣을 접수 값. 중량·크기는 출고 박스 실측을 쓴다. */
+export function toOfficialLabel(order: OrderRow, boxes: LabelBoxRow[] = []): OfficialLabelData {
+  const method = resolveShippingMethod(order.shipping_method, order.ems_premium_cd);
+  const box = pickBox(boxes, order.ems_regino);
+  const totweight = kgToG(box?.weight_kg) || kgToG(order.actual_weight);
+  const boxlength = cmOf(box?.length_cm);
+  const boxwidth = cmOf(box?.width_cm);
+  const boxheight = cmOf(box?.height_cm);
+  const volume = method === 'KPACKET' || !(boxlength && boxwidth && boxheight)
+    ? null
+    : Math.ceil((boxlength * boxwidth * boxheight) / (method === 'EMS_PREMIUM' ? 5 : 6));
+  const posted = postedParts(order.ems_applied_at || order.created_at);
+  const country = (order.recipient_country ?? '').trim().toUpperCase();
+  const fee = order.ems_fee == null ? null : Math.trunc(Number(order.ems_fee));
+
+  return {
+    order_no: order.order_no,
+    shipping_method: method,
+    regino: (order.ems_regino || box?.intl_tracking_no || order.order_no || '').trim(),
+    status: order.status === 'CANCELLED' ? 'canceled' : (order.status ?? ''),
+    ems_fee: fee != null && Number.isFinite(fee) ? fee : null,
+    totweight,
+    volume_weight: volume,
+    boxlength,
+    boxwidth,
+    boxheight,
+    contents_type: 'parcel',
+    posted_year: posted.year,
+    posted_month: posted.month,
+    posted_day: posted.day,
+    posted_hour: posted.hour,
+    posted_min: posted.minute,
+    post_office: (order.ems_post_office || envText(process.env.INFRONT_POST_OFFICE)).trim(),
+    post_office_code: (order.ems_post_office_code || envText(process.env.INFRONT_POST_OFFICE_CODE)).trim(),
+    sender: officialSender(),
+    recipient: {
+      name: order.recipient_name ?? '',
+      phone: order.recipient_phone ?? '',
+      email: order.recipient_email ?? '',
+      addr1: order.recipient_addr1 ?? '',
+      addr2: order.recipient_addr2 ?? '',
+      addr3: order.recipient_addr3 ?? '',
+      zip: order.recipient_zip ?? '',
+      country,
+      country_name: NATION_FN[country] ?? country,
+    },
+    items: labelItems(order.item_list, totweight),
   };
 }
 
@@ -202,8 +457,8 @@ export function renderLabelHtml(data: EmsLabelData): string {
 </head>
 <body>
   <div class="no-print" style="background:#111827;color:#fff;padding:12px 20px;display:flex;gap:12px;align-items:center">
-    <span style="flex:1;font-weight:600">${esc(data.order_no)} · EMS 라벨</span>
-    ${data.ems_applied ? '' : '<span style="color:#fbbf24;font-size:12px">⚠ EMS 미접수 — 임시 출력</span>'}
+    <span style="flex:1;font-weight:600">${esc(data.order_no)} · ${esc(data.service_label)} 라벨</span>
+    ${data.ems_applied ? '' : '<span style="color:#fbbf24;font-size:12px">⚠ 우체국 미접수 — 임시 출력</span>'}
     <button onclick="window.print()" style="background:#2563eb;color:#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600">인쇄</button>
   </div>
   <div class="sheet">

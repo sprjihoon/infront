@@ -47,6 +47,8 @@ interface Order {
   ems_fee: number | null;
   ems_applied_at: string | null;
   ems_premium_cd: string | null;
+  ems_post_office: string | null;
+  ems_post_office_code: string | null;
 }
 
 interface OrderParcel {
@@ -103,6 +105,18 @@ interface OrderService {
   id: string;
   total_price: number;
   services: { code: string; name: string; category: string } | null;
+}
+
+const METHOD_LABEL: Record<string, string> = {
+  EMS: "EMS",
+  EMS_PREMIUM: "EMS 프리미엄",
+  KPACKET: "K-Packet",
+  K_PACKET: "K-Packet",
+};
+
+function methodLabel(code: string | null | undefined) {
+  if (!code) return "EMS";
+  return METHOD_LABEL[code] ?? code;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -644,7 +658,7 @@ export default function OrderDetailPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">배송방법</span>
-              <span className="font-medium">{order.shipping_method}</span>
+              <span className="font-medium">{methodLabel(order.shipping_method)}</span>
             </div>
             {order.insurance_enabled && (
               <div className="flex justify-between text-sm">
@@ -973,16 +987,10 @@ export default function OrderDetailPage() {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">운송업체</label>
-                          <select value={(edit("carrier") as string) ?? "EMS"}
-                            onChange={e => setEdit("carrier", e.target.value)}
-                            className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
-                            <option value="EMS">EMS</option>
-                            <option value="EMS_PREMIUM">EMS 프리미엄</option>
-                            <option value="K_PACKET">K-Packet</option>
-                            <option value="DHL">DHL</option>
-                            <option value="FEDEX">FedEx</option>
-                          </select>
+                          <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">송장 양식</label>
+                          <p className="px-2 py-1.5 text-xs font-semibold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg">
+                            {methodLabel(order.shipping_method)}
+                          </p>
                         </div>
                         <div>
                           <label className="text-[10px] text-gray-400 font-semibold block mb-0.5">운송장 번호</label>
@@ -1027,7 +1035,7 @@ export default function OrderDetailPage() {
                     <div className="text-xs text-gray-500 space-y-0.5">
                       <div className="flex gap-4">
                         {box.intl_tracking_no && (
-                          <span className="font-mono font-medium text-gray-800">{box.carrier ? `[${box.carrier}] ` : ""}{box.intl_tracking_no}</span>
+                          <span className="font-mono font-medium text-gray-800">[{methodLabel(order.shipping_method)}] {box.intl_tracking_no}</span>
                         )}
                         {!box.intl_tracking_no && <span className="text-gray-300">운송장 미입력</span>}
                       </div>
@@ -1111,7 +1119,7 @@ export default function OrderDetailPage() {
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
                 <Send size={15} className="text-blue-500" />
-                EMS 우체국 접수
+                {methodLabel(order.shipping_method)} 우체국 접수
               </h2>
               {alreadyApplied && (
                 <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">
@@ -1150,6 +1158,14 @@ export default function OrderDetailPage() {
                       </span>
                     </div>
                   )}
+                  {(order.ems_post_office || order.ems_post_office_code) && (
+                    <div>
+                      <span className="text-xs text-gray-400 block">접수우체국</span>
+                      <span className="font-semibold text-gray-800">
+                        {[order.ems_post_office, order.ems_post_office_code].filter(Boolean).join(" · ")}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {/* 라벨 인쇄 버튼 */}
                 <Link
@@ -1158,7 +1174,7 @@ export default function OrderDetailPage() {
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors"
                 >
-                  <Printer size={14} /> EMS 라벨 인쇄
+                  <Printer size={14} /> {methodLabel(order.shipping_method)} 송장 출력
                 </Link>
               </div>
             ) : missingAddr ? (
@@ -1272,7 +1288,7 @@ export default function OrderDetailPage() {
                     >
                       {emsSubmitting
                         ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        : <><Send size={14} /> EMS 우체국 접수하기</>
+                        : <><Send size={14} /> {methodLabel(order.shipping_method)}로 접수</>
                       }
                     </button>
                   </div>
@@ -1352,13 +1368,13 @@ export default function OrderDetailPage() {
                 >
                   {calcLoading
                     ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    : <><DollarSign size={12} /> EMS 배송비 자동 계산</>
+                    : <><DollarSign size={12} /> {methodLabel(order.shipping_method)} 배송비 계산</>
                   }
                 </button>
                 {calcError && <p className="text-xs text-red-500">{calcError}</p>}
                 {calcFee !== null && (
                   <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
-                    <span className="text-xs text-indigo-700 font-semibold">EMS 예상 배송비</span>
+                    <span className="text-xs text-indigo-700 font-semibold">{methodLabel(order.shipping_method)} 예상 배송비</span>
                     <span className="text-sm font-bold text-indigo-700">{calcFee.toLocaleString()}원</span>
                   </div>
                 )}
@@ -1367,7 +1383,7 @@ export default function OrderDetailPage() {
               {/* ── EMS 원가 / 마진 / 청구가 ── */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-gray-500 block mb-1">EMS 원가 (원)</label>
+                  <label className="text-xs font-medium text-gray-500 block mb-1">{methodLabel(order.shipping_method)} 원가 (원)</label>
                   <input
                     type="number" value={emsCost}
                     onChange={(e) => {
@@ -1457,7 +1473,7 @@ export default function OrderDetailPage() {
               </div>
 
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700">
-                견적 확정 후 고객에게 알림이 발송됩니다. 고객이 결제를 완료하면 <strong>EMS 접수가 자동으로 처리</strong>됩니다.
+                견적 확정 후 고객에게 알림이 발송됩니다. 고객이 결제를 완료하면 <strong>{methodLabel(order.shipping_method)} 접수가 자동으로 처리</strong>되고, 송장도 그 양식으로 출력됩니다.
               </div>
 
               <button

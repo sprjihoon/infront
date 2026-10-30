@@ -167,12 +167,14 @@ export async function PATCH(
       const { data: boxes } = await adminDb
         .from("shipping_boxes").select("id").eq("order_id", id).order("box_seq").limit(1);
 
+      const carrier = order.shipping_method || "EMS";
       if (boxes && boxes.length > 0) {
         await adminDb.from("shipping_boxes").update({
           weight_kg: Number(totweight) / 1000,
           length_cm: Number(boxlength),
           width_cm:  Number(boxwidth),
           height_cm: Number(boxheight),
+          carrier,
           updated_at: new Date().toISOString(),
         }).eq("id", boxes[0].id);
       } else {
@@ -184,6 +186,7 @@ export async function PATCH(
           length_cm: Number(boxlength),
           width_cm:  Number(boxwidth),
           height_cm: Number(boxheight),
+          carrier,
         });
       }
     }
@@ -227,6 +230,7 @@ export async function PATCH(
   if (action === "add_box") {
     const { data: existing } = await adminDb.from("shipping_boxes").select("box_seq").eq("order_id", id).order("box_seq", { ascending: false }).limit(1);
     const nextSeq = (existing?.[0]?.box_seq ?? 0) + 1;
+    const { data: orderRow } = await adminDb.from("orders").select("shipping_method").eq("id", id).single();
 
     const { data, error } = await adminDb.from("shipping_boxes").insert({
       order_id: id,
@@ -237,7 +241,7 @@ export async function PATCH(
       width_cm: body.width_cm ?? null,
       height_cm: body.height_cm ?? null,
       intl_tracking_no: body.intl_tracking_no ?? null,
-      carrier: body.carrier ?? "EMS",
+      carrier: orderRow?.shipping_method || "EMS",
       admin_notes: body.admin_notes ?? null,
     }).select().single();
 
@@ -248,7 +252,7 @@ export async function PATCH(
   if (action === "update_box") {
     const { box_id, ...fields } = body;
     if (!box_id) return NextResponse.json({ error: "box_id 필요" }, { status: 400 });
-    const allowed = ["weight_kg","length_cm","width_cm","height_cm","intl_tracking_no","carrier","status","admin_notes","shipping_fee"];
+    const allowed = ["weight_kg","length_cm","width_cm","height_cm","intl_tracking_no","status","admin_notes","shipping_fee"];
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     allowed.forEach(k => { if (k in fields) update[k] = fields[k]; });
 

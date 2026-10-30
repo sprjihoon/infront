@@ -18,7 +18,8 @@ export async function GET(
       recipient_name, recipient_phone, recipient_zip, recipient_addr1, recipient_addr2,
       parcel_ids, items_desc, delivery_msg,
       weight_g, vol_length, vol_width, vol_height,
-      epost_regi_no, epost_req_no, epost_price, epost_regi_po,
+      epost_order_no, epost_regi_no, epost_req_no, epost_res_no, epost_price, epost_regi_po,
+      epost_res_date, epost_v_tel_no, epost_applied_at,
       created_at, updated_at,
       customers(name, customer_code, email)
     `)

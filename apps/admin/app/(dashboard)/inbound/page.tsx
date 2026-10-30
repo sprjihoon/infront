@@ -69,7 +69,6 @@ export default function InboundPage() {
     is_split?: boolean;
     split_location_codes?: string[];
   } | null>(null);
-  const [resultBarcodes, setResultBarcodes] = useState<unknown[]>([]);
   const [addingLocation, setAddingLocation] = useState(false);
 
   // 소포 사이즈
@@ -216,51 +215,14 @@ export default function InboundPage() {
         is_split: json.is_split ?? false,
         split_location_codes: json.split_location_codes ?? [],
       });
-      setResultBarcodes(json.barcodes ?? []);
       setUploadProgress(100);
 
-      // 바코드 라벨 자동 출력
       if (json.barcodes?.length > 0) {
-        const labelData = buildLabelData(json.barcodes, parcel, json.location_code);
-        const encoded = encodeURIComponent(JSON.stringify(labelData));
-        window.open(`/print/barcodes?data=${encoded}&auto=1`, "_blank");
+        window.open(`/print/barcodes?parcel_id=${parcel.id}&auto=1`, "_blank");
       }
     } finally {
       setProcessing(false);
     }
-  }
-
-  function buildLabelData(
-    barcodes: Array<{ barcode_no: string; seq: number; item_name: string | null }>,
-    p: ParcelData,
-    locationCode: string | null,
-  ) {
-    const today = new Date().toLocaleDateString("ko-KR");
-    return barcodes.map((b) => ({
-      barcode_no: b.barcode_no,
-      seq: b.seq,
-      item_name: b.item_name,
-      customer_name: p.customers?.name ?? "",
-      customer_code: p.customers?.customer_code ?? "",
-      tracking_no: p.tracking_no,
-      location_code: locationCode,
-      inbound_date: today,
-    }));
-  }
-
-  function buildLabelDataForDone() {
-    if (!parcel) return [];
-    const today = new Date().toLocaleDateString("ko-KR");
-    return (resultBarcodes as Array<{ barcode_no: string; seq: number; item_name: string | null }>).map((b) => ({
-      barcode_no: b.barcode_no,
-      seq: b.seq,
-      item_name: b.item_name,
-      customer_name: parcel.customers?.name ?? "",
-      customer_code: parcel.customers?.customer_code ?? "",
-      tracking_no: parcel.tracking_no,
-      location_code: result?.location_code ?? null,
-      inbound_date: today,
-    }));
   }
 
   function resetAll() {
@@ -269,7 +231,6 @@ export default function InboundPage() {
     setParcel(null);
     setCaptureResult(null);
     setResult(null);
-    setResultBarcodes([]);
     setLocationMode("auto");
     setSelectedLocationId(null);
     setSearchError("");
@@ -654,9 +615,9 @@ export default function InboundPage() {
                 >
                   로케이션 이동 →
                 </Link>
-                {resultBarcodes.length > 0 && parcel && (
+                {(result?.barcode_count ?? 0) > 0 && parcel && (
                   <Link
-                    href={`/print/barcodes?data=${encodeURIComponent(JSON.stringify(buildLabelDataForDone()))}`}
+                    href={`/print/barcodes?parcel_id=${parcel.id}`}
                     target="_blank"
                     className="flex-1 border border-blue-200 text-blue-600 py-3 rounded-xl text-sm font-medium hover:bg-blue-50"
                   >

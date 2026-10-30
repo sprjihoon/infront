@@ -142,7 +142,57 @@ function RotatedLabel({
   );
 }
 
+function BarcodePdfView({ parcelId, auto }: { parcelId: string; auto: boolean }) {
+  const pdfUrl = `/api/admin/inbound/barcode-pdf?parcel_id=${encodeURIComponent(parcelId)}`;
+  const handlePrint = useCallback(() => {
+    const frame = document.getElementById("barcode-pdf") as HTMLIFrameElement | null;
+    frame?.contentWindow?.focus();
+    frame?.contentWindow?.print();
+  }, []);
+
+  return (
+    <>
+      <style>{`
+        body { margin: 0; background: #f5f5f5; }
+        .toolbar {
+          position: sticky; top: 0; z-index: 100;
+          background: #1f2937; color: white;
+          display: flex; align-items: center; gap: 12px; padding: 10px 20px;
+        }
+        .toolbar button {
+          display: flex; align-items: center; gap: 6px;
+          background: #2563eb; color: white; border: none;
+          border-radius: 8px; padding: 6px 14px;
+          font-size: 13px; font-weight: 600; cursor: pointer;
+        }
+      `}</style>
+      <div className="toolbar">
+        <span style={{ flex: 1, fontSize: 14 }}>입고 바코드 · 62×38mm</span>
+        <button type="button" onClick={handlePrint}>
+          <Printer size={15} /> 인쇄
+        </button>
+      </div>
+      <iframe
+        id="barcode-pdf"
+        title="입고 바코드"
+        src={pdfUrl}
+        onLoad={() => { if (auto) handlePrint(); }}
+        style={{ width: "100%", height: "calc(100vh - 52px)", border: 0, background: "white" }}
+      />
+    </>
+  );
+}
+
 function PrintBarcodesContent() {
+  const searchParams = useSearchParams();
+  const parcelId = searchParams.get("parcel_id");
+  if (parcelId) {
+    return <BarcodePdfView parcelId={parcelId} auto={searchParams.get("auto") === "1"} />;
+  }
+  return <LayoutPrintBarcodes />;
+}
+
+function LayoutPrintBarcodes() {
   const searchParams = useSearchParams();
   const [settings, setSettings] = useState<BarcodeLabelSettings>(DEFAULT_SETTINGS);
 

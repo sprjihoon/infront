@@ -208,6 +208,8 @@ export async function POST(req: NextRequest) {
           ems_req_no:      result.reqno,
           ems_fee:         parseInt(result.prerecevprc, 10),
           ems_premium_cd:  method.premiumcd,
+          ems_post_office: result.treatporegipoengnm,
+          ems_post_office_code: result.treatporegipocd,
           ems_applied_at:  new Date().toISOString(),
           intl_tracking_no: result.regino,
           status:          'PACKAGING_DONE',

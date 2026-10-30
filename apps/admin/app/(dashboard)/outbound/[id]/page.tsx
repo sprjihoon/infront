@@ -70,6 +70,12 @@ const STATUS_COLOR: Record<ItemStatus, string> = {
   missing: "bg-orange-100 text-orange-700",
 };
 
+const SHIPPING_FORM: Record<string, string> = {
+  EMS: "EMS",
+  EMS_PREMIUM: "EMS 프리미엄",
+  KPACKET: "K-Packet",
+};
+
 function fmt(s: number) {
   const m = Math.floor(s / 60).toString().padStart(2, "0");
   const ss = (s % 60).toString().padStart(2, "0");
@@ -960,7 +966,9 @@ export default function OutboundWorkstationPage() {
             className="flex items-center gap-1.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-lg"
           >
             <Printer size={14} />
-            {orderType === "domestic" ? "송장 출력" : "라벨·세관서류 출력"}
+            {orderType === "domestic"
+              ? "송장 출력"
+              : `${SHIPPING_FORM[orderData?.shipping_method ?? ""] ?? "해외"} 송장 출력`}
           </button>
         )}
 
