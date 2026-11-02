@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
+import { cleanEnv } from "@/lib/inicis/billing";
 
 /* ────────────────────────────────────────────────────────────────
    KG이니시스 결제 결과 처리 (returnUrl POST)
@@ -86,7 +87,7 @@ export async function POST(request: NextRequest) {
 
   /* ── 네트결제 승인 요청 ── */
   try {
-    const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
+    const signKey = cleanEnv(process.env.INICIS_SIGN_KEY);
     const timestamp = Date.now().toString();
 
     /*
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
     /* 망취소 시도 */
     if (netCancelUrl && authToken) {
       try {
-        const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
+        const signKey = cleanEnv(process.env.INICIS_SIGN_KEY);
         const ts = Date.now().toString();
         const ncParams = new URLSearchParams({
           mid: (mid ?? (process.env.INICIS_MID ?? "INIpayTest")).trim(),

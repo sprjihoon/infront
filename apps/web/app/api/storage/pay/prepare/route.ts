@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import { buildStdPaySignatures, cleanEnv } from "@/lib/inicis/billing";
 import { pricePendingBox } from "@/lib/storage/empty-boxes";
 
 /* ────────────────────────────────────────────────────────────────
@@ -13,10 +14,6 @@ import { pricePendingBox } from "@/lib/storage/empty-boxes";
 
 const TEST_MID = "INIpayTest";
 const TEST_SIGN_KEY = "SU5JTElURV9UUklQTEVERVNfS0VZU1JS";
-
-function sha256hex(str: string) {
-  return crypto.createHash("sha256").update(str, "utf8").digest("hex");
-}
 
 function createSupabase(cookieStore: Awaited<ReturnType<typeof cookies>>) {
   return createServerClient(
@@ -249,9 +246,9 @@ export async function POST(request: NextRequest) {
   }
 
   /* ── storage_payments 레코드 생성 ── */
-  const useStaging = process.env.INICIS_TEST_MODE?.trim() === "true";
-  const mid = (process.env.INICIS_MID ?? "").trim();
-  const signKey = (process.env.INICIS_SIGN_KEY ?? "").trim();
+  const useStaging = cleanEnv(process.env.INICIS_TEST_MODE) === "true";
+  const mid = cleanEnv(process.env.INICIS_MID);
+  const signKey = cleanEnv(process.env.INICIS_SIGN_KEY);
 
   if (!mid || !signKey) {
     console.error("[storage/pay/prepare] INICIS_MID 또는 INICIS_SIGN_KEY 환경 변수가 설정되지 않았습니다.");
@@ -290,9 +287,7 @@ export async function POST(request: NextRequest) {
   }
 
   /* ── KG Inicis 서명 계산 ── */
-  const signature = sha256hex(`oid=${oid}&price=${priceStr}&timestamp=${timestamp}`);
-  const verification = sha256hex(`oid=${oid}&price=${priceStr}&signKey=${signKey}&timestamp=${timestamp}`);
-  const mKey = sha256hex(signKey);
+  const { signature, verification, mKey } = buildStdPaySignatures(oid, priceStr, timestamp, signKey);
 
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "https://infront.kr").trim();
 
