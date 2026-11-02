@@ -15,6 +15,7 @@ import type { PutawayPhotoDto } from "@/lib/storage/mock-putaway-photo";
 import { isPutawayMockPhotos } from "@/lib/storage/putaway-photos";
 import PutawayPhotoModal from "../PutawayPhotoModal";
 import { CARD_THEME_MAP } from "../constants";
+import ShippingStorageView from "../ShippingStorageView";
 import { Block1SVG, Block2SVG, Block3SVG, Block4SVG, Block5SVG, CapacityChangeSVG } from "../BlockSVGs";
 
 function shadeColor(hex: string, factor: number): string {
@@ -57,7 +58,7 @@ interface PlanConfig {
 interface Storage {
   id: string;
   storage_name: string;
-  storage_mode: "short_term" | "long_term";
+  storage_mode: "short_term" | "long_term" | "shipping";
   plan_type: string | null;
   current_plan_type: string | null;
   max_plan_type: string | null;
@@ -276,6 +277,10 @@ export default function StorageDetailPage() {
   }
 
   if (!storage) return null;
+
+  if (storage.storage_mode === "shipping") {
+    return <ShippingStorageView name={storage.storage_name} parcels={parcels} />;
+  }
 
   const sCfg = STORAGE_STATUS_CONFIG[storage.status] ?? STORAGE_STATUS_CONFIG.ACTIVE;
   const SIcon = sCfg.icon;

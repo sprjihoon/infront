@@ -75,7 +75,9 @@ function StorageNewInner() {
         alert(json.error ?? "스토리지 생성에 실패했습니다.");
         return;
       }
-      router.replace("/storage");
+      const next = searchParams.get("next");
+      if (next === "method") router.replace(`/inbound/method?purpose=storage&storage_id=${json.storage.id}`);
+      else router.replace("/storage");
     } catch {
       alert("오류가 발생했습니다. 다시 시도해 주세요.");
     } finally {

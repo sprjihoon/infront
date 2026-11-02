@@ -2,10 +2,33 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { ArrowLeft, ChevronRight, Info } from "lucide-react";
 
 export default function InboundPage() {
   const router = useRouter();
+  const [opening, setOpening] = useState<"storage" | "shipping" | null>(null);
+
+  async function openStorage() {
+    setOpening("storage");
+    try {
+      const res = await fetch("/api/storage");
+      const json = await res.json();
+      const longTerm = (json.storages ?? []).find(
+        (s: { storage_mode?: string; status?: string }) =>
+          s.storage_mode === "long_term" && s.status !== "CANCELLED",
+      );
+      if (longTerm?.id) {
+        router.push(`/inbound/method?purpose=storage&storage_id=${longTerm.id}`);
+      } else {
+        router.push("/storage/new?next=method");
+      }
+    } catch {
+      router.push("/storage/new?next=method");
+    } finally {
+      setOpening(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-[calc(60px+var(--sab,0px))]">
@@ -16,7 +39,7 @@ export default function InboundPage() {
         </button>
         <div>
           <h1 className="text-base font-bold text-gray-900">입고신청</h1>
-          <p className="text-xs text-gray-400 mt-0.5">보관할 물품을 어떻게 보내시겠어요?</p>
+          <p className="text-xs text-gray-400 mt-0.5">보관할까요, 보낼까요?</p>
         </div>
       </div>
 
@@ -25,61 +48,54 @@ export default function InboundPage() {
         {/* 카드 1: 수거 신청 */}
         <button
           type="button"
-          onClick={() => router.push("/pickup")}
-          className="w-full bg-white rounded-2xl border border-gray-100 hover:border-brand-300 active:scale-[0.98] transition-all shadow-sm text-left"
+          disabled={opening !== null}
+          onClick={openStorage}
+          className="w-full bg-white rounded-2xl border border-gray-100 hover:border-brand-300 active:scale-[0.98] transition-all shadow-sm text-left disabled:opacity-60"
         >
           <div className="flex items-center gap-4 px-5 py-5">
             <Image
-              src="/icons/inbound-pickup.png"
-              alt="수거 신청"
+              src="/icon-storage.png"
+              alt="보관"
               width={88}
               height={88}
               priority
-              className="object-contain shrink-0 drop-shadow-xl"
+              className="object-contain shrink-0"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1.5">
-                <p className="text-lg font-bold text-gray-900">수거 신청</p>
+                <p className="text-lg font-bold text-gray-900">보관</p>
                 <ChevronRight size={18} className="text-gray-400 shrink-0" />
               </div>
-              <p className="text-sm text-gray-500 leading-relaxed mb-3">
-                원하는 주소에서<br />물품을 수거해 보관합니다.
+              <p className="text-sm text-gray-500 leading-relaxed">
+                맡겨 두는 물건입니다. 한 달 단위로 보관료를 냅니다.
               </p>
-              <div className="flex gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">방문 수거</span>
-                <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-3 py-1 rounded-full">간편 신청</span>
-              </div>
             </div>
           </div>
         </button>
 
-        {/* 카드 2: 직접 보내기 */}
         <button
           type="button"
-          onClick={() => router.push("/register-parcel")}
+          disabled={opening !== null}
+          onClick={() => router.push("/inbound/method?purpose=shipping")}
           className="w-full bg-white rounded-2xl border border-gray-100 hover:border-gray-300 active:scale-[0.98] transition-all shadow-sm text-left"
         >
           <div className="flex items-center gap-4 px-5 py-5">
             <Image
-              src="/icons/inbound-direct.png"
-              alt="직접 보내기"
+              src="/icons/shipping-overseas.png"
+              alt="배송"
               width={88}
               height={88}
               priority
-              className="object-contain shrink-0 drop-shadow-xl"
+              className="object-contain shrink-0"
             />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between mb-1.5">
-                <p className="text-lg font-bold text-gray-900">직접 보내기</p>
+                <p className="text-lg font-bold text-gray-900">배송</p>
                 <ChevronRight size={18} className="text-gray-400 shrink-0" />
               </div>
-              <p className="text-sm text-gray-500 leading-relaxed mb-3">
-                택배, 퀵, 화물로<br />물품을 보내기 전 미리 등록합니다.
+              <p className="text-sm text-gray-500 leading-relaxed">
+                보내려고 센터로 들이는 물건입니다. 국내·해외는 출고할 때 고릅니다.
               </p>
-              <div className="flex gap-2 flex-wrap">
-                <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full">택배 발송</span>
-                <span className="text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-1 rounded-full">사전 등록</span>
-              </div>
             </div>
           </div>
         </button>
@@ -88,8 +104,7 @@ export default function InboundPage() {
         <div className="flex gap-3 bg-amber-50 border border-amber-100 rounded-xl p-4">
           <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
           <p className="text-xs text-amber-700 leading-relaxed">
-            <span className="font-bold">입고신청</span>이란? 고객이 물건을 우리 센터에 맡기기 위한 첫 단계입니다.
-            수거 신청 또는 직접 보내기 중 편한 방법을 선택하세요.
+            보관과 배송 중 하나를 고른 다음, 수거·직접 발송·박스 신청으로 물건을 센터에 보냅니다.
           </p>
         </div>
       </div>

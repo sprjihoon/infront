@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Plus, Trash2,
   CheckCircle, AlertCircle, ChevronDown, Truck, Tag, ScanSearch,
@@ -64,6 +64,8 @@ const ORIGIN_OPTIONS = [
 
 export default function RegisterParcelPage() {
   const router = useRouter();
+  const inboundPurpose = useSearchParams().get("purpose");
+  const inboundStorageId = useSearchParams().get("storage_id");
   const { isSimple, isAdvanced, mode: flowMode } = useFlowMode();
   const [step, setStep] = useState(1);
   const prevFlowMode = useRef(flowMode);
@@ -199,6 +201,8 @@ export default function RegisterParcelPage() {
           sender_address: senderAddress || undefined,
           notes: notes || undefined,
           item_condition: condition,
+          ...(inboundPurpose === "storage" || inboundPurpose === "shipping" ? { purpose: inboundPurpose } : {}),
+          ...(inboundStorageId ? { customer_storage_id: inboundStorageId } : {}),
           pre_invoice_items: items
             .filter((it) => it.is_sealed ? (it.product_name ?? "").trim() : it.name_en.trim() || it.product_name?.trim())
             .map(({ key: _k, _isCustom: _c, _categoryLabel: _l, inspection: _i, specials: _s, ...rest }) => ({
@@ -213,7 +217,14 @@ export default function RegisterParcelPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) { setError(json.error ?? "오류가 발생했습니다"); return; }
+      if (!res.ok) {
+        if (json.code === "NEED_STORAGE") {
+          router.push("/storage/new?next=method");
+          return;
+        }
+        setError(json.error ?? "오류가 발생했습니다");
+        return;
+      }
 
       // 검품·특수옵션 서비스 신청
       const parcelId = json.data?.id;

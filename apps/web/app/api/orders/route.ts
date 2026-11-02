@@ -227,7 +227,9 @@ export async function POST(req: NextRequest) {
     const order_no = `SPB-ORD-${dateStr}-${seq}`;
 
     // 총 금액 계산
-    const total_amount = (estimated_shipping_fee ?? 0) + (packaging_fee ?? 0);
+    const { quoteOutboundStorageFee } = await import("@/lib/storage/resolve-inbound");
+    const storageQuote = await quoteOutboundStorageFee(supabase, user.id, parcel_ids);
+    const total_amount = (estimated_shipping_fee ?? 0) + (packaging_fee ?? 0) + storageQuote.amount;
     const customs_value = item_list.reduce(
       (sum, item) => sum + item.unit_price_usd * item.quantity,
       0
@@ -309,6 +311,7 @@ export async function POST(req: NextRequest) {
       duty_prepaid: dutyPrepaid,
       duty_estimate_usd: dutyEstimateUsd,
       duty_deposit_krw: dutyDepositKrw,
+      storage_fee: storageQuote.amount,
       item_list,
     };
 

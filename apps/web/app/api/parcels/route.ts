@@ -91,6 +91,8 @@ export async function POST(req: NextRequest) {
     notes,
     item_condition,
     pre_invoice_items,
+    purpose,
+    customer_storage_id,
   } = body as {
     tracking_no: string;
     courier?: string;
@@ -100,7 +102,19 @@ export async function POST(req: NextRequest) {
     notes?: string;
     item_condition: "NEW" | "USED";
     pre_invoice_items: InvoiceItem[];
+    purpose?: "storage" | "shipping";
+    customer_storage_id?: string;
   };
+
+  let inboundStorageId: string | null = null;
+  if (purpose === "storage" || purpose === "shipping") {
+    const { resolveInboundStorage } = await import("@/lib/storage/resolve-inbound");
+    const resolved = await resolveInboundStorage(supabase, user.id, purpose, customer_storage_id);
+    if ("error" in resolved) {
+      return NextResponse.json({ error: resolved.error, code: resolved.code }, { status: resolved.status });
+    }
+    inboundStorageId = resolved.storageId;
+  }
 
   // 필수값 검증
   if (!tracking_no?.trim()) {
@@ -138,6 +152,7 @@ export async function POST(req: NextRequest) {
         ...(sender_phone?.trim() && { sender_phone: sender_phone.trim() }),
         ...(sender_address?.trim() && { sender_address: sender_address.trim() }),
         ...(notes?.trim() && { notes: notes.trim() }),
+        ...(inboundStorageId && { customer_storage_id: inboundStorageId }),
       })
       .eq("id", existing.id)
       .select()
@@ -165,6 +180,7 @@ export async function POST(req: NextRequest) {
       status: "PRE_REGISTERED",
       registered_by: "CUSTOMER",
       inbound_source: "DIRECT",
+      ...(inboundStorageId && { customer_storage_id: inboundStorageId }),
     })
     .select()
     .single();

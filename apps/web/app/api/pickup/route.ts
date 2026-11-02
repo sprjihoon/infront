@@ -135,6 +135,7 @@ export async function POST(req: NextRequest) {
       box_count,
       box_size,
       customer_storage_id,
+      purpose,
     } = body as {
       pickup_address?: string;
       pickup_address_detail?: string;
@@ -152,6 +153,7 @@ export async function POST(req: NextRequest) {
       box_size?: PickupBoxSizeCode;
       box_count?: number;
       customer_storage_id?: string;
+      purpose?: "storage" | "shipping";
     };
 
     if (!pickup_phone?.trim() || !pickup_date) {
@@ -186,6 +188,16 @@ export async function POST(req: NextRequest) {
         { error: e instanceof Error ? e.message : '박스 규격이 올바르지 않습니다.' },
         { status: 400 }
       );
+    }
+
+    let inboundStorageId: string | null = null;
+    if (purpose === "storage" || purpose === "shipping") {
+      const { resolveInboundStorage } = await import("@/lib/storage/resolve-inbound");
+      const resolved = await resolveInboundStorage(supabase, user.id, purpose, customer_storage_id);
+      if ("error" in resolved) {
+        return NextResponse.json({ error: resolved.error, code: resolved.code }, { status: resolved.status });
+      }
+      inboundStorageId = resolved.storageId;
     }
 
     const spec = boxSpecs[0];
@@ -584,13 +596,11 @@ export async function POST(req: NextRequest) {
         .catch((err) => console.warn('[PICKUP] getResInfo skip:', err instanceof Error ? err.message : err, { orderNo: orderNoUsed, reqYmd }));
     }
 
-    // ── 스토리지 자동 연결 ──────────────────────────────────
-    // 1) 클라이언트가 명시한 storage_id 우선
-    // 2) 없으면 장기보관함 자동 매핑 (단 하나라도 있으면)
-    // 3) 장기보관함도 없으면 단기보관함 조회 or 자동 생성
-    let resolvedStorageId: string | null = customer_storage_id ?? null;
+    // 보관/배송 접수: 장기보관이 있으면 그 보관함, 배송만 배송전용 스토리지.
+    // purpose 가 없으면 이전 단기 자동 생성 경로를 유지한다.
+    let resolvedStorageId: string | null = inboundStorageId ?? customer_storage_id ?? null;
 
-    if (!resolvedStorageId) {
+    if (!inboundStorageId && !resolvedStorageId) {
       // 활성 장기보관함 조회 (oldest first → 첫 번째 슬롯)
       const { data: longTermStorages } = await supabase
         .from('customer_storages')

@@ -128,26 +128,34 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const { data: inserted, error } = await admin
-    .from('domestic_orders')
-    .insert({
-      customer_id:    customer.id,
-      recipient_name,
-      recipient_phone,
-      recipient_zip,
-      recipient_addr1,
-      recipient_addr2:  body.recipient_addr2 ?? '',
-      parcel_ids,
-      items_desc:       body.items_desc ?? '의류',
-      delivery_msg:     body.delivery_msg ?? null,
-      packaging_type:   body.packaging_type ?? 'NONE',
-      packaging_fee:    body.packaging_fee ?? 0,
-      add_services:     body.add_services ?? [],
-      notes:            body.notes ?? null,
-      status:           'PENDING',
-    })
-    .select('id')
-    .single();
+  const { quoteOutboundStorageFee } = await import('@/lib/storage/resolve-inbound');
+  const storageQuote = await quoteOutboundStorageFee(admin, customer.id, parcel_ids);
+  const noteWithFee = [body.notes, storageQuote.memo].filter(Boolean).join(' / ');
+
+  const insertRow = {
+    customer_id:    customer.id,
+    recipient_name,
+    recipient_phone,
+    recipient_zip,
+    recipient_addr1,
+    recipient_addr2:  body.recipient_addr2 ?? '',
+    parcel_ids,
+    items_desc:       body.items_desc ?? '의류',
+    delivery_msg:     body.delivery_msg ?? null,
+    packaging_type:   body.packaging_type ?? 'NONE',
+    packaging_fee:    body.packaging_fee ?? 0,
+    storage_fee:      storageQuote.amount,
+    add_services:     body.add_services ?? [],
+    notes:            noteWithFee || null,
+    status:           'PENDING',
+  };
+
+  let insertedResult = await admin.from('domestic_orders').insert(insertRow).select('id').single();
+  if (insertedResult.error?.message?.includes('storage_fee')) {
+    const { storage_fee: _omit, ...withoutFee } = insertRow;
+    insertedResult = await admin.from('domestic_orders').insert(withoutFee).select('id').single();
+  }
+  const { data: inserted, error } = insertedResult;
 
   if (error || !inserted) {
     return NextResponse.json({ error: error?.message ?? '신청 생성 실패' }, { status: 500 });

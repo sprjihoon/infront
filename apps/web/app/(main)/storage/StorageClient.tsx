@@ -20,7 +20,7 @@ interface PlanConfig {
 interface Storage {
   id: string;
   storage_name: string;
-  storage_mode: "short_term" | "long_term";
+  storage_mode: "short_term" | "long_term" | "shipping";
   plan_type: string | null;
   monthly_amount: number | null;
   capacity_score: number | null;
@@ -533,7 +533,10 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
                               theme={theme}
                               isActive={abs === 0}
                               onDetail={() => router.push(`/storage/${card.id}`)}
-                              onRelease={parcelIds => setReleaseSheet(parcelIds)}
+                              onRelease={parcelIds => {
+                                if (card.storage_mode === "shipping") router.push("/shipping");
+                                else setReleaseSheet(parcelIds);
+                              }}
                               onCapacity={() => setCapacitySheet(card)}
                               onRename={() => setRenameSheet(card)}
                             />
@@ -844,18 +847,25 @@ function StorageCard({
 }) {
   const freeInfo    = s.storage_mode === "short_term" ? calcFreeInfo(s.short_term_started_at) : null;
   const isShortTerm = s.storage_mode === "short_term";
+  const isShipping = s.storage_mode === "shipping";
   const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
   const usagePct    = Math.round(s.usage_percent ?? 0);
   const typeCode    = s.storage_types?.code ?? "DEFAULT";
   const typeName    = s.storage_types?.name ?? s.plan_type ?? "-";
 
-  const mainFee = isShortTerm
+  const mainFee = isShipping
+    ? 0
+    : isShortTerm
     ? (freeInfo?.inFreePeriod ? 0 : weeklyFee)
     : s.monthly_amount ?? weeklyFee;
-  const mainFeeLabel = isShortTerm
+  const mainFeeLabel = isShipping
+    ? "출고 때"
+    : isShortTerm
     ? (freeInfo?.inFreePeriod ? "FREE" : mainFee.toLocaleString())
     : mainFee > 0 ? mainFee.toLocaleString() : "-";
-  const mainUnit = isShortTerm
+  const mainUnit = isShipping
+    ? ""
+    : isShortTerm
     ? (freeInfo?.inFreePeriod ? "" : "/주")
     : "/월";
   const freeBadge = freeInfo?.inFreePeriod ? `+${freeInfo.freeDaysLeft}일 무료` : null;
@@ -912,7 +922,7 @@ function StorageCard({
           {/* 가격 */}
           <div className="text-center shrink-0">
             <p className="text-[14px] font-black text-gray-900 leading-none">
-              {mainFeeLabel === "FREE" ? "FREE" : `₩${mainFeeLabel}`}
+              {mainFeeLabel === "FREE" || mainFeeLabel === "출고 때" ? mainFeeLabel : `₩${mainFeeLabel}`}
             </p>
             {mainUnit && mainFeeLabel !== "FREE" && (
               <p className="text-[8px] text-gray-400">{mainUnit}</p>

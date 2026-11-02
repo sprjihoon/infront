@@ -122,6 +122,7 @@ function PickupPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preStorageId = searchParams.get("storage_id") ?? undefined;
+  const inboundPurpose = searchParams.get("purpose");
   const minDate = getNextWeekday();
   const maxDate = getMaxDate();
 
@@ -401,6 +402,7 @@ function PickupPageInner() {
                   } : {}),
                 })),
             ...(preStorageId ? { customer_storage_id: preStorageId } : selectedStorageId ? { customer_storage_id: selectedStorageId } : {}),
+            ...(inboundPurpose === "storage" || inboundPurpose === "shipping" ? { purpose: inboundPurpose } : {}),
           }),
           signal: abortCtrl.signal,
         });
@@ -435,6 +437,10 @@ function PickupPageInner() {
         throw new Error(`서버 오류 (${resp.status}). 잠시 후 다시 시도해주세요.`);
       }
       if (!resp.ok) {
+        if ((data as { code?: string }).code === "NEED_STORAGE") {
+          router.push("/storage/new?next=method");
+          return;
+        }
         if (data.maybe_booked) {
           throw new Error(
             data.error ||
