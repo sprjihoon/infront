@@ -292,7 +292,14 @@ function RegisterParcelPageInner() {
           {wasMerged ? "물품 추가 완료!" : "물품 등록 완료!"}
         </h2>
         <p className="text-gray-500 text-sm leading-relaxed mb-1">
-          운송장 <span className="font-semibold text-gray-800">{shipmentType === "freight" ? senderPhone : trackingNo}</span>{wasMerged ? "에\n물품이 추가되었습니다." : "이\n스토리지에 등록되었습니다."}
+          운송장 <span className="font-semibold text-gray-800">{shipmentType === "freight" ? senderPhone : trackingNo}</span>
+          {wasMerged
+            ? "에 물품이 추가되었습니다."
+            : inboundPurpose === "storage"
+              ? "을 보관으로 등록했습니다."
+              : inboundPurpose === "shipping"
+                ? "을 배송으로 등록했습니다."
+                : "을 등록했습니다."}
         </p>
         <p className="text-xs text-gray-400 mb-8">
           센터에 도착하면 입고 처리 후 알려드릴게요.
@@ -333,11 +340,19 @@ function RegisterParcelPageInner() {
           <div className="flex-1 min-w-0">
             {isSimple ? (
               <>
-                <p className="text-xs text-gray-400">Step {step} / {STEP_LABELS.length}</p>
+                <p className="text-xs text-gray-400">
+                  {inboundPurpose === "storage" ? "보관 · " : inboundPurpose === "shipping" ? "배송 · " : ""}
+                  Step {step} / {STEP_LABELS.length}
+                </p>
                 <p className="text-sm font-bold text-gray-900 truncate">{STEP_LABELS[step - 1]}</p>
               </>
             ) : (
-              <h1 className="text-base font-bold text-gray-900">직접 보내기</h1>
+              <div>
+                <h1 className="text-base font-bold text-gray-900">직접 보내기</h1>
+                {inboundPurpose === "storage" || inboundPurpose === "shipping" ? (
+                  <p className="text-xs text-gray-400">{inboundPurpose === "storage" ? "보관으로 접수합니다" : "배송으로 접수합니다"}</p>
+                ) : null}
+              </div>
             )}
           </div>
         </div>

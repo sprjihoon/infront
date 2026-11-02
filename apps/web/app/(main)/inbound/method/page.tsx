@@ -23,7 +23,9 @@ function MethodInner() {
         </button>
         <div>
           <h1 className="text-base font-bold text-gray-900">{title}</h1>
-          <p className="text-xs text-gray-400 mt-0.5">물건을 어떻게 센터로 보낼까요?</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {purpose === "storage" ? "보관할 물건을 센터로 보냅니다" : "보낼 물건을 센터로 들입니다"}
+          </p>
         </div>
       </div>
 
@@ -31,7 +33,7 @@ function MethodInner() {
         <button
           type="button"
           onClick={() => router.push(`/pickup?${tail}`)}
-          className="w-full bg-white rounded-2xl border border-gray-100 text-left"
+          className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-brand-300 active:scale-[0.98] transition-all text-left"
         >
           <div className="flex items-center gap-4 px-5 py-5">
             <Image src="/icons/inbound-pickup.png" alt="" width={72} height={72} className="object-contain shrink-0" />
@@ -46,7 +48,7 @@ function MethodInner() {
         <button
           type="button"
           onClick={() => router.push(`/register-parcel?${tail}`)}
-          className="w-full bg-white rounded-2xl border border-gray-100 text-left"
+          className="w-full bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-gray-300 active:scale-[0.98] transition-all text-left"
         >
           <div className="flex items-center gap-4 px-5 py-5">
             <Image src="/icons/inbound-direct.png" alt="" width={72} height={72} className="object-contain shrink-0" />

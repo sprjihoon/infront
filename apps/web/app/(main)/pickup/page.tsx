@@ -556,7 +556,12 @@ function PickupPageInner() {
         <div className="w-16 h-16 bg-brand-100 rounded-full flex items-center justify-center mb-5">
           <CheckCircle className="w-9 h-9 text-brand-600" />
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">수거 예약 완료!</h2>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">수거 예약 완료</h2>
+        {inboundPurpose === "storage" || inboundPurpose === "shipping" ? (
+          <p className="text-sm text-gray-500 mb-4">
+            {inboundPurpose === "storage" ? "보관으로 접수했습니다." : "배송으로 접수했습니다."}
+          </p>
+        ) : null}
         {result.is_test && (
           <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5 mb-3">
             테스트 모드 — 실제 수거가 예약되지 않았습니다.
@@ -609,11 +614,19 @@ function PickupPageInner() {
           <div className="flex-1 min-w-0">
             {isSimple ? (
               <>
-                <p className="text-xs text-gray-400">Step {step} / {STEP_LABELS.length}</p>
+                <p className="text-xs text-gray-400">
+                  {inboundPurpose === "storage" ? "보관 · " : inboundPurpose === "shipping" ? "배송 · " : ""}
+                  Step {step} / {STEP_LABELS.length}
+                </p>
                 <h1 className="text-sm font-bold text-gray-900 truncate">{STEP_LABELS[step - 1]}</h1>
               </>
             ) : (
-              <h1 className="text-base font-bold text-gray-900">우체국 수거 신청</h1>
+              <div>
+                <h1 className="text-base font-bold text-gray-900">우체국 수거 신청</h1>
+                {inboundPurpose === "storage" || inboundPurpose === "shipping" ? (
+                  <p className="text-xs text-gray-400">{inboundPurpose === "storage" ? "보관으로 접수합니다" : "배송으로 접수합니다"}</p>
+                ) : null}
+              </div>
             )}
           </div>
         </div>
@@ -1167,7 +1180,18 @@ function PickupPageInner() {
               </div>
             )}
 
-            {/* ── 보관 안내 ── */}
+            {inboundPurpose === "storage" || inboundPurpose === "shipping" ? (
+              <div className="rounded-xl border border-gray-100 bg-white px-4 py-3.5">
+                <p className="text-sm font-bold text-gray-900">
+                  {inboundPurpose === "storage" ? "보관으로 접수합니다" : "배송으로 접수합니다"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                  {inboundPurpose === "storage"
+                    ? "센터에 도착하면 보관함에 들어갑니다."
+                    : "센터에 도착하면 출고를 기다립니다. 국내·해외는 출고할 때 고릅니다."}
+                </p>
+              </div>
+            ) : (
             <div className="space-y-3">
               <div className="flex items-center gap-1.5">
                 <Archive size={15} className="text-gray-500 shrink-0" />
@@ -1350,6 +1374,7 @@ function PickupPageInner() {
                 </ul>
               </div>
             </div>
+            )}
 
             {/* 서비스 안내 */}
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
