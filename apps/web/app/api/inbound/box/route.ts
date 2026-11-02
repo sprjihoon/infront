@@ -9,7 +9,6 @@ import {
   validatePickupAddressDetail,
 } from "@/lib/epost/client";
 import { listEmptyBoxes } from "@/lib/storage/empty-boxes";
-import { resolveInboundStorage, type InboundPurpose } from "@/lib/storage/resolve-inbound";
 
 export async function GET() {
   const cookieStore = await cookies();
@@ -57,7 +56,7 @@ export async function POST(req: NextRequest) {
     address_detail?: string;
   };
 
-  const purpose: InboundPurpose = body.purpose === "storage" ? "storage" : "shipping";
+  const purpose = "shipping";
   const size = (body.size_code ?? "").toUpperCase();
   const qty = Math.min(20, Math.max(1, Math.floor(body.qty ?? 1)));
   const address = normalizeEpostAddr1(body.address);
@@ -75,11 +74,6 @@ export async function POST(req: NextRequest) {
   const boxes = await listEmptyBoxes(supabase);
   const fee = boxes.find((box) => box.size_code === size);
   if (!fee) return NextResponse.json({ error: "우체국 박스 1호~5호만 구입할 수 있습니다." }, { status: 400 });
-
-  const resolved = await resolveInboundStorage(supabase, user.id, purpose, body.storage_id);
-  if ("error" in resolved) {
-    return NextResponse.json({ error: resolved.error, code: resolved.code }, { status: resolved.status });
-  }
 
   const amount = fee.price * qty;
   const { data, error } = await supabase
@@ -105,7 +99,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     id: data.id,
-    storage_id: resolved.storageId,
+    storage_id: null,
     amount,
     size_code: size,
     qty,

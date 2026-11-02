@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ChevronRight, Package } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 
 function MethodInner() {
   const router = useRouter();
@@ -53,23 +53,6 @@ function MethodInner() {
             <div className="flex-1">
               <p className="text-base font-bold text-gray-900">직접 보냈어요</p>
               <p className="text-sm text-gray-500 mt-1">운송장과 발송 정보를 등록합니다</p>
-            </div>
-            <ChevronRight size={18} className="text-gray-300" />
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => router.push(`/inbound/box?${tail}`)}
-          className="w-full bg-white rounded-2xl border border-gray-100 text-left"
-        >
-          <div className="flex items-center gap-4 px-5 py-5">
-            <div className="w-[72px] h-[72px] rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
-              <Package size={28} className="text-amber-600" />
-            </div>
-            <div className="flex-1">
-              <p className="text-base font-bold text-gray-900">박스가 필요해요</p>
-              <p className="text-sm text-gray-500 mt-1">빈 박스를 받은 뒤 담아서 보냅니다</p>
             </div>
             <ChevronRight size={18} className="text-gray-300" />
           </div>

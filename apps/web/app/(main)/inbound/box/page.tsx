@@ -34,7 +34,7 @@ type PayParams = {
 
 type PendingBox = {
   id: string;
-  storageId: string;
+  storageId: string | null;
   amount: number;
   sizeCode: string;
   qty: number;
@@ -138,10 +138,6 @@ function BoxInner() {
       }),
     });
     const json = await res.json();
-    if (json.code === "NEED_STORAGE") {
-      router.push(`/storage/new?next=method&purpose=storage`);
-      return null;
-    }
     if (!res.ok) {
       alert(json.error ?? "신청에 실패했습니다.");
       return null;
@@ -197,7 +193,7 @@ function BoxInner() {
         </button>
         <div>
           <h1 className="text-base font-bold text-gray-900">박스가 필요해요</h1>
-          <p className="text-xs text-gray-400 mt-0.5">우체국 박스 1호~5호만 구입할 수 있습니다</p>
+          <p className="text-xs text-gray-400 mt-0.5">포장이 끝나면 입고신청에서 다시 접수합니다</p>
         </div>
       </div>
 
@@ -273,13 +269,12 @@ function BoxInner() {
             onPaid={(result) => {
               const q = new URLSearchParams({
                 amount: String(result.amountKrw),
-                storage_id: pending.storageId,
                 type: "PICKUP_FEE",
                 next: "box",
-                purpose,
                 verified: "1",
                 provider: "paypal",
               });
+              if (pending.storageId) q.set("storage_id", pending.storageId);
               router.push(`/storage/payment/success?${q}`);
             }}
             onError={(msg) => alert(msg)}

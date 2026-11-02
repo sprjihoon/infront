@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     const fxLockedAt = new Date().toISOString();
 
     if ((body.kind ?? "shop") === "storage") {
-      if (!body.storage_id || !body.payment_type) {
+      if (!body.payment_type || (!body.storage_id && !body.box_request_id)) {
         return NextResponse.json({ error: "storage_id / payment_type 필수" }, { status: 400 });
       }
       const supabase = await createServerSupabase();
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
 
       const amountUsd = krwToUsd(quoted.data.amount, fxRate);
       const timestamp = Date.now().toString();
-      const shortId = body.storage_id.replace(/-/g, "").slice(0, 8);
+      const shortId = body.storage_id ? body.storage_id.replace(/-/g, "").slice(0, 8) : "BOX";
       const oid = `STG-PP-${shortId}-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
 
       const paypal = await createPaypalOrder({
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
       const { error: insErr } = await db.from("storage_payments").insert({
         user_id: user!.id,
-        storage_id: body.storage_id,
+        storage_id: body.storage_id ?? null,
         payment_type: body.payment_type,
         amount: quoted.data.amount,
         status: "PENDING",

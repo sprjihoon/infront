@@ -69,20 +69,25 @@ export async function POST(request: NextRequest) {
   };
 
   const { storage_id, payment_type, buyername, buyertel, buyeremail } = body;
-  if (!storage_id || !payment_type || !buyername || !buyertel || !buyeremail) {
+  const isBoxPay = payment_type === "PICKUP_FEE" && Boolean(body.box_request_id);
+  if (!payment_type || !buyername || !buyertel || !buyeremail || (!storage_id && !isBoxPay)) {
     return NextResponse.json({ error: "필수 파라미터 누락" }, { status: 400 });
   }
 
-  /* ── 스토리지 소유권 확인 ── */
-  const { data: storage, error: sErr } = await supabase
-    .from("customer_storages")
-    .select("id, user_id, storage_mode, plan_type, max_plan_type, short_term_started_at")
-    .eq("id", storage_id)
-    .eq("user_id", user.id)
-    .single();
+  /* ── 스토리지 소유권 확인. 빈 박스 구입은 보관·배송 접수와 분리한다. ── */
+  let storage: { max_plan_type: string | null } | null = null;
+  if (!isBoxPay) {
+    const { data, error: sErr } = await supabase
+      .from("customer_storages")
+      .select("id, user_id, storage_mode, plan_type, max_plan_type, short_term_started_at")
+      .eq("id", storage_id)
+      .eq("user_id", user.id)
+      .single();
 
-  if (sErr || !storage) {
-    return NextResponse.json({ error: "스토리지를 찾을 수 없습니다." }, { status: 404 });
+    if (sErr || !data) {
+      return NextResponse.json({ error: "스토리지를 찾을 수 없습니다." }, { status: 404 });
+    }
+    storage = data;
   }
 
   /* ── 결제 금액 계산 ── */
@@ -208,7 +213,7 @@ export async function POST(request: NextRequest) {
 
   } else if (payment_type === "SHORT_TERM_STORAGE") {
     billing_weeks = body.billing_weeks ?? null;
-    billing_plan_type = body.billing_plan_type ?? (storage.max_plan_type as string | null);
+    billing_plan_type = body.billing_plan_type ?? (storage?.max_plan_type as string | null);
 
     if (!billing_weeks || billing_weeks <= 0) {
       return NextResponse.json({ error: "보관 기간(주)이 올바르지 않습니다." }, { status: 400 });
@@ -259,7 +264,7 @@ export async function POST(request: NextRequest) {
   }
 
   const timestamp = Date.now().toString();
-  const shortId = storage_id.replace(/-/g, "").substring(0, 8);
+  const shortId = storage_id ? storage_id.replace(/-/g, "").substring(0, 8) : "BOX";
   const oid = `STG-${shortId}-${timestamp}-${crypto.randomBytes(4).toString("hex")}`;
   const priceStr = String(amount);
 
@@ -267,7 +272,7 @@ export async function POST(request: NextRequest) {
     .from("storage_payments")
     .insert({
       user_id: user.id,
-      storage_id,
+      storage_id: storage_id || null,
       payment_type,
       amount,
       status: "PENDING",

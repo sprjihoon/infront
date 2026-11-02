@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
   await markBoxRequestPaid(db, paymentRec.billing_memo, oid);
 
   /* 수거비 결제 완료 → 스토리지 활성화 */
-  if (paymentRec.payment_type === "PICKUP_FEE") {
+  if (paymentRec.payment_type === "PICKUP_FEE" && paymentRec.storage_id && !boxRequestFromMemo(paymentRec.billing_memo)) {
     await db
       .from("customer_storages")
       .update({ status: "ACTIVE", updated_at: now })
@@ -232,6 +232,9 @@ export async function POST(request: NextRequest) {
   const boxQuery = box
     ? `&next=box&purpose=${encodeURIComponent(box.purpose ?? "shipping")}`
     : "";
-  const successUrl = `/storage/payment/success?oid=${encodeURIComponent(oid)}&amount=${encodeURIComponent(price ?? "")}&tid=${encodeURIComponent(tid)}&storage_id=${encodeURIComponent(paymentRec.storage_id)}&type=${encodeURIComponent(paymentRec.payment_type)}${boxQuery}`;
+  const storageQuery = paymentRec.storage_id
+    ? `&storage_id=${encodeURIComponent(paymentRec.storage_id)}`
+    : "";
+  const successUrl = `/storage/payment/success?oid=${encodeURIComponent(oid)}&amount=${encodeURIComponent(price ?? "")}&tid=${encodeURIComponent(tid)}${storageQuery}&type=${encodeURIComponent(paymentRec.payment_type)}${boxQuery}`;
   return redirectHtml(successUrl);
 }

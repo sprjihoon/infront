@@ -14,7 +14,7 @@ export type StoragePayType =
   | "PENALTY_FEE";
 
 export type StoragePayInput = {
-  storage_id: string;
+  storage_id?: string;
   payment_type: StoragePayType;
   pickup_boxes?: Array<{ size_code: string; qty: number }>;
   billing_weeks?: number;
@@ -41,16 +41,22 @@ export async function quoteStoragePayment(
   body: StoragePayInput,
 ): Promise<{ ok: true; data: StorageQuote } | { ok: false; error: string; status: number }> {
   const { storage_id, payment_type } = body;
+  const isBoxPay = payment_type === "PICKUP_FEE" && Boolean(body.box_request_id);
 
-  const { data: storage, error: sErr } = await supabase
-    .from("customer_storages")
-    .select("id, user_id, max_plan_type")
-    .eq("id", storage_id)
-    .eq("user_id", userId)
-    .single();
+  let storage: { max_plan_type: string | null } | null = null;
+  if (!isBoxPay) {
+    if (!storage_id) return { ok: false, error: "스토리지를 찾을 수 없습니다.", status: 404 };
+    const { data, error: sErr } = await supabase
+      .from("customer_storages")
+      .select("id, user_id, max_plan_type")
+      .eq("id", storage_id)
+      .eq("user_id", userId)
+      .single();
 
-  if (sErr || !storage) {
-    return { ok: false, error: "스토리지를 찾을 수 없습니다.", status: 404 };
+    if (sErr || !data) {
+      return { ok: false, error: "스토리지를 찾을 수 없습니다.", status: 404 };
+    }
+    storage = data;
   }
 
   let amount = 0;
@@ -153,7 +159,7 @@ export async function quoteStoragePayment(
     billing_memo = `수거비(${pickupLines.join("/")})+첫달이용료(${planData.label_ko} ${monthly_amount.toLocaleString()}원)`;
   } else if (payment_type === "SHORT_TERM_STORAGE") {
     billing_weeks = body.billing_weeks ?? null;
-    billing_plan_type = body.billing_plan_type ?? (storage.max_plan_type as string | null);
+    billing_plan_type = body.billing_plan_type ?? (storage?.max_plan_type as string | null);
     if (!billing_weeks || billing_weeks <= 0) {
       return { ok: false, error: "보관 기간(주)이 올바르지 않습니다.", status: 400 };
     }
