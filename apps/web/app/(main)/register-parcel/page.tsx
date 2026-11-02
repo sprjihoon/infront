@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, ArrowRight, Package, Plus, Trash2,
@@ -63,6 +63,14 @@ const ORIGIN_OPTIONS = [
 ];
 
 export default function RegisterParcelPage() {
+  return (
+    <Suspense>
+      <RegisterParcelPageInner />
+    </Suspense>
+  );
+}
+
+function RegisterParcelPageInner() {
   const router = useRouter();
   const inboundPurpose = useSearchParams().get("purpose");
   const inboundStorageId = useSearchParams().get("storage_id");
