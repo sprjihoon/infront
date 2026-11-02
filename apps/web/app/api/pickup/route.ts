@@ -190,16 +190,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let inboundStorageId: string | null = null;
-    if (purpose === "storage" || purpose === "shipping") {
-      const { resolveInboundStorage } = await import("@/lib/storage/resolve-inbound");
-      const resolved = await resolveInboundStorage(supabase, user.id, purpose, customer_storage_id);
-      if ("error" in resolved) {
-        return NextResponse.json({ error: resolved.error, code: resolved.code }, { status: resolved.status });
-      }
-      inboundStorageId = resolved.storageId;
-    }
-
     const spec = boxSpecs[0];
     const center = getCenterConfig();
     const centerZip = normalizeEpostZip(center.zip);
@@ -248,6 +238,16 @@ export async function POST(req: NextRequest) {
 
     if (!customer) {
       return NextResponse.json({ error: '고객 정보를 찾을 수 없습니다.' }, { status: 404 });
+    }
+
+    let inboundStorageId: string | null = null;
+    if (purpose === "storage" || purpose === "shipping") {
+      const { resolveInboundStorage } = await import("@/lib/storage/resolve-inbound");
+      const resolved = await resolveInboundStorage(supabase, user.id, purpose, customer_storage_id);
+      if ("error" in resolved) {
+        return NextResponse.json({ error: resolved.error, code: resolved.code }, { status: resolved.status });
+      }
+      inboundStorageId = resolved.storageId;
     }
 
     let recAddr1 = normalizeEpostAddr1(pickup_address);
