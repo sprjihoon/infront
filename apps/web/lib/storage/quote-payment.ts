@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { pricePendingBox } from "@/lib/storage/empty-boxes";
 
 export type StoragePayType =
   | "PICKUP_FEE"
@@ -21,6 +22,7 @@ export type StoragePayInput = {
   item_count?: number;
   amount?: number;
   long_term_plan_type?: string;
+  box_request_id?: string;
 };
 
 export type StorageQuote = {
@@ -59,7 +61,13 @@ export async function quoteStoragePayment(
   let item_count: number | null = null;
   let monthly_amount: number | null = null;
 
-  if (payment_type === "PICKUP_FEE") {
+  if (payment_type === "PICKUP_FEE" && body.box_request_id) {
+    const priced = await pricePendingBox(supabase, userId, body.box_request_id);
+    if ("error" in priced) return { ok: false, error: priced.error, status: priced.status };
+    amount = priced.amount;
+    goodname = priced.goodname;
+    billing_memo = priced.billing_memo;
+  } else if (payment_type === "PICKUP_FEE") {
     const { data: feeRows, error: feeErr } = await supabase
       .from("pickup_box_fees")
       .select("size_code, label_ko, pickup_fee")

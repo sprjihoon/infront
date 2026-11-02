@@ -18,8 +18,11 @@ function SuccessContent() {
   const paymentType = params.get("type") ?? "PICKUP_FEE";
   const tid = params.get("tid");
 
-  const isPickup = paymentType === "PICKUP_FEE";
+  const isBox = params.get("next") === "box";
+  const purpose = params.get("purpose") === "storage" ? "storage" : "shipping";
+  const isPickup = paymentType === "PICKUP_FEE" && !isBox;
   const isRelease = paymentType === "SHORT_TERM_STORAGE";
+  const nextQuery = `purpose=${purpose}${storageId ? `&storage_id=${storageId}` : ""}`;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
@@ -52,7 +55,20 @@ function SuccessContent() {
             <Package size={14} className="text-blue-600" />
             <p className="text-xs font-bold text-blue-700">다음 안내</p>
           </div>
-          {isPickup ? (
+          {isBox ? (
+            <ul className="space-y-1.5">
+              {[
+                "빈 박스 결제가 완료되어 발송 접수가 되었습니다.",
+                "박스가 도착하면 물건을 담아 주세요.",
+                "그다음 수거를 맡기거나 직접 보내 주세요.",
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-1.5">
+                  <span className="text-blue-400 mt-0.5">•</span>
+                  <span className="text-xs text-blue-700">{t}</span>
+                </li>
+              ))}
+            </ul>
+          ) : isPickup ? (
             <ul className="space-y-1.5">
               {[
                 "수거 일정은 영업일 기준 1~2일 내 별도 연락 드립니다.",
@@ -84,7 +100,23 @@ function SuccessContent() {
         </div>
 
         <div className="space-y-2">
-          {storageId && (
+          {isBox && (
+            <>
+              <button
+                onClick={() => router.push(`/pickup?${nextQuery}`)}
+                className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white text-sm font-bold py-3.5 rounded-2xl"
+              >
+                수거해 주세요
+              </button>
+              <button
+                onClick={() => router.push(`/register-parcel?${nextQuery}`)}
+                className="w-full bg-white border border-gray-200 text-sm font-bold py-3 rounded-2xl"
+              >
+                직접 보냈어요
+              </button>
+            </>
+          )}
+          {storageId && !isBox && (
             <button
               onClick={() => router.push(`/storage/${storageId}`)}
               className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white text-sm font-bold py-3.5 rounded-2xl"

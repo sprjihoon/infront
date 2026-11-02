@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { markBoxRequestPaid } from "@/lib/storage/mark-box-paid";
 
 export function paypalAdminDb(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -38,11 +39,12 @@ export async function markStoragePaymentPaid(
 ): Promise<{ oid: string; amount: number; storageId: string | null } | null> {
   const { data: payment } = await db
     .from("storage_payments")
-    .select("id, pg_oid, amount, status, storage_id")
+    .select("id, pg_oid, amount, status, storage_id, billing_memo")
     .eq("paypal_order_id", paypalOrderId)
     .maybeSingle();
   if (!payment) return null;
   if (payment.status === "PAID") {
+    await markBoxRequestPaid(db, payment.billing_memo, payment.pg_oid ?? paypalOrderId);
     return { oid: payment.pg_oid ?? paypalOrderId, amount: Number(payment.amount), storageId: payment.storage_id };
   }
   await db
@@ -54,6 +56,7 @@ export async function markStoragePaymentPaid(
     })
     .eq("id", payment.id)
     .eq("status", "PENDING");
+  await markBoxRequestPaid(db, payment.billing_memo, payment.pg_oid ?? paypalOrderId);
   return {
     oid: payment.pg_oid ?? paypalOrderId,
     amount: Number(payment.amount),

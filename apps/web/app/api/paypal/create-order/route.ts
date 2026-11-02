@@ -58,6 +58,7 @@ export async function POST(request: NextRequest) {
         item_count: body.item_count,
         amount: body.amount,
         long_term_plan_type: body.long_term_plan_type,
+        box_request_id: body.box_request_id,
       });
       if (!quoted.ok) {
         return NextResponse.json({ error: quoted.error }, { status: quoted.status });

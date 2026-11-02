@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
+import { boxRequestFromMemo, markBoxRequestPaid } from "@/lib/storage/mark-box-paid";
 
 /* ────────────────────────────────────────────────────────────────
    스토리지 결제 콜백 (KG이니시스 returnUrl)
@@ -207,6 +208,8 @@ export async function POST(request: NextRequest) {
     })
     .eq("pg_oid", oid);
 
+  await markBoxRequestPaid(db, paymentRec.billing_memo, oid);
+
   /* 수거비 결제 완료 → 스토리지 활성화 */
   if (paymentRec.payment_type === "PICKUP_FEE") {
     await db
@@ -224,6 +227,10 @@ export async function POST(request: NextRequest) {
   }
 
   /* ── 6. 성공 페이지 리다이렉트 ── */
-  const successUrl = `/storage/payment/success?oid=${encodeURIComponent(oid)}&amount=${encodeURIComponent(price ?? "")}&tid=${encodeURIComponent(tid)}&storage_id=${encodeURIComponent(paymentRec.storage_id)}&type=${encodeURIComponent(paymentRec.payment_type)}`;
+  const box = boxRequestFromMemo(paymentRec.billing_memo);
+  const boxQuery = box
+    ? `&next=box&purpose=${encodeURIComponent(box.purpose ?? "shipping")}`
+    : "";
+  const successUrl = `/storage/payment/success?oid=${encodeURIComponent(oid)}&amount=${encodeURIComponent(price ?? "")}&tid=${encodeURIComponent(tid)}&storage_id=${encodeURIComponent(paymentRec.storage_id)}&type=${encodeURIComponent(paymentRec.payment_type)}${boxQuery}`;
   return redirectHtml(successUrl);
 }

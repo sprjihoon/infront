@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import crypto from "crypto";
+import { pricePendingBox } from "@/lib/storage/empty-boxes";
 
 /* ────────────────────────────────────────────────────────────────
    스토리지 결제 준비 엔드포인트
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
     amount?: number;
     /** LONG_TERM_FIRST: 장기보관 플랜 (첫 달 요금 계산) */
     long_term_plan_type?: string;
+    box_request_id?: string;
   };
 
   const { storage_id, payment_type, buyername, buyertel, buyeremail } = body;
@@ -94,7 +96,13 @@ export async function POST(request: NextRequest) {
   let billing_plan_type: string | null = null;
   let item_count_val: number | null = null;
 
-  if (payment_type === "PICKUP_FEE") {
+  if (payment_type === "PICKUP_FEE" && body.box_request_id) {
+    const priced = await pricePendingBox(supabase, user.id, body.box_request_id);
+    if ("error" in priced) return NextResponse.json({ error: priced.error }, { status: priced.status });
+    amount = priced.amount;
+    goodname = priced.goodname;
+    billing_memo = priced.billing_memo;
+  } else if (payment_type === "PICKUP_FEE") {
     /* DB에서 박스 요금 조회 */
     const { data: feeRows, error: feeErr } = await supabase
       .from("pickup_box_fees")
