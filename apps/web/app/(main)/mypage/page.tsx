@@ -202,51 +202,32 @@ export default function MyPage() {
 
   return (
     <>
-      {/* ── 상단 헤더 (흰색 배경) ── */}
-      <div className="bg-white px-4 py-3.5 sticky top-0 z-10 flex items-center justify-between border-b border-gray-100">
-        <div className="flex items-center gap-2">
-          <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100">
-            <ArrowLeft size={20} className="text-gray-700" />
-          </button>
+      <div className="bg-white px-4 py-3.5 sticky top-0 z-10 flex items-center gap-3 border-b border-gray-100">
+        <button onClick={() => router.back()} className="p-1.5 -ml-1.5 rounded-lg hover:bg-gray-100">
+          <ArrowLeft size={20} className="text-gray-700" />
+        </button>
+        <div>
           <h1 className="text-base font-bold text-gray-900">마이페이지</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-brand-600">infront</span>
+          <p className="text-xs text-gray-400 mt-0.5">계정과 주소, 진행 상황</p>
         </div>
       </div>
 
-      {/* ── 프로필 헤더 (브랜드 배경) ── */}
-      <div className="bg-brand-600 px-5 pt-5 pb-5 rounded-b-3xl">
-        <div className="flex items-center gap-4">
-          {/* 아바타 - 탭하면 사진 변경 */}
+      <div className="px-4 pt-4 pb-8 space-y-3">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4 flex items-center gap-4">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={avatarUploading}
-            className="relative w-16 h-16 rounded-full flex-shrink-0 overflow-hidden"
+            className="relative w-14 h-14 rounded-full flex-shrink-0 overflow-hidden bg-brand-50"
           >
             {customer?.avatar_url ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img src={customer.avatar_url} alt="프로필" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-white/20 flex items-center justify-center">
-                <User size={28} className="text-white" />
+              <div className="w-full h-full flex items-center justify-center">
+                <User size={24} className="text-brand-600" />
               </div>
             )}
-            {/* 카메라 오버레이 */}
-            <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 active:opacity-100 transition-opacity">
-              {avatarUploading ? (
-                <svg className="animate-spin w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" fill="none" stroke="white" strokeWidth="2" viewBox="0 0 24 24">
-                  <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z" />
-                  <circle cx="12" cy="13" r="4" />
-                </svg>
-              )}
-            </div>
           </button>
           <input
             ref={fileInputRef}
@@ -256,31 +237,25 @@ export default function MyPage() {
             onChange={handleAvatarChange}
           />
           <div className="min-w-0 flex-1">
-            <p className="text-white font-bold text-lg leading-snug">
+            <p className="text-gray-900 font-bold text-base leading-snug truncate">
               {customer?.name ?? "—"}님
             </p>
-            <p className="text-white/80 text-sm truncate">{customer?.email ?? "—"}</p>
-            {customer?.phone && (
-              <p className="text-white/70 text-xs mt-0.5">{customer.phone}</p>
-            )}
-            {customer?.customer_type && (
-              <p className="inline-flex mt-1.5 text-[11px] font-medium text-white bg-white/20 px-2 py-0.5 rounded-md">
-                {CUSTOMER_TYPE_LABEL[customer.customer_type]}
-              </p>
-            )}
+            <p className="text-gray-500 text-sm truncate">{customer?.email ?? "—"}</p>
+            <p className="text-xs text-gray-400 mt-0.5 truncate">
+              {[customer?.phone, customer ? CUSTOMER_TYPE_LABEL[customer.customer_type] : ""]
+                .filter((part): part is string => Boolean(part))
+                .join(" · ") || "프로필을 입력해 주세요"}
+            </p>
           </div>
           <button
             type="button"
             onClick={openEditSheet}
-            className="p-2.5 rounded-full bg-white/20 hover:bg-white/30 active:scale-95 transition-all flex-shrink-0"
+            className="p-2 rounded-full hover:bg-gray-100 active:scale-95 transition-all flex-shrink-0"
             aria-label="프로필 수정"
           >
-            <Pencil size={16} className="text-white" />
+            <Pencil size={16} className="text-gray-500" />
           </button>
         </div>
-      </div>
-
-      <div className="px-4 pt-4 pb-8 space-y-3">
 
         {/* ── 통계 그리드 2×2 ── */}
         <div className="grid grid-cols-2 gap-3">
@@ -296,8 +271,8 @@ export default function MyPage() {
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
-            <p className="text-xs font-medium text-gray-700">입고 진행현황</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">입고 처리 중</p>
+            <p className="text-xs font-medium text-gray-700">오는 중</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">센터로 이동 중</p>
             <p className="text-2xl font-bold text-gray-900 mt-1.5 tabular-nums">
               {stats.inboundCount}
             </p>
@@ -315,8 +290,8 @@ export default function MyPage() {
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
-            <p className="text-xs font-medium text-gray-700">출고·배송현황</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">배송 중</p>
+            <p className="text-xs font-medium text-gray-700">출고 중</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">보내는 중</p>
             <p className="text-2xl font-bold text-gray-900 mt-1.5 tabular-nums">
               {stats.shippingCount}
             </p>
@@ -334,8 +309,8 @@ export default function MyPage() {
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
-            <p className="text-xs font-medium text-gray-700">보관 중 물품</p>
-            <p className="text-[11px] text-gray-400 mt-0.5">보관 중</p>
+            <p className="text-xs font-medium text-gray-700">센터에 있음</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">보관·출고 대기</p>
             <p className="text-2xl font-bold text-gray-900 mt-1.5 tabular-nums">
               {stats.storageCount}
             </p>
@@ -353,35 +328,14 @@ export default function MyPage() {
               </div>
               <ChevronRight size={14} className="text-gray-300 mt-0.5" />
             </div>
-            <p className="text-xs font-medium text-gray-700">주소록 관리</p>
+            <p className="text-xs font-medium text-gray-700">주소록</p>
             <p className="text-[11px] text-gray-400 mt-0.5">
-              국내 {stats.addrPickup} / 해외 {stats.addrOverseas}
+              수거 {stats.addrPickup} · 해외 {stats.addrOverseas}
             </p>
             <p className="text-2xl font-bold text-gray-900 mt-1.5 tabular-nums">
               {stats.addressCount}
             </p>
           </button>
-        </div>
-
-        {/* ── 고객 구분 (결제) ── */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-900">고객 구분 (결제)</p>
-            <button
-              type="button"
-              onClick={openEditSheet}
-              className="text-xs text-brand-600 font-medium"
-            >
-              변경
-            </button>
-          </div>
-          <p className="text-base font-bold text-gray-900">
-            {CUSTOMER_TYPE_LABEL[customer?.customer_type ?? "domestic"]}
-          </p>
-          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
-            서비스·안내 언어 및 배송 관련 안내에 참고됩니다. 현재 결제는 국내 결제수단만
-            지원합니다.
-          </p>
         </div>
 
         {/* ── 입고 주소 ── */}
@@ -410,7 +364,7 @@ export default function MyPage() {
           </p>
 
           <p className="text-xs text-gray-400 mt-3 leading-relaxed">
-            📦 입고 시 이 주소로 발송해 주세요.
+            직접 보낼 때 이 주소와 이름을 적습니다.
           </p>
         </div>
 
@@ -421,7 +375,7 @@ export default function MyPage() {
             <p className="text-sm font-semibold text-gray-900">입력 모드</p>
           </div>
           <p className="text-xs text-gray-400 mb-4 leading-relaxed">
-            수거·출고 신청 화면 표시 방식입니다. 일반모드는 단계별, 고급모드는 한 페이지에 모두 입력합니다.
+            수거와 출고 화면입니다. 일반은 단계별로, 고급은 한 화면에 입력합니다.
           </p>
           <FlowModeToggle />
         </div>
