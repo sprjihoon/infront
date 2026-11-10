@@ -24,7 +24,7 @@ function MethodInner() {
         <div>
           <h1 className="text-base font-bold text-gray-900">{title}</h1>
           <p className="text-xs text-gray-400 mt-0.5">
-            {purpose === "storage" ? "보관할 물건을 센터로 보냅니다" : "보낼 물건을 센터로 들입니다"}
+            {purpose === "storage" ? "보관할 물건을 센터로 보냅니다" : "받을 사람에게 보낼 물건을 접수합니다"}
           </p>
         </div>
       </div>

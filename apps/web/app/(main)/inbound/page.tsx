@@ -67,7 +67,7 @@ export default function InboundPage() {
                 <ChevronRight size={18} className="text-gray-400 shrink-0" />
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">
-                보내려고 센터로 들이는 물건입니다. 국내·해외는 출고할 때 고릅니다.
+                받을 사람에게 보내는 물건입니다. 국내·해외는 보낼 때 고릅니다.
               </p>
             </div>
           </div>
