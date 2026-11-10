@@ -193,7 +193,7 @@ function BoxInner() {
         </button>
         <div>
           <h1 className="text-base font-bold text-gray-900">박스가 필요해요</h1>
-          <p className="text-xs text-gray-400 mt-0.5">포장이 끝나면 입고신청에서 다시 접수합니다</p>
+          <p className="text-xs text-gray-400 mt-0.5">포장이 끝나면 배송이나 보관으로 다시 신청합니다</p>
         </div>
       </div>
 

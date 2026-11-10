@@ -58,7 +58,7 @@ function SuccessContent() {
               {[
                 "빈 박스 결제가 완료되어 받을 주소로 보냅니다.",
                 "박스가 도착하면 물건을 담아 주세요.",
-                "포장이 끝나면 입고신청에서 보관 또는 배송으로 다시 접수해 주세요.",
+                "포장이 끝나면 배송 신청 또는 보관 신청으로 다시 접수해 주세요.",
               ].map((t) => (
                 <li key={t} className="flex items-start gap-1.5">
                   <span className="text-blue-400 mt-0.5">•</span>
@@ -103,7 +103,7 @@ function SuccessContent() {
               onClick={() => router.push("/inbound")}
               className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white text-sm font-bold py-3.5 rounded-2xl"
             >
-              입고신청
+              신청하기
             </button>
           )}
           {storageId && !isBox && (

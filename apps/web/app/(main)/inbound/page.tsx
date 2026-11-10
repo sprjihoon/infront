@@ -38,8 +38,8 @@ export default function InboundPage() {
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
         <div>
-          <h1 className="text-base font-bold text-gray-900">입고신청</h1>
-          <p className="text-xs text-gray-400 mt-0.5">보낼 물건인지, 보관할 물건인지 고릅니다</p>
+          <h1 className="text-base font-bold text-gray-900">신청</h1>
+          <p className="text-xs text-gray-400 mt-0.5">배송 신청인지, 보관 신청인지 고릅니다</p>
         </div>
       </div>
 
@@ -115,7 +115,7 @@ export default function InboundPage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-bold text-gray-900">박스가 필요해요</p>
               <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-                우체국 1호~5호를 구입합니다. 포장이 끝나면 보관이나 배송으로 다시 접수합니다.
+                우체국 1호~5호를 구입합니다. 포장이 끝나면 배송이나 보관으로 다시 신청합니다.
               </p>
             </div>
             <ChevronRight size={16} className="text-gray-300 shrink-0" />
