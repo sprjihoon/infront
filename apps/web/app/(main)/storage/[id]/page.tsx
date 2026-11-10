@@ -279,7 +279,7 @@ export default function StorageDetailPage() {
   if (!storage) return null;
 
   if (storage.storage_mode === "shipping") {
-    return <ShippingStorageView name={storage.storage_name} parcels={parcels} />;
+    return <ShippingStorageView storageId={storage.id} name={storage.storage_name} parcels={parcels} />;
   }
 
   const sCfg = STORAGE_STATUS_CONFIG[storage.status] ?? STORAGE_STATUS_CONFIG.ACTIVE;

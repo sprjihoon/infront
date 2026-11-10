@@ -39,40 +39,13 @@ export default function InboundPage() {
         </button>
         <div>
           <h1 className="text-base font-bold text-gray-900">입고신청</h1>
-          <p className="text-xs text-gray-400 mt-0.5">보관할 물건인지, 보낼 물건인지 고릅니다</p>
+          <p className="text-xs text-gray-400 mt-0.5">보낼 물건인지, 보관할 물건인지 고릅니다</p>
         </div>
       </div>
 
       <div className="px-4 py-6 max-w-[600px] mx-auto">
         <p className="text-xs font-bold text-gray-400 mb-3">접수</p>
         <div className="space-y-3">
-        <button
-          type="button"
-          disabled={opening !== null}
-          onClick={openStorage}
-          className="w-full bg-white rounded-2xl border border-gray-100 hover:border-brand-300 active:scale-[0.98] transition-all shadow-sm text-left disabled:opacity-60"
-        >
-          <div className="flex items-center gap-4 px-5 py-5">
-            <Image
-              src="/icon-storage.png"
-              alt="보관"
-              width={88}
-              height={88}
-              priority
-              className="object-contain shrink-0"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-1.5">
-                <p className="text-lg font-bold text-gray-900">보관</p>
-                <ChevronRight size={18} className="text-gray-400 shrink-0" />
-              </div>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                맡겨 두는 물건입니다. 한 달 단위로 보관료를 냅니다.
-              </p>
-            </div>
-          </div>
-        </button>
-
         <button
           type="button"
           disabled={opening !== null}
@@ -95,6 +68,33 @@ export default function InboundPage() {
               </div>
               <p className="text-sm text-gray-500 leading-relaxed">
                 보내려고 센터로 들이는 물건입니다. 국내·해외는 출고할 때 고릅니다.
+              </p>
+            </div>
+          </div>
+        </button>
+
+        <button
+          type="button"
+          disabled={opening !== null}
+          onClick={openStorage}
+          className="w-full bg-white rounded-2xl border border-gray-100 hover:border-brand-300 active:scale-[0.98] transition-all shadow-sm text-left disabled:opacity-60"
+        >
+          <div className="flex items-center gap-4 px-5 py-5">
+            <Image
+              src="/icon-storage.png"
+              alt="보관"
+              width={88}
+              height={88}
+              priority
+              className="object-contain shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-lg font-bold text-gray-900">보관</p>
+                <ChevronRight size={18} className="text-gray-400 shrink-0" />
+              </div>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                맡겨 두는 물건입니다. 한 달 단위로 보관료를 냅니다.
               </p>
             </div>
           </div>

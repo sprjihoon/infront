@@ -106,9 +106,9 @@ function StorageNewInner() {
           <p className="font-bold text-blue-800">📦 장기보관 서비스 안내</p>
           <ul className="space-y-0.5">
             {[
-              "수거 신청 시 함께 신청하면 수거 완료 후 바로 보관 시작",
-              "선택한 사이즈 기준으로 로케이션 배정 후 주 단위 자동 정산",
-              "단기보관: 입고 후 3일 무료, 4일차부터 주 단위 자동 정산 (별도 신청 불필요)",
+              "입고된 날부터 7일이 지나면 이 보관함의 장기보관이 시작됩니다",
+              "시작일에 한 달을 내고, 이후에는 선택한 사이즈의 월 요금으로 이어집니다",
+              "7일 안에 모두 나가면 보관료는 없습니다",
             ].map((t) => (
               <li key={t} className="flex items-start gap-1.5">
                 <span className="mt-0.5">•</span>
@@ -191,7 +191,7 @@ function StorageNewInner() {
                 {(selectedType.price_per_month ?? selectedType.price_per_week * 4).toLocaleString()}원/월
               </span>
             </div>
-            <p className="text-xs text-gray-400">로케이션 배정 후 자동 정산</p>
+            <p className="text-xs text-gray-400">입고 7일 뒤부터 월 요금</p>
           </div>
         )}
 

@@ -19,7 +19,7 @@ interface CustomerInfo {
 interface StorageDetail {
   id: string;
   storage_name: string;
-  storage_mode: "short_term" | "long_term";
+  storage_mode: "short_term" | "long_term" | "shipping";
   plan_type: string | null;
   current_plan_type: string | null;
   max_plan_type: string | null;
@@ -274,8 +274,14 @@ export default function AdminStorageDetailPage() {
 
       {/* 요약 카드 */}
       <div className="bg-white rounded-2xl border border-gray-200 p-4 grid grid-cols-2 gap-4">
-        <InfoCell label="보관 방식" value={storage.storage_mode === "short_term" ? "단기보관" : "장기보관"} />
-        <InfoCell label="플랜" value={storage.storage_plan_config?.label_ko ?? storage.plan_type ?? "-"} />
+        <InfoCell
+          label="보관 방식"
+          value={storage.storage_mode === "shipping" ? "배송전용" : storage.storage_mode === "short_term" ? "단기보관" : "장기보관"}
+        />
+        <InfoCell
+          label="플랜"
+          value={storage.storage_mode === "shipping" ? "배송전용 블록" : (storage.storage_plan_config?.label_ko ?? storage.plan_type ?? "-")}
+        />
         <InfoCell label="상태">
           <div className="flex items-center gap-2 mt-1">
             <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
@@ -297,6 +303,9 @@ export default function AdminStorageDetailPage() {
           </div>
         </InfoCell>
         <InfoCell label="용량 현황">
+          {storage.storage_mode === "shipping" ? (
+            <p className="text-sm text-gray-700 mt-1">사이즈 없음. 고객이 장기보관으로 전환하면 사이즈가 정해집니다.</p>
+          ) : (
           <div className="mt-1 space-y-2">
             {/* 게이지 */}
             {storage.capacity_score != null && storage.capacity_score > 0 ? (
@@ -351,8 +360,14 @@ export default function AdminStorageDetailPage() {
               </p>
             )}
           </div>
+          )}
         </InfoCell>
-        {storage.storage_mode === "short_term" ? (
+        {storage.storage_mode === "shipping" ? (
+          <>
+            <InfoCell label="무료 기간" value="입고 후 7일, 크기와 무관" />
+            <InfoCell label="장기 전환" value="고객 요청 후 승인" />
+          </>
+        ) : storage.storage_mode === "short_term" ? (
           <>
             <InfoCell label="보관 기간" value={`${weeksUsed}주 경과`} />
             <InfoCell label="최대 사용 플랜" value={storage.max_plan_type ? `${storage.max_plan_type} 플랜` : "-"} />

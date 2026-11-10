@@ -15,6 +15,7 @@ export const getCachedStorageTypes = unstable_cache(
         "id, code, name, price_per_week, price_max, price_per_month, max_parcels, volume_liter, dim_l_mm, dim_w_mm, dim_h_mm"
       )
       .eq("is_active", true)
+      .neq("code", "SHIPPING")
       .order("sort_order");
 
     if (error) throw error;

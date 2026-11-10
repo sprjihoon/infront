@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       ? typeQuery.eq("id", storageTypeId)
       : typeQuery.eq("code", body.plan_type!);
     const { data: storageType } = await typeQuery.maybeSingle();
-    if (!storageType) {
+    if (!storageType || storageType.code === "SHIPPING") {
       return NextResponse.json({ error: "유효하지 않은 보관 사이즈입니다." }, { status: 400 });
     }
     storageTypeId = storageType.id;

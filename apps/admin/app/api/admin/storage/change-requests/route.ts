@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
      CAPACITY_CHANGE / ADD_SLOT 요청에 대해 requested_type_id 기준으로
      AVAILABLE 로케이션을 1개씩 조회해 suggested_location으로 첨부 */
   const typedRequests = requests.filter(
-    (r) => ["CAPACITY_CHANGE", "ADD_SLOT"].includes(r.request_type) && r.requested_type_id
+    (r) => ["CAPACITY_CHANGE", "ADD_SLOT", "CONVERT_TO_LONG_TERM"].includes(r.request_type) && r.requested_type_id
   );
 
   const uniqueTypeIds = [...new Set(typedRequests.map((r) => r.requested_type_id as string))];
@@ -141,23 +141,43 @@ export async function PATCH(req: NextRequest) {
   }
 
   // 승인 + 장기 전환 → customer_storages 업데이트
-  if (body.status === "APPROVED" && req_row.request_type === "CONVERT_TO_LONG_TERM" && req_row.requested_plan_type) {
-    const { data: planData } = await adminDb
-      .from("storage_plan_config")
-      .select("capacity_score, monthly_amount")
-      .eq("plan_type", req_row.requested_plan_type)
-      .single();
+  if (body.status === "APPROVED" && req_row.request_type === "CONVERT_TO_LONG_TERM") {
+    const patch: Record<string, unknown> = {
+      storage_mode: "long_term",
+      updated_at: new Date().toISOString(),
+    };
 
-    await adminDb
-      .from("customer_storages")
-      .update({
-        storage_mode:    "long_term",
-        plan_type:       req_row.requested_plan_type,
-        capacity_score:  planData?.capacity_score ?? null,
-        monthly_amount:  planData?.monthly_amount ?? null,
-        updated_at:      new Date().toISOString(),
-      })
-      .eq("id", req_row.storage_id);
+    if (req_row.requested_type_id) {
+      const { data: typeRow } = await adminDb
+        .from("storage_types")
+        .select("id, code, name, volume_liter, price_per_month")
+        .eq("id", req_row.requested_type_id)
+        .maybeSingle();
+      if (typeRow && typeRow.code !== "SHIPPING") {
+        const { data: current } = await adminDb
+          .from("customer_storages")
+          .select("storage_name")
+          .eq("id", req_row.storage_id)
+          .maybeSingle();
+        patch.storage_type_id = typeRow.id;
+        patch.capacity_score = typeRow.volume_liter;
+        patch.monthly_amount = typeRow.price_per_month;
+        if (current?.storage_name === "배송전용 블록" && typeRow.name) {
+          patch.storage_name = typeRow.name;
+        }
+      }
+    } else if (req_row.requested_plan_type) {
+      const { data: planData } = await adminDb
+        .from("storage_plan_config")
+        .select("capacity_score, monthly_amount")
+        .eq("plan_type", req_row.requested_plan_type)
+        .single();
+      patch.plan_type = req_row.requested_plan_type;
+      patch.capacity_score = planData?.capacity_score ?? null;
+      patch.monthly_amount = planData?.monthly_amount ?? null;
+    }
+
+    await adminDb.from("customer_storages").update(patch).eq("id", req_row.storage_id);
   }
 
   /* ── 승인 시 로케이션 자동 배정 ─────────────────────────────────

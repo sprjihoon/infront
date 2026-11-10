@@ -1187,8 +1187,8 @@ function PickupPageInner() {
                 </p>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
                   {inboundPurpose === "storage"
-                    ? "센터에 도착하면 보관함에 들어갑니다."
-                    : "센터에 도착하면 출고를 기다립니다. 국내·해외는 출고할 때 고릅니다."}
+                    ? "센터에 도착하면 보관함에 들어갑니다. 입고 후 7일이 지나면 장기보관이 시작됩니다."
+                    : "센터에 도착하면 출고를 기다립니다. 입고 후 7일은 크기와 관계없이 무료입니다. 국내·해외는 출고할 때 고릅니다."}
                 </p>
               </div>
             ) : (

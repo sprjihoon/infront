@@ -623,7 +623,11 @@ export default function StorageManagePage() {
                       <p className="text-xs text-gray-500 mt-0.5">
                         스토리지: <span className="font-medium">{req.customer_storages?.storage_name ?? "-"}</span>
                         <span className="ml-1 text-gray-400">
-                          ({req.customer_storages?.storage_mode === "short_term" ? "단기" : "장기"})
+                          ({req.customer_storages?.storage_mode === "shipping"
+                            ? "배송전용"
+                            : req.customer_storages?.storage_mode === "short_term"
+                            ? "단기"
+                            : "장기"})
                         </span>
                       </p>
                       {req.request_type === "CAPACITY_CHANGE" && req.requested_type_code && (
@@ -643,9 +647,12 @@ export default function StorageManagePage() {
                           물품을 대표 슬롯으로 물리적 이전 필요
                         </p>
                       )}
-                      {req.request_type === "CONVERT_TO_LONG_TERM" && req.requested_plan_type && (
+                      {req.request_type === "CONVERT_TO_LONG_TERM" && (req.storage_types?.name || req.requested_plan_type) && (
                         <p className="text-xs text-blue-600 mt-0.5">
-                          요청 플랜: <span className="font-bold">{req.requested_plan_type}</span>
+                          전환 블록: <span className="font-bold">{req.storage_types?.name ?? req.requested_plan_type}</span>
+                          {req.storage_types?.volume_liter != null && (
+                            <span className="text-gray-400 ml-1">{req.storage_types.volume_liter}L</span>
+                          )}
                         </p>
                       )}
                       {req.customer_note && (

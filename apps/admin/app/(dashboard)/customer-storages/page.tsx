@@ -17,7 +17,7 @@ interface CustomerInfo {
 interface StorageRow {
   id: string;
   storage_name: string;
-  storage_mode: "short_term" | "long_term";
+  storage_mode: "short_term" | "long_term" | "shipping";
   plan_type: string | null;
   capacity_score: number | null;
   used_score: number;
@@ -166,6 +166,7 @@ export default function AdminCustomerStoragesPage() {
           <option value="ALL">전체 방식</option>
           <option value="short_term">단기보관</option>
           <option value="long_term">장기보관</option>
+          <option value="shipping">배송전용</option>
         </select>
       </div>
 
@@ -209,19 +210,26 @@ export default function AdminCustomerStoragesPage() {
                   <div className="min-w-0">
                     <p className="text-sm text-gray-800 truncate">{r.storage_name}</p>
                     <p className="text-xs text-gray-400">
-                      {r.storage_plan_config?.label_ko ?? r.plan_type ?? "-"}
+                      {r.storage_mode === "shipping"
+                        ? "배송전용 블록 · 사이즈 없음"
+                        : (r.storage_plan_config?.label_ko ?? r.plan_type ?? "-")}
                     </p>
                   </div>
                   <div>
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                      r.storage_mode === "short_term"
+                      r.storage_mode === "shipping"
+                        ? "bg-amber-100 text-amber-800"
+                        : r.storage_mode === "short_term"
                         ? "bg-sky-100 text-sky-700"
                         : "bg-violet-100 text-violet-700"
                     }`}>
-                      {r.storage_mode === "short_term" ? "단기" : "장기"}
+                      {r.storage_mode === "shipping" ? "배송전용" : r.storage_mode === "short_term" ? "단기" : "장기"}
                     </span>
                     {r.storage_mode === "short_term" && (
                       <p className="text-[10px] text-gray-400 mt-0.5">{weeksUsed}주 경과</p>
+                    )}
+                    {r.storage_mode === "shipping" && (
+                      <p className="text-[10px] text-gray-400 mt-0.5">7일 무료</p>
                     )}
                     {r.storage_mode === "long_term" && r.paid_until_date && (
                       <div className="flex items-center gap-0.5 mt-0.5">
@@ -233,7 +241,9 @@ export default function AdminCustomerStoragesPage() {
                     )}
                   </div>
                   <div>
-                    {r.capacity_score != null ? (
+                    {r.storage_mode === "shipping" ? (
+                      <span className="text-xs text-gray-400">사이즈 없음</span>
+                    ) : r.capacity_score != null ? (
                       <>
                         <div className="flex items-center gap-1">
                           <div className="flex-1 bg-gray-100 rounded-full h-1.5">

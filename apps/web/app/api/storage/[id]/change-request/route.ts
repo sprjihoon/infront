@@ -62,6 +62,18 @@ export async function POST(req: NextRequest, { params }: Params) {
     source_storage_ids?: string[];
   };
 
+  if (body.request_type === "CONVERT_TO_LONG_TERM") {
+    if (storage.storage_mode === "long_term") {
+      return NextResponse.json({ error: "이미 장기보관입니다." }, { status: 409 });
+    }
+    if (body.requested_type_code === "SHIPPING") {
+      return NextResponse.json({ error: "배송전용 블록으로는 전환할 수 없습니다." }, { status: 400 });
+    }
+    if (!body.requested_type_id && !body.requested_plan_type) {
+      return NextResponse.json({ error: "전환할 보관 사이즈를 선택해 주세요." }, { status: 400 });
+    }
+  }
+
   const VALID_TYPES = ["CAPACITY_CHANGE", "CONVERT_TO_LONG_TERM", "ADD_SLOT", "TRANSFER_ITEMS", "MERGE_SLOTS"];
   if (!VALID_TYPES.includes(body.request_type)) {
     return NextResponse.json({ error: "유효하지 않은 요청 타입입니다." }, { status: 400 });

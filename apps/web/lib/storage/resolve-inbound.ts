@@ -58,12 +58,19 @@ export async function resolveInboundStorage(
 
   if (existing) return { storageId: existing.id };
 
+  const { data: shippingType } = await supabase
+    .from("storage_types")
+    .select("id")
+    .eq("code", "SHIPPING")
+    .maybeSingle();
+
   const { data: created, error } = await supabase
     .from("customer_storages")
     .insert({
       user_id: userId,
-      storage_name: "배송",
+      storage_name: "배송전용 블록",
       storage_mode: "shipping",
+      storage_type_id: shippingType?.id ?? null,
       status: "ACTIVE",
     })
     .select("id")
@@ -92,13 +99,31 @@ type StorageRow = {
   storage_types: { price_per_month: number | null } | null;
 };
 
+function earliestHold(
+  parcels: { inbound_at: string | null; created_at: string | null }[],
+): string | null {
+  let best: number | null = null;
+  let iso: string | null = null;
+  for (const parcel of parcels) {
+    const raw = parcel.inbound_at ?? parcel.created_at;
+    if (!raw) continue;
+    const time = new Date(raw).getTime();
+    if (Number.isNaN(time)) continue;
+    if (best === null || time < best) {
+      best = time;
+      iso = raw;
+    }
+  }
+  return iso;
+}
+
 /** 이번 출고 한 장에 넣을 보관료. */
 export async function quoteOutboundStorageFee(
   supabase: SupabaseClient,
   userId: string,
   parcelIds: string[],
 ): Promise<{ amount: number; memo: string }> {
-  const { billableMonths, monthlyRate, remainingStorageMonths } = await import("./holding-fee");
+  const { longTermStartsAt, monthlyRate, remainingStorageMonths, shippingBillableMonths } = await import("./holding-fee");
 
   const { data: parcels } = await supabase
     .from("parcels")
@@ -124,7 +149,7 @@ export async function quoteOutboundStorageFee(
 
   const { data: siblings } = await supabase
     .from("parcels")
-    .select("id, customer_storage_id, status")
+    .select("id, customer_storage_id, status, inbound_at, created_at")
     .eq("customer_id", userId)
     .in("customer_storage_id", storageIds);
 
@@ -145,7 +170,9 @@ export async function quoteOutboundStorageFee(
 
     if (storage.storage_mode === "long_term") {
       if (stillThere.length > 0) continue;
-      const months = remainingStorageMonths(storage.paid_until_date, storage.created_at);
+      const held = (siblings ?? []).filter((p) => p.customer_storage_id === storageId);
+      const earliest = earliestHold(held) ?? storage.created_at;
+      const months = remainingStorageMonths(storage.paid_until_date, longTermStartsAt(earliest));
       if (months <= 0) continue;
       amount += months * rate;
       lines.push(`잔여 보관료 ${months}달 × ${rate.toLocaleString()}원`);
@@ -156,7 +183,7 @@ export async function quoteOutboundStorageFee(
 
     let months = 0;
     for (const parcel of rows.filter((p) => p.customer_storage_id === storageId)) {
-      months += billableMonths(parcel.inbound_at ?? parcel.created_at);
+      months += shippingBillableMonths(parcel.inbound_at ?? parcel.created_at);
     }
     if (months <= 0) continue;
     amount += months * rate;

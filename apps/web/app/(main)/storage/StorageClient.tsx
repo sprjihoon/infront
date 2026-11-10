@@ -120,6 +120,7 @@ const BLOCK_SVG_MAP: Record<string, React.ComponentType<{ dark: string; medium: 
   LONG:     Block3SVG,
   XL:       Block4SVG,
   OVERSIZE: Block5SVG,
+  SHIPPING: Block2SVG,
   DEFAULT:  Block2SVG,
 };
 
@@ -304,6 +305,7 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
   }, [load]);
 
   const active = storages.filter((s) => s.status !== "CANCELLED");
+  const sized = active.filter((s) => s.storage_mode !== "shipping");
 
   /* 요약 */
   const totalMonthlyFee = active
@@ -317,8 +319,8 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
   const shippableCount = items.filter(
     (it) => it.parcel_status === "SHIPPABLE" || it.parcel_status === "READY" || it.is_shippable === true
   ).length;
-  const avgUsage = active.length > 0
-    ? Math.round(active.reduce((sum, s) => sum + (s.usage_percent ?? 0), 0) / active.length)
+  const avgUsage = sized.length > 0
+    ? Math.round(sized.reduce((sum, s) => sum + (s.usage_percent ?? 0), 0) / sized.length)
     : 0;
 
   const filterTabs = ["전체", "출고 가능", ...active.map((s) => s.storage_name)];
@@ -336,14 +338,14 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
 
   /* ── 블록 통합 추천 카드 조건 계산 ───────────────────── */
   const mergeRecommendation = (() => {
-    if (active.length < 2 || storageTypes.length === 0) return null;
+    if (sized.length < 2 || storageTypes.length === 0) return null;
 
-    const totalUsedLiters = active.reduce((sum, s) => sum + (s.used_score ?? 0), 0);
-    const currentTotalMonthly = active.reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
+    const totalUsedLiters = sized.reduce((sum, s) => sum + (s.used_score ?? 0), 0);
+    const currentTotalMonthly = sized.reduce((sum, s) => sum + (s.monthly_amount ?? 0), 0);
     if (currentTotalMonthly === 0) return null;
 
     // 조건: 모든 블록의 사용률이 70% 이상일 때만 추천 (슬롯이 꽉 찼을 때)
-    const allHighUsage = active.every((s) => (s.usage_percent ?? 0) >= 70);
+    const allHighUsage = sized.every((s) => (s.usage_percent ?? 0) >= 70);
     if (!allHighUsage) return null;
 
     // 합산 사용량을 담을 수 있는 가장 저렴한 단일 블록 타입 탐색
@@ -424,7 +426,7 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
                   color="purple"
                 />
               </div>
-              {active.length > 0 && (
+              {sized.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-50 flex items-center gap-2">
                   <span className="text-[10px] text-gray-400">평균 공간 사용률</span>
                   <div className="flex gap-1">
@@ -562,22 +564,22 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
             })()}
 
             {/* ── 블록 통합 배너 (블록 2개 이상이면 항상 표시) ─── */}
-            {active.length >= 2 && (
+            {sized.length >= 2 && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0 relative w-10 h-10">
                     <div className="absolute bottom-0 left-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.25))" }}>
-                      <BrickSVG color="#f59e0b" typeCode={active[0]?.storage_types?.code ?? "MINI"} size={32} />
+                      <BrickSVG color="#f59e0b" typeCode={sized[0]?.storage_types?.code ?? "MINI"} size={32} />
                     </div>
                     <div className="absolute top-0 right-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.25))" }}>
-                      <BrickSVG color="#ef4444" typeCode={active[1]?.storage_types?.code ?? "MINI"} size={28} />
+                      <BrickSVG color="#ef4444" typeCode={sized[1]?.storage_types?.code ?? "MINI"} size={28} />
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-amber-900">보관료를 줄일 수 있어요</p>
                     <p className="text-xs text-amber-700 mt-0.5 leading-snug">
                       {mergeRecommendation
-                        ? <>현재 {active.length}개 블록을 {mergeRecommendation.typeName} 1개로 합치면{" "}<span className="font-bold">월 {mergeRecommendation.saving.toLocaleString()}원</span> 절약돼요.</>
+                        ? <>현재 {sized.length}개 블록을 {mergeRecommendation.typeName} 1개로 합치면{" "}<span className="font-bold">월 {mergeRecommendation.saving.toLocaleString()}원</span> 절약돼요.</>
                         : "여러 블록을 하나로 합치면 보관료와 관리를 줄일 수 있어요."}
                     </p>
                   </div>
@@ -593,12 +595,12 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
             )}
 
             {/* 블록 1개일 때 — 용량 확장 유도 배너 */}
-            {active.length === 1 && (
+            {sized.length === 1 && (
               <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0" style={{ filter: "drop-shadow(2px 3px 2px rgba(0,0,0,0.18))" }}>
                     {(() => {
-                      const ck = (active[0]?.card_color && CARD_THEME_MAP[active[0].card_color]) ? active[0].card_color : CARD_THEME_KEYS[parseInt((active[0]?.id ?? "").replace(/-/g,"").slice(0,8),16) % CARD_THEME_KEYS.length];
+                      const ck = (sized[0]?.card_color && CARD_THEME_MAP[sized[0].card_color]) ? sized[0].card_color : CARD_THEME_KEYS[parseInt((sized[0]?.id ?? "").replace(/-/g,"").slice(0,8),16) % CARD_THEME_KEYS.length];
                       const t = CARD_THEME_MAP[ck];
                       const med = t.accent;
                       const shd = (h: string, f: number) => { const c=h.replace("#","").padEnd(6,"0"); const r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16); const cl=(n:number)=>Math.min(255,Math.max(0,Math.round(n))); return f>=1?`#${cl(r+(255-r)*(f-1)).toString(16).padStart(2,"0")}${cl(g+(255-g)*(f-1)).toString(16).padStart(2,"0")}${cl(b+(255-b)*(f-1)).toString(16).padStart(2,"0")}`:`#${cl(r*f).toString(16).padStart(2,"0")}${cl(g*f).toString(16).padStart(2,"0")}${cl(b*f).toString(16).padStart(2,"0")}`; };
@@ -612,7 +614,7 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
                   </div>
                   <button
                     type="button"
-                    onClick={() => setCapacitySheet(active[0])}
+                    onClick={() => setCapacitySheet(sized[0])}
                     className="shrink-0 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition-colors"
                   >
                     용량 변경
@@ -672,8 +674,10 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
                         ? storage.card_color
                         : CARD_THEME_KEYS[parseInt((storage?.id ?? "0").replace(/-/g, "").slice(0, 8), 16) % CARD_THEME_KEYS.length];
                       const blockAccent = CARD_THEME_MAP[themeKey]?.accent ?? "#6366f1";
-                      const typeCode = storage?.storage_types?.code ?? storage?.plan_type ?? "DEFAULT";
-                      const TYPE_KO: Record<string, string> = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "하프블록", S: "파인트블록", M: "싱글블록", L: "더블블록" };
+                      const typeCode = storage?.storage_mode === "shipping"
+                        ? "SHIPPING"
+                        : (storage?.storage_types?.code ?? storage?.plan_type ?? "DEFAULT");
+                      const TYPE_KO: Record<string, string> = { MINI: "파인트블록", STANDARD: "싱글블록", LONG: "더블블록", XL: "패밀리블록", OVERSIZE: "하프블록", SHIPPING: "배송전용 블록", S: "파인트블록", M: "싱글블록", L: "더블블록" };
                       const blockLabel = TYPE_KO[typeCode] ?? storageName;
                       const isShippable = item.is_shippable;
                       const statusLabel = isShippable ? "출고 가능" : (PARCEL_STATUS_DISPLAY[item.parcel_status]?.label ?? "보관 중");
@@ -790,9 +794,9 @@ export default function StorageClient({ initialData }: { initialData?: Dashboard
     )}
 
     {/* 블록 합치기 시트 */}
-    {mergeSheet && active.length >= 2 && (
+    {mergeSheet && sized.length >= 2 && (
       <MergeSlotSheet
-        storages={active}
+        storages={sized}
         onClose={() => setMergeSheet(false)}
         onDone={() => { setMergeSheet(false); load(true); }}
         onCapacityChange={(s) => { setMergeSheet(false); setCapacitySheet(s); }}
@@ -850,8 +854,8 @@ function StorageCard({
   const isShipping = s.storage_mode === "shipping";
   const weeklyFee   = locationSummary?.total_weekly_fee ?? s.storage_plan_config?.weekly_rate ?? 0;
   const usagePct    = Math.round(s.usage_percent ?? 0);
-  const typeCode    = s.storage_types?.code ?? "DEFAULT";
-  const typeName    = s.storage_types?.name ?? s.plan_type ?? "-";
+  const typeCode    = isShipping ? "SHIPPING" : (s.storage_types?.code ?? "DEFAULT");
+  const typeName    = isShipping ? "배송전용 블록" : (s.storage_types?.name ?? s.plan_type ?? "-");
 
   const mainFee = isShipping
     ? 0
@@ -915,7 +919,7 @@ function StorageCard({
               </button>
             </div>
             <p className="text-[9px] text-gray-400 truncate">
-              {typeName}{s.storage_types?.volume_liter ? ` · ${s.storage_types.volume_liter}L` : ""}
+              {typeName}{!isShipping && s.storage_types?.volume_liter ? ` · ${s.storage_types.volume_liter}L` : ""}
             </p>
           </div>
 
@@ -936,7 +940,9 @@ function StorageCard({
           </div>
         </div>
 
-        {/* 사용률 바 — 독립 시각 요소 */}
+        {isShipping ? (
+          <p className="text-[9px] text-gray-400 mb-2">사이즈 없음 · 입고 후 7일 무료</p>
+        ) : (
         <div className="mb-2">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] text-gray-400">사용률</span>
@@ -957,6 +963,7 @@ function StorageCard({
             />
           </div>
         </div>
+        )}
 
         {/* 버튼 */}
         <div className="grid grid-cols-2 gap-1.5">
