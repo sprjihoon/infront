@@ -38,13 +38,12 @@ export default function InboundPage() {
           <ArrowLeft size={20} className="text-gray-700" />
         </button>
         <div>
-          <h1 className="text-base font-bold text-gray-900">신청</h1>
+          <h1 className="text-base font-bold text-gray-900">접수</h1>
           <p className="text-xs text-gray-400 mt-0.5">배송 신청인지, 보관 신청인지 고릅니다</p>
         </div>
       </div>
 
       <div className="px-4 py-6 max-w-[600px] mx-auto">
-        <p className="text-xs font-bold text-gray-400 mb-3">접수</p>
         <div className="space-y-3">
         <button
           type="button"

@@ -103,7 +103,7 @@ function SuccessContent() {
               onClick={() => router.push("/inbound")}
               className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white text-sm font-bold py-3.5 rounded-2xl"
             >
-              신청하기
+              접수하기
             </button>
           )}
           {storageId && !isBox && (
