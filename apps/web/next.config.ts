@@ -53,12 +53,13 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        // 우편번호 검색 페이지 — Daum CDN 스크립트 허용
+        // 우편번호 검색 페이지 — Kakao CDN 스크립트 허용
+        // daumcdn.net은 2026-11-30까지 유지, 이후 kakaocdn.net만 사용
         source: "/postcode.html",
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://t1.daumcdn.net https://*.daumcdn.net https://*.kakao.com https://*.daum.net;",
+            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://t1.kakaocdn.net https://*.kakaocdn.net https://t1.daumcdn.net https://*.daumcdn.net https://*.kakao.com https://*.daum.net;",
           },
         ],
       },
@@ -67,7 +68,7 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: "Content-Security-Policy",
-            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://t1.daumcdn.net https://*.daumcdn.net https://*.kakao.com https://*.daum.net;",
+            value: "default-src 'self' 'unsafe-inline' 'unsafe-eval' https://t1.kakaocdn.net https://*.kakaocdn.net https://t1.daumcdn.net https://*.daumcdn.net https://*.kakao.com https://*.daum.net;",
           },
         ],
       },

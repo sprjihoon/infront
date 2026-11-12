@@ -27,7 +27,7 @@ declare global {
 export default function PostcodePage() {
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
+    script.src = "https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js";
     script.async = true;
     script.onload = () => {
       const el = document.getElementById("postcode-wrap");
